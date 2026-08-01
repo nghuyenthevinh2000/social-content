@@ -1,0 +1,14 @@
+Deep Tech Creator #4: Bẫy tham nhiều mục tiêu — khi vòng lặp cải tiến bị xé nhỏ
+
+Tuần này, chúng mình có dịp ngồi trò chuyện cùng anh Kiên — một quant researcher từng có 5 năm kinh nghiệm chinh chiến tại quỹ tài chính ở Mỹ, viết ra các mô hình quant quản lý hàng trăm triệu đô, từng tốt nghiệp thạc sĩ toán học tại ETH Zurich. Một bộ óc quen làm việc với những mô hình tối ưu khắt khe, nhưng khi nhìn vào hành trình của các team startup deep tech Việt Nam, anh lại chỉ ra một điểm nghẽn rất chí mạng. Cảm ơn anh Kiên đã dành một buổi chia sẻ cực kỳ sâu sắc và kiên nhẫn với những hạt mầm đang tập tành làm sản phẩm 🙏
+
+Trong thế giới của quant hay các sản phẩm công nghệ sâu, điều quyết định chiến thắng không phải là một ý tưởng ban đầu nghe hoành tráng đến đâu, mà là tốc độ của vòng lặp cải tiến. Giống như người thợ đúc kiếm hay người luyện võ, nếu dồn toàn bộ tâm trí xoay vòng lặp thử nghiệm và gọt dũa được 1.000 vòng cho đúng một điểm nhọn cốt lõi, người ta sẽ tạo ra một thế mạnh sắc bén đến mức cắt sắt như cắt bơ — cái được gọi là unfair advantage (lợi thế cạnh tranh bất bình đẳng).
+
+Thế nhưng, căn bệnh phổ biến nhất mà các founder deep tech hay vướng phải lại là "bẫy tham nhiều mục tiêu lợi ích". Vừa muốn sản phẩm ra nhanh, vừa muốn an toàn tuyệt đối, vừa muốn chi phí rẻ, lại vừa muốn đáp ứng nhu cầu cho nhiều nhóm khách hàng cùng lúc. Rốt cuộc, nguồn lực bị phân tán ra 5 mục tiêu khác nhau, khiến vòng lặp cải tiến thay vì chạy được 1.000 vòng cho một mũi nhọn duy nhất thì chỉ lẹt đẹt quay được vỏn vẹn 200 vòng cho mỗi mục tiêu. Kết quả là tạo ra một sản phẩm cái gì cũng biết một chút nhưng không có điểm nào đủ sắc, và hoàn toàn thất bại trong việc tạo ra unfair advantage cần thiết để cạnh tranh trên thị trường.
+
+Anh Kiên ví tốc độ xoay vòng lặp cải tiến này chính là thước đo cho từng cấp độ của cuộc chơi. Quay được chục vòng một tháng thì startup mới gọi là chật vật giữ được hơi thở để sống sót qua ngày. Quay được trăm vòng một tháng thì đã tiệm cận đẳng cấp của một serial entrepreneur, liên tục thử nghiệm, học hỏi và thích ứng với nhịp độ gấp gáp. Còn khi vòng lặp được tự động hóa và nâng tầm quay tới chục nghìn vòng mỗi tháng, đó mới là quy mô của các chủ tịch tập đoàn lớn, nơi cả hệ thống vận hành như một cỗ máy tối ưu không ngừng nghỉ.
+
+Nhìn lại các dự án deep tech Việt, anh em kỹ sư chúng mình không thiếu toán, không thiếu khả năng code, nhưng sao vòng lặp cải tiến vẫn quay chậm đến thế? Có phải vì chúng mình còn mải mê ôm đùm quá nhiều kỳ vọng ngay từ bước đầu, để rồi năng lượng bị xé nhỏ trên quá nhiều con đường? Nếu một ngày dũng cảm gạt bớt 4 mục tiêu phụ sang một bên, chỉ tập trung xoay vòng lặp 1.000 lần cho một thế mạnh duy nhất, liệu sản phẩm Việt có đủ sức tạo nên cú hích trên bản đồ công nghệ toàn cầu?
+
+---
+Series meet hàng tuần - chào đón những bạn founder deep tech cũng đang chật vật tìm cách bán, cùng tu tập và giác ngộ điểm mù nhận thức trên con đường startup Việt

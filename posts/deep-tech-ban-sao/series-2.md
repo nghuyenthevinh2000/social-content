@@ -1,0 +1,9 @@
+Deep Tech Creator series#2: trụ cột công nghệ về bảo vệ và luân chuyển tài sản mã hoá
+Tuần này, cả nhóm cùng bàn về việc làm sao để có thể gây dựng niềm tin với khách hàng tổ chức ở Việt Nam và trên thế giới vào những sản phẩm công nghệ lõi chiến lược từ những bộ óc của người Việt. Mình có dịp ngồi với hai kỹ sư kỳ cựu trong ngành blockchain, thích ngồi luyện bí kíp võ công trong hang nên kỹ năng trình diễn múa võ bên ngoài hơi yếu 😁
+1. Anh Thi - Founder FyStack, dự án vault lưu trữ tài sản MPC on-chain mã nguồn mở (https://github.com/fystack)
+2. Khanh Nguyen - Founder ZKBridge, dự án cầu cross-chain luân chuyển tài sản on-chain bằng công nghệ Zero-Knowledge
+Đây là hai sản phẩm deep tech, nhiều toán, làm về bảo vệ và luân chuyển tài sản. Thường đây là những khâu dễ bị kẻ tấn công cướp tiền nhất. Vậy nhưng trong bối cảnh 5 sàn sắp ra mắt và chiến lược quốc gia về blockchain, Việt Nam lại đang không tự chủ về những trụ cột công nghệ này mà phụ thuộc vào giải pháp nước ngoài để bảo vệ và luân chuyển tài sản của người dân.
+Phải thừa nhận rằng các bộ não Việt đang gặp khó khăn không có môi trường sandbox thử nghiệm những công nghệ chiến lược này. Đây là bài toán con gà - quả trứng, vì không có môi trường thử nghiệm nên không có uy tín, nhưng vì không có uy tín nên cũng không được các đối tác lựa chọn cho thử. Không có môi trường thử nghiệm nên các sản phẩm deep tech này cũng không thể được mài dũa cho sát với nhu cầu và yêu cầu thực tế.
+Với bài toán con gà quả trứng vậy thì nhóm sẽ phải đi tìm người mẹ, người cha hiền từ đỡ đầu nuôi dưỡng những hạt mầm công nghệ chiến lược 🙏
+---
+Series meet thứ 6 hàng tuần - chào đón những bạn đam mê deep tech cùng tham gia trao đổi nghiên cứu, cùng đi tìm lối ra cho sản phẩm deep tech Việt

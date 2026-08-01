@@ -11,7 +11,7 @@ Không thuật ngữ Web3 phức tạp. Không smart contract. mình đặt từ
 2. **Chi phí cơ hội (Opportunity Cost)** và **Rủi ro (Risk)** được định giá thế nào để quyết định lãi suất?
 3. **Đòn bẩy (Leverage)** thực chất là gì và tại sao nó vừa là động cơ vừa là thuốc độc?
 
-mình bắt đầu ánh xạ (map) những khái niệm Web3 về lại cội nguồn của nó. Sự thay đổi này đã định hình lại hoàn toàn cách mình làm sản phẩm. Từ chỗ chỉ hỏi *"Làm sao để code tính năng này?"*, mình bắt đầu hỏi *"Mô hình kinh tế này giải quyết bài toán tối ưu nguồn vốn nào cho người dùng?"*.
+Mình bắt đầu ánh xạ (map) những khái niệm Web3 về lại cội nguồn của nó. Sự thay đổi này đã định hình lại hoàn toàn cách mình làm sản phẩm. Từ chỗ chỉ hỏi *"Làm sao để code tính năng này?"*, mình bắt đầu hỏi *"Mô hình kinh tế này giải quyết bài toán tối ưu nguồn vốn nào cho người dùng?"*.
 
 Nếu bạn cũng đang làm Tech, làm Product trong mảng Blockchain và cảm thấy mình bị ngợp hoặc bị giới hạn bởi những kiến thức tài chính chắp vá... Đừng ngại dừng lại một nhịp để vẽ ra bản đồ tư duy của riêng bạn. Hãy đi tìm câu trả lời cho những câu hỏi nguyên bản nhất.
 
