@@ -11,7 +11,7 @@ created: 2026-08-02
 
 Buzz biến việc phối hợp giữa người và agent thành một luồng sự kiện chung: con người giao việc trong channel hoặc thread, agent đọc ngữ cảnh, thực hiện qua CLI và trả kết quả về đúng nơi. Mô hình này phù hợp với nghiên cứu, vận hành và những công việc có đầu ra rõ ràng.
 
-Giá trị cốt lõi không nằm ở số lượng agent. Nó nằm ở việc giao đúng phần việc cho đúng agent, viết instruction thật cụ thể cho từng agent và giữ kỷ luật điều phối xuyên suốt:
+Để sử dụng được buzz và hệ thống điều phối agent cần giao đúng phần việc cho đúng agent, viết instruction thật cụ thể cho từng agent và giữ kỷ luật điều phối xuyên suốt:
 
 - mỗi agent biết rõ nhiệm vụ, đầu vào, đầu ra và giới hạn của mình;
 - một người chịu trách nhiệm chính;
@@ -20,13 +20,13 @@ Giá trị cốt lõi không nằm ở số lượng agent. Nó nằm ở việc
 - một nơi duy nhất để nhận kết quả;
 - trạng thái được nói đúng theo những gì hệ thống đã xác nhận.
 
-Kinh nghiệm trong workspace cho thấy mô hình **on-demand, có người kiểm soát** hiện đáng tin cậy nhất. Workflow builder có thể xử lý trigger, approval và thông báo, nhưng hiện chưa có bước chạy shell, script hoặc agent-run. Vì vậy, workflow không thể tự chạy crawler `hn_highlights.py`. Với luồng YC/HN → Pulse, công việc được giao cho một agent riêng tên **YC News Reporter**, có instruction cụ thể để chạy collector theo tài liệu, kiểm tra kết quả rồi bàn giao cho bước xuất bản bằng `buzz social publish`.
+Kinh nghiệm trong workspace cho thấy mô hình **on-demand, có người kiểm soát** hiện đáng tin cậy nhất. Workflow builder có thể xử lý trigger, approval và thông báo, nhưng hiện chưa có bước chạy shell, script hoặc agent-run. Với workflow lấy thông tin từ YC → báo cáo tổng kết, công việc được giao cho một agent riêng tên **YC News Reporter**, có instruction cụ thể để chạy collector theo tài liệu, kiểm tra kết quả rồi bàn giao cho bước xuất bản bằng `buzz social publish`.
 
 Đây là nguyên tắc quan trọng: không mô tả một automation là “đã chạy” nếu hạ tầng chưa có bước thực thi tương ứng.
 
-## YC/HN đang cố làm gì?
+## Workflow YC News Reporter đang cố làm gì?
 
-Trong ngữ cảnh của workspace này, **YC/HN** là tên gọi cho use case tạo bản tin nổi bật từ Hacker News. Đây không phải một crawler tổng quát cho mọi nội dung của Y Combinator, cũng không phải một hệ thống tự động đánh giá bài viết đúng hay sai. Một agent riêng tên **YC News Reporter** đã được tạo với instruction rõ ràng để đảm nhiệm công việc này.
+Use case tạo bản tin nổi bật từ YC Hacker News. Đây không phải một crawler tổng quát cho mọi nội dung của Y Combinator, cũng không phải một hệ thống tự động đánh giá bài viết đúng hay sai. Một agent riêng tên **YC News Reporter** đã được tạo với instruction rõ ràng để đảm nhiệm công việc này.
 
 Mục tiêu cụ thể là:
 
