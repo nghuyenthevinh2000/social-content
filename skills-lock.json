@@ -6,12 +6,6 @@
       "sourceType": "github",
       "skillPath": "skills/documentation/SKILL.md",
       "computedHash": "9a43f2e8ebb01dbc162ad78d865ff9e20bf20270e0514095c3bf3f1ac43599c6"
-    },
-    "flint-chart-author": {
-      "source": "microsoft/flint-chart",
-      "sourceType": "github",
-      "skillPath": ".github/extensions/flint-chart/skills/flint-chart-author/SKILL.md",
-      "computedHash": "3b719dc4302a97de3e0df483893b144007501a4134a0ccd75e412e831773533f"
     }
   }
 }
