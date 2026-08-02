@@ -6,378 +6,466 @@
   <title>Truffle Security | AI Training Data Secret Leak Analysis</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg: #090d16;
-      --card-bg: rgba(22, 30, 49, 0.8);
-      --border: rgba(255, 255, 255, 0.12);
-      --text: #f1f5f9;
-      --muted: #cbd5e1;
-      --accent: #a855f7;
-      --danger: #ef4444;
-      --warning: #f59e0b;
-      --cyan: #38bdf8;
+      --bg: #fdf8f2;
+      --card-bg: #fffcf7;
+      --border: rgba(160, 120, 80, 0.15);
+      --text: #2c1f0e;
+      --muted: #8a7060;
+      --accent: #b94040;
+      --accent-light: #fdf0ed;
+      --danger: #b94040;
+      --warning: #c28a1a;
+      --warning-light: #fdf8eb;
+      --teal: #3a7d6e;
+      --teal-light: #f0f7f5;
+      --purple: #7b5ea7;
+      --purple-light: #f6f2fb;
+      --shadow: 0 2px 16px rgba(120, 80, 40, 0.08);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
-      padding: 2rem;
+      padding: 2.5rem 1.5rem;
       min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      -webkit-font-smoothing: antialiased;
     }
 
+    .container {
+      width: 100%;
+      max-width: 1150px;
+      margin: 0 auto;
+    }
+
+    /* Header Section */
     .header {
-      max-width: 1100px;
-      margin: 0 auto 2.2rem;
       text-align: center;
+      margin-bottom: 1.75rem;
     }
 
     .badge {
-      display: inline-block;
-      padding: 0.4rem 1rem;
-      background: rgba(239, 68, 68, 0.2);
-      color: #fca5a5;
-      border: 1px solid rgba(239, 68, 68, 0.4);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 1.15rem;
+      background: var(--accent-light);
+      color: var(--accent);
+      border: 1px solid rgba(185, 64, 64, 0.25);
       border-radius: 9999px;
-      font-size: 0.85rem;
+      font-size: 0.825rem;
       font-weight: 700;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      margin-bottom: 1rem;
+      box-shadow: 0 2px 6px rgba(185, 64, 64, 0.06);
     }
 
-    h1 {
-      font-size: 2.5rem;
-      font-weight: 800;
-      line-height: 1.2;
-      background: linear-gradient(135deg, #ffffff 0%, #c7d2fe 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 0.75rem;
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--accent);
+      border-radius: 50%;
+      display: inline-block;
     }
 
-    .subtitle {
-      color: var(--muted);
-      font-size: 1.1rem;
-      max-width: 800px;
-      margin: 0 auto;
-      font-weight: 400;
-    }
-
-    .grid {
+    /* KPI Grid */
+    .grid-4 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1.5rem;
-      max-width: 1100px;
-      margin: 0 auto 2.5rem;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 2rem;
     }
 
     .card {
       background: var(--card-bg);
-      backdrop-filter: blur(14px);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 1rem;
       padding: 1.5rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      transition: transform 0.2s ease, border-color 0.2s ease;
+      box-shadow: var(--shadow);
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
     }
 
-    .card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(168, 85, 247, 0.5);
+    .card.accent-red {
+      background: linear-gradient(180deg, var(--card-bg) 0%, var(--accent-light) 100%);
+      border-left: 4px solid var(--accent);
+    }
+
+    .card.accent-teal {
+      background: linear-gradient(180deg, var(--card-bg) 0%, var(--teal-light) 100%);
+      border-left: 4px solid var(--teal);
+    }
+
+    .card.accent-purple {
+      background: linear-gradient(180deg, var(--card-bg) 0%, var(--purple-light) 100%);
+      border-left: 4px solid var(--purple);
+    }
+
+    .card.accent-amber {
+      background: linear-gradient(180deg, var(--card-bg) 0%, var(--warning-light) 100%);
+      border-left: 4px solid var(--warning);
     }
 
     .card-title {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       color: var(--muted);
       font-weight: 700;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.6rem;
     }
 
     .card-value {
-      font-size: 2.4rem;
+      font-size: 3rem;
       font-weight: 800;
-      color: #fff;
       font-family: 'JetBrains Mono', monospace;
-      line-height: 1.1;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.03em;
     }
 
-    .card-value.danger { color: #f87171; }
-    .card-value.accent { color: #c084fc; }
-    .card-value.cyan { color: #38bdf8; }
+    .card-value.red { color: var(--accent); }
+    .card-value.purple { color: var(--purple); }
+    .card-value.teal { color: var(--teal); }
+    .card-value.amber { color: var(--warning); }
 
     .card-sub {
       font-size: 0.85rem;
-      color: #94a3b8;
-      margin-top: 0.4rem;
+      color: var(--muted);
       font-weight: 500;
     }
 
+    /* Charts Section */
     .charts-grid {
       display: grid;
       grid-template-columns: 1.6fr 1fr;
       gap: 1.5rem;
-      max-width: 1100px;
-      margin: 0 auto 2.5rem;
-    }
-
-    @media (max-width: 900px) {
-      .charts-grid { grid-template-columns: 1fr; }
-      h1 { font-size: 2.0rem; }
+      margin-bottom: 2rem;
     }
 
     .chart-card {
       background: var(--card-bg);
-      backdrop-filter: blur(14px);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 1.5rem;
+      border-radius: 1rem;
+      padding: 1.75rem;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chart-header {
+      margin-bottom: 1.25rem;
     }
 
     .chart-card h2 {
-      font-size: 1.3rem;
+      font-size: 1.25rem;
       font-weight: 800;
-      margin-bottom: 0.35rem;
-      color: #ffffff;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      margin-bottom: 0.3rem;
     }
 
     .chart-card p {
-      font-size: 0.92rem;
+      font-size: 0.875rem;
       color: var(--muted);
-      margin-bottom: 1.25rem;
     }
 
     .chart-container {
       position: relative;
       width: 100%;
-      height: 340px;
+      height: 320px;
+      flex-grow: 1;
     }
 
-    .spotlight-box {
-      max-width: 1100px;
-      margin: 0 auto;
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(168, 85, 247, 0.14) 100%);
-      border: 1.5px solid rgba(239, 68, 68, 0.4);
-      border-radius: 16px;
-      padding: 1.5rem 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.75rem;
+    /* Center text overlay for Doughnut */
+    .doughnut-center {
+      position: absolute;
+      top: 44%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
     }
 
-    .spotlight-content h3 {
-      font-size: 1.35rem;
-      font-weight: 800;
-      color: #fca5a5;
-      margin-bottom: 0.4rem;
-    }
-
-    .spotlight-content p {
-      font-size: 0.95rem;
-      color: #e2e8f0;
-      line-height: 1.5;
-    }
-
-    .spotlight-stat {
-      text-align: right;
-      white-space: nowrap;
-    }
-
-    .spotlight-stat .big-num {
-      font-size: 2.7rem;
-      font-weight: 900;
-      color: #ef4444;
+    .doughnut-center .percent {
       font-family: 'JetBrains Mono', monospace;
-      line-height: 1.0;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
     }
 
-    .spotlight-stat .stat-label {
-      font-size: 0.88rem;
-      color: #cbd5e1;
-      margin-top: 0.3rem;
+    .doughnut-center .label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: 0.2rem;
+    }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.825rem;
+      font-weight: 500;
+    }
+
+    .footer-source {
       font-weight: 600;
     }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <span class="badge">Truffle Security Investigation</span>
-    <h1>221,303 Secret Passwords Found in Open AI Data</h1>
-    <p class="subtitle">Truffle Security scanned 7.6 Petabytes of public AI training data on Hugging Face (187 million files) and uncovered thousands of active keys sitting in 6,003 datasets.</p>
-  </div>
-
-  <!-- Metric Cards -->
-  <div class="grid">
-    <div class="card">
-      <div class="card-title">Total AI Data Scanned</div>
-      <div class="card-value cyan">7.6 PB</div>
-      <div class="card-sub">187 Million files checked</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Datasets With Leaks</div>
-      <div class="card-value danger">6,003</div>
-      <div class="card-sub">Public datasets containing secrets</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Active Passwords Found</div>
-      <div class="card-value accent">221,303</div>
-      <div class="card-sub">Live, usable secret keys & tokens</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Largest Single Leak</div>
-      <div class="card-value danger">393 GB PII</div>
-      <div class="card-sub">Exposes ~3.7% of world population</div>
-    </div>
-  </div>
-
-  <!-- Clear Charts -->
-  <div class="charts-grid">
-    <div class="chart-card">
-      <h2>What Do These Leaked Keys Give Access To?</h2>
-      <p>A breakdown of the main systems and private data accessible via the leaked secrets found in open AI datasets.</p>
-      <div class="chart-container">
-        <canvas id="accessChart"></canvas>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        Truffle Security Investigation
       </div>
     </div>
-    <div class="chart-card">
-      <h2>Global Impact of the Largest Leak</h2>
-      <p>One leaked key unlocked a database with personal data covering ~3.7% of everyone on Earth.</p>
-      <div class="chart-container">
-        <canvas id="pieChart"></canvas>
+
+    <!-- KPI Grid -->
+    <div class="grid-4">
+      <div class="card accent-teal">
+        <div class="card-title">Total AI Data Scanned</div>
+        <div class="card-value teal" id="stat-scanned">0</div>
+        <div class="card-sub">187 Million files audited</div>
+      </div>
+      <div class="card accent-amber">
+        <div class="card-title">Vulnerable Datasets</div>
+        <div class="card-value amber" id="stat-datasets">0</div>
+        <div class="card-sub">Public datasets with secrets</div>
+      </div>
+      <div class="card accent-purple">
+        <div class="card-title">Active Passwords & Keys</div>
+        <div class="card-value purple" id="stat-secrets">0</div>
+        <div class="card-sub">Live, usable secret tokens</div>
+      </div>
+      <div class="card accent-red">
+        <div class="card-title">Largest Single Exposure</div>
+        <div class="card-value red" id="stat-pii">0</div>
+        <div class="card-sub">300M+ identities (~3.7% World)</div>
       </div>
     </div>
-  </div>
 
-  <!-- Human Impact Spotlight -->
-  <div class="spotlight-box">
-    <div class="spotlight-content">
-      <h3>🚨 High-Impact Personal Data Exposure</h3>
-      <p>Out of all 221,303 secrets found, the most critical single key gave full read access to a 393 GB database of Personally Identifiable Information (PII) covering roughly 300 million people.</p>
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+      <!-- Main Chart: Access Types -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h2>Access Scope of Exposed Keys</h2>
+          <p>Critical systems and corporate environments accessible via leaked credentials</p>
+        </div>
+        <div class="chart-container">
+          <canvas id="accessChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Secondary Chart: Doughnut Breakdown -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h2>Global Identity Impact</h2>
+          <p>Scale of identity exposure from a single 393 GB dataset leak</p>
+        </div>
+        <div class="chart-container">
+          <canvas id="pieChart"></canvas>
+          <div class="doughnut-center">
+            <div class="percent">3.7%</div>
+            <div class="label">World Pop.</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="spotlight-stat">
-      <div class="big-num">300M+</div>
-      <div class="stat-label">People Affected (~3.7% Population)</div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <span class="footer-source">Source: Truffle Security AI Data Secret Leak Audit (7.6 PB Hugging Face Scan)</span>
+      <span>Visual Data Report</span>
     </div>
   </div>
 
   <script>
-    // Set global default font for Chart.js
-    Chart.defaults.font.family = "'Inter', sans-serif";
-    Chart.defaults.font.size = 12;
+    // Counter Animation Helper
+    function animateCounter(el, target, duration, prefix, suffix, isFloat) {
+      duration = duration || 1400;
+      prefix = prefix || '';
+      suffix = suffix || '';
+      const start = performance.now();
 
-    // Chart 1: What Can Attackers Access? (With 2-line labels)
-    const ctxAccess = document.getElementById('accessChart').getContext('2d');
-    new Chart(ctxAccess, {
-      type: 'bar',
-      data: {
-        labels: [
-          ['Cloud Storage Buckets', '(Raw Files & Backups)'],
-          ['Hosted Databases', '(Customer & App Data)'],
-          ['Cloud Admin Keys', '(Control Company Cloud)'],
-          ['Software Update Tokens', '(Can Push Code Millions Install)']
-        ],
-        datasets: [{
-          label: 'Severity Level',
-          data: [75, 85, 95, 98],
-          backgroundColor: [
-            'rgba(56, 189, 248, 0.85)',
-            'rgba(168, 85, 247, 0.85)',
-            'rgba(245, 158, 11, 0.9)',
-            'rgba(239, 68, 68, 0.95)'
+      function update(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const currentVal = eased * target;
+        
+        if (isFloat) {
+          el.textContent = prefix + currentVal.toFixed(1) + suffix;
+        } else {
+          el.textContent = prefix + Math.round(currentVal).toLocaleString() + suffix;
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+      requestAnimationFrame(update);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Counter Animations
+      animateCounter(document.getElementById('stat-scanned'), 7.6, 1400, '', ' PB', true);
+      animateCounter(document.getElementById('stat-datasets'), 6003, 1400, '', '');
+      animateCounter(document.getElementById('stat-secrets'), 221303, 1400, '', '');
+      animateCounter(document.getElementById('stat-pii'), 393, 1400, '', ' GB');
+
+      // Configure Chart.js Defaults
+      Chart.defaults.font.family = "'Inter', sans-serif";
+      Chart.defaults.font.size = 12;
+
+      // Access Scope Bar Chart
+      const ctxAccess = document.getElementById('accessChart').getContext('2d');
+      new Chart(ctxAccess, {
+        type: 'bar',
+        data: {
+          labels: [
+            ['Cloud Storage Buckets', '(AWS S3 / Google Cloud)'],
+            ['Production Databases', '(Live Customer SQL/Mongo)'],
+            ['Cloud Admin Credentials', '(Full Corporate Control)'],
+            ['Software Update Tokens', '(Code Signing & Releases)'],
+            ['393 GB PII Database', '(300M+ Person Identities)']
           ],
-          borderRadius: 8
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            titleFont: { size: 13 },
-            bodyFont: { size: 12 },
-            callbacks: {
-              title: function(tooltipItems) {
-                const item = tooltipItems[0];
-                return Array.isArray(item.label) ? item.label.join(' ') : item.label;
-              },
-              label: function(context) {
-                const descriptions = [
-                  "Access to private cloud files (AWS S3 / Google Cloud)",
-                  "Access to live SQL & Mongo databases",
-                  "Master administrator keys for entire corporate clouds",
-                  "Tokens that let attackers push malicious code to software users install"
-                ];
-                return descriptions[context.dataIndex];
+          datasets: [{
+            label: 'Severity Level',
+            data: [75, 85, 95, 98, 100],
+            backgroundColor: [
+              '#3a7d6e',
+              '#7b5ea7',
+              '#c28a1a',
+              '#b94040',
+              '#8c2d2d'
+            ],
+            borderRadius: 8,
+            barThickness: 24
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 1200,
+            easing: 'easeOutQuart'
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#2c1f0e',
+              titleFont: { size: 13, weight: '700' },
+              bodyFont: { size: 12 },
+              padding: 12,
+              cornerRadius: 8,
+              callbacks: {
+                title: function(items) {
+                  const item = items[0];
+                  return Array.isArray(item.label) ? item.label.join(' ') : item.label;
+                },
+                label: function(ctx) {
+                  const details = [
+                    "Direct read/write access to raw cloud files & backups",
+                    "Live connection strings exposing private customer databases",
+                    "Master administrative credentials for enterprise cloud environments",
+                    "Publishing keys capable of injecting malicious code into app updates",
+                    "Single credential exposing ~300 Million identity records worldwide"
+                  ];
+                  return details[ctx.dataIndex];
+                }
               }
             }
-          }
-        },
-        scales: {
-          x: {
-            display: false,
-            grid: { display: false }
           },
-          y: {
-            grid: { display: false },
-            ticks: { 
-              color: '#f1f5f9', 
-              font: { size: 11, weight: '600' }
+          scales: {
+            x: {
+              display: false,
+              grid: { display: false }
+            },
+            y: {
+              grid: { display: false },
+              ticks: {
+                color: '#2c1f0e',
+                font: { size: 12, weight: '600' }
+              }
             }
           }
         }
-      }
-    });
+      });
 
-    // Chart 2: Global Population Impact
-    const ctxPie = document.getElementById('pieChart').getContext('2d');
-    new Chart(ctxPie, {
-      type: 'doughnut',
-      data: {
-        labels: [
-          'Exposed in 393 GB Leak (~300M People)',
-          'Rest of World Population'
-        ],
-        datasets: [{
-          data: [3.7, 96.3],
-          backgroundColor: [
-            'rgba(239, 68, 68, 0.95)',
-            'rgba(255, 255, 255, 0.1)'
+      // Doughnut Impact Chart
+      const ctxPie = document.getElementById('pieChart').getContext('2d');
+      new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+          labels: [
+            'Exposed in 393GB PII Leak (~300M)',
+            'Rest of Global Population'
           ],
-          borderColor: 'transparent'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { color: '#f1f5f9', padding: 15, font: { size: 12, weight: '600' } }
+          datasets: [{
+            data: [3.7, 96.3],
+            backgroundColor: [
+              '#b94040',
+              '#ebdcd0'
+            ],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 1400,
+            animateRotate: true
           },
-          tooltip: {
-            titleFont: { size: 13 },
-            bodyFont: { size: 12 },
-            callbacks: {
-              label: function(context) {
-                return context.label + ': ' + context.raw + '%';
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#2c1f0e',
+                padding: 16,
+                font: { size: 12, weight: '600' },
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            },
+            tooltip: {
+              backgroundColor: '#2c1f0e',
+              padding: 12,
+              cornerRadius: 8,
+              callbacks: {
+                label: function(ctx) {
+                  return ' ' + ctx.label + ': ' + ctx.raw + '%';
+                }
               }
             }
-          }
-        },
-        cutout: '70%'
-      }
+          },
+          cutout: '74%'
+        }
+      });
     });
   </script>
 </body>
