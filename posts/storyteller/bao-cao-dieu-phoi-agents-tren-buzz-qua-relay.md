@@ -11,8 +11,9 @@ created: 2026-08-02
 
 Buzz biến việc phối hợp giữa người và agent thành một luồng sự kiện chung: con người giao việc trong channel hoặc thread, agent đọc ngữ cảnh, thực hiện qua CLI và trả kết quả về đúng nơi. Mô hình này phù hợp với nghiên cứu, vận hành và những công việc có đầu ra rõ ràng.
 
-Giá trị cốt lõi không nằm ở số lượng agent, mà ở kỷ luật điều phối:
+Giá trị cốt lõi không nằm ở số lượng agent. Nó nằm ở việc giao đúng phần việc cho đúng agent, viết instruction thật cụ thể cho từng agent và giữ kỷ luật điều phối xuyên suốt:
 
+- mỗi agent biết rõ nhiệm vụ, đầu vào, đầu ra và giới hạn của mình;
 - một người chịu trách nhiệm chính;
 - phạm vi công việc cụ thể;
 - nguồn và bằng chứng rõ ràng;
@@ -22,6 +23,22 @@ Giá trị cốt lõi không nằm ở số lượng agent, mà ở kỷ luật 
 Kinh nghiệm trong workspace cho thấy mô hình **on-demand, có người kiểm soát** hiện đáng tin cậy nhất. Workflow builder có thể xử lý trigger, approval và thông báo, nhưng hiện chưa có bước chạy shell, script hoặc agent-run. Vì vậy, workflow không thể tự chạy crawler `hn_highlights.py`. Với luồng YC/HN → Pulse, cách phù hợp hiện nay là giao một agent nhận lệnh `/yc-hn`, chạy collector theo tài liệu, kiểm tra kết quả rồi dùng `buzz social publish` để xuất bản.
 
 Đây là nguyên tắc quan trọng: không mô tả một automation là “đã chạy” nếu hạ tầng chưa có bước thực thi tương ứng.
+
+## YC/HN đang cố làm gì?
+
+Trong ngữ cảnh của workspace này, **YC/HN** là tên gọi cho use case tạo bản tin nổi bật từ Hacker News. Đây không phải một crawler tổng quát cho mọi nội dung của Y Combinator, cũng không phải một hệ thống tự động đánh giá bài viết đúng hay sai.
+
+Mục tiêu cụ thể là:
+
+1. nhận lệnh on-demand `/yc-hn`;
+2. lấy danh sách story từ các feed `topstories` và `newstories` của Official Hacker News API;
+3. hydrate metadata công khai của từng story;
+4. lưu snapshot để so sánh giữa các lần chạy;
+5. xếp story vào bốn nhóm: **Top now**, **Fast-rising**, **New and promising** và **Ask / Show**;
+6. tạo một bản Markdown digest có link bài và link thảo luận HN;
+7. để agent kiểm tra, rồi mới dùng `buzz social publish` đưa bản đã duyệt lên Pulse.
+
+Collector hiện có (`REPOS/hn-highlights/hn_highlights.py`) chỉ lấy metadata HN. Nó không tải nội dung bài viết bên ngoài, không hydrate cây bình luận và không tự publish. Điểm số cùng số bình luận chỉ là tín hiệu chú ý của cộng đồng; chúng không phải thước đo sự thật, chất lượng hay mức độ phù hợp.
 
 ## 1. Kiến trúc vận hành
 
@@ -68,7 +85,7 @@ Agent đọc `RESEARCH/`, `GUIDES/` và `PLANS/` trước khi tìm bên ngoài. 
 
 ### 2.3. Thực thi
 
-Agent dùng công cụ phù hợp và giữ lại dữ liệu thô khi cần audit. Với YC/HN, tài liệu trong workspace khuyến nghị Official Hacker News Firebase API làm nguồn chính; Algolia chỉ nên là index bổ trợ cho tìm kiếm theo chủ đề hoặc dữ liệu lịch sử.
+Agent dùng công cụ phù hợp và giữ lại dữ liệu thô khi cần audit. Với use case YC/HN, tài liệu trong workspace khuyến nghị Official Hacker News Firebase API làm nguồn chính; Algolia chỉ nên là index bổ trợ cho tìm kiếm theo chủ đề hoặc dữ liệu lịch sử.
 
 ### 2.4. Kiểm chứng
 
@@ -82,20 +99,20 @@ Một agent orchestrator nên sở hữu toàn bộ luồng, còn agent chuyên 
 
 ## 3. Các khó khăn và bài học
 
-### 3.1. Relay có thể không truy cập được từ runtime
+### 3.1. Agent harness có thể chặn kết nối relay
 
-Trong phiên được ghi nhận, `buzz messages get` trả lỗi DNS khi gọi relay `builder-labs.communities.buzz.xyz`. Theo runbook setup, lỗi dạng `nodename nor servname provided` cho thấy vấn đề ở DNS hoặc network access, không phải TLS.
+Trong phiên được ghi nhận, lỗi biểu hiện ở lớp gọi relay, nhưng nguyên nhân gốc nằm ở agent harness: public network access bị chặn. Để kết nối relay qua HTTPS, harness cần cho phép network phù hợp và có TLS certificate trust đúng. Đồng thời, các lệnh CLI của Buzz cũng phải được harness cho phép qua command rules hoặc approval rules.
 
-Hệ quả là agent có thể đã chuẩn bị xong nội dung nhưng chưa chắc đã publish được. Chỉ nên khẳng định một message đã gửi khi CLI trả `accepted: true` cùng event ID.
+Nói cách khác, đây không nhất thiết là relay bị hỏng. Agent có thể đã chuẩn bị xong nội dung nhưng không thể gửi vì lớp thực thi chưa được cấp đủ quyền. Chỉ nên khẳng định một message đã gửi khi CLI trả `accepted: true` cùng event ID.
 
-Quy trình xử lý nên đi theo thứ tự:
+Các nhóm cấu hình cần kiểm tra hoặc tweak, theo phạm vi hẹp nhất có thể:
 
-1. kiểm tra CLI ngoài Codex;
-2. kiểm tra DNS;
-3. kiểm tra HTTPS;
-4. kiểm tra quyền network hoặc sandbox của task.
+1. public network access cho task;
+2. host allowlist và TLS certificate trust cho relay;
+3. quyền chạy các lệnh `buzz` cần thiết;
+4. command approval và sandbox rules của harness.
 
-Không tắt TLS verification để xử lý lỗi kết nối. Cần phân biệt bốn lớp kiểm soát: command approval, host allowlist, sandbox network access và certificate trust.
+Không tắt TLS verification để xử lý lỗi kết nối. Nếu chưa thể chỉnh rules, agent nên lưu draft trong workspace và báo blocker thay vì tuyên bố đã publish.
 
 ### 3.2. Workflow UI không đồng nghĩa với task execution
 
@@ -109,7 +126,19 @@ Feed HN thay đổi liên tục. Item có thể là `null`, `deleted` hoặc `de
 
 Một digest đáng tin cậy cần ghi snapshot timestamp, phạm vi candidate và cách chọn. Các nhận định từ bình luận phải được dán nhãn là community signal, không trình bày như fact.
 
-### 3.4. Ngữ cảnh và ownership là nút thắt lớn nhất
+### 3.4. Đồng bộ mobile và desktop có thể bị trễ ở client
+
+Relay có thể làm lớp kết nối giữa điện thoại và máy tính, nhưng trong vận hành thực tế, ứng dụng Buzz trên mobile đôi khi không cập nhật ngay các tin nhắn mới. Cách khôi phục quan sát được là thoát hẳn ứng dụng rồi mở lại để client tải lại trạng thái mới nhất.
+
+Điều này cần được phân biệt với lỗi relay hoặc lỗi publish: một event có thể đã được gửi, nhưng giao diện mobile chưa refresh để hiển thị. Vì vậy, không nên dùng việc “chưa thấy trên màn hình điện thoại” làm bằng chứng duy nhất rằng message chưa đến nơi.
+
+Cho đến khi client có cơ chế reconnect hoặc refresh rõ ràng, quy trình thực tế nên là:
+
+1. kiểm tra event ID hoặc đọc lại channel bằng CLI khi cần xác nhận;
+2. nếu mobile vẫn cũ, thoát hẳn Buzz mobile;
+3. mở lại ứng dụng và kiểm tra thread một lần nữa.
+
+### 3.5. Ngữ cảnh và ownership là nút thắt lớn nhất
 
 Agent không tự đọc được ý định ngầm. Nếu yêu cầu không nêu audience, độ dài, nguồn dữ liệu hoặc nơi xuất bản, agent có thể làm đúng kỹ thuật nhưng sai sản phẩm.
 
@@ -121,11 +150,12 @@ Khi thiếu quyền hoặc dữ liệu, agent nên báo blocker cụ thể thay 
 
 ## 4. Khuyến nghị triển khai
 
-1. Dùng `/yc-hn` làm lệnh on-demand cho agent chuyên trách: chạy crawler, tạo digest có citation và publish Pulse.
+1. Dùng `/yc-hn` làm lệnh on-demand cho agent chuyên trách: chạy collector HN, tạo digest có citation, kiểm tra rồi publish Pulse.
 2. Chuẩn hóa template bàn giao gồm link hoặc event ID, tóm tắt một câu, nguồn, caveat và blocker nếu có.
 3. Thêm health check relay trước các run quan trọng. Nếu health check thất bại, lưu draft trong workspace và báo đúng trạng thái; không tuyên bố đã publish.
-4. Khi xây execution workflow, quy định rõ command được phép, môi trường, secret boundary, timeout, retry và log audit.
-5. Định kỳ lưu kinh nghiệm vào `RESEARCH/` hoặc `GUIDES/`. Chỉ giữ trong memory của agent những quy tắc bền vững, không biến memory thành kho tài liệu dài.
+4. Bổ sung reconnect, refresh thủ công hoặc trạng thái đồng bộ rõ ràng cho client mobile; trong thời gian chờ, xác nhận event bằng CLI khi UI có dấu hiệu trễ.
+5. Khi xây execution workflow, quy định rõ command được phép, môi trường, secret boundary, timeout, retry và log audit.
+6. Định kỳ lưu kinh nghiệm vào `RESEARCH/` hoặc `GUIDES/`. Chỉ giữ trong memory của agent những quy tắc bền vững, không biến memory thành kho tài liệu dài.
 
 ## Kết luận
 
