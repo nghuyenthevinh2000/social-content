@@ -20,17 +20,17 @@ Giá trị cốt lõi không nằm ở số lượng agent. Nó nằm ở việc
 - một nơi duy nhất để nhận kết quả;
 - trạng thái được nói đúng theo những gì hệ thống đã xác nhận.
 
-Kinh nghiệm trong workspace cho thấy mô hình **on-demand, có người kiểm soát** hiện đáng tin cậy nhất. Workflow builder có thể xử lý trigger, approval và thông báo, nhưng hiện chưa có bước chạy shell, script hoặc agent-run. Vì vậy, workflow không thể tự chạy crawler `hn_highlights.py`. Với luồng YC/HN → Pulse, cách phù hợp hiện nay là giao một agent nhận lệnh `/yc-hn`, chạy collector theo tài liệu, kiểm tra kết quả rồi dùng `buzz social publish` để xuất bản.
+Kinh nghiệm trong workspace cho thấy mô hình **on-demand, có người kiểm soát** hiện đáng tin cậy nhất. Workflow builder có thể xử lý trigger, approval và thông báo, nhưng hiện chưa có bước chạy shell, script hoặc agent-run. Vì vậy, workflow không thể tự chạy crawler `hn_highlights.py`. Với luồng YC/HN → Pulse, công việc được giao cho một agent riêng tên **YC News Reporter**, có instruction cụ thể để chạy collector theo tài liệu, kiểm tra kết quả rồi bàn giao cho bước xuất bản bằng `buzz social publish`.
 
 Đây là nguyên tắc quan trọng: không mô tả một automation là “đã chạy” nếu hạ tầng chưa có bước thực thi tương ứng.
 
 ## YC/HN đang cố làm gì?
 
-Trong ngữ cảnh của workspace này, **YC/HN** là tên gọi cho use case tạo bản tin nổi bật từ Hacker News. Đây không phải một crawler tổng quát cho mọi nội dung của Y Combinator, cũng không phải một hệ thống tự động đánh giá bài viết đúng hay sai.
+Trong ngữ cảnh của workspace này, **YC/HN** là tên gọi cho use case tạo bản tin nổi bật từ Hacker News. Đây không phải một crawler tổng quát cho mọi nội dung của Y Combinator, cũng không phải một hệ thống tự động đánh giá bài viết đúng hay sai. Một agent riêng tên **YC News Reporter** đã được tạo với instruction rõ ràng để đảm nhiệm công việc này.
 
 Mục tiêu cụ thể là:
 
-1. nhận lệnh on-demand `/yc-hn`;
+1. nhận nhiệm vụ on-demand với vai trò YC News Reporter;
 2. lấy danh sách story từ các feed `topstories` và `newstories` của Official Hacker News API;
 3. hydrate metadata công khai của từng story;
 4. lưu snapshot để so sánh giữa các lần chạy;
@@ -120,13 +120,7 @@ Workflow builder hữu ích cho trigger, approval và thông báo. Tuy nhiên, k
 
 Giải pháp hiện tại là agent-on-demand. Về lâu dài, sản phẩm cần một execution action có input/output rõ ràng, timeout, policy, retry và audit log.
 
-### 3.3. Dữ liệu cộng đồng cần được diễn giải cẩn trọng
-
-Feed HN thay đổi liên tục. Item có thể là `null`, `deleted` hoặc `dead`; cây comment cần được hydrate riêng; `title` và `text` là HTML nên không được render trực tiếp như văn bản an toàn.
-
-Một digest đáng tin cậy cần ghi snapshot timestamp, phạm vi candidate và cách chọn. Các nhận định từ bình luận phải được dán nhãn là community signal, không trình bày như fact.
-
-### 3.4. Đồng bộ mobile và desktop có thể bị trễ ở client
+### 3.3. Đồng bộ mobile và desktop có thể bị trễ ở client
 
 Relay có thể làm lớp kết nối giữa điện thoại và máy tính, nhưng trong vận hành thực tế, ứng dụng Buzz trên mobile đôi khi không cập nhật ngay các tin nhắn mới. Cách khôi phục quan sát được là thoát hẳn ứng dụng rồi mở lại để client tải lại trạng thái mới nhất.
 
@@ -138,7 +132,7 @@ Cho đến khi client có cơ chế reconnect hoặc refresh rõ ràng, quy trì
 2. nếu mobile vẫn cũ, thoát hẳn Buzz mobile;
 3. mở lại ứng dụng và kiểm tra thread một lần nữa.
 
-### 3.5. Ngữ cảnh và ownership là nút thắt lớn nhất
+### 3.4. Ngữ cảnh và ownership là nút thắt lớn nhất
 
 Agent không tự đọc được ý định ngầm. Nếu yêu cầu không nêu audience, độ dài, nguồn dữ liệu hoặc nơi xuất bản, agent có thể làm đúng kỹ thuật nhưng sai sản phẩm.
 
@@ -150,7 +144,7 @@ Khi thiếu quyền hoặc dữ liệu, agent nên báo blocker cụ thể thay 
 
 ## 4. Khuyến nghị triển khai
 
-1. Dùng `/yc-hn` làm lệnh on-demand cho agent chuyên trách: chạy collector HN, tạo digest có citation, kiểm tra rồi publish Pulse.
+1. Giao nhiệm vụ cho **YC News Reporter**: chạy collector HN, tạo digest có citation, kiểm tra rồi bàn giao để publish lên Pulse.
 2. Chuẩn hóa template bàn giao gồm link hoặc event ID, tóm tắt một câu, nguồn, caveat và blocker nếu có.
 3. Thêm health check relay trước các run quan trọng. Nếu health check thất bại, lưu draft trong workspace và báo đúng trạng thái; không tuyên bố đã publish.
 4. Bổ sung reconnect, refresh thủ công hoặc trạng thái đồng bộ rõ ràng cho client mobile; trong thời gian chờ, xác nhận event bằng CLI khi UI có dấu hiệu trễ.
