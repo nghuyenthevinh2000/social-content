@@ -1,13 +1,19 @@
+# LinkedIn Story Formats — Jescil-Richard Framework
+
+> **When to use**: After `integrity-interrogation` has produced a "Ready" verdict. Apply to shape and write any LinkedIn post or short-form narrative.
+> **Framework origin**: Jescil-Richard storytelling — 10 principles for emotional, human, connection-first writing.
+
 ---
-name: jescil-richard-storytelling
-description: Use when writing social media posts, captions, LinkedIn content, or any short-form story that needs to hook, connect emotionally, and drive action. Use before drafting any narrative content.
+
+## Platform Context for LinkedIn
+
+- **"See more" cutoff** at ~3 lines — your first line must work before the fold
+- **White space is mandatory** — short lines, breaks every 1-3 sentences, mobile-first
+- **Text-only posts often outperform images** — algorithm rewards dwell time and comments
+- **Write to ONE person** — "LinkedIn family" means you're writing to no one
+- **Hashtags**: 3-5 max, end of post only
+
 ---
-
-# Jescil Richard Storytelling Framework
-
-## Overview
-
-Connection beats information. Simple words with emotional truth outlast complex words with facts. Every piece of writing is a private conversation with one person.
 
 ## The 10 Principles
 
@@ -59,6 +65,8 @@ Distracted storyteller = distracted reader. Remove noise before you write.
 ### 10. No Distractions While Writing
 One tab. One focus. Get in the zone before the first word.
 
+---
+
 ## Quick Reference
 
 | Principle | Core Question |
@@ -72,14 +80,16 @@ One tab. One focus. Get in the zone before the first word.
 | KISS | Can I say this in fewer, simpler words? |
 | Punch ending | Will the last line stay with them? |
 
-## Parameter Interview (Run First — Every Time)
+---
 
-When this skill is activated, ask the following questions **one at a time** before doing any writing. Do not batch them. Wait for each answer before asking the next.
+## Parameter Interview
 
-**Q1 — Platform**
-> "What platform is this for?" (LinkedIn / X / Instagram / other)
+Ask the following questions **one at a time** before doing any writing. Do not batch them. Wait for each answer before asking the next.
 
-*Why it matters:* Tone, length, and format differ per platform. LinkedIn tolerates long-form; X punishes it.
+**Q1 — Platform context**
+> "Is this a single post, carousel, or thread?"
+
+*Why it matters:* Structure of the brief changes by format.
 
 ---
 
@@ -107,25 +117,26 @@ When this skill is activated, ask the following questions **one at a time** befo
 **Q5 — Format**
 > "What format works best?" (single hook post / carousel / short thread / caption)
 
-*Why it matters:* Structure of the brief changes by format.
+*Why it matters:* Consult the matching format file in `story-formats/linkedin/` after this answer.
 
 ---
 
-Once all 5 answers are collected, produce the **Story Brief** (see below). Do not write the post.
+Once all 5 answers are collected, produce the **Story Brief**. Do not write the post.
 
 ---
 
 ## Story Brief (Output After Interview)
 
-Produce a structured brief the user finalizes before writing. Format:
+Produce a structured brief the user finalizes before writing.
 
 ```
 STORY BRIEF
 -----------
-Platform:       [answer]
+Platform:       LinkedIn
 Writing to:     [one person, described in one line]
 Story goal:     [the one emotion to engineer]
 Format:         [post type]
+Format guide:   [path to format file used, e.g. story-formats/linkedin/jasmin-alic-formats.md]
 
 Opening bang:   [2-3 candidate first lines — strong, varied, competing]
 Core scene:     [the 1-2 moment(s) to show, not tell]
@@ -142,10 +153,14 @@ User reviews and approves the brief. Only then move to drafting if asked.
 
 ## Workflow
 
-1. **Run parameter interview** — 5 questions, one at a time
-2. **Produce story brief** — structured output, not a draft
-3. **User approves brief** — iterate if needed
-4. **Draft on request** — apply all 10 principles to write the post
+1. **Receive handoff** from `integrity-interrogation` with Story Readiness Assessment
+2. **Consult other LinkedIn format files** in `story-formats/linkedin/` for structural conventions
+3. **Run parameter interview** — 5 questions, one at a time
+4. **Produce story brief** — structured output, not a draft
+5. **User approves brief** — iterate if needed
+6. **Draft on request** — apply all 10 principles
+
+---
 
 ## Common Mistakes
 
@@ -156,3 +171,5 @@ User reviews and approves the brief. Only then move to drafting if asked.
 | Leading with a stat or fact | Lead with the human moment behind the stat |
 | Weak ending (summary) | End on an image, a question, or a gut-punch line |
 | Passive constructions | Find every "was [verb]ed" and flip it |
+| Drafting before brief approved | Always wait for brief approval |
+| Skipping format reference | Always check `story-formats/linkedin/` for conventions |
