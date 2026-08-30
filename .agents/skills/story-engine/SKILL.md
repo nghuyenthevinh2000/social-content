@@ -106,6 +106,23 @@ Platform-specific format files live in `story-formats/`. Each subfolder represen
 
 > **Rule**: Do NOT skip Phase 1. Do NOT draft during the interview. Do NOT write a draft before the Story Brief is approved.
 
+### Enforcement — applies to all requests, all languages
+
+**No input bypasses the workflow.** A topic, an outline, a 4-part structure, a personal story, a platform name — none of these substitute for Phase 1. They are raw material, not permission to draft.
+
+**No language bypasses the workflow.** Requests in Vietnamese, English, or any other language follow the identical 3-phase sequence.
+
+**The fuller the input, the stricter the gate.** A detailed brief describes what the user thinks they want to say. Phase 1 finds what the story actually needs to say. More detail upfront means higher risk of skipping — not lower need for interrogation.
+
+**Pre-draft gate — all boxes must be checked before any draft is produced:**
+```
+[ ] Emotional recognition research completed
+[ ] Story Readiness Assessment produced and presented
+[ ] User confirmed root conflict
+[ ] Platform and format file confirmed
+[ ] Story Brief approved by user
+```
+
 ---
 
 ## Common Failure Modes (Quick Reference)
