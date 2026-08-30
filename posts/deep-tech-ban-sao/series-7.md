@@ -1,6 +1,6 @@
-Công nghệ không làm ra tiền. Product mới làm.
+**Công nghệ không làm ra tiền. Product mới làm.**
 
-1. Nghịch lý của việc đóng source code
+**1. Nghịch lý của việc đóng source code**
 
 Đóng source code lại không nhất thiết bảo vệ được công ty.
 
@@ -10,7 +10,7 @@ Một founder xây được công nghệ tốt: nhanh hơn, chính xác hơn, ch
 
 Nhưng gần như không ai dùng.
 
-2. Friction: khách hàng không thể "thử"
+**2. Friction: khách hàng không thể "thử"**
 
 Mỗi cuộc nói chuyện đều bắt đầu bằng một câu:
 
@@ -24,7 +24,7 @@ Công nghệ có thể tốt.
 
 Nhưng để chạm vào nó lại quá tốn công.
 
-3. Nỗi sợ của technical founder
+**3. Nỗi sợ của technical founder**
 
 Founder sợ open-source.
 
@@ -35,7 +35,7 @@ Nhưng rồi có một nhận ra khó chịu:
 
 Nếu khách hàng chỉ cần copy code là có thể thay thế công ty, thì code chưa bao giờ là moat.
 
-4. Công nghệ không phải thứ khách hàng mua
+**4. Công nghệ không phải thứ khách hàng mua**
 
 Khách hàng không mua code.
 
@@ -51,7 +51,7 @@ Product là món ăn đã được phục vụ.
 
 Consulting là người đầu bếp biết khách hàng thực sự cần gì.
 
-5. Lựa chọn: mở technology, bán product
+**5. Lựa chọn: mở technology, bán product**
 
 Founder quyết định open-source phần technology.
 
@@ -73,7 +73,7 @@ Nhưng sau cánh cửa đó vẫn là product:
 
 Đó mới là phần khách hàng sẵn sàng trả tiền.
 
-6. Những ví dụ tiêu biểu
+**6. Những ví dụ tiêu biểu**
 
 Supabase mở công nghệ để người dùng có thể kiểm tra và tự host, nhưng bán cloud product.
 
@@ -81,7 +81,7 @@ Sentry cho phép tự host, đồng thời bán SaaS được vận hành sẵn.
 
 WordPress là nền tảng mở; WordPress.com bán trải nghiệm được đóng gói gồm hosting, hiệu năng, bảo mật và hỗ trợ.
 
-7. Kết luận
+**7. Kết luận**
 
 Điểm chung không phải là "mở source để kiếm tiền".
 
