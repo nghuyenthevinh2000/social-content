@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Executive Summary - Ingoude Company</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-navy: #15325f;
+      --navy-dark: #102649;
+      --pill-navy: #183b72;
+      --blue-bar-light: #9bc3fd;
+      --blue-bar-mid: #7398ee;
+      --blue-bar-dark: #183b72;
+      --text-dark: #1e293b;
+      --text-body: #2c3e50;
+      --border-light: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 900px;
+      height: 1273px;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-body);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .page {
+      width: 900px;
+      height: 1273px;
+      position: relative;
+      background-color: #ffffff;
+      padding: 55px 52px 50px 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    /* Wave Wireframe Background Watermark */
+    .bg-watermark {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 900px;
+      height: 1273px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .main-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* Header Section */
+    .header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .header-left {
+      width: 72%;
+    }
+
+    .headline {
+      font-size: 54px;
+      line-height: 1.05;
+      font-weight: 900;
+      color: var(--primary-navy);
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      margin-top: 10px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    /* Right Banner */
+    .brand-banner {
+      width: 140px;
+      background-color: var(--navy-dark);
+      border-radius: 0 0 16px 16px;
+      padding: 24px 14px 20px 14px;
+      margin-top: -55px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      color: #ffffff;
+      box-shadow: 0 6px 16px rgba(16, 38, 73, 0.25);
+    }
+
+    .brand-icon {
+      width: 46px;
+      height: 46px;
+      margin-bottom: 8px;
+    }
+
+    .brand-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: 0.01em;
+    }
+
+    /* Main 2-Column Layout */
+    .body-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 46px;
+      align-items: flex-start;
+    }
+
+    /* Section Pill Headers */
+    .section-pill {
+      display: inline-block;
+      background-color: var(--pill-navy);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 800;
+      padding: 8px 24px;
+      border-radius: 9999px;
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    /* Left Column Styling */
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 34px;
+    }
+
+    .overview-text {
+      font-size: 14.2px;
+      line-height: 1.65;
+      color: #2c3e50;
+      font-weight: 500;
+      text-align: justify;
+    }
+
+    .findings-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .findings-list li {
+      position: relative;
+      padding-left: 20px;
+      font-size: 14px;
+      line-height: 1.52;
+      color: #2c3e50;
+      font-weight: 500;
+    }
+
+    .findings-list li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      top: -1px;
+      color: #1e293b;
+      font-size: 19px;
+    }
+
+    /* Audience Table */
+    .segment-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    .segment-table th {
+      color: var(--primary-navy);
+      font-size: 14px;
+      font-weight: 800;
+      text-align: left;
+      padding: 10px 8px 12px 0;
+      border-bottom: 1.8px solid #2d3748;
+    }
+
+    .segment-table td {
+      padding: 16px 8px 16px 0;
+      font-size: 13.5px;
+      line-height: 1.48;
+      color: #2c3e50;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+
+    .segment-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .segment-table td.col-seg-name {
+      font-weight: 700;
+      color: #1e293b;
+      width: 22%;
+    }
+
+    .segment-table td.col-seg-char {
+      font-weight: 500;
+      width: 38%;
+      padding-right: 10px;
+    }
+
+    .segment-table td.col-seg-strat {
+      font-weight: 500;
+      width: 40%;
+    }
+
+    /* Right Column Styling */
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 34px;
+    }
+
+    .goals-list {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .goal-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .goal-icon-circle {
+      width: 52px;
+      height: 52px;
+      min-width: 52px;
+      background-color: var(--primary-navy);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(21, 50, 95, 0.28);
+    }
+
+    .goal-icon-circle svg {
+      width: 28px;
+      height: 28px;
+      color: #ffffff;
+    }
+
+    .goal-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .goal-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--primary-navy);
+      margin-bottom: 3px;
+    }
+
+    .goal-desc {
+      font-size: 13.5px;
+      line-height: 1.48;
+      color: #2c3e50;
+      font-weight: 500;
+    }
+
+    /* Advertising & Promotion */
+    .promo-section {
+      margin-top: 4px;
+    }
+
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin-top: 6px;
+      margin-bottom: 20px;
+    }
+
+    .legend-entry {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .circle-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-digital { background-color: var(--blue-bar-light); }
+    .dot-social { background-color: var(--blue-bar-mid); }
+    .dot-offline { background-color: var(--blue-bar-dark); }
+
+    .chart-visual {
+      display: flex;
+      height: 205px;
+      margin-top: 6px;
+    }
+
+    .y-scale {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-right: 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #2d3748;
+      text-align: right;
+      width: 28px;
+      height: 180px;
+    }
+
+    .bars-container {
+      flex: 1;
+      height: 180px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      border-bottom: 1.8px solid #a0aec0;
+      padding: 0 16px;
+    }
+
+    .chart-bar {
+      width: 26%;
+      border-radius: 6px 6px 0 0;
+    }
+
+    .bar-digital {
+      height: 38%;
+      background-color: var(--blue-bar-light);
+    }
+
+    .bar-social {
+      height: 60%;
+      background-color: var(--blue-bar-mid);
+    }
+
+    .bar-offline {
+      height: 85%;
+      background-color: var(--blue-bar-dark);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+    
+    <!-- Background SVG Wave Meshes -->
+    <svg class="bg-watermark" viewBox="0 0 900 1273" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      <!-- Multiple 3D undulating curve meshes -->
+      <path d="M-100,280 C150,180 200,430 450,300 C700,180 800,430 1000,260" stroke="#93c5fd" stroke-width="1.2" stroke-opacity="0.32" fill="none"/>
+      <path d="M-100,310 C150,210 200,460 450,330 C700,210 800,460 1000,290" stroke="#93c5fd" stroke-width="1.2" stroke-opacity="0.26" fill="none"/>
+      <path d="M-100,340 C150,240 200,490 450,360 C700,240 800,490 1000,320" stroke="#93c5fd" stroke-width="1.2" stroke-opacity="0.2" fill="none"/>
+      <path d="M-100,370 C150,270 200,520 450,390 C700,270 800,520 1000,350" stroke="#93c5fd" stroke-width="1.2" stroke-opacity="0.15" fill="none"/>
+
+      <path d="M-50,680 C200,830 350,580 600,780 C800,930 850,730 1000,880" stroke="#93c5fd" stroke-width="1.2" stroke-opacity="0.25" fill="none"/>
+      <path d="M-50,710 C200,860 350,610 600,810 C800,960 850,760 1000,910" stroke="#93c5fd" stroke-width="1.2" stroke-opacity="0.2" fill="none"/>
+      <path d="M-50,740 C200,890 350,640 600,840 C800,990 850,790 1000,940" stroke="#93c5fd" stroke-width="1.2" stroke-opacity="0.15" fill="none"/>
+    </svg>
+
+    <div class="main-content">
+      
+      <!-- Header -->
+      <header class="header-section">
+        <div class="header-left">
+          <h1 class="headline">EXECUTIVE SUMMARY</h1>
+        </div>
+
+        <div class="brand-banner">
+          <!-- Ingoude Emblem -->
+          <svg class="brand-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="18" r="7" fill="white"/>
+            <path d="M14 26C16 34 24 38 32 38C40 38 48 34 50 26C45 32 39 34 32 34C25 34 19 32 14 26Z" fill="white"/>
+            <path d="M18 36C22 42 27 46 32 46C37 46 42 42 46 36C43 40 38 43 32 43C26 43 21 40 18 36Z" fill="white"/>
+          </svg>
+          <div class="brand-name">
+            Ingoude<br>Company
+          </div>
+        </div>
+      </header>
+
+      <!-- 2-Column Body Layout -->
+      <div class="body-layout">
+        
+        <!-- Left Column -->
+        <div class="left-col">
+          
+          <!-- Overview -->
+          <div class="overview-block">
+            <div class="section-pill">Overview</div>
+            <p class="overview-text">
+              Ingoude Company is committed to becoming a leader in the Digital Marketing sector by offering high-quality, customer-focused solutions. This business plan presents our strategic direction to enhance market presence, improve customer engagement, and increase overall profitability through innovation
+            </p>
+          </div>
+
+          <!-- Key Findings -->
+          <div class="findings-block">
+            <div class="section-pill">Key Findings and Recommendations</div>
+            <ul class="findings-list">
+              <li>Rising demand for product in both local and digital markets.</li>
+              <li>Customers value convenience, speed, and personalized experiences.</li>
+              <li>Enhance customer experience with faster response and after-sale support.</li>
+              <li>Focus on building a strong brand identity with consistent, targeted messaging.</li>
+            </ul>
+          </div>
+
+          <!-- Target Audience Table -->
+          <div class="table-block">
+            <div class="section-pill">Target Audience and Segmentation</div>
+            <table class="segment-table">
+              <thead>
+                <tr>
+                  <th style="width: 22%;">Segment</th>
+                  <th style="width: 38%;">Characteristics</th>
+                  <th style="width: 40%;">Marketing Strategy</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="col-seg-name">Segment 1</td>
+                  <td class="col-seg-char">Young Professionals (Ages 25–35)</td>
+                  <td class="col-seg-strat">Mobile-friendly platforms, lifestyle branding, limited-time offers</td>
+                </tr>
+                <tr>
+                  <td class="col-seg-name">Segment 2</td>
+                  <td class="col-seg-char">Families (Ages 30–50)</td>
+                  <td class="col-seg-strat">Family packages, testimonials, service guarantees</td>
+                </tr>
+                <tr>
+                  <td class="col-seg-name">Segment 3</td>
+                  <td class="col-seg-char">Digital Natives (Early 20)</td>
+                  <td class="col-seg-strat">Social media campaigns, viral content, student discounts</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+        <!-- Right Column -->
+        <div class="right-col">
+          
+          <!-- Goals and Objectives (5 Vertical Items) -->
+          <div class="goals-block">
+            <div class="section-pill">Goals and Objectives</div>
+            
+            <div class="goals-list">
+              
+              <!-- Goal 1 -->
+              <div class="goal-item">
+                <div class="goal-icon-circle">
+                  <!-- Team/Brand Awareness Icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </div>
+                <div class="goal-info">
+                  <div class="goal-name">Brand Awareness</div>
+                  <div class="goal-desc">Increase Brand Awareness by 40% in 12 months through strategic campaigns.</div>
+                </div>
+              </div>
+
+              <!-- Goal 2 -->
+              <div class="goal-item">
+                <div class="goal-icon-circle">
+                  <!-- Sales Growth Chart Icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                    <path d="M4 10l6-6 6 6 4-4"></path>
+                  </svg>
+                </div>
+                <div class="goal-info">
+                  <div class="goal-name">Boost Sales</div>
+                  <div class="goal-desc">Boost Sales by 25% within the first year of implementing this plan.</div>
+                </div>
+              </div>
+
+              <!-- Goal 3 -->
+              <div class="goal-item">
+                <div class="goal-icon-circle">
+                  <!-- Market Expansion Icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="5" r="3"></circle>
+                    <circle cx="6" cy="19" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <path d="M12 8v4M12 12l-4 4M12 12l4 4"></path>
+                  </svg>
+                </div>
+                <div class="goal-info">
+                  <div class="goal-name">Market Expansion</div>
+                  <div class="goal-desc">Expand Market Reach by entering 2–3 new regional markets.</div>
+                </div>
+              </div>
+
+              <!-- Goal 4 -->
+              <div class="goal-item">
+                <div class="goal-icon-circle">
+                  <!-- Customer Retention Icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  </svg>
+                </div>
+                <div class="goal-info">
+                  <div class="goal-name">Customer Retention</div>
+                  <div class="goal-desc">Improve by launching personalized loyalty & after-sales service programs.</div>
+                </div>
+              </div>
+
+              <!-- Goal 5 -->
+              <div class="goal-item">
+                <div class="goal-icon-circle">
+                  <!-- Partnerships Icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <polyline points="16 11 18 13 22 9"></polyline>
+                  </svg>
+                </div>
+                <div class="goal-info">
+                  <div class="goal-name">Develop Partnerships</div>
+                  <div class="goal-desc">Develop Partnerships with local influencers and key industry players.</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Advertising and Promotion -->
+          <div class="promo-section">
+            <div class="section-pill">Advertising and Promotion</div>
+            
+            <div class="legend-row">
+              <div class="legend-entry">
+                <span class="circle-dot dot-digital"></span>
+                <span>Digital Marketing</span>
+              </div>
+              <div class="legend-entry">
+                <span class="circle-dot dot-social"></span>
+                <span>Social Media</span>
+              </div>
+              <div class="legend-entry" style="margin-left: 20px;">
+                <span class="circle-dot dot-offline"></span>
+                <span>Offline Marketing</span>
+              </div>
+            </div>
+
+            <div class="chart-visual">
+              <div class="y-scale">
+                <span>20</span>
+                <span>15</span>
+                <span>10</span>
+                <span>5</span>
+                <span>0</span>
+              </div>
+              <div class="bars-container">
+                <div class="chart-bar bar-digital" title="Digital Marketing"></div>
+                <div class="chart-bar bar-social" title="Social Media"></div>
+                <div class="chart-bar bar-offline" title="Offline Marketing"></div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monthly Social Media Performance Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-navy: #193b68;
+      --navy-dark: #122b4d;
+      --cyan-bright: #00d2d3;
+      --teal-accent: #00cec9;
+      --blue-accent: #3b82f6;
+      --card-bg-light: #eef8f8;
+      --text-dark: #1e293b;
+      --text-muted: #64748b;
+      --badge-green-bg: #d1fae5;
+      --badge-green-text: #065f46;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 900px;
+      height: 1273px;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-dark);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .page {
+      width: 900px;
+      height: 1273px;
+      position: relative;
+      background-color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    /* Top Cyan & Navy Header Block */
+    .top-header-wrap {
+      display: grid;
+      grid-template-columns: 410px 1fr;
+      align-items: stretch;
+      margin-bottom: 26px;
+    }
+
+    .title-card {
+      background-color: var(--primary-navy);
+      color: #ffffff;
+      padding: 44px 36px 36px 45px;
+      position: relative;
+    }
+
+    .title-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 10px;
+      background-color: var(--cyan-bright);
+    }
+
+    .main-title {
+      font-size: 44px;
+      font-weight: 900;
+      line-height: 1.06;
+      letter-spacing: -0.01em;
+    }
+
+    .main-title span {
+      display: block;
+    }
+
+    .overview-card {
+      padding: 38px 45px 28px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+    }
+
+    .overview-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 10px;
+      background-color: var(--cyan-bright);
+    }
+
+    .overview-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary-navy);
+      margin-bottom: 10px;
+    }
+
+    .overview-desc {
+      font-size: 13.8px;
+      line-height: 1.58;
+      color: #334155;
+      font-weight: 500;
+    }
+
+    /* Main Grid Content */
+    .content-body {
+      padding: 0 45px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      flex: 1;
+    }
+
+    /* Common Section Styles */
+    .section-header {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--primary-navy);
+      margin-bottom: 14px;
+      letter-spacing: -0.01em;
+    }
+
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 40px;
+      align-items: flex-start;
+    }
+
+    /* Row 1: Highlights & Audience Growth */
+    .stat-cards-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .stat-box {
+      background-color: var(--card-bg-light);
+      border-radius: 10px;
+      padding: 18px 22px;
+    }
+
+    .stat-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background-color: var(--badge-green-bg);
+      color: var(--badge-green-text);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 5px;
+    }
+
+    .stat-val {
+      font-size: 38px;
+      font-weight: 900;
+      color: var(--primary-navy);
+      line-height: 1.1;
+    }
+
+    /* Growth Chart Area */
+    .growth-container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .growth-subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: -6px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .growth-legend {
+      display: flex;
+      gap: 18px;
+      margin-bottom: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-pa { background-color: #1e3a8a; }
+    .dot-pb { background-color: #f59e0b; }
+    .dot-pc { background-color: #06b6d4; }
+
+    .line-chart-svg {
+      width: 100%;
+      height: 130px;
+      margin-bottom: 10px;
+    }
+
+    .growth-footer-badge {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    /* Row 2: Channel Performance & Content Performance */
+    .channels-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 18px;
+    }
+
+    .channel-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .channel-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--primary-navy);
+      margin-bottom: 2px;
+    }
+
+    .channel-aud-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .channel-aud-val {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--primary-navy);
+      margin-bottom: 2px;
+    }
+
+    .channel-eng {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    /* Content Cards */
+    .posts-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .post-card {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .post-img {
+      width: 100%;
+      height: 85px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    .post-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 2px;
+    }
+
+    .post-sub {
+      font-size: 11.5px;
+      color: #64748b;
+    }
+
+    .post-count {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--primary-navy);
+      margin-bottom: 4px;
+    }
+
+    .post-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background-color: var(--badge-green-bg);
+      color: var(--badge-green-text);
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 4px;
+      width: fit-content;
+    }
+
+    /* Row 3: Audience Breakdown & Regional Distribution */
+    .bars-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 4px;
+    }
+
+    .bar-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .bar-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 12px;
+      background-color: #e2e8f0;
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background-color: #4b7bec;
+      border-radius: 9999px;
+    }
+
+    /* Regional Donut + Legend */
+    .regional-wrap {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .pie-svg {
+      width: 180px;
+      height: 180px;
+    }
+
+    .region-legend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13.8px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    /* Footer */
+    .footer-bar {
+      background-color: var(--primary-navy);
+      color: #ffffff;
+      padding: 18px 45px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13.5px;
+      font-weight: 600;
+      position: relative;
+    }
+
+    .footer-bar::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background-color: var(--cyan-bright);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+    
+    <!-- Top Header -->
+    <header class="top-header-wrap">
+      <div class="title-card">
+        <h1 class="main-title">
+          <span>Monthly</span>
+          <span>Social Media</span>
+          <span>Performance</span>
+        </h1>
+      </div>
+
+      <div class="overview-card">
+        <h2 class="overview-title">Overview</h2>
+        <p class="overview-desc">
+          This monthly report summarizes the performance of our digital content on various social platforms, highlighting audience growth, engagement trends, content performance, and interaction metrics.
+        </p>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="content-body">
+      
+      <!-- Row 1: Engagement Highlights & Audience Growth -->
+      <div class="grid-2col">
+        
+        <div>
+          <h2 class="section-header">Engagement Highlights</h2>
+          <div class="stat-cards-stack">
+            
+            <div class="stat-box">
+              <div class="stat-top">
+                <span class="stat-label">Total Interactions</span>
+                <span class="pill-badge">↑ 16.4%</span>
+              </div>
+              <div class="stat-val">26,480</div>
+            </div>
+
+            <div class="stat-box">
+              <div class="stat-top">
+                <span class="stat-label">Avg Engagement Rate</span>
+                <span class="pill-badge">↑ 14%</span>
+              </div>
+              <div class="stat-val">6.4%</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="growth-container">
+          <h2 class="section-header">Audience Growth</h2>
+          <div class="growth-subtitle">New audience added this month:</div>
+          
+          <div class="growth-legend">
+            <div class="legend-item">
+              <span class="dot dot-pa"></span>
+              <span>Platform A</span>
+            </div>
+            <div class="legend-item">
+              <span class="dot dot-pb"></span>
+              <span>Platform B</span>
+            </div>
+            <div class="legend-item">
+              <span class="dot dot-pc"></span>
+              <span>Platform C</span>
+            </div>
+          </div>
+
+          <!-- Multi-Line Trend Chart SVG -->
+          <svg class="line-chart-svg" viewBox="0 0 460 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Grid Lines & Y Axis Labels -->
+            <line x1="45" y1="12" x2="450" y2="12" stroke="#e2e8f0" stroke-width="1"/>
+            <text x="35" y="16" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="end">2,000</text>
+            
+            <line x1="45" y1="38" x2="450" y2="38" stroke="#e2e8f0" stroke-width="1"/>
+            <text x="35" y="42" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="end">1,500</text>
+            
+            <line x1="45" y1="64" x2="450" y2="64" stroke="#e2e8f0" stroke-width="1"/>
+            <text x="35" y="68" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="end">1,000</text>
+            
+            <line x1="45" y1="90" x2="450" y2="90" stroke="#e2e8f0" stroke-width="1"/>
+            <text x="35" y="94" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="end">500</text>
+            
+            <line x1="45" y1="114" x2="450" y2="114" stroke="#cbd5e1" stroke-width="1.2"/>
+            <text x="35" y="117" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="end">0</text>
+
+            <!-- Line 1: Platform A (Navy) -->
+            <polyline points="85,48 185,60 285,74 385,24" stroke="#1e3a8a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="85" cy="48" r="4.5" fill="#1e3a8a"/>
+            <circle cx="185" cy="60" r="4.5" fill="#1e3a8a"/>
+            <circle cx="285" cy="74" r="4.5" fill="#1e3a8a"/>
+            <circle cx="385" cy="24" r="4.5" fill="#1e3a8a"/>
+
+            <!-- Line 2: Platform B (Amber) -->
+            <polyline points="85,65 185,52 285,68 385,58" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="85" cy="65" r="4.5" fill="#f59e0b"/>
+            <circle cx="185" cy="52" r="4.5" fill="#f59e0b"/>
+            <circle cx="285" cy="68" r="4.5" fill="#f59e0b"/>
+            <circle cx="385" cy="58" r="4.5" fill="#f59e0b"/>
+
+            <!-- Line 3: Platform C (Cyan) -->
+            <polyline points="85,90 185,72 285,44 385,64" stroke="#06b6d4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="85" cy="90" r="4.5" fill="#06b6d4"/>
+            <circle cx="185" cy="72" r="4.5" fill="#06b6d4"/>
+            <circle cx="285" cy="44" r="4.5" fill="#06b6d4"/>
+            <circle cx="385" cy="64" r="4.5" fill="#06b6d4"/>
+
+            <!-- X Axis Labels -->
+            <text x="85" y="128" fill="#475569" font-size="11" font-weight="600" text-anchor="middle">Week 1</text>
+            <text x="185" y="128" fill="#475569" font-size="11" font-weight="600" text-anchor="middle">Week 2</text>
+            <text x="285" y="128" fill="#475569" font-size="11" font-weight="600" text-anchor="middle">Week 3</text>
+            <text x="385" y="128" fill="#475569" font-size="11" font-weight="600" text-anchor="middle">Week 4</text>
+          </svg>
+
+          <div class="growth-footer-badge">
+            <span>Total audience increase</span>
+            <span class="pill-badge">↑ +2,870 new followers</span>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Row 2: Channel Performance & Content Performance -->
+      <div class="grid-2col">
+        
+        <div>
+          <h2 class="section-header">Channel Performance</h2>
+          <div class="channels-grid">
+            
+            <div class="channel-item">
+              <div class="channel-name">Platform A</div>
+              <div class="channel-aud-label">Total Audience:</div>
+              <div class="channel-aud-val">12,800</div>
+              <div class="channel-eng">Engagement Rate: 6.2%</div>
+            </div>
+
+            <div class="channel-item">
+              <div class="channel-name">Platform B</div>
+              <div class="channel-aud-label">Total Audience:</div>
+              <div class="channel-aud-val">9,450</div>
+              <div class="channel-eng">Engagement Rate: 7.1%</div>
+            </div>
+
+            <div class="channel-item" style="grid-column: span 2; margin-top: 6px;">
+              <div class="channel-name">Platform C</div>
+              <div class="channel-aud-label">Total Audience:</div>
+              <div class="channel-aud-val">6,900</div>
+              <div class="channel-eng">Engagement Rate: 4.3%</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div>
+          <h2 class="section-header">Content Performance</h2>
+          <div class="growth-subtitle" style="margin-top: -6px; margin-bottom: 12px;">Top content of the month:</div>
+          
+          <div class="posts-grid">
+            
+            <!-- Post 1 -->
+            <div class="post-card">
+              <div class="post-img" style="background: url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=300&q=80') center/cover;">
+              </div>
+              <div class="post-title">Featured Post 1</div>
+              <div class="post-sub">Interactions:</div>
+              <div class="post-count">4,350</div>
+              <span class="post-badge">↑ 36,200</span>
+            </div>
+
+            <!-- Post 2 -->
+            <div class="post-card">
+              <div class="post-img" style="background: url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80') center/cover;">
+              </div>
+              <div class="post-title">Featured Post 2</div>
+              <div class="post-sub">Interactions:</div>
+              <div class="post-count">3,920</div>
+              <span class="post-badge">↑ 31,400</span>
+            </div>
+
+            <!-- Post 3 -->
+            <div class="post-card">
+              <div class="post-img" style="background: url('https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=300&q=80') center/cover;">
+              </div>
+              <div class="post-title">Featured Post 3</div>
+              <div class="post-sub">Interactions:</div>
+              <div class="post-count">3,410</div>
+              <span class="post-badge">↑ 27,600</span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row 3: Audience Breakdown & Regional Distribution -->
+      <div class="grid-2col" style="align-items: center;">
+        
+        <div>
+          <h2 class="section-header">Audience Breakdown</h2>
+          <div class="bars-stack">
+            
+            <div class="bar-row">
+              <div class="bar-meta">
+                <span>Age 18–24</span>
+                <span>34%</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width: 34%;"></div>
+              </div>
+            </div>
+
+            <div class="bar-row">
+              <div class="bar-meta">
+                <span>Age 25–34</span>
+                <span>39%</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width: 39%;"></div>
+              </div>
+            </div>
+
+            <div class="bar-row">
+              <div class="bar-meta">
+                <span>Age 35–44</span>
+                <span>17%</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width: 17%;"></div>
+              </div>
+            </div>
+
+            <div class="bar-row">
+              <div class="bar-meta">
+                <span>Age 45+</span>
+                <span>10%</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width: 10%;"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div>
+          <h2 class="section-header">Regional Distribution</h2>
+          
+          <div class="regional-wrap">
+            
+            <!-- Donut / Pie SVG -->
+            <svg class="pie-svg" viewBox="0 0 200 200">
+              <circle r="50" cx="100" cy="100" fill="transparent"
+                      stroke="#3b82f6" stroke-width="60"
+                      stroke-dasharray="128 314"
+                      stroke-dashoffset="0" />
+              <circle r="50" cx="100" cy="100" fill="transparent"
+                      stroke="#38bdf8" stroke-width="60"
+                      stroke-dasharray="82 314"
+                      stroke-dashoffset="-128" />
+              <circle r="50" cx="100" cy="100" fill="transparent"
+                      stroke="#2dd4bf" stroke-width="60"
+                      stroke-dasharray="65 314"
+                      stroke-dashoffset="-210" />
+              <circle r="50" cx="100" cy="100" fill="transparent"
+                      stroke="#fbbf24" stroke-width="60"
+                      stroke-dasharray="39 314"
+                      stroke-dashoffset="-275" />
+            </svg>
+
+            <div class="region-legend-list">
+              <div>Region 1 — 37%</div>
+              <div>Region 2 — 24%</div>
+              <div>Region 3 — 19%</div>
+              <div>Region 4 — 11%</div>
+              <div>Other Regions — 9%</div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer-bar">
+      <span>@reallygreatsite</span>
+      <span>www.reallygreatsite.com</span>
+    </footer>
+
+  </div>
+
+</body>
+</html>

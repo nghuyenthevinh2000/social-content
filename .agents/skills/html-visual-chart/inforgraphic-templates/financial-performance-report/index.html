@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Performance Report - Warner & Spencer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-blue: #0b51bf;
+      --navy-card: #082657;
+      --navy-dark: #05193b;
+      --text-dark: #1e293b;
+      --text-body: #334155;
+      --border-blue: #0b51bf;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 900px;
+      height: 1273px;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-body);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .page {
+      width: 900px;
+      height: 1273px;
+      position: relative;
+      background-color: #ffffff;
+      padding: 0 50px 0 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    /* Top Corner Decorative Waves */
+    .top-decor {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 900px;
+      height: 180px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .main-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding-top: 55px;
+      padding-bottom: 20px;
+      justify-content: space-between;
+    }
+
+    /* Header */
+    .header-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 22px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid var(--primary-blue);
+      position: relative;
+    }
+
+    .main-title {
+      font-size: 42px;
+      font-weight: 900;
+      color: var(--primary-blue);
+      letter-spacing: 0.04em;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .sub-brand {
+      position: absolute;
+      right: 0;
+      bottom: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1e293b;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* Section Headings */
+    .section-title {
+      display: inline-block;
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--primary-blue);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      padding-bottom: 4px;
+      border-bottom: 3.5px solid var(--primary-blue);
+      margin-bottom: 14px;
+    }
+
+    /* 1. Financial Highlights */
+    .highlights-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .highlight-card {
+      background-color: var(--navy-card);
+      color: #ffffff;
+      padding: 16px 14px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .highlight-title {
+      font-size: 14.5px;
+      font-weight: 800;
+      margin-bottom: 10px;
+      line-height: 1.25;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .highlight-text {
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 400;
+    }
+
+    /* 2. KPI Overview Box */
+    .kpi-container {
+      margin-bottom: 18px;
+    }
+
+    .kpi-box {
+      background-color: var(--navy-card);
+      color: #ffffff;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 18px 10px;
+    }
+
+    .kpi-col {
+      text-align: center;
+      position: relative;
+      padding: 0 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .kpi-col:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 10%;
+      height: 80%;
+      border-right: 1.5px dashed rgba(255, 255, 255, 0.6);
+    }
+
+    .kpi-label {
+      font-size: 13.5px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .kpi-num {
+      font-size: 28px;
+      font-weight: 900;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      line-height: 1.3;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    /* 3. Expense Distribution */
+    .expense-container {
+      margin-bottom: 18px;
+    }
+
+    .expense-row {
+      display: grid;
+      grid-template-columns: 1fr 1.05fr;
+      gap: 30px;
+      align-items: center;
+    }
+
+    .expense-text {
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: #2b3545;
+      font-weight: 500;
+      text-align: justify;
+    }
+
+    /* Chart */
+    .chart-panel {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .chart-legend {
+      display: flex;
+      justify-content: flex-end;
+      gap: 18px;
+      margin-bottom: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-s1 { background-color: #05142b; }
+    .dot-s2 { background-color: #0b3475; }
+    .dot-s3 { background-color: #0b51bf; }
+
+    .stacked-chart-area {
+      display: flex;
+      height: 140px;
+    }
+
+    .y-axis {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-right: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      text-align: right;
+      width: 22px;
+      height: 120px;
+    }
+
+    .bars-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bars-columns {
+      display: flex;
+      height: 120px;
+      align-items: flex-end;
+      justify-content: space-around;
+      border-bottom: 1px solid #94a3b8;
+      padding: 0 10px;
+    }
+
+    .stacked-bar-col {
+      width: 20%;
+      display: flex;
+      flex-direction: column-reverse;
+    }
+
+    .bar-seg {
+      width: 100%;
+    }
+
+    .seg-1 { background-color: #05142b; }
+    .seg-2 { background-color: #0b3475; }
+    .seg-3 { background-color: #0b51bf; }
+
+    .x-labels {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .x-labels span {
+      width: 20%;
+      text-align: center;
+    }
+
+    /* 4. Performance Notes */
+    .notes-container {
+      margin-bottom: 10px;
+    }
+
+    .notes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .note-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .note-icon {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .note-text {
+      font-size: 12.8px;
+      line-height: 1.4;
+      color: #1e293b;
+      font-weight: 500;
+    }
+
+    /* Footer Section */
+    .footer-decor {
+      position: relative;
+      margin-top: 15px;
+    }
+
+    .footer-stripes {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .stripe {
+      height: 14px;
+      background-color: var(--primary-blue);
+      transform: skewX(-30deg);
+    }
+
+    .footer-bar {
+      background-color: var(--primary-blue);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 9px 18px;
+      margin: 0 -50px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+    
+    <!-- Top Corner SVG Waves -->
+    <svg class="top-decor" viewBox="0 0 900 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Left upper curve -->
+      <path d="M0,0 L200,0 C120,40 50,110 0,160 Z" fill="#0b51bf"/>
+      <path d="M0,0 L140,0 C90,30 30,80 0,120 Z" fill="#05193b"/>
+      
+      <!-- Right upper curve -->
+      <path d="M700,0 L900,0 L900,160 C850,110 780,40 700,0 Z" fill="#0b51bf"/>
+      <path d="M760,0 L900,0 L900,120 C870,80 810,30 760,0 Z" fill="#05193b"/>
+    </svg>
+
+    <div class="main-content">
+      
+      <!-- Main Title Header -->
+      <header class="header-area">
+        <h1 class="main-title">
+          Financial<br>Performance Report
+        </h1>
+        <div class="sub-brand">WARNER & SPENCER</div>
+      </header>
+
+      <!-- Section 1: Financial Highlights -->
+      <section>
+        <div class="section-title">FINANCIAL HIGHLIGHTS</div>
+        <div class="highlights-grid">
+          
+          <div class="highlight-card">
+            <h3 class="highlight-title">Revenue Growth Performance</h3>
+            <p class="highlight-text">
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis non tellus nec quam ullamcorper dictum quis vitae quam. Fusce blandit nibh eget dui iaculis, ut commodo libero malesuada.
+            </p>
+          </div>
+
+          <div class="highlight-card">
+            <h3 class="highlight-title">Cost Efficiency Level</h3>
+            <p class="highlight-text">
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis non tellus nec quam ullamcorper dictum quis vitae quam. Fusce blandit nibh eget dui iaculis, ut commodo libero malesuada.
+            </p>
+          </div>
+
+          <div class="highlight-card">
+            <h3 class="highlight-title">Profitability Trend</h3>
+            <p class="highlight-text">
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis non tellus nec quam ullamcorper dictum quis vitae quam. Fusce blandit nibh eget dui iaculis, ut commodo libero malesuada.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Section 2: KPI Overview -->
+      <section class="kpi-container">
+        <div class="section-title">KPI OVERVIEW</div>
+        <div class="kpi-box">
+          
+          <div class="kpi-col">
+            <div class="kpi-label">Sales<br>Target</div>
+            <div class="kpi-num">2.7M</div>
+            <div class="kpi-sub">Achieved:<br>76% sales target</div>
+          </div>
+
+          <div class="kpi-col">
+            <div class="kpi-label">Growth<br>Projection</div>
+            <div class="kpi-num">+55.5%</div>
+            <div class="kpi-sub">Forecast:<br>Q2 momentum</div>
+          </div>
+
+          <div class="kpi-col">
+            <div class="kpi-label">Sales<br>Target</div>
+            <div class="kpi-num">+78%</div>
+            <div class="kpi-sub">Net Profit:<br>2M</div>
+          </div>
+
+          <div class="kpi-col">
+            <div class="kpi-label">Sales<br>Target</div>
+            <div class="kpi-num">75%</div>
+            <div class="kpi-sub">Achieved:<br>75% sales target</div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Section 3: Expense Distribution -->
+      <section class="expense-container">
+        <div class="section-title">EXPENSE DISTRIBUTION</div>
+        <div class="expense-row">
+          
+          <p class="expense-text">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis non tellus nec quam ullamcorper dictum quis vitae quam. Fusce blandit nibh eget dui iaculis, ut commodo libero malesuada. Vestibulum euismod luctus orci, non dapibus erat molestie vitae. Etiam scelerisque ultricies erat, ac fringilla ex sollicitudin ut.
+          </p>
+
+          <!-- Stacked Chart -->
+          <div class="chart-panel">
+            <div class="chart-legend">
+              <div class="legend-item">
+                <span class="legend-dot dot-s1"></span>
+                <span>Series 1</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot dot-s2"></span>
+                <span>Series 2</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot dot-s3"></span>
+                <span>Series 3</span>
+              </div>
+            </div>
+
+            <div class="stacked-chart-area">
+              <div class="y-axis">
+                <span>50</span>
+                <span>40</span>
+                <span>30</span>
+                <span>20</span>
+                <span>10</span>
+                <span>0</span>
+              </div>
+              <div class="bars-wrap">
+                <div class="bars-columns">
+                  
+                  <!-- Item 1 (Total ~20) -->
+                  <div class="stacked-bar-col">
+                    <div class="bar-seg seg-1" style="height: 18px;"></div>
+                    <div class="bar-seg seg-2" style="height: 15px;"></div>
+                    <div class="bar-seg seg-3" style="height: 15px;"></div>
+                  </div>
+
+                  <!-- Item 2 (Total ~30) -->
+                  <div class="stacked-bar-col">
+                    <div class="bar-seg seg-1" style="height: 28px;"></div>
+                    <div class="bar-seg seg-2" style="height: 24px;"></div>
+                    <div class="bar-seg seg-3" style="height: 20px;"></div>
+                  </div>
+
+                  <!-- Item 3 (Total ~36) -->
+                  <div class="stacked-bar-col">
+                    <div class="bar-seg seg-1" style="height: 36px;"></div>
+                    <div class="bar-seg seg-2" style="height: 28px;"></div>
+                    <div class="bar-seg seg-3" style="height: 24px;"></div>
+                  </div>
+
+                  <!-- Item 4 (Total ~50) -->
+                  <div class="stacked-bar-col">
+                    <div class="bar-seg seg-1" style="height: 48px;"></div>
+                    <div class="bar-seg seg-2" style="height: 38px;"></div>
+                    <div class="bar-seg seg-3" style="height: 34px;"></div>
+                  </div>
+
+                </div>
+                <div class="x-labels">
+                  <span>Item 1</span>
+                  <span>Item 2</span>
+                  <span>Item 3</span>
+                  <span>Item 4</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Section 4: Performance Notes -->
+      <section class="notes-container">
+        <div class="section-title">PERFORMANCE NOTES</div>
+        <div class="notes-list">
+          
+          <div class="note-item">
+            <div class="note-icon">
+              <!-- Balance Scale SVG -->
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#0b51bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="3" x2="12" y2="21"></line>
+                <path d="M3 7l9-4 9 4"></path>
+                <path d="M6 7l-3 7h6l-3-7z"></path>
+                <path d="M18 7l-3 7h6l-3-7z"></path>
+              </svg>
+            </div>
+            <p class="note-text">
+              Financial performance remains healthy with stable profitability and controlled expense levels.
+            </p>
+          </div>
+
+          <div class="note-item">
+            <div class="note-icon">
+              <!-- Trending Growth SVG -->
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+            </div>
+            <p class="note-text">
+              Revenue growth is supported by consistent sales execution and improved operational efficiency.
+            </p>
+          </div>
+
+          <div class="note-item">
+            <div class="note-icon">
+              <!-- Optimization Money/Target SVG -->
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#0b51bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path>
+                <line x1="12" y1="6" x2="12" y2="18"></line>
+              </svg>
+            </div>
+            <p class="note-text">
+              Opportunities remain to further optimize marketing spend and strengthen profit margins.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Bottom Footer -->
+      <footer class="footer-decor">
+        <div class="footer-stripes">
+          <div class="stripe" style="width: 80px;"></div>
+          <div class="stripe" style="width: 40px;"></div>
+          <div class="stripe" style="width: 25px;"></div>
+          <div class="stripe" style="width: 15px;"></div>
+        </div>
+        <div class="footer-bar">
+          Prepared by: Finance & Strategy Team
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+</body>
+</html>

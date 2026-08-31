@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Plan Summary - Timmerman Industries</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-navy: #183b72;
+      --navy-badge: #17386d;
+      --blue-card: #7398ee;
+      --blue-bar-light: #9bc3fd;
+      --blue-bar-mid: #7398ee;
+      --blue-bar-dark: #183b72;
+      --text-dark: #1e293b;
+      --text-body: #2d3748;
+      --border-light: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 900px;
+      height: 1273px;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-body);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .page {
+      width: 900px;
+      height: 1273px;
+      position: relative;
+      background-color: #ffffff;
+      padding: 55px 50px 45px 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    /* Subtle Geometric Background Watermark */
+    .bg-watermark {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 900px;
+      height: 1273px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .main-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-between;
+    }
+
+    /* Header Section */
+    .header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 15px;
+      margin-bottom: 25px;
+    }
+
+    .headline {
+      font-size: 58px;
+      line-height: 1.02;
+      font-weight: 900;
+      color: var(--primary-navy);
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+    }
+
+    .headline span {
+      display: block;
+    }
+
+    /* Timmerman Industries Right Banner */
+    .brand-banner {
+      width: 130px;
+      background-color: var(--navy-badge);
+      border-radius: 0 0 14px 14px;
+      padding: 22px 12px 18px 12px;
+      margin-top: -55px;
+      margin-right: 0px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(24, 59, 114, 0.25);
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 8px;
+    }
+
+    .brand-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: 0.01em;
+    }
+
+    .brand-name span {
+      display: block;
+      font-size: 13px;
+      font-weight: 400;
+      opacity: 0.95;
+    }
+
+    /* Section 1: Overview & Findings */
+    .overview-row {
+      display: grid;
+      grid-template-columns: 1fr 1.05fr;
+      gap: 40px;
+      margin-bottom: 10px;
+    }
+
+    .section-heading {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary-navy);
+      margin-bottom: 14px;
+      letter-spacing: -0.01em;
+    }
+
+    .body-paragraph {
+      font-size: 14px;
+      line-height: 1.58;
+      color: #2b3545;
+      font-weight: 500;
+      text-align: left;
+    }
+
+    .findings-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .findings-list li {
+      position: relative;
+      padding-left: 20px;
+      font-size: 14px;
+      line-height: 1.48;
+      color: #2b3545;
+      font-weight: 500;
+    }
+
+    .findings-list li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      top: -1px;
+      color: #1e293b;
+      font-size: 18px;
+    }
+
+    /* Section 2: Goals & Objectives */
+    .goals-section {
+      margin-top: 15px;
+      margin-bottom: 10px;
+    }
+
+    .cards-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 50px;
+    }
+
+    .goal-box {
+      background-color: var(--blue-card);
+      border-radius: 18px;
+      padding: 58px 18px 30px 18px;
+      position: relative;
+      text-align: center;
+      color: #ffffff;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 8px 18px rgba(115, 152, 238, 0.25);
+    }
+
+    .goal-badge {
+      position: absolute;
+      top: -42px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 82px;
+      height: 82px;
+      background-color: var(--navy-badge);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 4px solid #ffffff;
+      box-shadow: 0 4px 12px rgba(24, 59, 114, 0.28);
+    }
+
+    .goal-badge svg {
+      width: 44px;
+      height: 44px;
+    }
+
+    .goal-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .goal-text {
+      font-size: 13.5px;
+      line-height: 1.48;
+      font-weight: 500;
+      color: #ffffff;
+      opacity: 0.98;
+    }
+
+    /* Section 3: Bottom Grid */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 42px;
+      align-items: flex-start;
+      margin-top: 15px;
+      padding-bottom: 20px;
+    }
+
+    /* Table */
+    .segment-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    .segment-table th {
+      color: var(--primary-navy);
+      font-size: 14px;
+      font-weight: 800;
+      text-align: left;
+      padding: 10px 8px 10px 0;
+      border-bottom: 1.8px solid #2d3748;
+    }
+
+    .segment-table td {
+      padding: 14px 8px 14px 0;
+      font-size: 13px;
+      line-height: 1.42;
+      color: #2b3545;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+
+    .segment-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .segment-table td.col-seg-name {
+      font-weight: 700;
+      color: #1e293b;
+      width: 22%;
+    }
+
+    .segment-table td.col-seg-char {
+      font-weight: 500;
+      width: 38%;
+      padding-right: 12px;
+    }
+
+    .segment-table td.col-seg-strat {
+      font-weight: 500;
+      width: 40%;
+    }
+
+    /* Chart Section */
+    .chart-box {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .legend-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin-top: 6px;
+      margin-bottom: 20px;
+    }
+
+    .legend-entry {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #2b3545;
+    }
+
+    .legend-entry .circle-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-digital { background-color: var(--blue-bar-light); }
+    .dot-social { background-color: var(--blue-bar-mid); }
+    .dot-offline { background-color: var(--blue-bar-dark); }
+
+    .chart-visual {
+      display: flex;
+      height: 190px;
+      margin-top: 5px;
+    }
+
+    .y-scale {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-right: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #2d3748;
+      text-align: right;
+      width: 28px;
+      height: 165px;
+    }
+
+    .bars-container {
+      flex: 1;
+      height: 165px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      border-bottom: 1.5px solid #a0aec0;
+      padding: 0 16px;
+    }
+
+    .chart-bar {
+      width: 26%;
+      border-radius: 6px 6px 0 0;
+    }
+
+    .bar-digital {
+      height: 38%;
+      background-color: var(--blue-bar-light);
+    }
+
+    .bar-social {
+      height: 60%;
+      background-color: var(--blue-bar-mid);
+    }
+
+    .bar-offline {
+      height: 85%;
+      background-color: var(--blue-bar-dark);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+    
+    <!-- Background SVG Geometric Shapes -->
+    <svg class="bg-watermark" viewBox="0 0 900 1273" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.05"/>
+          <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0.03"/>
+        </linearGradient>
+      </defs>
+      <!-- Subtle top right diagonal polygon -->
+      <polygon points="620,0 900,0 900,420 740,220" fill="url(#bgGrad)"/>
+      <!-- Soft wireframe polygon lines -->
+      <path d="M580,-50 L920,380 M680,20 L940,480 M-60,780 L380,1120 M620,880 L940,1220" stroke="#93c5fd" stroke-width="1.2" stroke-opacity="0.25"/>
+      <circle cx="840" cy="180" r="160" stroke="#60a5fa" stroke-width="1" stroke-opacity="0.12"/>
+      <polygon points="0,750 360,940 0,1180" fill="url(#bgGrad)"/>
+      <circle cx="120" cy="1020" r="180" stroke="#60a5fa" stroke-width="1" stroke-opacity="0.1"/>
+    </svg>
+
+    <div class="main-content">
+      
+      <!-- Top Header -->
+      <header class="header-section">
+        <h1 class="headline">
+          <span>BUSINESS PLAN</span>
+          <span>SUMMARY</span>
+        </h1>
+
+        <div class="brand-banner">
+          <!-- Greek Temple / Pillars Icon -->
+          <svg class="brand-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M32 8L10 17H54L32 8Z" fill="white"/>
+            <rect x="12" y="19" width="40" height="3.5" fill="white"/>
+            <rect x="15" y="24.5" width="7" height="23" rx="1.5" fill="white"/>
+            <rect x="28.5" y="24.5" width="7" height="23" rx="1.5" fill="white"/>
+            <rect x="42" y="24.5" width="7" height="23" rx="1.5" fill="white"/>
+            <rect x="10" y="49.5" width="44" height="3.5" rx="1" fill="white"/>
+            <rect x="7" y="54.5" width="50" height="4" rx="1" fill="white"/>
+          </svg>
+          <div class="brand-name">
+            Timmerman
+            <span>Industries</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Overview & Findings Section -->
+      <section class="overview-row">
+        <div>
+          <h2 class="section-heading">Overview</h2>
+          <p class="body-paragraph">
+            This business plan outlines a strategic approach to expand Timmerman Industries by strengthening market position, improving customer engagement, and driving long-term profitability. With a focus on innovation, data-driven decisions, and customer experience, our plan aims to guide sustainable business growth over the next 12–24 months.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="section-heading">Key Findings and Recommendations</h2>
+          <ul class="findings-list">
+            <li>There is growing demand for product in market</li>
+            <li>Customers are seeking faster service, greater personalization, and online accessibility.</li>
+            <li>Competitors with strong branding and online presence outperform those without digital strategies.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Goals and Objectives Section -->
+      <section class="goals-section">
+        <h2 class="section-heading">Goals and Objectives</h2>
+
+        <div class="cards-row">
+          
+          <!-- Goal 1 -->
+          <div class="goal-box">
+            <div class="goal-badge">
+              <!-- Exact Matching Audience/Brand Icon -->
+              <svg viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Center person -->
+                <circle cx="27" cy="22" r="4.5" stroke="white" stroke-width="2.4"/>
+                <path d="M19.5 35C19.5 31 22.8 28.5 27 28.5C31.2 28.5 34.5 31 34.5 35" stroke="white" stroke-width="2.4" stroke-linecap="round"/>
+                <!-- Left person -->
+                <circle cx="16" cy="25" r="3.2" stroke="white" stroke-width="2"/>
+                <path d="M10.5 35C10.5 32 12.8 30.5 16 30.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                <!-- Right person -->
+                <circle cx="38" cy="25" r="3.2" stroke="white" stroke-width="2"/>
+                <path d="M43.5 35C43.5 32 41.2 30.5 38 30.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                <!-- Arrow & heart above -->
+                <path d="M27 12V15M24 13.5L27 10.5L30 13.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- Mini Heart -->
+                <path d="M21 14.5C21 13 22 12 23.2 12.5C24 13 24.5 14 24.5 14C24.5 14 25 13 25.8 12.5C27 12 28 13 28 14.5C28 16.5 24.5 18.5 24.5 18.5C24.5 18.5 21 16.5 21 14.5Z" fill="white" transform="scale(0.55) translate(8, -1)"/>
+              </svg>
+            </div>
+            <h3 class="goal-title">Brand Awareness</h3>
+            <p class="goal-text">
+              Increase Brand Awareness by 40% in 12 months through strategic campaigns.
+            </p>
+          </div>
+
+          <!-- Goal 2 -->
+          <div class="goal-box">
+            <div class="goal-badge">
+              <!-- Exact Matching Sales Chart Icon -->
+              <svg viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Bar chart -->
+                <rect x="14" y="27" width="5.5" height="13" rx="1.5" stroke="white" stroke-width="2"/>
+                <rect x="24.5" y="21" width="5.5" height="19" rx="1.5" stroke="white" stroke-width="2"/>
+                <rect x="35" y="14" width="5.5" height="26" rx="1.5" stroke="white" stroke-width="2"/>
+                <!-- Growth Arrow Line -->
+                <path d="M12 23L22 14L31 20L41 8M41 8H33M41 8V15" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- Dollar badge -->
+                <circle cx="16" cy="38" r="5" fill="#17386d" stroke="white" stroke-width="1.8"/>
+                <text x="16" y="41.5" fill="white" font-size="8.5" font-weight="bold" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">$</text>
+              </svg>
+            </div>
+            <h3 class="goal-title">Boost Sales</h3>
+            <p class="goal-text">
+              Boost Sales by 25% within the first year of implementing this plan.
+            </p>
+          </div>
+
+          <!-- Goal 3 -->
+          <div class="goal-box">
+            <div class="goal-badge">
+              <!-- Exact Matching Market Expansion Icon -->
+              <svg viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- 3 Base Nodes -->
+                <rect x="10" y="34" width="10" height="4" rx="2" stroke="white" stroke-width="2"/>
+                <rect x="34" y="34" width="10" height="4" rx="2" stroke="white" stroke-width="2"/>
+                <rect x="22" y="24" width="10" height="4" rx="2" stroke="white" stroke-width="2"/>
+                <!-- Vertical Stem Poles -->
+                <line x1="15" y1="34" x2="15" y2="28" stroke="white" stroke-width="2"/>
+                <line x1="39" y1="34" x2="39" y2="28" stroke="white" stroke-width="2"/>
+                <line x1="27" y1="24" x2="27" y2="12" stroke="white" stroke-width="2"/>
+                <!-- Connecting lines -->
+                <path d="M15 28L27 24L39 28" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                <!-- Top Flag -->
+                <path d="M27 12L34 15L27 18" fill="white"/>
+              </svg>
+            </div>
+            <h3 class="goal-title">Market Expansion</h3>
+            <p class="goal-text">
+              Expand Market Reach by entering 2–3 new regional markets.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Bottom Audience & Promotion Section -->
+      <section class="bottom-row">
+        
+        <!-- Table Column -->
+        <div>
+          <h2 class="section-heading">Target Audience and Segmentation</h2>
+          <table class="segment-table">
+            <thead>
+              <tr>
+                <th style="width: 22%;">Segment</th>
+                <th style="width: 38%;">Characteristics</th>
+                <th style="width: 40%;">Marketing Strategy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-seg-name">Segment 1</td>
+                <td class="col-seg-char">Young Professionals (Ages 25–35)</td>
+                <td class="col-seg-strat">Mobile-friendly platforms, lifestyle branding, limited-time offers</td>
+              </tr>
+              <tr>
+                <td class="col-seg-name">Segment 2</td>
+                <td class="col-seg-char">Families (Ages 30–50)</td>
+                <td class="col-seg-strat">Family packages, testimonials, service guarantees</td>
+              </tr>
+              <tr>
+                <td class="col-seg-name">Segment 3</td>
+                <td class="col-seg-char">Digital Natives (Early 20)</td>
+                <td class="col-seg-strat">Social media campaigns, viral content, student discounts</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Chart Column -->
+        <div class="chart-box">
+          <h2 class="section-heading">Advertising and Promotion</h2>
+          
+          <div class="legend-container">
+            <div class="legend-entry">
+              <span class="circle-dot dot-digital"></span>
+              <span>Digital Marketing</span>
+            </div>
+            <div class="legend-entry">
+              <span class="circle-dot dot-social"></span>
+              <span>Social Media</span>
+            </div>
+            <div class="legend-entry" style="margin-left: 28px;">
+              <span class="circle-dot dot-offline"></span>
+              <span>Offline Marketing</span>
+            </div>
+          </div>
+
+          <div class="chart-visual">
+            <div class="y-scale">
+              <span>20</span>
+              <span>15</span>
+              <span>10</span>
+              <span>5</span>
+              <span>0</span>
+            </div>
+            <div class="bars-container">
+              <div class="chart-bar bar-digital" title="Digital Marketing"></div>
+              <div class="chart-bar bar-social" title="Social Media"></div>
+              <div class="chart-bar bar-offline" title="Offline Marketing"></div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+  </div>
+
+</body>
+</html>
