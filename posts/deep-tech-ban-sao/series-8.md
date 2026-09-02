@@ -14,6 +14,8 @@ Khi bắt đầu, chúng ta thường rơi vào trạng thái say sưa với nh�
 
 Cái bẫy bắt đầu sập xuống khi người sáng lập nhầm lẫn giữa giải quyết một bài toán kỹ thuật phức tạp với giải quyết một nỗi đau có thật của thị trường.
 
+![](./series-8-round-1-product-obsession.jpg)
+
 Họ miệt mài gọt giũa, thêm thắt tính năng, đốt cạn nguồn vốn, thời gian và sức lực để tạo ra một "kiệt tác" công nghệ mà… không ai thực sự cần. Hơn một nửa số founder "ngã ngựa" ngay tại vạch xuất phát này: Chết vì kiệt sức trước khi kịp để thế giới bên ngoài nhìn thấy sản phẩm.
 
 ### Vòng 2: Cái bẫy "Thử nghiệm Thương mại hoá"
@@ -24,21 +26,24 @@ Nhưng đây là lúc ảo tưởng nguy hiểm nhất xuất hiện: Nghĩ rằ
 
 Rất nhiều founder bước qua cánh cửa phòng lab với niềm tin ngây thơ: "Chỉ cần sản phẩm đủ đỉnh, người ta sẽ tự tìm đến và tranh nhau mua."
 
+![](./series-8-round-2-founder-exhausted-market-mismatch.jpg)
+
 Thực tế thì không. Bạn vừa bước chân vào vòng đấu sinh tử thứ hai: Thương mại hoá — một chiến trường mang bản chất hoàn toàn trái ngược:
-* Về bản chất: Sáng chế là tạo ra bước đột phá trong phòng R&D; còn Launching là đưa bước đột phá đó vào đời thực để người khác chịu dùng, chịu trả tiền và giải quyết được vấn đề thực tế của họ.
-* Về quy trình vận hành: Sáng chế tuân theo logic kỹ thuật và tính năng có thể đo đếm; trong khi Launching là một quy trình hoàn toàn khác, chi phối bởi tâm lý hành vi, thói quen tiêu dùng và cấu trúc kênh phân phối.
+* Về bản chất: Sáng chế là tạo ra bước đột phá trong phòng R&D; còn Thương mại hoá là đưa bước đột phá đó vào đời thực để người khác chịu dùng, chịu trả tiền và giải quyết được vấn đề thực tế của họ.
+* Về quy trình vận hành: Sáng chế tuân theo logic kỹ thuật và tính năng có thể đo đếm; trong khi Thương mại hoá là một quy trình hoàn toàn khác, chi phối bởi tâm lý hành vi, thói quen tiêu dùng và cấu trúc kênh phân phối.
 * Về mức độ rủi ro: Ai cũng biết làm R&D rất dễ thất bại, nhưng tỷ lệ thất bại của khâu thương mại hoá cũng cao tương đương — chỉ khác là hầu hết mọi người đều đánh giá quá thấp độ khó của nó.
 
 Khi đưa sản phẩm ra ngoài, bạn không còn làm việc với những dòng code hay linh kiện biết nghe lời; bạn đang đối mặt với sự thờ ơ của con người.
 
-Nghiên cứu thực tế từ lâu đã chỉ ra rằng thương mại hoá là con đường đầy rẫy ổ gà và hố sâu. Ngay cả trong nhóm những dự án xuất sắc đã sống sót qua vòng 1, chỉ còn khoảng 10% thực sự thương mại hoá thành công. Một nửa số người chơi còn lại tiếp tục "rớt đài" ở chính vòng đấu này.
+Nghiên cứu thực tế từ lâu đã chỉ ra rằng thương mại hoá là con đường đầy rẫy ổ gà và hố sâu. Ngay cả trong nhóm những dự án xuất sắc đã sống sót qua vòng 1, chỉ còn khoảng 10% thực sự thương mại hoá thành công. 90% người chơi còn lại tiếp tục "rớt đài" ở chính vòng đấu này. **Tỷ lệ sống sót qua hai vòng chỉ là 1% nếu tự làm hết.**
 
 ### Kẻ sống sót vượt qua hai vòng bẫy
 
 Sáng chế (Invention) và Thương mại hoá (Launching) không phải là hai bước nối tiếp tuần tự trên một đường thẳng. Chúng là hai mặt của cùng một đồng xu:
-
 * Sáng chế mà không Thương mại hoá: Phát minh mãi mãi nằm lại trong ngăn kéo hoặc bài báo khoa học, tạo ra con số 0 tròn trĩnh về mặt giá trị thực tế.
 * Thương mại hoá mà không có Sáng chế cốt lõi: Bạn sẽ chỉ đang bán những thứ na ná đối thủ, nhanh chóng bị cuốn vào cuộc chiến cạnh tranh giá rẻ kiệt quệ.
+
+![](./series-8-two-valleys-of-death.jpg)
 
 Mục tiêu của một người làm sản phẩm hay founder trưởng thành không phải là cố gắng trở thành một "nhà phát minh giỏi hơn" rồi phó mặc việc bán hàng cho số phận. Mục tiêu sống còn là xây dựng chiếc cầu nối giữa hai thế giới.
 
