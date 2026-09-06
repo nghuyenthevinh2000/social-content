@@ -7,6 +7,12 @@
       "skillPath": "skills/documentation/SKILL.md",
       "computedHash": "9a43f2e8ebb01dbc162ad78d865ff9e20bf20270e0514095c3bf3f1ac43599c6"
     },
+    "beautiful-html-templates": {
+      "source": "zarazhangrui/beautiful-html-templates",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "eff9e67ac17a685c2a148fc216985eff3279c393181510470a95c51d23d0e1e4"
+    },
     "humanizer": {
       "source": "blader/humanizer",
       "sourceType": "github",
