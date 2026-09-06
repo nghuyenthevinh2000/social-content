@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Reality of ZK Commercialization — Slide Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-canvas: #0F172A; /* Outer backdrop */
+      --slide-bg: #F8FAFC;  /* Bright, ultra-clean projector canvas */
+      --card-bg: #FFFFFF;
+      --card-border: #E2E8F0;
+      
+      --text-primary: #0F172A;
+      --text-secondary: #334155;
+      --text-muted: #64748B;
+      
+      --primary: #1E40AF;       /* High-contrast electric royal blue */
+      --primary-light: #EFF6FF;
+      --primary-border: #93C5FD;
+      
+      --accent-green: #047857;   /* Clear emerald for expectations/capabilities */
+      --accent-green-bg: #ECFDF5;
+      --accent-green-border: #A7F3D0;
+      
+      --accent-red: #B91C1C;     /* High-impact crimson for reality/blockers */
+      --accent-red-bg: #FEF2F2;
+      --accent-red-border: #FECACA;
+      
+      --accent-amber: #B45309;   /* Warm amber for warnings/methodology */
+      --accent-amber-bg: #FFFBEB;
+      --accent-amber-border: #FDE68A;
+
+      --accent-indigo: #4338CA;
+      --accent-indigo-bg: #EEF2FF;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-canvas);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Presentation Frame (16:9 fixed ratio stage) */
+    .deck-viewport {
+      position: relative;
+      width: min(100vw, calc(100vh * (16 / 9)));
+      height: min(100vh, calc(100vw * (9 / 16)));
+      max-width: 1440px;
+      max-height: 810px;
+      background: var(--slide-bg);
+      border-radius: 12px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header Bar on every slide */
+    .slide-header {
+      padding: 24px 44px 12px 44px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid #E2E8F0;
+      background: #FFFFFF;
+      flex-shrink: 0;
+    }
+    .slide-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+    }
+    .slide-title {
+      font-size: clamp(22px, 2.2vw, 28px);
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.2;
+      margin-top: 4px;
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: -0.02em;
+    }
+    .slide-subtitle {
+      font-size: clamp(13px, 1.1vw, 15px);
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .slide-brand {
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Slide Content Viewport */
+    .slide-container {
+      position: relative;
+      flex: 1;
+      padding: 28px 44px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Individual Slide states */
+    .slide {
+      display: none;
+      height: 100%;
+      flex-direction: column;
+      animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Reusable Typography & Pill components */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .pill-green { background: var(--accent-green-bg); color: var(--accent-green); border: 1px solid var(--accent-green-border); }
+    .pill-red { background: var(--accent-red-bg); color: var(--accent-red); border: 1px solid var(--accent-red-border); }
+    .pill-amber { background: var(--accent-amber-bg); color: var(--accent-amber); border: 1px solid var(--accent-amber-border); }
+    .pill-blue { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary-border); }
+
+    /* Comparison Table Styling */
+    .compare-table-wrapper {
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      margin-top: 12px;
+      flex: 1;
+    }
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: clamp(13px, 1.1vw, 14.5px);
+    }
+    .compare-table th {
+      padding: 12px 18px;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #E2E8F0;
+    }
+    .compare-table th.col-dim {
+      width: 20%;
+      background: #F1F5F9;
+      color: var(--text-secondary);
+    }
+    .compare-table th.col-expected {
+      width: 40%;
+      background: var(--accent-green-bg);
+      color: var(--accent-green);
+      border-left: 2px solid var(--accent-green-border);
+    }
+    .compare-table th.col-reality {
+      width: 40%;
+      background: var(--accent-red-bg);
+      color: var(--accent-red);
+      border-left: 2px solid var(--accent-red-border);
+    }
+    .compare-table td {
+      padding: 13px 18px;
+      border-bottom: 1px solid #F1F5F9;
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table td.dim-title {
+      font-weight: 700;
+      color: var(--text-primary);
+      background: #F8FAFC;
+    }
+    .compare-table td.expected-cell {
+      background: #FCFDFD;
+      border-left: 2px solid var(--accent-green-border);
+      color: #064E3B;
+    }
+    .compare-table td.reality-cell {
+      background: #FFFDFD;
+      border-left: 2px solid var(--accent-red-border);
+      color: #7F1D1D;
+    }
+
+    /* Key Stat Callout Box */
+    .callout-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 14px;
+    }
+    .callout-card {
+      background: #FFFFFF;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .callout-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .callout-val {
+      font-size: 20px;
+      font-weight: 800;
+      font-family: 'Space Grotesk', sans-serif;
+      margin: 4px 0 2px 0;
+    }
+    .callout-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* Slide 1 Specific: Hero layout */
+    .hero-layout {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 32px;
+      align-items: center;
+      height: 100%;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 30px;
+      background: var(--primary-light);
+      border: 1px solid var(--primary-border);
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 16px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .hero-title {
+      font-size: clamp(34px, 3.4vw, 44px);
+      font-weight: 800;
+      line-height: 1.15;
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+    }
+    .hero-desc {
+      font-size: clamp(15px, 1.25vw, 17px);
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+    .profile-card {
+      background: #FFFFFF;
+      border: 2px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+    }
+    .profile-card-header {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+    .profile-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: var(--text-secondary);
+    }
+    .profile-item:last-child { margin-bottom: 0; }
+    .profile-item svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--primary);
+    }
+
+    /* Slide 6: 3-Column Functional Analysis Matrix */
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      flex: 1;
+      margin-top: 10px;
+    }
+    .matrix-card {
+      background: #FFFFFF;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+      border-top: 4px solid #CBD5E1;
+    }
+    .matrix-card.card-f1 { border-top-color: #EF4444; }
+    .matrix-card.card-f2 { border-top-color: #10B981; }
+    .matrix-card.card-f3 { border-top-color: #3B82F6; }
+    .matrix-tag {
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 6px;
+    }
+    .matrix-name {
+      font-size: 17px;
+      font-weight: 800;
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .matrix-desc {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+      flex: 1;
+    }
+    .matrix-meta-box {
+      background: #F8FAFC;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      border: 1px solid #E2E8F0;
+    }
+    .matrix-meta-label {
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 10px;
+      margin-bottom: 2px;
+    }
+
+    /* Slide 7: Interactive Questions Layout */
+    .questions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      flex: 1;
+      margin-top: 14px;
+    }
+    .question-card {
+      background: #FFFFFF;
+      border: 2px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 26px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+    }
+    .question-card:hover {
+      border-color: var(--primary-border);
+      box-shadow: var(--shadow-md);
+    }
+    .q-badge {
+      align-self: flex-start;
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    .q-title {
+      font-size: 20px;
+      font-weight: 800;
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+    .q-desc {
+      font-size: 14.5px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+    .q-examples {
+      background: #F8FAFC;
+      border-radius: 8px;
+      padding: 12px 14px;
+      border: 1px solid #E2E8F0;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Deck Footer & Navigation Controls */
+    .deck-footer {
+      padding: 14px 44px;
+      background: #FFFFFF;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-nav {
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-nav:hover {
+      background: #F1F5F9;
+      border-color: #94A3B8;
+    }
+    .btn-nav:active {
+      transform: scale(0.98);
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #FFFFFF;
+      border-color: var(--primary);
+    }
+    .btn-primary:hover {
+      background: #1D4ED8;
+      border-color: #1D4ED8;
+    }
+
+    /* Speaker Notes Drawer */
+    .notes-drawer {
+      position: absolute;
+      bottom: 0;
+      left: 0; right: 0;
+      background: #0F172A;
+      color: #F8FAFC;
+      padding: 16px 44px;
+      font-size: 13.5px;
+      line-height: 1.6;
+      border-top: 2px solid #38BDF8;
+      box-shadow: 0 -10px 25px rgba(0,0,0,0.3);
+      display: none;
+      z-index: 100;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .notes-drawer.open { display: block; }
+    .notes-header {
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #38BDF8;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    /* Print Layout for 16:9 PDF Export */
+    @page {
+      size: 16in 9in;
+      margin: 0;
+    }
+    @media print {
+      html, body {
+        width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: #FFFFFF !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .deck-viewport {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+      .controls {
+        display: none !important;
+      }
+      .notes-drawer {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="deck-viewport" id="deckViewport">
+  
+  <!-- Slide Header (Shared Top Bar) -->
+  <header class="slide-header">
+    <div>
+      <span class="slide-tag" id="slideTag">01 // PRESENTATION</span>
+      <h1 class="slide-title" id="slideTitle">Commercializing Zero-Knowledge: Realities from the Field</h1>
+      <p class="slide-subtitle" id="slideSubtitle">Unpacking initial expectations vs. on-the-ground reality in Vietnam</p>
+    </div>
+    <div class="slide-brand">
+      <strong>ZK REAL-WORLD SHARING</strong><br>
+      <span>VBSN / 1Matrix Post-Mortem</span>
+    </div>
+  </header>
+
+  <!-- Main Slide Viewport -->
+  <main class="slide-container">
+
+    <!-- SLIDE 1: Title & Framing -->
+    <section class="slide active" data-tag="01 // PRESENTATION" data-title="Commercializing Zero-Knowledge: Realities from the Field" data-subtitle="Deconstructing enterprise & GovTech hypotheses to discover practical heuristics">
+      <div class="hero-layout">
+        <div>
+          <h2 class="hero-title">Zero-Knowledge in the Real World: Lessons from the Trenches</h2>
+          <p class="hero-desc">
+            An open post-mortem exploring why enterprise ZK pitches hit unexpected walls, what database fragmentation taught us, and how to rethink ZK product-market fit from first principles.
+          </p>
+        </div>
+
+        <div class="profile-card">
+          <div class="profile-card-header">Speaker Background</div>
+          <div class="profile-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <div><strong>Ex-Senior Product Owner @ 1Matrix</strong><br>Led product discovery for blockchain infrastructure & enterprise pilots.</div>
+          </div>
+          <div class="profile-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            <div><strong>Vietnam Blockchain Service Network (VBSN)</strong><br>Pushed national-level infrastructure and cross-company attestation layers.</div>
+          </div>
+          <div class="profile-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div><strong>Government Cipher Committee Engagement</strong><br>Lobbied & evaluated ZK proving scheme feasibility with <em>Ban Cơ yếu Chính phủ</em>.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes-data" style="display:none;">
+        "Welcome everyone. When we talk about Zero-Knowledge cryptography, the conversation is often dominated by two extremes: academic theory or Web3 rollup hype. A couple of years ago, while working at 1Matrix on the Vietnam Blockchain Service Network and exploring ZK feasibility with the Government Cipher Committee, we tried to take ZK into the messy real world of enterprises and public administration. Today, I don’t want to hand down rigid rules or proclaim that ZK can't work in enterprise. Instead, I want to transparently share our initial hypotheses, what we actually discovered on the ground, and open up an exploratory conversation about what heuristics and problem spaces we should be looking at next."
+      </div>
+    </section>
+
+    <!-- SLIDE 2: Context & Overview -->
+    <section class="slide" data-tag="02 // THE CONTEXT" data-title="Pushing ZK Technology in Vietnam" data-subtitle="The theoretical promise vs. the primary hurdles encountered in the field">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; flex: 1;">
+        <!-- Left Panel: Why ZK Seemed Attractive -->
+        <div style="background: #FFFFFF; border: 1.5px solid var(--primary-border); border-top: 5px solid var(--primary); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 14px;">
+            The Promise: Proving Without Revealing
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); margin-bottom: 12px;">
+            The Core Capability
+          </h3>
+
+          <div style="font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px; flex: 1;">
+            <div>
+              <strong style="color: var(--text-primary);">The Mechanism:</strong> ZK technology fundamentally allows a party to prove that a statement is valid without revealing the underlying data.
+            </div>
+            <div>
+              <strong style="color: var(--text-primary);">The Real-World Need:</strong> In Vietnam, data laws prevent companies from sharing full information of clients, while citizens must reveal certificates to get notarized copies.
+            </div>
+            <div style="background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 8px; padding: 12px; color: #1E3A8A;">
+              <strong>The Initial Fit:</strong> ZK seemed like a natural fit to eliminate repeated verification and protect personal information without transferring raw data.
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel: What We Actually Discovered -->
+        <div style="background: #FFFFFF; border: 1.5px solid var(--accent-amber-border); border-top: 5px solid var(--accent-amber); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent-amber); text-transform: uppercase; margin-bottom: 14px;">
+            The Reality: Two Major Hurdles
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); margin-bottom: 12px;">
+            What the Field Revealed
+          </h3>
+
+          <div style="font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px; flex: 1;">
+            <div>
+              <strong style="color: var(--text-primary);">1. Database Fragmentation (The Biggest Hurdle):</strong> Whether in corporate groups or local government entities, underlying databases were so fragmented that unifying them or establishing a baseline was cost-prohibitive.
+            </div>
+            <div>
+              <strong style="color: var(--text-primary);">2. Government Sector Approval:</strong> ZK is a new proving scheme requiring national approval from the Government Cipher Committee, demanding multiple rounds of effect studies before any real deployment.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; background: #FFFFFF; border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 20px; font-size: 13.5px; color: var(--text-secondary);">
+        <strong>Overview of this sharing:</strong> Unpacking the 2 specific use cases we explored, the regulatory barrier, and questions to explore new heuristics.
+      </div>
+
+      <div class="notes-data" style="display:none;">
+        "To set the context: this talk is based on my real experience trying to push ZK technology in Vietnam. Initially, ZK seemed like an ideal fit because its core promise is proving without revealing—which fits right into data privacy laws and certificate verification needs. But as we explored real use cases, we encountered two massive hurdles: first, database fragmentation, which turned out to be the biggest hurdle of all; and second, the need for national cryptographic approval from the Government Cipher Committee for any public sector use. Let's walk through the actual use cases we explored."
+      </div>
+    </section>
+
+    <!-- SLIDE 3: Case Study 1 — ZK-DID in Conglomerates -->
+    <section class="slide" data-tag="03 // ENTERPRISE CASE STUDY" data-title="Case 1: Unified Verification in a Mother Group" data-subtitle="Can verification data at one company be used for all others without revealing data?">
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; flex: 1;">
+        <!-- Left Panel: Initial Expectation -->
+        <div style="background: #FFFFFF; border: 1.5px solid var(--accent-green-border); border-top: 5px solid var(--accent-green); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent-green); text-transform: uppercase; margin-bottom: 14px;">
+            Initial Expectation
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); margin-bottom: 12px;">
+            "ZK Seems Like a Good Fit"
+          </h3>
+
+          <div style="font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px; flex: 1;">
+            <div>
+              <strong style="color: var(--text-primary);">The Legal Barrier:</strong> Different companies in the same mother group in Vietnam cannot share full information of a client to one another due to data law.
+            </div>
+            <div>
+              <strong style="color: var(--text-primary);">The User Friction:</strong> Users have to perform re-verification every time they interact with a different company in the group.
+            </div>
+            <div style="background: var(--accent-green-bg); border: 1px solid var(--accent-green-border); border-radius: 8px; padding: 12px; color: #065F46;">
+              <strong>The Core Idea:</strong> Can verification data at one company be used for all others without revealing data? ZK can prove without revealing, seeming like the ideal solution.
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel: Reality Discovered -->
+        <div style="background: #FFFFFF; border: 1.5px solid var(--accent-red-border); border-top: 5px solid var(--accent-red); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent-red); text-transform: uppercase; margin-bottom: 14px;">
+            Reality Discovered
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); margin-bottom: 12px;">
+            Database Fragmentation Was the Hurdle
+          </h3>
+
+          <div style="font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px; flex: 1;">
+            <div>
+              <strong style="color: var(--text-primary);">Structural Mismatch:</strong> Even within the same mother group, different companies had completely different database structures.
+            </div>
+            <div>
+              <strong style="color: var(--text-primary);">The Burden:</strong> Cleaning and unifying all the different database structures required far too much effort.
+            </div>
+            <div style="background: var(--accent-red-bg); border: 1px solid var(--accent-red-border); border-radius: 8px; padding: 12px; color: #991B1B;">
+              <strong>The Commercial Verdict:</strong> The cost to clean and unify database structures is not justified just for saving user time.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; background: #FFFFFF; border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 20px; font-size: 13.5px; color: var(--text-secondary);">
+        <strong>Takeaway:</strong> Cryptography couldn't compensate for the immense cost of unifying fragmented company databases.
+      </div>
+
+      <div class="notes-data" style="display:none;">
+        "Here was our experience with the mother group. In Vietnam, data laws prevent companies in the same mother group from sharing full client information with each other. Because of this, users have to re-verify every time they go to a different company in the group. We asked: can verification data at one company be used for all others without revealing data? Initially, ZK seemed like a great fit because it can prove without revealing. But when we dug in, even in the same mother group, different companies have different database structures. Cleaning and unifying them all required far too much effort. In the end, the cost simply wasn't justified just for saving user time."
+      </div>
+    </section>
+
+    <!-- SLIDE 4: Case Study 2 — Public Notary & Citizen Registry -->
+    <section class="slide" data-tag="04 // GOVTECH CASE STUDY" data-title="Case 2: ZK for Public Notary" data-subtitle="Proving certificate validity without revealing personal information">
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; flex: 1;">
+        <!-- Left Panel: Initial Expectation -->
+        <div style="background: #FFFFFF; border: 1.5px solid var(--accent-green-border); border-top: 5px solid var(--accent-green); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent-green); text-transform: uppercase; margin-bottom: 14px;">
+            Initial Expectation
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); margin-bottom: 12px;">
+            Citizen Registry for All Certificates
+          </h3>
+
+          <div style="font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px; flex: 1;">
+            <div>
+              <strong style="color: var(--text-primary);">The Status Quo:</strong> A person has to reveal certificate information to get notarized copies by the authority.
+            </div>
+            <div>
+              <strong style="color: var(--text-primary);">The ZK Vision:</strong> If that person has a registry for all certificates, they can prove to companies without revealing personal information.
+            </div>
+            <div style="background: var(--accent-green-bg); border: 1px solid var(--accent-green-border); border-radius: 8px; padding: 12px; color: #065F46;">
+              <strong>The Key Prerequisite:</strong> This is only viable if there is a government entity with all the citizen certificate data first to enable a ZK layer on top.
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel: Reality Discovered -->
+        <div style="background: #FFFFFF; border: 1.5px solid var(--accent-red-border); border-top: 5px solid var(--accent-red); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent-red); text-transform: uppercase; margin-bottom: 14px;">
+            Reality Discovered
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); margin-bottom: 12px;">
+            Local Government Databases Were Too Fragmented
+          </h3>
+
+          <div style="font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px; flex: 1;">
+            <div>
+              <strong style="color: var(--text-primary);">The Investigation:</strong> We explored where citizen certificate data actually resided across local government entities.
+            </div>
+            <div>
+              <strong style="color: var(--text-primary);">The Ground Reality:</strong> Databases in local government entities were so fragmented, that no one has all of it.
+            </div>
+            <div style="background: var(--accent-red-bg); border: 1px solid var(--accent-red-border); border-radius: 8px; padding: 12px; color: #991B1B;">
+              <strong>The Structural Barrier:</strong> Without a government entity holding complete citizen certificate data, there was no foundational layer to build a ZK layer on top of.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; background: #FFFFFF; border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 20px; font-size: 13.5px; color: var(--text-secondary);">
+        <strong>Takeaway:</strong> You need an authoritative government database first before an attestation layer can exist.
+      </div>
+
+      <div class="notes-data" style="display:none;">
+        "Our second use case was public notary. Today, a person has to reveal certificate information to get notarized copies by the authority. If that person had a registry for all certificates, he could prove to companies without revealing personal information. But this is only viable if there is a government entity with all the citizen certificate data first to enable a ZK layer on top. Eventually, we found out that databases in local government entities were so fragmented, that no one has all of it. Without that base data in one place, you simply cannot enable a ZK layer on top."
+      </div>
+    </section>
+
+    <!-- SLIDE 5: The Institutional Barrier -->
+    <section class="slide" data-tag="05 // REGULATORY REALITY" data-title="The Institutional Wall: Innovation vs. Cryptographic Sovereignty" data-subtitle="Navigating the Government Cipher Committee (Ban Cơ yếu Chính phủ)">
+      
+      <div class="compare-table-wrapper" style="margin-top: 0;">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th class="col-dim">Comparison Criteria</th>
+              <th class="col-expected">Web3 / Commercial Startups</th>
+              <th class="col-reality">Government Cipher Committee (Ban Cơ yếu)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="dim-title">Primary Objective</td>
+              <td class="expected-cell">
+                Speed to market, rapid developer iteration, user adoption, frictionless product UX.
+              </td>
+              <td class="reality-cell">
+                <strong>National Sovereignty:</strong> Uncompromised resilience against foreign cryptanalysis, quantum threats, and state adversaries.
+              </td>
+            </tr>
+            <tr>
+              <td class="dim-title">Attitude Toward Novel Math</td>
+              <td class="expected-cell">
+                Eager to adopt bleeding-edge proving schemes (PLONK, Halo2, STARKs) and novel elliptic curves (BN254, BLS12-381).
+              </td>
+              <td class="reality-cell">
+                <strong>Extreme Mathematical Conservatism:</strong> Novel curves require exhaustive multi-round effect studies, formal vulnerability analysis, and committee reviews.
+              </td>
+            </tr>
+            <tr>
+              <td class="dim-title">Timeline Cycles</td>
+              <td class="expected-cell">
+                <strong>Weeks to Months:</strong> Fast sprints, hackathons, and quarterly product milestones.
+              </td>
+              <td class="reality-cell">
+                <strong>Multi-Year Evaluations:</strong> Formal standards defense, national security vetting, and legislative decree updates.
+              </td>
+            </tr>
+            <tr>
+              <td class="dim-title">Approval Prerequisite</td>
+              <td class="expected-cell">
+                "Does the circuit compile and pass automated test suites?"
+              </td>
+              <td class="reality-cell">
+                "Has this proving scheme been formally certified for sovereign infrastructure usage?"
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 16px; background: var(--accent-indigo-bg); border: 1px solid #C7D2FE; border-left: 4px solid var(--accent-indigo); border-radius: 8px; padding: 14px 20px; font-size: 14px; color: #312E81; line-height: 1.5;">
+        <strong>Key Discovery:</strong> In sovereign and regulated sectors, cryptographic conservatism always trumps technological novelty. Startups run out of runway while sovereign accreditation is just starting.
+      </div>
+
+      <div class="notes-data" style="display:none;">
+        "Even if we assume the database issue could be solved, we hit a third, insurmountable hurdle: regulatory and cryptographic accreditation. When pushing cutting-edge tech in Vietnam's public or semi-public sector, you work closely with the Government Cipher Committee (Ban Cơ yếu Chính phủ). Their mandate is national cryptographic security. ZK is not just an API; it is an entirely new proving scheme relying on novel curves and mathematical assumptions. The Cipher Committee cannot simply 'greenlight' a new scheme because it is popular in Web3. It requires formal evaluation, vulnerability modeling, and multi-year effect studies. Startups and commercial pilots operate on quarter-to-quarter runways; sovereign cryptography operates on multi-year validation cycles. Navigating this asymmetry is a critical reality anyone planning enterprise ZK must account for."
+      </div>
+    </section>
+
+    <!-- SLIDE 6: Functional Analysis of ZK -->
+    <section class="slide" data-tag="06 // FUNCTIONAL ANALYSIS" data-title="Discussion 1: Applying Functional Analysis to ZK" data-subtitle="Deconstructing the technology: What atomic functions did we completely miss?">
+      
+      <div style="background: #FFFFFF; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+        <strong>Methodology:</strong> Functional Analysis strips away marketing buzzwords to isolate what a system fundamentally <em>does</em> at an atomic level.
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1;">
+        <!-- The One Function Used -->
+        <div style="background: #FFFFFF; border: 2px solid var(--accent-red-border); border-top: 5px solid var(--accent-red); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent-red); text-transform: uppercase; margin-bottom: 6px;">THE FUNCTION WE BET ON</div>
+          <div style="font-size: 20px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); margin-bottom: 8px;">Input Concealment</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px;">"Proving Without Revealing" (Zero-Knowledge Masking)</div>
+          
+          <p style="font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 16px; flex: 1;">
+            Proving that a private witness <em>w</em> satisfies predicate <em>P(x, w) = true</em> without disclosing any data about <em>w</em> to the verifier.
+          </p>
+
+          <div style="background: var(--accent-red-bg); border-radius: 8px; padding: 12px 14px; border: 1px solid var(--accent-red-border); font-size: 12.5px; line-height: 1.5; color: #7F1D1D;">
+            <strong>Our Pilot Reality:</strong> We bet 100% of our enterprise roadmap on this single function. But Input Concealment strictly requires standardized, authoritative data inputs—and collided directly with fragmented legacy databases.
+          </div>
+        </div>
+
+        <!-- The Open Question to the Room -->
+        <div style="background: #FFFFFF; border: 2px solid var(--primary-border); border-top: 5px solid var(--primary); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 6px;">OPEN QUESTION TO THE ROOM</div>
+          <div style="font-size: 20px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); margin-bottom: 8px;">What are the OTHER basic functions of ZK?</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px;">(Even if they seem obvious or well-known to you!)</div>
+          
+          <p style="font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 16px; flex: 1;">
+            When you decompose Zero-Knowledge systems down to their irreducible mathematical primitives, what other elementary capabilities exist?
+          </p>
+
+          <div style="background: var(--primary-light); border-radius: 8px; padding: 12px 14px; border: 1px solid var(--primary-border); font-size: 12.5px; line-height: 1.5; color: #1E3A8A;">
+            <strong>Inquiry for Practitioners:</strong> When you strip away marketing, what other fundamental functions does ZK perform that our enterprise pilots completely overlooked?
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; background: #FFFFFF; border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 18px; font-size: 13.5px; color: var(--text-primary);">
+        <strong>Opening the floor:</strong> What other basic functions or capabilities does ZK have?
+      </div>
+
+      <div class="notes-data" style="display:none;">
+        "When our pilots stalled, we turned to a tool from systems engineering: Functional Analysis. Whenever a technology hits adoption roadblocks, product designers step back and ask: what does this system actually do at its most elementary, atomic level—free from marketing hype and jargon?
+
+Looking back at our pilots, our entire strategy was anchored on just ONE single function: Input Concealment—proving without revealing. And that single choice led us straight into the buzzsaw of dirty, fragmented enterprise databases.
+
+I don't want to list the other functions on this slide, because I want to hear from you. When you run functional analysis on ZK from first principles, what are the OTHER basic, atomic functions of ZK? Even if they seem elementary or well-known to you—what other fundamental capabilities does ZK have that we overlooked?"
+      </div>
+    </section>
+
+    <!-- SLIDE 7: Open Discussion -->
+    <section class="slide" data-tag="07 // OPEN DISCUSSION" data-title="Opening the Floor: Questions for Builders & Practitioners" data-subtitle="Applying the Perspective-Heuristics method to explore where practical ZK adoption lives">
+      
+      <div style="background: #FFFFFF; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+        <strong>Perspective-Heuristics Method:</strong> Breakthroughs happen by shifting our <em>Perspective</em> (how we represent the problem space) and refining our <em>Heuristics</em> (rules of thumb for evaluating fit).
+      </div>
+
+      <div class="questions-grid">
+        <!-- Question 1 -->
+        <div class="question-card" style="border-top: 5px solid var(--primary);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 12px;">QUESTION 01 // HEURISTICS FOR FIT</div>
+          <h3 class="q-title">What mental filters or heuristics do you use to evaluate whether a problem genuinely warrants ZK?</h3>
+          <p class="q-desc">
+            When someone pitches a new ZK use case, how do you determine if it is a genuine cryptographic necessity or expensive over-engineering? Where is the boundary between an API/database solution and a true ZK problem?
+          </p>
+          <div class="q-examples">
+            <strong>Points to Consider:</strong>
+            <ul style="padding-left: 18px; margin-top: 6px;">
+              <li>Does ZK belong strictly at adversarial boundaries (zero mutual trust)?</li>
+              <li>Can internal enterprise compliance ever justify proof generation overhead?</li>
+              <li>How do you assess data readiness before committing to circuit design?</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="question-card" style="border-top: 5px solid var(--accent-green);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent-green); text-transform: uppercase; margin-bottom: 12px;">QUESTION 02 // FIELD PROBLEMS & PERSPECTIVES</div>
+          <h3 class="q-title">What real-world field problems can be cleanly solved with ZK's basic functions?</h3>
+          <p class="q-desc">
+            Beyond the classic tropes of identity (DID) and notarizing diplomas, what bottlenecks in your industry possess naturally clean, digital inputs where verification is expensive or trust is scarce?
+          </p>
+          <div class="q-examples">
+            <strong>Domains to Explore:</strong>
+            <ul style="padding-left: 18px; margin-top: 6px;">
+              <li>Verifiable AI: proving model weights or inference execution without disclosing data</li>
+              <li>Financial compliance: proving solvency or risk limits without sharing trade books</li>
+              <li>Supply chain & telemetry: hardware-attested sensor data and provenance</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes-data" style="display:none;">
+        "I want to open up the floor to everyone in this room. To guide our discussion, I like to use the Perspective-Heuristics method. When a powerful technology hits adoption roadblocks, it usually means our initial perspective was too narrow, or our heuristics for picking use cases were flawed. A perspective is how we represent the problem space, while heuristics are the practical rules of thumb we use to search for solutions. Rather than handing down rigid answers, I want to leave you with two simple questions: First, what heuristics do you use to evaluate whether an idea genuinely warrants ZK versus traditional architectures? And second, from your perspective, what field problems in your own industries could be cleanly solved by ZK's basic functions without falling into database fragmentation traps? Let's open it up for your perspectives."
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Slide Notes Drawer -->
+  <div class="notes-drawer" id="notesDrawer">
+    <div class="notes-header">
+      <span>SPEAKER NOTES (PRESS 'N' TO TOGGLE)</span>
+      <span style="cursor: pointer;" onclick="toggleNotes()">[CLOSE ×]</span>
+    </div>
+    <div id="notesText"></div>
+  </div>
+
+</div>
+
+<script>
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  
+  const slideTag = document.getElementById('slideTag');
+  const slideTitle = document.getElementById('slideTitle');
+  const slideSubtitle = document.getElementById('slideSubtitle');
+  const slideCounter = document.getElementById('slideCounter');
+  const notesDrawer = document.getElementById('notesDrawer');
+  const notesText = document.getElementById('notesText');
+
+  function updateSlide(index) {
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('active', i === index);
+    });
+
+    const activeSlide = slides[index];
+    slideTag.textContent = activeSlide.getAttribute('data-tag') || `0${index + 1} // SECTION`;
+    slideTitle.textContent = activeSlide.getAttribute('data-title') || 'Commercializing Zero-Knowledge';
+    slideSubtitle.textContent = activeSlide.getAttribute('data-subtitle') || '';
+    if (slideCounter) {
+      slideCounter.textContent = `SLIDE 0${index + 1} / 0${totalSlides}`;
+    }
+
+    // Update speaker notes
+    const notesEl = activeSlide.querySelector('.notes-data');
+    notesText.textContent = notesEl ? notesEl.innerText.trim() : 'No speaker notes for this slide.';
+
+    // Manage buttons if present
+    const btnPrev = document.getElementById('btnPrev');
+    const btnNext = document.getElementById('btnNext');
+    if (btnPrev) {
+      btnPrev.disabled = index === 0;
+      btnPrev.style.opacity = index === 0 ? '0.5' : '1';
+    }
+    if (btnNext) {
+      btnNext.disabled = index === totalSlides - 1;
+      btnNext.style.opacity = index === totalSlides - 1 ? '0.5' : '1';
+    }
+  }
+
+  function nextSlide() {
+    if (currentSlide < totalSlides - 1) {
+      currentSlide++;
+      updateSlide(currentSlide);
+    }
+  }
+
+  function prevSlide() {
+    if (currentSlide > 0) {
+      currentSlide--;
+      updateSlide(currentSlide);
+    }
+  }
+
+  function toggleNotes() {
+    notesDrawer.classList.toggle('open');
+  }
+
+  function toggleFullscreen() {
+    const viewport = document.getElementById('deckViewport');
+    if (!document.fullscreenElement) {
+      if (viewport.requestFullscreen) viewport.requestFullscreen();
+      else if (viewport.webkitRequestFullscreen) viewport.webkitRequestFullscreen();
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+    }
+  }
+
+  // Keyboard Navigation
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+      e.preventDefault();
+      nextSlide();
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      e.preventDefault();
+      prevSlide();
+    } else if (e.key === 'n' || e.key === 'N') {
+      e.preventDefault();
+      toggleNotes();
+    } else if (e.key === 'f' || e.key === 'F') {
+      e.preventDefault();
+      toggleFullscreen();
+    }
+  });
+
+  // URL Param & Hash Support
+  const params = new URLSearchParams(window.location.search);
+  const slideParam = params.get('slide');
+  let initIndex = 0;
+  if (slideParam !== null) {
+    const parsed = parseInt(slideParam, 10);
+    if (!isNaN(parsed) && parsed >= 0 && parsed < totalSlides) {
+      initIndex = parsed;
+    }
+  } else if (window.location.hash) {
+    const hashIndex = parseInt(window.location.hash.replace('#', ''), 10) - 1;
+    if (!isNaN(hashIndex) && hashIndex >= 0 && hashIndex < totalSlides) {
+      initIndex = hashIndex;
+    }
+  }
+  currentSlide = initIndex;
+  updateSlide(initIndex);
+</script>
+
+</body>
+</html>

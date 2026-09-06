@@ -33,6 +33,9 @@ All paths are relative to the repository root:
   - `design.md`: Design system documentation (typography, colors, components, layout specs)
   - `deck-stage.js` (if applicable): Keyboard and stage navigation runtime
 - **Shared Runtime**: `.agents/skills/beautiful-html-templates/runtime/deck-stage.js`
+- **Export Scripts**:
+  - `.agents/skills/beautiful-html-templates/scripts/export-pdf.mjs`: Universal 16:9 PDF exporter (Node.js + Chrome CDP)
+  - `.agents/skills/beautiful-html-templates/scripts/export-pdf.sh`: Shell executable wrapper
 - **Output Directory**: Save final presentations under `visual/<topic-slug>/` (or as specified by user).
 
 ---
@@ -82,6 +85,20 @@ Once the template is selected:
 
 1. Open the finished deck in the browser (`open visual/<topic-slug>/template.html`).
 2. Provide the absolute path to the user along with a concise summary of the visual choices.
+
+### Step 7 — Export to PDF (Optional)
+
+When the user requests a PDF version of the presentation:
+1. Run the universal export script:
+   ```bash
+   node .agents/skills/beautiful-html-templates/scripts/export-pdf.mjs visual/<topic-slug>/template.html
+   # Or using the shell wrapper:
+   .agents/skills/beautiful-html-templates/scripts/export-pdf.sh visual/<topic-slug>/template.html [custom-output.pdf]
+   ```
+2. The script automatically detects the template engine:
+   - `<deck-stage>` decks are printed in a single pass at 16:9 widescreen ratio.
+   - Screen-only/interactive decks are automatically stepped through slide-by-slide via keyboard navigation and merged with `pdfunite`.
+3. Open or link the resulting PDF for the user.
 
 ---
 
