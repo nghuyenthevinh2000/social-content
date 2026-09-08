@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Good Night</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600&family=Playfair+Display:ital,wght@1,400;1,600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #05070f;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #e6e9f5;
+      overflow: hidden;
+      touch-action: none; /* We handle touch gestures manually */
+    }
+
+    /* Outer Wrapper for responsive desktop / mobile */
+    .viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      background: radial-gradient(circle at 50% 25%, #12162d 0%, #080a16 60%, #030408 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      box-shadow: 0 0 80px rgba(0, 0, 0, 0.9);
+      transition: background 1s ease;
+    }
+
+    /* Ambient Night Sky */
+    .sky-canvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .moon {
+      position: absolute;
+      top: 14%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fffdf4 0%, #fae69e 60%, #e0be63 100%);
+      box-shadow: 0 0 60px rgba(250, 230, 158, 0.22), 0 0 120px rgba(250, 230, 158, 0.1);
+      opacity: 0.85;
+      animation: moonPulse 8s infinite ease-in-out;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    @keyframes moonPulse {
+      0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.82; }
+      50% { transform: translateX(-50%) scale(1.03); opacity: 0.95; }
+    }
+
+    .star {
+      position: absolute;
+      background: #fff;
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: twinkle var(--dur, 3s) infinite ease-in-out;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.15; transform: scale(0.8); }
+      50% { opacity: 0.8; transform: scale(1.2); }
+    }
+
+    /* Minimal Top Counter */
+    .header-zone {
+      position: relative;
+      z-index: 10;
+      padding-top: max(48px, env(safe-area-inset-top, 48px));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .counter-number {
+      font-size: 78px;
+      font-weight: 200;
+      letter-spacing: -2px;
+      line-height: 1;
+      color: #ffffff;
+      text-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
+      transition: transform 0.18s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      will-change: transform;
+    }
+
+    .counter-number.pop {
+      transform: scale(1.15) translateY(-4px);
+    }
+
+    .counter-label {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-style: italic;
+      font-size: 19px;
+      color: #8f96b8;
+      margin-top: 6px;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      transition: color 0.3s;
+    }
+
+    /* Up-Down Floating Swipe Stage */
+    .stage {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Dynamic upward flying items */
+    .flying-item {
+      position: absolute;
+      font-size: 64px;
+      pointer-events: none;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.5));
+      will-change: transform, opacity;
+      animation: floatUpwards 1.35s cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
+    }
+
+    @keyframes floatUpwards {
+      0% {
+        transform: translate3d(var(--x, 0), 260px, 0) scale(0.6) rotate(var(--rot-start, -10deg));
+        opacity: 0;
+      }
+      20% {
+        opacity: 1;
+      }
+      80% {
+        opacity: 0.95;
+      }
+      100% {
+        transform: translate3d(var(--x-end, 0), -340px, 0) scale(1.18) rotate(var(--rot-end, 15deg));
+        opacity: 0;
+      }
+    }
+
+    /* Floating Item for Downward Swipe */
+    .flying-item-down {
+      position: absolute;
+      font-size: 64px;
+      pointer-events: none;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.5));
+      will-change: transform, opacity;
+      animation: floatDownwards 1.35s cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
+    }
+
+    @keyframes floatDownwards {
+      0% {
+        transform: translate3d(var(--x, 0), -280px, 0) scale(0.6) rotate(var(--rot-start, 10deg));
+        opacity: 0;
+      }
+      20% {
+        opacity: 1;
+      }
+      80% {
+        opacity: 0.95;
+      }
+      100% {
+        transform: translate3d(var(--x-end, 0), 320px, 0) scale(1.18) rotate(var(--rot-end, -15deg));
+        opacity: 0;
+      }
+    }
+
+    /* Soft Stardust Particle */
+    .dust {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+      animation: dustFade 1.2s ease-out forwards;
+    }
+
+    @keyframes dustFade {
+      0% { transform: scale(1) translateY(0); opacity: 0.9; }
+      100% { transform: scale(0.2) translateY(var(--dy, -60px)); opacity: 0; }
+    }
+
+    /* Minimal Bottom Control Pill */
+    .bottom-zone {
+      position: relative;
+      z-index: 15;
+      padding-bottom: max(32px, env(safe-area-inset-bottom, 32px));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .swipe-hint {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      opacity: 0.38;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+
+    .swipe-hint svg {
+      animation: gentleBob 2s infinite ease-in-out;
+    }
+
+    @keyframes gentleBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    .swipe-hint span {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 500;
+      color: #9ba1c5;
+    }
+
+    /* Ultra-Clean Pill: Tap to switch item */
+    .item-pill-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 30px;
+      padding: 7px 16px 7px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+      color: #e6e9f5;
+    }
+
+    .item-pill-btn:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .pill-emoji {
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .pill-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #cdd3ee;
+    }
+
+    .pill-dots {
+      opacity: 0.4;
+      font-size: 10px;
+    }
+
+    /* Sound mute toggle in upper corner */
+    .sound-btn {
+      position: absolute;
+      top: max(20px, env(safe-area-inset-top, 20px));
+      right: 22px;
+      z-index: 20;
+      background: transparent;
+      border: none;
+      color: #8c93b6;
+      cursor: pointer;
+      padding: 8px;
+      opacity: 0.5;
+      transition: opacity 0.2s, color 0.2s;
+    }
+
+    .sound-btn:hover, .sound-btn:active {
+      opacity: 1;
+      color: #fff;
+    }
+
+    /* Minimal Bottom Sheet (Only opens when pill is tapped) */
+    .sheet-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 30;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .sheet-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .minimal-sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #0e1120;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 28px 28px 0 0;
+      padding: 22px 20px max(34px, env(safe-area-inset-bottom, 34px)) 20px;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sheet-backdrop.open .minimal-sheet {
+      transform: translateY(0);
+    }
+
+    .sheet-drag-line {
+      width: 36px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      margin: 0 auto 18px auto;
+    }
+
+    .sheet-options-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .opt-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 14px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .opt-card:active {
+      transform: scale(0.95);
+    }
+
+    .opt-card.active {
+      background: rgba(139, 142, 255, 0.15);
+      border-color: #8b8eff;
+      box-shadow: 0 0 16px rgba(139, 142, 255, 0.25);
+    }
+
+    .opt-card .opt-ico {
+      font-size: 32px;
+    }
+
+    .opt-card .opt-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #e4e7f5;
+    }
+
+    /* Custom input inside sheet */
+    .custom-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .custom-row input {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      color: #fff;
+      font-family: inherit;
+      outline: none;
+      padding: 10px 14px;
+      font-size: 14px;
+    }
+
+    .custom-row input:focus {
+      border-color: #8b8eff;
+    }
+
+    .custom-emoji-field {
+      width: 54px;
+      text-align: center;
+      font-size: 20px;
+    }
+
+    .custom-name-field {
+      flex: 1;
+    }
+
+    .btn-done {
+      width: 100%;
+      background: #8b8eff;
+      color: #060814;
+      border: none;
+      border-radius: 14px;
+      padding: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-reset-ghost {
+      margin-top: 10px;
+      background: transparent;
+      border: none;
+      color: #6d7395;
+      font-size: 12px;
+      width: 100%;
+      cursor: pointer;
+      padding: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="viewport" id="viewport">
+    <!-- Starry Sky Background -->
+    <div class="sky-canvas" id="skyCanvas">
+      <div class="moon" id="moon"></div>
+    </div>
+
+    <!-- Minimal Sound Toggle Icon -->
+    <button class="sound-btn" id="btnSound" aria-label="Toggle sound">
+      <svg id="soundIconOn" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+      </svg>
+    </button>
+
+    <!-- Top Counter: Clean, uncluttered, serene -->
+    <header class="header-zone">
+      <div class="counter-number" id="counterNum">0</div>
+      <div class="counter-label" id="counterLabel">sheep jumped</div>
+    </header>
+
+    <!-- Center Stage: Items fly up/down smoothly here -->
+    <main class="stage" id="stage"></main>
+
+    <!-- Minimal Bottom: Swipe guide + Tiny item pill -->
+    <footer class="bottom-zone">
+      <div class="swipe-hint" id="swipeHint">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+        </svg>
+        <span>Swipe Up or Down</span>
+      </div>
+
+      <button class="item-pill-btn" id="btnItemPill">
+        <span class="pill-emoji" id="pillEmoji">🐑</span>
+        <span class="pill-title" id="pillTitle">Fluffy Sheep</span>
+        <span class="pill-dots">•••</span>
+      </button>
+    </footer>
+
+    <!-- Minimal Selection Sheet (Opens on pill click) -->
+    <div class="sheet-backdrop" id="sheetBackdrop">
+      <div class="minimal-sheet" id="minimalSheet">
+        <div class="sheet-drag-line"></div>
+        <div class="sheet-options-row" id="presetsRow"></div>
+
+        <!-- Custom Item Input -->
+        <div class="custom-row">
+          <input type="text" id="inputEmoji" class="custom-emoji-field" value="🪙" maxlength="2" placeholder="✨" />
+          <input type="text" id="inputName" class="custom-name-field" placeholder="Custom item (e.g. Coins, Notes)" maxlength="20" />
+          <button class="btn-done" id="btnApplyCustom" style="width: auto; padding: 0 16px;">Set</button>
+        </div>
+
+        <button class="btn-done" id="btnCloseSheet">Done</button>
+        <button class="btn-reset-ghost" id="btnResetCount">Reset Counter</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Presets
+    const PRESETS = [
+      { id: 'sheep', emoji: '🐑', name: 'Sheep', label: 'sheep jumped' },
+      { id: 'cash', emoji: '💵', name: 'Cash', label: 'bills stacked' },
+      { id: 'stars', emoji: '⭐', name: 'Stars', label: 'stars gathered' },
+      { id: 'cats', emoji: '🐱', name: 'Cats', label: 'kittens sleeping' },
+      { id: 'clouds', emoji: '☁️', name: 'Clouds', label: 'clouds drifted' },
+      { id: 'zzz', emoji: '💤', name: 'Zzz', label: 'breaths taken' }
+    ];
+
+    let currentItem = PRESETS[0];
+    let count = 0;
+    let soundEnabled = true;
+    let audioCtx = null;
+
+    // Elements
+    const viewport = document.getElementById('viewport');
+    const stage = document.getElementById('stage');
+    const counterNum = document.getElementById('counterNum');
+    const counterLabel = document.getElementById('counterLabel');
+    const pillEmoji = document.getElementById('pillEmoji');
+    const pillTitle = document.getElementById('pillTitle');
+    const btnItemPill = document.getElementById('btnItemPill');
+    const sheetBackdrop = document.getElementById('sheetBackdrop');
+    const btnCloseSheet = document.getElementById('btnCloseSheet');
+    const presetsRow = document.getElementById('presetsRow');
+    const inputEmoji = document.getElementById('inputEmoji');
+    const inputName = document.getElementById('inputName');
+    const btnApplyCustom = document.getElementById('btnApplyCustom');
+    const btnResetCount = document.getElementById('btnResetCount');
+    const btnSound = document.getElementById('btnSound');
+    const swipeHint = document.getElementById('swipeHint');
+    const skyCanvas = document.getElementById('skyCanvas');
+
+    // Generate gentle stars
+    function initSky() {
+      for (let i = 0; i < 30; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        const size = Math.random() * 2 + 1;
+        star.style.width = size + 'px';
+        star.style.height = size + 'px';
+        star.style.top = Math.random() * 60 + '%';
+        star.style.left = Math.random() * 100 + '%';
+        star.style.setProperty('--dur', (Math.random() * 3 + 2.5) + 's');
+        star.style.animationDelay = (Math.random() * 4) + 's';
+        skyCanvas.appendChild(star);
+      }
+    }
+
+    // Soothing Kalimba Audio Synthesizer
+    const PENTATONIC = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+
+    function playNote(step) {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContextClass();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const freq = PENTATONIC[Math.abs(step) % PENTATONIC.length];
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.85);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.9);
+      } catch (e) {}
+    }
+
+    // Increment with Upwards / Downwards Floating Item Animation
+    function addCount(direction = 'up') {
+      count++;
+      counterNum.textContent = count;
+
+      // Subtle pop on number
+      counterNum.classList.add('pop');
+      setTimeout(() => counterNum.classList.remove('pop'), 180);
+
+      // Create floating item
+      const itemEl = document.createElement('div');
+      itemEl.className = direction === 'up' ? 'flying-item' : 'flying-item-down';
+      itemEl.textContent = currentItem.emoji;
+
+      // Random slight curve & rotation for organic bedtime float
+      const startX = (Math.random() - 0.5) * 80;
+      const endX = startX + (Math.random() - 0.5) * 60;
+      const rotStart = (Math.random() - 0.5) * 20;
+      const rotEnd = (Math.random() - 0.5) * 35;
+
+      itemEl.style.setProperty('--x', `${startX}px`);
+      itemEl.style.setProperty('--x-end', `${endX}px`);
+      itemEl.style.setProperty('--rot-start', `${rotStart}deg`);
+      itemEl.style.setProperty('--rot-end', `${rotEnd}deg`);
+
+      stage.appendChild(itemEl);
+
+      // Add gentle stardust trail
+      for (let i = 0; i < 3; i++) {
+        const dust = document.createElement('div');
+        dust.className = 'dust';
+        const dSize = Math.random() * 3 + 2;
+        dust.style.width = dSize + 'px';
+        dust.style.height = dSize + 'px';
+        dust.style.left = `calc(50% + ${startX + (Math.random() - 0.5) * 40}px)`;
+        dust.style.top = direction === 'up' ? '65%' : '35%';
+        dust.style.setProperty('--dy', `${direction === 'up' ? -50 - Math.random() * 30 : 50 + Math.random() * 30}px`);
+        stage.appendChild(dust);
+        setTimeout(() => dust.remove(), 1200);
+      }
+
+      // Cleanup
+      setTimeout(() => itemEl.remove(), 1400);
+
+      // Audio & subtle haptic
+      playNote(count);
+      if (navigator.vibrate) navigator.vibrate(10);
+
+      // Fade swipe hint once user starts swiping
+      if (count >= 2) {
+        swipeHint.style.opacity = '0.15';
+      }
+    }
+
+    // --- UP-DOWN SWIPE & SCROLL DETECTION ---
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let isSwiping = false;
+    const SWIPE_THRESHOLD = 38; // Sensitive, fluid response
+
+    viewport.addEventListener('touchstart', (e) => {
+      // Don't intercept touches on buttons or sheet
+      if (e.target.closest('.sheet-backdrop') || e.target.closest('button')) return;
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+      isSwiping = true;
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', (e) => {
+      if (!isSwiping) return;
+      const currentY = e.touches[0].clientY;
+      const currentX = e.touches[0].clientX;
+      const deltaY = touchStartY - currentY;
+      const deltaX = touchStartX - currentX;
+
+      // Verify predominantly vertical swipe
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) >= SWIPE_THRESHOLD) {
+        if (deltaY > 0) {
+          // Swiped UP
+          addCount('up');
+        } else {
+          // Swiped DOWN
+          addCount('down');
+        }
+        touchStartY = currentY;
+        touchStartX = currentX;
+      }
+    }, { passive: true });
+
+    viewport.addEventListener('touchend', () => {
+      isSwiping = false;
+    }, { passive: true });
+
+    // Mouse Wheel / Trackpad Scroll (Up or Down)
+    let wheelAccum = 0;
+    const WHEEL_THRESHOLD = 45;
+
+    window.addEventListener('wheel', (e) => {
+      wheelAccum += e.deltaY;
+      if (Math.abs(wheelAccum) >= WHEEL_THRESHOLD) {
+        if (wheelAccum > 0) {
+          addCount('up');
+        } else {
+          addCount('down');
+        }
+        wheelAccum = 0;
+      }
+    }, { passive: true });
+
+    // Tap anywhere on stage to count
+    stage.addEventListener('click', () => {
+      addCount('up');
+    });
+
+    // Preset Selection UI
+    function renderPresets() {
+      presetsRow.innerHTML = '';
+      PRESETS.forEach(p => {
+        const card = document.createElement('div');
+        card.className = `opt-card ${currentItem.id === p.id ? 'active' : ''}`;
+        card.innerHTML = `
+          <span class="opt-ico">${p.emoji}</span>
+          <span class="opt-name">${p.name}</span>
+        `;
+        card.addEventListener('click', () => {
+          setItem(p);
+          sheetBackdrop.classList.remove('open');
+        });
+        presetsRow.appendChild(card);
+      });
+    }
+
+    function setItem(item) {
+      currentItem = item;
+      pillEmoji.textContent = item.emoji;
+      pillTitle.textContent = item.name;
+      counterLabel.textContent = item.label || `${item.name.toLowerCase()} counted`;
+      renderPresets();
+    }
+
+    // Pill Button Opens Minimal Sheet
+    btnItemPill.addEventListener('click', () => {
+      sheetBackdrop.classList.add('open');
+    });
+
+    btnCloseSheet.addEventListener('click', () => {
+      sheetBackdrop.classList.remove('open');
+    });
+
+    sheetBackdrop.addEventListener('click', (e) => {
+      if (e.target === sheetBackdrop) {
+        sheetBackdrop.classList.remove('open');
+      }
+    });
+
+    // Custom Item Apply
+    btnApplyCustom.addEventListener('click', () => {
+      const emoji = inputEmoji.value.trim() || '✨';
+      const name = inputName.value.trim() || 'Dream';
+      const customItem = {
+        id: 'custom_' + Date.now(),
+        emoji: emoji,
+        name: name,
+        label: `${name.toLowerCase()} counted`
+      };
+      setItem(customItem);
+      sheetBackdrop.classList.remove('open');
+    });
+
+    // Reset
+    btnResetCount.addEventListener('click', () => {
+      count = 0;
+      counterNum.textContent = '0';
+      sheetBackdrop.classList.remove('open');
+    });
+
+    // Sound Toggle
+    btnSound.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      btnSound.style.opacity = soundEnabled ? '0.5' : '0.2';
+    });
+
+    // Moon Easter Egg
+    document.getElementById('moon').addEventListener('click', () => {
+      addCount('up');
+    });
+
+    // Boot
+    initSky();
+    renderPresets();
+    setItem(PRESETS[0]);
+  </script>
+</body>
+</html>
