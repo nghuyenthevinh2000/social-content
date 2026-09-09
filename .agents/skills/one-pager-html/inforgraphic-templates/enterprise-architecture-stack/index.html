@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Architecture Stack - Infographic Template</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #ffffff;
+      /* Navy Blue Design System matching other infographic templates */
+      --navy-dark: #102649;
+      --primary-navy: #183b72;
+      --blue-mid: #4a7ad8;
+      --blue-card: #7398ee;
+      --blue-light: #9bc3fd;
+      --card-border: rgba(255, 255, 255, 0.88);
+      --axis-gray: #94a3b8;
+      --divider-color: #cbd5e1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 1618px;
+      height: 752px;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .canvas {
+      width: 1618px;
+      height: 752px;
+      position: relative;
+      background-color: var(--bg);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    /* Left Sidebar Area (x: 0 to 195px) */
+    .sidebar-left {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 195px;
+      height: 752px;
+    }
+
+    /* Layer Left Labels */
+    .layer-label-item {
+      position: absolute;
+      right: 22px;
+      width: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      text-align: right;
+      color: var(--primary-navy);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .label-l1 { top: 37px; height: 114px; }
+    .label-l2 { top: 175px; height: 266px; }
+    .label-l3 { top: 449px; height: 130px; }
+    .label-l4 { top: 585px; height: 130px; }
+
+    /* Vertical Axis Line with Markers at x = 185px */
+    .axis-line {
+      position: absolute;
+      left: 185px;
+      top: 37px;
+      height: 678px;
+      width: 2px;
+      background-color: var(--axis-gray);
+    }
+
+    .axis-marker {
+      position: absolute;
+      left: 182px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--axis-gray);
+      z-index: 2;
+    }
+
+    /* Markers at exact layer boundaries */
+    .marker-l1-top    { top: 37px; }
+    .marker-l1-bottom { top: 147px; }
+    .marker-l2-top    { top: 175px; }
+    .marker-l2-bottom { top: 437px; }
+    .marker-l3-top    { top: 449px; }
+    .marker-l3-bottom { top: 575px; }
+    .marker-l4-top    { top: 585px; }
+    .marker-l4-bottom { top: 711px; }
+
+    /* Dotted Horizontal Guidelines */
+    .dotted-divider {
+      position: absolute;
+      left: 70px;
+      right: 28px;
+      border-top: 1.5px dotted var(--divider-color);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .divider-1 { top: 163px; }
+    .divider-2 { top: 445px; }
+    .divider-3 { top: 582px; }
+
+    /* Right Main Layers Container (x: 195px to 1590px, width: 1395px) */
+    .layers-container {
+      position: absolute;
+      left: 195px;
+      width: 1395px;
+      top: 37px;
+    }
+
+    /* Common Card and Block Styling */
+    .block {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8px 12px;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.35;
+      user-select: none;
+    }
+
+    /* --- LAYER 1: Top Deep Navy Container & Outlined Cards --- */
+    .layer-1 {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1395px;
+      height: 114px;
+      background-color: var(--navy-dark);
+      border-radius: 2px;
+      padding: 10px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .layer-1 .card-slot {
+      border: 1.5px solid var(--card-border);
+      background-color: transparent;
+      border-radius: 2px;
+      height: 100%;
+      flex: 3;
+    }
+
+    .layer-1 .card-slot.slot-compact {
+      flex: 1;
+    }
+
+    /* --- LAYER 2: Primary Blue Capability Blocks --- */
+    .layer-2 {
+      position: absolute;
+      top: 138px;
+      left: 0;
+      width: 1395px;
+      height: 266px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .layer-2 .row-upper {
+      height: 130px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 6px;
+    }
+
+    .layer-2 .row-lower {
+      height: 130px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .layer-2 .block {
+      background-color: var(--blue-mid);
+      border-radius: 2px;
+      height: 100%;
+    }
+
+    /* --- LAYER 3: Soft Sky Blue Services Grid --- */
+    .layer-3 {
+      position: absolute;
+      top: 412px;
+      left: 0;
+      width: 1395px;
+      height: 130px;
+      display: grid;
+      grid-template-columns: 303px 303px 303px 1fr;
+      gap: 6px;
+    }
+
+    .layer-3 .block {
+      background-color: var(--blue-card);
+      border-radius: 2px;
+    }
+
+    .layer-3 .col-single {
+      height: 100%;
+    }
+
+    .layer-3 .col-split-vert {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 6px;
+      height: 100%;
+    }
+
+    .layer-3 .col-nested {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 6px;
+      height: 100%;
+    }
+
+    .layer-3 .sub-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      height: 100%;
+    }
+
+    /* --- LAYER 4: Deep Primary Navy Platform Infrastructure --- */
+    .layer-4 {
+      position: absolute;
+      top: 548px;
+      left: 0;
+      width: 1395px;
+      height: 130px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .layer-4 .block {
+      background-color: var(--primary-navy);
+      border-radius: 2px;
+    }
+
+    .layer-4 .bar-full-top {
+      height: 38px;
+    }
+
+    .layer-4 .row-mid {
+      height: 40px;
+      display: grid;
+      grid-template-columns: 878px 258px 1fr;
+      gap: 6px;
+    }
+
+    .layer-4 .bar-full-bottom {
+      height: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <!-- Left Sidebar: Axis + Layer Labels -->
+    <div class="sidebar-left">
+      <!-- Left Layer Category Labels -->
+      <div class="layer-label-item label-l1" data-role="layer-label-1"></div>
+      <div class="layer-label-item label-l2" data-role="layer-label-2"></div>
+      <div class="layer-label-item label-l3" data-role="layer-label-3"></div>
+      <div class="layer-label-item label-l4" data-role="layer-label-4"></div>
+
+      <!-- Vertical Axis with Markers -->
+      <div class="axis-line"></div>
+      <div class="axis-marker marker-l1-top"></div>
+      <div class="axis-marker marker-l1-bottom"></div>
+      <div class="axis-marker marker-l2-top"></div>
+      <div class="axis-marker marker-l2-bottom"></div>
+      <div class="axis-marker marker-l3-top"></div>
+      <div class="axis-marker marker-l3-bottom"></div>
+      <div class="axis-marker marker-l4-top"></div>
+      <div class="axis-marker marker-l4-bottom"></div>
+    </div>
+
+    <!-- Dotted Horizontal Divider Guidelines -->
+    <div class="dotted-divider divider-1"></div>
+    <div class="dotted-divider divider-2"></div>
+    <div class="dotted-divider divider-3"></div>
+
+    <!-- Right Main Stack Layers -->
+    <div class="layers-container">
+      <!-- Layer 1: Deep Navy Container with Outlined Cards -->
+      <div class="layer-1" data-layer="1">
+        <div class="block card-slot" data-slot="1-1"></div>
+        <div class="block card-slot" data-slot="1-2"></div>
+        <div class="block card-slot" data-slot="1-3"></div>
+        <div class="block card-slot slot-compact" data-slot="1-4"></div>
+      </div>
+
+      <!-- Layer 2: Mid Blue Capability Blocks -->
+      <div class="layer-2" data-layer="2">
+        <!-- Upper Row: 8 Blocks -->
+        <div class="row-upper">
+          <div class="block" data-slot="2-1"></div>
+          <div class="block" data-slot="2-2"></div>
+          <div class="block" data-slot="2-3"></div>
+          <div class="block" data-slot="2-4"></div>
+          <div class="block" data-slot="2-5"></div>
+          <div class="block" data-slot="2-6"></div>
+          <div class="block" data-slot="2-7"></div>
+          <div class="block" data-slot="2-8"></div>
+        </div>
+        <!-- Lower Row: 4 Wide Blocks -->
+        <div class="row-lower">
+          <div class="block" data-slot="2-9"></div>
+          <div class="block" data-slot="2-10"></div>
+          <div class="block" data-slot="2-11"></div>
+          <div class="block" data-slot="2-12"></div>
+        </div>
+      </div>
+
+      <!-- Layer 3: Soft Sky Blue Services Grid -->
+      <div class="layer-3" data-layer="3">
+        <!-- Column 1: Tall Block -->
+        <div class="block col-single" data-slot="3-1"></div>
+        <!-- Column 2: 2 Stacked Blocks -->
+        <div class="col-split-vert">
+          <div class="block" data-slot="3-2"></div>
+          <div class="block" data-slot="3-3"></div>
+        </div>
+        <!-- Column 3: Tall Block -->
+        <div class="block col-single" data-slot="3-4"></div>
+        <!-- Column 4: Top Wide + Bottom 2 Split Blocks -->
+        <div class="col-nested">
+          <div class="block" data-slot="3-5"></div>
+          <div class="sub-grid-2">
+            <div class="block" data-slot="3-6"></div>
+            <div class="block" data-slot="3-7"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer 4: Deep Primary Navy Platform Infrastructure -->
+      <div class="layer-4" data-layer="4">
+        <!-- Top Full Width Bar -->
+        <div class="block bar-full-top" data-slot="4-1"></div>
+        <!-- Middle 3-Column Row -->
+        <div class="row-mid">
+          <div class="block" data-slot="4-2"></div>
+          <div class="block" data-slot="4-3"></div>
+          <div class="block" data-slot="4-4"></div>
+        </div>
+        <!-- Bottom Full Width Bar -->
+        <div class="block bar-full-bottom" data-slot="4-5"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

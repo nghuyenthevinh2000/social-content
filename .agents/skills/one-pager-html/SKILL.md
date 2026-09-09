@@ -1,9 +1,9 @@
 ---
-name: html-visual-chart
+name: one-pager-html
 description: "Use when: the user asks to create a visual chart or infographic, render data as a stunning HTML chart, produce a screenshot of a visual, or save chart output. This skill authors a self-contained HTML file with embedded chart logic, then captures a full-page screenshot using Playwright. All output goes to a dedicated folder under topics/<topic-slug>/."
 ---
 
-# html-visual-chart: Author HTML charts and capture screenshots
+# one-pager-html: Author HTML charts and capture screenshots
 
 ## What this skill does
 
@@ -66,15 +66,18 @@ Before writing any code, decide:
 
 ## Infographic templates
 
-The repo ships with **four production-ready A4 infographic templates**, each fully replicated as a self-contained HTML file. Before writing a chart from scratch, check whether one of these templates fits the user's request — if it does, copy the folder and adapt the content rather than starting fresh.
+The repo ships with **five production-ready infographic templates**, each fully replicated as a self-contained HTML file. Before writing a chart from scratch, check whether one of these templates fits the user's request — if it does, copy the folder and adapt the content rather than starting fresh.
 
 All templates (both the HTML source and the PNG preview) now live inside the skill folder itself:
 
 ```
-$REPO_ROOT/.agents/skills/html-visual-chart/inforgraphic-templates/
+$REPO_ROOT/.agents/skills/one-pager-html/inforgraphic-templates/
 ├── business-plan-summary-report/
 │   ├── index.html      ← ready-to-edit HTML
 │   └── output.png      ← rendered preview
+├── enterprise-architecture-stack/
+│   ├── index.html
+│   └── output.png
 ├── executive-summary-report/
 │   ├── index.html
 │   └── output.png
@@ -91,20 +94,21 @@ $REPO_ROOT/.agents/skills/html-visual-chart/inforgraphic-templates/
 | Folder | Design style |
 |---|---|
 | `business-plan-summary-report/` | White A4 · bold navy headline + brand badge · 3 blue goal cards with floating icon bubbles · audience segmentation table · bar chart |
+| `enterprise-architecture-stack/` | Landscape 16:9 · 4-tier enterprise system stack (Applications, Capabilities, Services, Infrastructure) · multi-grid layout · boundary axis & layer indicators |
 | `executive-summary-report/` | White A4 · full-width navy title · rounded navy pill section headers · wave mesh watermark · icon-list goals (5 items) · bar chart |
 | `financial-performance-report/` | White A4 · blue curved corner wave accents · navy highlight cards · 4-column KPI grid · stacked bar chart · striped footer |
 | `monthly-social-media-report/` | Split header (navy left / white right) · cyan accent stripe · KPI stat cards · multi-series line trend chart · featured post cards · donut chart · cyan-stripe footer |
 
 ### When to use a template
 
-- User asks for a **business plan, executive summary, financial report, or social media report** → pick the matching folder.
+- User asks for a **business plan, executive summary, financial report, social media report, or enterprise architecture / technology stack** → pick the matching folder.
 - User wants a **new topic** in the same visual style → copy the closest folder as a base, then replace data, colors, and copy.
 
 ### How to adapt a template
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
-TEMPLATE_DIR="$REPO_ROOT/.agents/skills/html-visual-chart/inforgraphic-templates"
+TEMPLATE_DIR="$REPO_ROOT/.agents/skills/one-pager-html/inforgraphic-templates"
 
 # 1. Copy the closest template into the topics output area
 cp -r "$TEMPLATE_DIR/executive-summary-report" "$REPO_ROOT/topics/<new-slug>"
