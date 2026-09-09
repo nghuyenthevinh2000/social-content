@@ -1,6 +1,6 @@
 ---
 name: html-visual-chart
-description: "Use when: the user asks to create a visual chart or infographic, render data as a stunning HTML chart, produce a screenshot of a visual, or save chart output to a visual folder. This skill authors a self-contained HTML file with embedded chart logic, then captures a full-page screenshot using Playwright. All output goes to a dedicated folder under visual/<topic-slug>/."
+description: "Use when: the user asks to create a visual chart or infographic, render data as a stunning HTML chart, produce a screenshot of a visual, or save chart output. This skill authors a self-contained HTML file with embedded chart logic, then captures a full-page screenshot using Playwright. All output goes to a dedicated folder under topics/<topic-slug>/."
 ---
 
 # html-visual-chart: Author HTML charts and capture screenshots
@@ -12,7 +12,7 @@ You produce a **self-contained, single-file HTML visual** (charts, infographics,
 The workflow is:
 
 1. **Plan** — understand the data, visual goal, and folder target
-2. **Author** — write `index.html` to `visual/<topic-slug>/`
+2. **Author** — write `index.html` to `topics/<topic-slug>/`
 3. **Screenshot** — run `npx playwright screenshot --full-page` to capture `output.png`
 4. **Verify** — confirm the PNG exists and embed it in your reply
 
@@ -37,7 +37,7 @@ All visual output paths in this skill use `$REPO_ROOT` as the base. Never hardco
 All visual work lives under:
 
 ```
-$REPO_ROOT/visual/<topic-slug>/
+$REPO_ROOT/topics/<topic-slug>/
 ├── index.html      the chart (self-contained)
 └── output.png      full-page screenshot
 ```
@@ -48,7 +48,7 @@ Create the folder before writing files:
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
-mkdir -p "$REPO_ROOT/visual/<topic-slug>"
+mkdir -p "$REPO_ROOT/topics/<topic-slug>"
 ```
 
 ---
@@ -106,15 +106,15 @@ $REPO_ROOT/.agents/skills/html-visual-chart/inforgraphic-templates/
 REPO_ROOT=$(git rev-parse --show-toplevel)
 TEMPLATE_DIR="$REPO_ROOT/.agents/skills/html-visual-chart/inforgraphic-templates"
 
-# 1. Copy the closest template into the visual output area
-cp -r "$TEMPLATE_DIR/executive-summary-report" "$REPO_ROOT/visual/<new-slug>"
+# 1. Copy the closest template into the topics output area
+cp -r "$TEMPLATE_DIR/executive-summary-report" "$REPO_ROOT/topics/<new-slug>"
 
-# 2. Edit visual/<new-slug>/index.html with new data/colors
+# 2. Edit topics/<new-slug>/index.html with new data/colors
 
 # 3. Re-shoot using the A4 viewport
 npx playwright screenshot --viewport-size "900,1273" --wait-for-timeout 2000 \
-  "file://$REPO_ROOT/visual/<new-slug>/index.html" \
-  "$REPO_ROOT/visual/<new-slug>/output.png"
+  "file://$REPO_ROOT/topics/<new-slug>/index.html" \
+  "$REPO_ROOT/topics/<new-slug>/output.png"
 ```
 
 > **A4 viewport**: all templates are 900 × 1273 px. Always use `--viewport-size "900,1273"` (not `--full-page`) when re-shooting A4-style infographics.
@@ -229,8 +229,8 @@ SLUG="<topic-slug>"
 npx playwright screenshot \
   --full-page \
   --wait-for-timeout 2000 \
-  "file://$REPO_ROOT/visual/$SLUG/index.html" \
-  "$REPO_ROOT/visual/$SLUG/output.png"
+  "file://$REPO_ROOT/topics/$SLUG/index.html" \
+  "$REPO_ROOT/topics/$SLUG/output.png"
 ```
 
 Flags:
@@ -256,7 +256,7 @@ If Playwright browsers are not installed: npx playwright install chromium
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
-ls -lh "$REPO_ROOT/visual/<slug>/output.png"
+ls -lh "$REPO_ROOT/topics/<slug>/output.png"
 ```
 
 1. Confirm output.png exists with non-zero size
@@ -282,9 +282,9 @@ ls -lh "$REPO_ROOT/visual/<slug>/output.png"
 | Task | Command / action |
 |---|---|
 | Resolve repo root | REPO_ROOT=$(git rev-parse --show-toplevel) |
-| Create folder | mkdir -p "$REPO_ROOT/visual/<slug>" |
-| Write HTML | write_to_file -> visual/<slug>/index.html (repo-relative) |
-| Screenshot | npx playwright screenshot --full-page --wait-for-timeout 2000 "file://$REPO_ROOT/visual/<slug>/index.html" "$REPO_ROOT/visual/<slug>/output.png" |
-| Verify | ls -lh "$REPO_ROOT/visual/<slug>/output.png" |
+| Create folder | mkdir -p "$REPO_ROOT/topics/<slug>" |
+| Write HTML | write_to_file -> topics/<slug>/index.html (repo-relative) |
+| Screenshot | npx playwright screenshot --full-page --wait-for-timeout 2000 "file://$REPO_ROOT/topics/<slug>/index.html" "$REPO_ROOT/topics/<slug>/output.png" |
+| Verify | ls -lh "$REPO_ROOT/topics/<slug>/output.png" |
 | Install browsers | npx playwright install chromium |
 | View output | Embed with ![...](file:///resolved-absolute-path/output.png) |
