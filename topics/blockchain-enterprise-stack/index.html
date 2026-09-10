@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Sovereign Financial Stack: MPC Custody • ZK Privacy • Quant Risk Curators</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      /* Refined Institutional Navy & Enterprise Palette */
+      --navy-dark: #0A192F;
+      --primary-navy: #112240;
+      --blue-mid: #2563EB;
+      --blue-card: #3B82F6;
+      --blue-light: #60A5FA;
+      --blue-subtle: #93C5FD;
+      
+      /* Pillar Accents */
+      --cyan-accent: #38BDF8;
+      --purple-accent: #C084FC;
+      --emerald-accent: #34D399;
+      --amber-accent: #FBBF24;
+      
+      --card-border: rgba(255, 255, 255, 0.85);
+      --axis-gray: #64748B;
+      --divider-color: #CBD5E1;
+      --text-dark: #0F172A;
+      --text-muted: #64748B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 1618px;
+      height: 752px;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .canvas {
+      width: 1618px;
+      height: 752px;
+      position: relative;
+      background-color: var(--bg);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    /* Top Institutional Header Banner */
+    .top-header {
+      position: absolute;
+      top: 8px;
+      left: 32px;
+      right: 28px;
+      height: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .brand-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--navy-dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-badge {
+      background: var(--navy-dark);
+      color: #FFFFFF;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 3px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .header-pills {
+      display: flex;
+      gap: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .header-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-muted);
+    }
+    .header-pill strong {
+      color: var(--navy-dark);
+    }
+
+    /* Left Sidebar Area (x: 0 to 195px) */
+    .sidebar-left {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 195px;
+      height: 752px;
+    }
+
+    /* Layer Left Labels */
+    .layer-label-item {
+      position: absolute;
+      right: 22px;
+      width: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      text-align: right;
+      color: var(--navy-dark);
+    }
+
+    .layer-label-item .layer-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--blue-mid);
+      letter-spacing: 0.08em;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+    }
+
+    .layer-label-item .layer-name {
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+
+    .layer-label-item .layer-sub {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-top: 3px;
+      line-height: 1.25;
+    }
+
+    .label-l1 { top: 37px; height: 114px; }
+    .label-l2 { top: 175px; height: 266px; }
+    .label-l3 { top: 449px; height: 130px; }
+    .label-l4 { top: 585px; height: 130px; }
+
+    /* Vertical Axis Line with Markers at x = 185px */
+    .axis-line {
+      position: absolute;
+      left: 185px;
+      top: 37px;
+      height: 678px;
+      width: 2px;
+      background-color: var(--axis-gray);
+    }
+
+    .axis-marker {
+      position: absolute;
+      left: 182px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--axis-gray);
+      z-index: 2;
+    }
+
+    /* Markers at exact layer boundaries */
+    .marker-l1-top    { top: 37px; }
+    .marker-l1-bottom { top: 147px; }
+    .marker-l2-top    { top: 175px; }
+    .marker-l2-bottom { top: 437px; }
+    .marker-l3-top    { top: 449px; }
+    .marker-l3-bottom { top: 575px; }
+    .marker-l4-top    { top: 585px; }
+    .marker-l4-bottom { top: 711px; }
+
+    /* Dotted Horizontal Guidelines */
+    .dotted-divider {
+      position: absolute;
+      left: 70px;
+      right: 28px;
+      border-top: 1.5px dotted var(--divider-color);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .divider-1 { top: 163px; }
+    .divider-2 { top: 445px; }
+    .divider-3 { top: 582px; }
+
+    /* Right Main Layers Container (x: 195px to 1590px, width: 1395px) */
+    .layers-container {
+      position: absolute;
+      left: 195px;
+      width: 1395px;
+      top: 37px;
+    }
+
+    /* Common Card and Block Styling */
+    .block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 8px 12px;
+      color: #ffffff;
+      user-select: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* --- LAYER 1: Top Deep Navy Container & Outlined Cards --- */
+    .layer-1 {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1395px;
+      height: 114px;
+      background-color: var(--navy-dark);
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .layer-1 .card-slot {
+      border: 1.5px solid var(--card-border);
+      background-color: rgba(255, 255, 255, 0.04);
+      border-radius: 3px;
+      height: 100%;
+      flex: 3;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      text-align: left;
+    }
+
+    .layer-1 .card-slot.slot-compact {
+      flex: 1.1;
+      text-align: center;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .card-slot .tag-header {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--cyan-accent);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .card-slot .main-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #FFFFFF;
+      line-height: 1.25;
+      margin-bottom: 4px;
+    }
+
+    .card-slot .sub-desc {
+      font-size: 11px;
+      color: #CBD5E1;
+      line-height: 1.35;
+    }
+
+    /* --- LAYER 2: Primary Blue Capability Blocks --- */
+    .layer-2 {
+      position: absolute;
+      top: 138px;
+      left: 0;
+      width: 1395px;
+      height: 266px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .layer-2 .row-upper {
+      height: 130px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 6px;
+    }
+
+    .layer-2 .row-lower {
+      height: 130px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .layer-2 .block {
+      background-color: var(--blue-mid);
+      border-radius: 3px;
+      height: 100%;
+      padding: 8px 10px;
+      text-align: left;
+      justify-content: space-between;
+    }
+
+    .row-upper .block {
+      background: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%);
+      border-top: 2px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .row-upper .engine-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.9;
+    }
+    .badge-mpc { color: #A5F3FC; }
+    .badge-zk  { color: #F5D0FE; }
+    .badge-quant { color: #A7F3D0; }
+
+    .row-upper .engine-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      line-height: 1.25;
+      color: #FFFFFF;
+      margin: 2px 0;
+    }
+
+    .row-upper .engine-desc {
+      font-size: 10px;
+      line-height: 1.3;
+      color: #E2E8F0;
+    }
+
+    /* Lower 4 Wide Pillar Blocks */
+    .row-lower .block {
+      background: linear-gradient(145deg, #1E40AF 0%, #1E3A8A 100%);
+      padding: 10px 14px;
+      justify-content: flex-start;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .row-lower .pillar-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .pillar-mpc { color: var(--cyan-accent); }
+    .pillar-zk  { color: var(--purple-accent); }
+    .pillar-risk { color: var(--emerald-accent); }
+    .pillar-guard { color: var(--amber-accent); }
+
+    .row-lower .pillar-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin-bottom: 5px;
+      letter-spacing: -0.01em;
+    }
+
+    .row-lower .pillar-bullets {
+      font-size: 10.5px;
+      line-height: 1.4;
+      color: #E2E8F0;
+    }
+
+    /* --- LAYER 3: Soft Sky Blue Services Grid --- */
+    .layer-3 {
+      position: absolute;
+      top: 412px;
+      left: 0;
+      width: 1395px;
+      height: 130px;
+      display: grid;
+      grid-template-columns: 303px 303px 303px 1fr;
+      gap: 6px;
+    }
+
+    .layer-3 .block {
+      background-color: var(--blue-card);
+      border-radius: 3px;
+      padding: 6px 10px;
+      text-align: left;
+      overflow: hidden;
+    }
+
+    .layer-3 .col-single {
+      height: 100%;
+      background: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 6px;
+    }
+
+    .layer-3 .col-split-vert {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 6px;
+      height: 100%;
+    }
+
+    .layer-3 .col-nested {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 6px;
+      height: 100%;
+    }
+
+    .layer-3 .sub-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      height: 100%;
+    }
+
+    .service-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #DBEAFE;
+    }
+
+    .service-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #FFFFFF;
+      line-height: 1.2;
+      margin: 1px 0;
+    }
+
+    .service-desc {
+      font-size: 9.5px;
+      color: #F1F5F9;
+      line-height: 1.25;
+    }
+
+    /* --- LAYER 4: Deep Primary Navy Platform Infrastructure --- */
+    .layer-4 {
+      position: absolute;
+      top: 548px;
+      left: 0;
+      width: 1395px;
+      height: 130px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .layer-4 .block {
+      background-color: var(--primary-navy);
+      border-radius: 3px;
+      text-align: left;
+    }
+
+    .layer-4 .bar-full-top {
+      height: 38px;
+      background: linear-gradient(90deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+      border-left: 4px solid var(--purple-accent);
+      padding: 0 16px;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .layer-4 .row-mid {
+      height: 40px;
+      display: grid;
+      grid-template-columns: 878px 258px 1fr;
+      gap: 6px;
+    }
+
+    .layer-4 .row-mid .block {
+      padding: 0 14px;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .layer-4 .bar-full-bottom {
+      height: 40px;
+      background: #0A192F;
+      border-left: 4px solid var(--emerald-accent);
+      padding: 0 16px;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .infra-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      color: #93C5FD;
+      text-transform: uppercase;
+    }
+
+    .infra-text {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #FFFFFF;
+    }
+
+    .infra-sub {
+      font-size: 10px;
+      color: #94A3B8;
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <!-- Top Institutional Header -->
+    <div class="top-header">
+      <div class="brand-title">
+        <span>SOVEREIGN DIGITAL ASSET CAPITAL ARCHITECTURE</span>
+        <span class="brand-badge">INSTITUTIONAL SUITE</span>
+      </div>
+      <div class="header-pills">
+        <div class="header-pill"><span>PILLAR I:</span> <strong>MPC CUSTODY</strong></div>
+        <div class="header-pill">•</div>
+        <div class="header-pill"><span>PILLAR II:</span> <strong>ZK PRIVACY</strong></div>
+        <div class="header-pill">•</div>
+        <div class="header-pill"><span>PILLAR III:</span> <strong>QUANT RISK CURATORS</strong></div>
+        <div class="header-pill">•</div>
+        <div class="header-pill"><span>GOVERNANCE:</span> <strong>SOC2 / FIPS 140-3</strong></div>
+      </div>
+    </div>
+
+    <!-- Left Sidebar: Axis + Layer Labels -->
+    <div class="sidebar-left">
+      <!-- Left Layer Category Labels -->
+      <div class="layer-label-item label-l1" data-role="layer-label-1">
+        <div class="layer-num">Tier 01</div>
+        <div class="layer-name">Access & Quorum Control</div>
+        <div class="layer-sub">Institutional Portals & Policy Engine</div>
+      </div>
+      <div class="layer-label-item label-l2" data-role="layer-label-2">
+        <div class="layer-num">Tier 02</div>
+        <div class="layer-name">Core Stack Capabilities</div>
+        <div class="layer-sub">MPC • ZK Proofs • Quant Engine</div>
+      </div>
+      <div class="layer-label-item label-l3" data-role="layer-label-3">
+        <div class="layer-num">Tier 03</div>
+        <div class="layer-name">Services & Vault Fabric</div>
+        <div class="layer-sub">Curated Vaults & Dark Liquidity</div>
+      </div>
+      <div class="layer-label-item label-l4" data-role="layer-label-4">
+        <div class="layer-num">Tier 04</div>
+        <div class="layer-name">Infrastructure & Settlement</div>
+        <div class="layer-sub">Enclaves • Verifiers • Settlement Rails</div>
+      </div>
+
+      <!-- Vertical Axis with Markers -->
+      <div class="axis-line"></div>
+      <div class="axis-marker marker-l1-top"></div>
+      <div class="axis-marker marker-l1-bottom"></div>
+      <div class="axis-marker marker-l2-top"></div>
+      <div class="axis-marker marker-l2-bottom"></div>
+      <div class="axis-marker marker-l3-top"></div>
+      <div class="axis-marker marker-l3-bottom"></div>
+      <div class="axis-marker marker-l4-top"></div>
+      <div class="axis-marker marker-l4-bottom"></div>
+    </div>
+
+    <!-- Dotted Horizontal Divider Guidelines -->
+    <div class="dotted-divider divider-1"></div>
+    <div class="dotted-divider divider-2"></div>
+    <div class="dotted-divider divider-3"></div>
+
+    <!-- Right Main Stack Layers -->
+    <div class="layers-container">
+      
+      <!-- ========================================== -->
+      <!-- LAYER 1: Deep Navy Container with Outlined Cards -->
+      <!-- ========================================== -->
+      <div class="layer-1" data-layer="1">
+        <!-- Slot 1-1: Institutional Trading Blotter -->
+        <div class="block card-slot" data-slot="1-1">
+          <div class="tag-header">ACCESS INTERFACE</div>
+          <div class="main-title">Institutional Blotter & Treasury Portal</div>
+          <div class="sub-desc">FIX Protocol 4.4/5.0 Gateway • gRPC / REST API Suite • Real-time Cross-Venue Inventory Blotter & Sub-Custody Reconciliation</div>
+        </div>
+
+        <!-- Slot 1-2: Policy & Quorum Rules -->
+        <div class="block card-slot" data-slot="1-2">
+          <div class="tag-header">AUTHORIZATION MATRIX</div>
+          <div class="main-title">Enterprise Quorum & Policy Rules Engine</div>
+          <div class="sub-desc">Role-Based Access Control (RBAC) • Multi-Tier Timelocks (&lt;$500k instant, &gt;$10M dual-board) • Dynamic Velocity Limiters</div>
+        </div>
+
+        <!-- Slot 1-3: Compliance & Regulatory Hub -->
+        <div class="block card-slot" data-slot="1-3">
+          <div class="tag-header">REGULATORY INTERFACE</div>
+          <div class="main-title">Compliance Hub & Auditor Portal</div>
+          <div class="sub-desc">Asymmetric Viewing Key Portal • FATF Travel Rule Orchestrator • Automated Proof of Solvency & Daily Tax Verification</div>
+        </div>
+
+        <!-- Slot 1-4: Compact Assurance Badge -->
+        <div class="block card-slot slot-compact" data-slot="1-4">
+          <div class="tag-header" style="color: var(--emerald-accent);">TRUST POSTURE</div>
+          <div class="main-title" style="font-size: 12px; margin-bottom: 2px;">SOC2 Type II</div>
+          <div class="sub-desc" style="font-size: 10px; color: #94A3B8;">ISO 27001 • FIPS 140-3 Non-Custodial Legal Title</div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- LAYER 2: Primary Blue Capability Blocks -->
+      <!-- ========================================== -->
+      <div class="layer-2" data-layer="2">
+        <!-- Upper Row: 8 Modular Specialized Engine Blocks -->
+        <div class="row-upper">
+          <!-- 2-1: Shard 1 -->
+          <div class="block" data-slot="2-1">
+            <div class="engine-badge badge-mpc">MPC SHARD #1</div>
+            <div class="engine-title">Client Dedicated HSM</div>
+            <div class="engine-desc">FIPS 140-3 Level 3 CloudHSM under client VPC authority.</div>
+          </div>
+          <!-- 2-2: Shard 2 -->
+          <div class="block" data-slot="2-2">
+            <div class="engine-badge badge-mpc">MPC SHARD #2</div>
+            <div class="engine-title">CISO Hardware Key</div>
+            <div class="engine-desc">Biometric hardware key (YubiKey Bio / Ledger Enterprise).</div>
+          </div>
+          <!-- 2-3: Shard 3 -->
+          <div class="block" data-slot="2-3">
+            <div class="engine-badge badge-mpc">MPC SHARD #3</div>
+            <div class="engine-title">Nitro Enclave TSS</div>
+            <div class="engine-desc">Automated co-signer enclave verifying deterministic policy.</div>
+          </div>
+          <!-- 2-4: Shard 4 -->
+          <div class="block" data-slot="2-4">
+            <div class="engine-badge badge-mpc">MPC SHARD #4</div>
+            <div class="engine-title">Legal Escrow Shard</div>
+            <div class="engine-desc">Air-gapped cold storage with regulated trust custodian.</div>
+          </div>
+          <!-- 2-5: ZK Commitments -->
+          <div class="block" data-slot="2-5">
+            <div class="engine-badge badge-zk">ZK STATE</div>
+            <div class="engine-title">Sparse Merkle Trees</div>
+            <div class="engine-desc">Pedersen commitments hiding balance, asset & address state.</div>
+          </div>
+          <!-- 2-6: Fast Prover -->
+          <div class="block" data-slot="2-6">
+            <div class="engine-badge badge-zk">ZK PROVER</div>
+            <div class="engine-title">Halo2 / PLONK Core</div>
+            <div class="engine-desc">Ultra-fast client/enclave proving (&lt;1.2s state transition).</div>
+          </div>
+          <!-- 2-7: Dynamic LTV -->
+          <div class="block" data-slot="2-7">
+            <div class="engine-badge badge-quant">QUANT ENGINE</div>
+            <div class="engine-title">Dynamic LTV Model</div>
+            <div class="engine-desc">Live orderbook depth & volatility-calibrated haircuts.</div>
+          </div>
+          <!-- 2-8: VaR Simulation -->
+          <div class="block" data-slot="2-8">
+            <div class="engine-badge badge-quant">QUANT ENGINE</div>
+            <div class="engine-title">99% Monte Carlo VaR</div>
+            <div class="engine-desc">Sub-second rolling risk & crisis stress simulation.</div>
+          </div>
+        </div>
+
+        <!-- Lower Row: 4 Major Pillar Engines -->
+        <div class="row-lower">
+          <!-- 2-9: Pillar 1 MPC Custody -->
+          <div class="block" data-slot="2-9" style="border-top: 3px solid var(--cyan-accent);">
+            <div class="pillar-tag pillar-mpc">PILLAR I • CUSTODY</div>
+            <div class="pillar-title">Threshold MPC Engine</div>
+            <div class="pillar-bullets">
+              • CGGMP21 (ECDSA) & FROST (Ed25519) TSS<br>
+              • 3-of-4 Hybrid Non-Custodial Quorum Topology<br>
+              • 24-Hour Proactive Secret Sharing Key Rotation
+            </div>
+          </div>
+          <!-- 2-10: Pillar 2 ZK Privacy -->
+          <div class="block" data-slot="2-10" style="border-top: 3px solid var(--purple-accent);">
+            <div class="pillar-tag pillar-zk">PILLAR II • PRIVACY</div>
+            <div class="pillar-title">Zero-Knowledge State Shield</div>
+            <div class="pillar-bullets">
+              • Shielded UTXO State & Cryptographic Nullifiers<br>
+              • 100% Alpha Preservation & Zero Mempool MEV<br>
+              • Asymmetric Auditor Viewing Keys for Regulators
+            </div>
+          </div>
+          <!-- 2-11: Pillar 3 Quant Risk -->
+          <div class="block" data-slot="2-11" style="border-top: 3px solid var(--emerald-accent);">
+            <div class="pillar-tag pillar-risk">PILLAR III • RISK CURATION</div>
+            <div class="pillar-title">Algorithmic Risk Underwriting</div>
+            <div class="pillar-bullets">
+              • Real-Time Depth Telemetry Replacing Static Ratios<br>
+              • Automated Collateral Haircuts on Volatility Spikes<br>
+              • Programmatic Tranche Structuring & Yield Hedging
+            </div>
+          </div>
+          <!-- 2-12: VolGuard Circuit Breakers -->
+          <div class="block" data-slot="2-12" style="border-top: 3px solid var(--amber-accent);">
+            <div class="pillar-tag pillar-guard">EXECUTION SAFEGUARD</div>
+            <div class="pillar-title">VolGuard Circuit Breakers</div>
+            <div class="pillar-bullets">
+              • Level 1: 5% Spread Dislocation Soft Leverage Freeze<br>
+              • Level 2: 15% Shock Hard Halt & Treasury Pivot<br>
+              • Private CoW Dutch Auctions Bypassing Public AMMs
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- LAYER 3: Soft Sky Blue Services Grid -->
+      <!-- ========================================== -->
+      <div class="layer-3" data-layer="3">
+        <!-- Column 1: Institutional Dark Liquidity -->
+        <div class="block col-single" data-slot="3-1" style="border-top: 2px solid #93C5FD;">
+          <div>
+            <div class="service-badge">TRADING FABRIC</div>
+            <div class="service-title">Institutional Dark Liquidity</div>
+          </div>
+          <div class="service-desc">
+            Private CoW batch auctions • MEV-shielded RFQ matching with institutional market makers • Zero pre-trade public leakage.
+          </div>
+        </div>
+
+        <!-- Column 2: 2 Stacked Compliance Blocks -->
+        <div class="col-split-vert">
+          <div class="block" data-slot="3-2">
+            <div class="service-badge">REGULATORY PROOF</div>
+            <div class="service-title">Proof of Solvency</div>
+            <div class="service-desc">Cryptographic proof: Σ(Assets) ≥ Σ(Liabilities) with zero account balance exposure.</div>
+          </div>
+          <div class="block" data-slot="3-3">
+            <div class="service-badge">IDENTITY INTEGRITY</div>
+            <div class="service-title">ZK-AML & Sanctions</div>
+            <div class="service-desc">Proof of non-sanctioned status on OFAC registry with zero PII stored or leaked.</div>
+          </div>
+        </div>
+
+        <!-- Column 3: Curated ERC-4626 Vaults -->
+        <div class="block col-single" data-slot="3-4" style="border-top: 2px solid #93C5FD;">
+          <div>
+            <div class="service-badge">CAPITAL EFFICIENCY</div>
+            <div class="service-title">Curated ERC-4626 Vaults</div>
+          </div>
+          <div class="service-desc">
+            Tranche yield: Conservative (T-Bills / Prime Lending), Balanced (Basis Trades), Tactical Alpha (Cross-DEX Arbitrage).
+          </div>
+        </div>
+
+        <!-- Column 4: Nested Telemetry & Auxiliary Services -->
+        <div class="col-nested">
+          <!-- Top Wide: Real-Time Telemetry Oracles -->
+          <div class="block" data-slot="3-5">
+            <div class="service-badge">DATA FEED</div>
+            <div class="service-title">Telemetry & Liquidity Oracles</div>
+            <div class="service-desc">CeFi/DEX orderbook depth feeds with sub-second slippage curve computation.</div>
+          </div>
+          <!-- Bottom 2 Split Blocks -->
+          <div class="sub-grid-2">
+            <div class="block" data-slot="3-6">
+              <div class="service-badge">SECURITY</div>
+              <div class="service-title">24h Key Resharing</div>
+              <div class="service-desc">Proactive secret rotation.</div>
+            </div>
+            <div class="block" data-slot="3-7">
+              <div class="service-badge">COMPLIANCE</div>
+              <div class="service-title">Auditor Viewing Keys</div>
+              <div class="service-desc">Time-bound regulatory audit.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- LAYER 4: Deep Primary Navy Platform Infrastructure -->
+      <!-- ========================================== -->
+      <div class="layer-4" data-layer="4">
+        <!-- Top Full Width Bar -->
+        <div class="block bar-full-top" data-slot="4-1">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <span class="infra-tag" style="color: var(--purple-accent);">VERIFICATION FABRIC</span>
+            <span class="infra-text">Groth16 / Plonky2 On-Chain Verifier Smart Contracts • Recursive Proof Aggregation Layer • Confidential Server Enclaves</span>
+          </div>
+          <span class="infra-sub">&lt; 300,000 GAS ON EVM • SUCCINCT CLIENT VERIFICATION</span>
+        </div>
+
+        <!-- Middle 3-Column Row -->
+        <div class="row-mid">
+          <div class="block" data-slot="4-2">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="infra-tag">SETTLEMENT RAILS</span>
+              <span class="infra-text" style="font-size: 11px;">Ethereum Mainnet • EVM L2 Rollups (Arbitrum, Base, Optimism) • Solana SVM • Permissioned Bank Subnets</span>
+            </div>
+          </div>
+          <div class="block" data-slot="4-3">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="infra-tag">HARDWARE</span>
+              <span class="infra-text" style="font-size: 11px;">AWS Nitro Enclaves • GCP Confidential Space</span>
+            </div>
+          </div>
+          <div class="block" data-slot="4-4">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="infra-tag">RECOVERY</span>
+              <span class="infra-text" style="font-size: 11px;">Multi-Region Escrow Quorum</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Full Width Bar -->
+        <div class="block bar-full-bottom" data-slot="4-5">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <span class="infra-tag" style="color: var(--emerald-accent);">SOVEREIGNTY & TRUST</span>
+            <span class="infra-text">100% Non-Custodial Legal Title • Bankruptcy-Remote Vault Isolation • Zero Platform Commingling / Rehypothecation</span>
+          </div>
+          <span class="infra-sub">99.99% ENTERPRISE AVAILABILITY SLA • SOC2 TYPE II CERTIFIED</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
