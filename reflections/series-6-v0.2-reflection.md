@@ -1,7 +1,7 @@
 # Reflection: Hành trình tái cấu trúc & Đột phá Story Engine cho Deep Tech Bản Sao Series #6 (v0.1 -> v0.2)
 
 > **Ngày thực hiện**: 2026-08-06  
-> **Bài viết**: Deep Tech Creator Series #6 (`posts/deep-tech-ban-sao/series-6.md`)  
+> **Bài viết**: Deep Tech Creator Series #6 (`topics/deep-tech-ban-sao/series-6.md`)  
 > **Khung phương pháp**: `story-engine` skill + `writing-style-analysis.md`
 
 ---
@@ -16,7 +16,7 @@ Mục tiêu của phiên làm việc là nâng cấp bài viết **Series #6** t
 
 ### Bước 1: Khảo sát & Phân tích bối cảnh (Research & Baseline Analysis)
 - Đọc và thẩm định tài liệu kỹ năng `story-engine` (bao gồm `SKILL.md` và `integrity-interrogation.md`).
-- Đọc bộ phân tích phong cách `posts/deep-tech-ban-sao/writing-style-analysis.md` để nắm giữ các nguyên tắc cốt lõi: dùng ẩn dụ dân gian/tích cổ, giọng văn "chúng mình" khiêm tốn, kết bài bằng hình ảnh trăn trở mở, footer CTA tu tập/giác ngộ.
+- Đọc bộ phân tích phong cách `topics/deep-tech-ban-sao/writing-style-analysis.md` để nắm giữ các nguyên tắc cốt lõi: dùng ẩn dụ dân gian/tích cổ, giọng văn "chúng mình" khiêm tốn, kết bài bằng hình ảnh trăn trở mở, footer CTA tu tập/giác ngộ.
 - Đọc đối chiếu các bài viết trước (`series-2`, `series-3`, `series-4`, `series-5`) và bản nháp `series-6-v0.1.md`.
 
 ### Bước 2: Thẩm định Integrity Phase 1 ban đầu (Vấn đề ở v0.1)
@@ -42,8 +42,8 @@ Dệt toàn bộ các điểm đột phá trên vào cấu trúc bài viết chu
 
 ### Bước 6: Lưu trữ & Kiểm thử File
 Đã ghi lại nội dung v0.2 hoàn chỉnh vào 2 vị trí file mục tiêu:
-1. `file:///Users/thevinhnguyen/.buzz/REPOS/social-content/posts/deep-tech-ban-sao/series-6-v0.2.md`
-2. `file:///Users/thevinhnguyen/.buzz/REPOS/social-content/posts/deep-tech-ban-sao/series-6.md`
+1. `file:///Users/thevinhnguyen/.buzz/REPOS/social-content/topics/deep-tech-ban-sao/series-6-v0.2.md`
+2. `file:///Users/thevinhnguyen/.buzz/REPOS/social-content/topics/deep-tech-ban-sao/series-6.md`
 
 ---
 

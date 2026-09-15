@@ -15,7 +15,7 @@ A comprehensive collection of 34 curated, self-contained HTML slide deck templat
 
 Use this skill whenever:
 - The user requests an HTML slide presentation, deck, pitch, keynote, or workshop slides.
-- The user wants to adapt or convert researched topics/posts into a presentation format.
+- The user wants to adapt or convert researched topics into a presentation format.
 - The user asks to explore or browse presentation design templates.
 - The user wants a custom visual slide deck with interactive keyboard navigation.
 
