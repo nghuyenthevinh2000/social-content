@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Báo cáo 1 Trang: AI Social Content Engine</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            corp: {
+              navy: '#0B192C',
+              dark: '#050D1A',
+              card: '#0F223D',
+              border: '#1E3A5F',
+              cyan: '#00E5FF',
+              blue: '#2563EB',
+              accent: '#38BDF8',
+              gold: '#F59E0B',
+              emerald: '#10B981',
+              slate: '#94A3B8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #050D1A;
+      color: #F1F5F9;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-image: 
+        radial-gradient(circle at 12% 10%, rgba(0, 229, 255, 0.08) 0%, transparent 35%),
+        radial-gradient(circle at 88% 25%, rgba(37, 99, 235, 0.1) 0%, transparent 40%),
+        radial-gradient(circle at 50% 85%, rgba(245, 158, 11, 0.05) 0%, transparent 45%);
+    }
+
+    .glass-panel {
+      background: rgba(15, 34, 61, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(30, 58, 95, 0.8);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .glass-panel-glow {
+      background: linear-gradient(135deg, rgba(15, 34, 61, 0.9) 0%, rgba(11, 25, 44, 0.85) 100%);
+      border: 1px solid rgba(0, 229, 255, 0.35);
+      box-shadow: 0 0 25px -5px rgba(0, 229, 255, 0.15);
+    }
+
+    .badge-glow {
+      box-shadow: 0 0 15px rgba(0, 229, 255, 0.25);
+    }
+  </style>
+</head>
+<body class="min-h-screen py-8 px-6 flex justify-center">
+
+  <div class="w-full max-w-[1160px] space-y-6">
+
+    <!-- ================= 1. HEADER SECTION ================= -->
+    <header class="glass-panel rounded-2xl p-7 relative overflow-hidden border border-corp-border">
+      <div class="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-3">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            Hệ Thống Sản Xuất Nội Dung &amp; Xây Dựng Thương Hiệu Chuyên Gia
+          </div>
+          <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
+            AI Social Content Engine
+          </h1>
+          <p class="text-corp-slate text-sm md:text-base mt-2 max-w-2xl leading-relaxed">
+            Hệ sinh thái tự động hóa quy trình viết: biến các nghiên cứu kỹ thuật phức tạp và trải nghiệm thực tế của người sáng lập thành những bài viết thu hút, khẳng định uy tín chuyên môn và sẵn sàng xuất bản trên nhiều nền tảng.
+          </p>
+        </div>
+
+        <div class="bg-corp-card/90 border border-cyan-500/30 rounded-xl p-4 flex items-center gap-4 shrink-0 shadow-lg">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-2xl">
+            <i class="fa-solid fa-microchip"></i>
+          </div>
+          <div>
+            <div class="text-[11px] font-mono text-cyan-400 uppercase tracking-wider font-semibold">Tình Trạng Vận Hành</div>
+            <div class="text-white font-bold text-base">Hoạt Động Ổn Định</div>
+            <div class="text-xs text-corp-slate font-mono">6 Kỹ năng tích hợp · 6 Định dạng xuất bản</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================= 2. EXECUTIVE KPI CARDS ================= -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <!-- KPI 1 -->
+      <div class="glass-panel rounded-xl p-5 border-l-4 border-l-cyan-400">
+        <div class="flex items-center justify-between text-corp-slate text-xs font-mono uppercase mb-2">
+          <span>Bài Viết Đã Sản Xuất</span>
+          <i class="fa-solid fa-file-lines text-cyan-400"></i>
+        </div>
+        <div class="text-3xl font-extrabold text-white font-mono tracking-tight" id="kpi-posts">35</div>
+        <div class="text-xs text-cyan-300/80 mt-1 font-medium">Đã phân loại vào 11 chủ đề chuyên biệt</div>
+      </div>
+
+      <!-- KPI 2 -->
+      <div class="glass-panel rounded-xl p-5 border-l-4 border-l-emerald-400">
+        <div class="flex items-center justify-between text-corp-slate text-xs font-mono uppercase mb-2">
+          <span>Báo Cáo 1-Pager &amp; Slide</span>
+          <i class="fa-solid fa-layer-group text-emerald-400"></i>
+        </div>
+        <div class="text-3xl font-extrabold text-white font-mono tracking-tight" id="kpi-visuals">5 + 1</div>
+        <div class="text-xs text-emerald-300/80 mt-1 font-medium">5 bản 1-Pager HTML + 1 Bộ Slide hoàn chỉnh</div>
+      </div>
+
+      <!-- KPI 3 -->
+      <div class="glass-panel rounded-xl p-5 border-l-4 border-l-blue-400">
+        <div class="flex items-center justify-between text-corp-slate text-xs font-mono uppercase mb-2">
+          <span>Chủ Đề Chuyên Sâu</span>
+          <i class="fa-solid fa-folder-tree text-blue-400"></i>
+        </div>
+        <div class="text-3xl font-extrabold text-white font-mono tracking-tight">11</div>
+        <div class="text-xs text-blue-300/80 mt-1 font-medium">Deep Tech, Mindset, Blockchain, Agent...</div>
+      </div>
+
+      <!-- KPI 4 -->
+      <div class="glass-panel rounded-xl p-5 border-l-4 border-l-amber-400">
+        <div class="flex items-center justify-between text-corp-slate text-xs font-mono uppercase mb-2">
+          <span>Chất Lượng Câu Văn</span>
+          <i class="fa-solid fa-shield-halved text-amber-400"></i>
+        </div>
+        <div class="text-3xl font-extrabold text-white font-mono tracking-tight">100%</div>
+        <div class="text-xs text-amber-300/80 mt-1 font-medium">Lọc sạch sáo ngữ &amp; văn mẫu máy móc</div>
+      </div>
+    </section>
+
+    <!-- ================= 3. WHAT OUTCOMES IT PRODUCES ================= -->
+    <section class="glass-panel rounded-2xl p-6 border border-corp-border">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-sm">
+          <i class="fa-solid fa-bullseye"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-white tracking-tight">Giá Trị Cốt Lõi Mang Lại</h2>
+          <p class="text-xs text-corp-slate">Cách hệ thống biến tri thức kỹ thuật thành nội dung có sức lan tỏa và tạo dựng lòng tin</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Outcome 1 -->
+        <div class="bg-corp-card/60 rounded-xl p-4 border border-corp-border/80 hover:border-cyan-500/40 transition">
+          <div class="text-cyan-400 text-lg mb-2"><i class="fa-solid fa-crown"></i></div>
+          <h3 class="text-sm font-bold text-white mb-1">Định Hình Tiếng Nói Chuyên Gia</h3>
+          <p class="text-xs text-corp-slate leading-relaxed">
+            Chuyển các khái niệm công nghệ trừu tượng (ZK-proofs, kinh tế token, mạng lưới đa tác tử) thành góc nhìn mạch lạc, dễ đồng cảm, thu hút sự chú ý của đối tác và nhà đầu tư.
+          </p>
+        </div>
+
+        <!-- Outcome 2 -->
+        <div class="bg-corp-card/60 rounded-xl p-4 border border-corp-border/80 hover:border-emerald-500/40 transition">
+          <div class="text-emerald-400 text-lg mb-2"><i class="fa-solid fa-recycle"></i></div>
+          <h3 class="text-sm font-bold text-white mb-1">1 Ý Tưởng Ra 6 Định Dạng</h3>
+          <p class="text-xs text-corp-slate leading-relaxed">
+            Từ một tài liệu nghiên cứu gốc, hệ thống tự động phát triển thành: bài viết LinkedIn, chuỗi tweet ngắn trên X, bộ ảnh carousel, trang Landing Page, báo cáo tóm tắt 1-pager và slide trình bày PDF.
+          </p>
+        </div>
+
+        <!-- Outcome 3 -->
+        <div class="bg-corp-card/60 rounded-xl p-4 border border-corp-border/80 hover:border-amber-500/40 transition">
+          <div class="text-amber-400 text-lg mb-2"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+          <h3 class="text-sm font-bold text-white mb-1">Không Dùng Văn Mẫu Sáo Rỗng</h3>
+          <p class="text-xs text-corp-slate leading-relaxed">
+            Kiểm tra tính thực tế trước khi viết để tránh giáo điều. Sau khi hoàn thành bản nháp, áp dụng bộ lọc Humanizer để xóa bỏ câu từ chung chung, giọng văn máy móc và các từ nối thừa.
+          </p>
+        </div>
+
+        <!-- Outcome 4 -->
+        <div class="bg-corp-card/60 rounded-xl p-4 border border-corp-border/80 hover:border-purple-500/40 transition">
+          <div class="text-purple-400 text-lg mb-2"><i class="fa-solid fa-dna"></i></div>
+          <h3 class="text-sm font-bold text-white mb-1">Giữ Trọn Giọng Văn Của Tác Giả</h3>
+          <p class="text-xs text-corp-slate leading-relaxed">
+            Phân tích thói quen hành văn, nhịp ngắt câu và cách đặt vấn đề đặc trưng của từng người, đảm bảo bài viết luôn giữ được phong cách tự nhiên, đúng với cá tính thật của tác giả.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 4. PLATFORMS & PORTFOLIO BREAKDOWN ================= -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- PLATFORMS SERVED (5 cols) -->
+      <section class="lg:col-span-5 glass-panel rounded-2xl p-6 border border-corp-border flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 text-sm">
+              <i class="fa-solid fa-network-wired"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-white tracking-tight">Kênh Phân Phối &amp; Khung Viết Bài</h2>
+              <p class="text-xs text-corp-slate">Tối ưu cấu trúc theo từng nền tảng cụ thể</p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <!-- Platform 1 -->
+            <div class="p-3 rounded-xl bg-corp-card/60 border border-corp-border flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fa-brands fa-linkedin-in text-sm"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-white">LinkedIn (Kênh Trọng Tâm)</div>
+                <div class="text-[11px] text-corp-slate mt-0.5">
+                  Áp dụng khung <span class="text-cyan-400 font-semibold">Jescil-Richard</span> (mạch kể 10 bước dẫn dắt cảm xúc) và công thức <span class="text-cyan-400 font-semibold">Jasmin Alić</span> (cặp mở đầu Hook + Rehook, 5 kiểu cấu trúc giữ chân người đọc).
+                </div>
+              </div>
+            </div>
+
+            <!-- Platform 2 -->
+            <div class="p-3 rounded-xl bg-corp-card/60 border border-corp-border flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-slate-700/30 text-white flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fa-brands fa-x-twitter text-sm"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-white">X / Twitter</div>
+                <div class="text-[11px] text-corp-slate mt-0.5">
+                  Chuỗi bài ngắn súc tích, câu mở đầu kích thích tò mò, nhịp viết trực diện và phân tích kỹ thuật cô đọng.
+                </div>
+              </div>
+            </div>
+
+            <!-- Platform 3 -->
+            <div class="p-3 rounded-xl bg-corp-card/60 border border-corp-border flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fa-brands fa-instagram text-sm"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-white">Instagram &amp; Mạng Trực Quan</div>
+                <div class="text-[11px] text-corp-slate mt-0.5">
+                  Bài viết dạng ảnh lướt nhiều trang (carousel), tóm tắt thông điệp trên từng slide, chú thích ngắn gọn, dễ xem.
+                </div>
+              </div>
+            </div>
+
+            <!-- Platform 4 -->
+            <div class="p-3 rounded-xl bg-corp-card/60 border border-corp-border flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fa-solid fa-newspaper text-sm"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-white">Substack, Blog &amp; Bài Viết Chuyên Sâu</div>
+                <div class="text-[11px] text-corp-slate mt-0.5">
+                  35 chuyên luận phân tích đa chiều, bài học sau các dự án công nghệ, tài liệu hướng dẫn chuẩn cấu trúc Diátaxis.
+                </div>
+              </div>
+            </div>
+
+            <!-- Platform 5 -->
+            <div class="p-3 rounded-xl bg-corp-card/60 border border-corp-border flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fa-solid fa-file-invoice text-sm"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-white">Slide Trình Bày &amp; Báo Cáo 1 Trang</div>
+                <div class="text-[11px] text-corp-slate mt-0.5">
+                  5 bản 1-Pager HTML độc lập + Bộ Slide thuyết trình ZK (HTML/PDF) + thư viện 34 mẫu giao diện chuyên nghiệp.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-corp-border/60 flex items-center justify-between text-[11px] font-mono text-cyan-400">
+          <span><i class="fa-solid fa-check-circle mr-1 text-emerald-400"></i> Xuất bản đồng bộ nhiều kênh</span>
+          <span>Không cần định dạng thủ công</span>
+        </div>
+      </section>
+
+      <!-- PORTFOLIO BREAKDOWN (7 cols) -->
+      <section class="lg:col-span-7 glass-panel rounded-2xl p-6 border border-corp-border flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-sm">
+                <i class="fa-solid fa-chart-pie"></i>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-white tracking-tight">Nội Dung Đã Sản Xuất</h2>
+                <p class="text-xs text-corp-slate">35 bài viết &amp; ấn phẩm phân bổ theo 4 nhóm chủ đề thực tế</p>
+              </div>
+            </div>
+            <div class="text-xs font-mono text-emerald-400 font-bold bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-500/30">
+              Kiểm Tra Tại Repo
+            </div>
+          </div>
+
+          <!-- Chart & Metrics Row -->
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center mb-4">
+            <div class="sm:col-span-5 flex justify-center">
+              <div class="relative w-44 h-44">
+                <canvas id="postsChart"></canvas>
+              </div>
+            </div>
+            <div class="sm:col-span-7 space-y-2.5">
+              <!-- Series 1 -->
+              <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-corp-card/50 border border-corp-border/60">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full bg-cyan-400"></span>
+                  <span class="font-semibold text-white">Chuỗi Deep Tech "Bản Sao"</span>
+                </div>
+                <div class="font-mono text-right">
+                  <span class="text-white font-bold">15 bài</span>
+                  <span class="text-cyan-300 text-[10px] ml-1">(43%)</span>
+                </div>
+              </div>
+
+              <!-- Series 2 -->
+              <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-corp-card/50 border border-corp-border/60">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                  <span class="font-semibold text-white">Tâm Thế Founder &amp; Triết Lý</span>
+                </div>
+                <div class="font-mono text-right">
+                  <span class="text-white font-bold">8 bài</span>
+                  <span class="text-blue-300 text-[10px] ml-1">(23%)</span>
+                </div>
+              </div>
+
+              <!-- Series 3 -->
+              <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-corp-card/50 border border-corp-border/60">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                  <span class="font-semibold text-white">Đa Agent, Nhận Thức &amp; Thực Chiến</span>
+                </div>
+                <div class="font-mono text-right">
+                  <span class="text-white font-bold">7 bài</span>
+                  <span class="text-emerald-300 text-[10px] ml-1">(20%)</span>
+                </div>
+              </div>
+
+              <!-- Series 4 -->
+              <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-corp-card/50 border border-corp-border/60">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                  <span class="font-semibold text-white">Blockchain &amp; Hạ Tầng Doanh Nghiệp</span>
+                </div>
+                <div class="font-mono text-right">
+                  <span class="text-white font-bold">5 bài</span>
+                  <span class="text-amber-300 text-[10px] ml-1">(14%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Production Assets Summary Table -->
+          <div class="rounded-xl overflow-hidden border border-corp-border bg-corp-card/40">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-corp-card border-b border-corp-border text-corp-slate font-mono text-[10px] uppercase">
+                <tr>
+                  <th class="py-2 px-3">Loại Hình Ấn Phẩm</th>
+                  <th class="py-2 px-3">Số Lượng</th>
+                  <th class="py-2 px-3">Nội Dung Tiêu Biểu Trong Topics</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-corp-border/60 text-[11px] text-slate-300">
+                <tr>
+                  <td class="py-2 px-3 font-medium text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-lines text-cyan-400"></i> Bài Viết &amp; Chuyên Luận
+                  </td>
+                  <td class="py-2 px-3 font-semibold text-cyan-300"><span class="font-mono">35</span> bài viết</td>
+                  <td class="py-2 px-3 text-corp-slate">Deep Tech (15), Mindset (8), Blockchain (5), Agent Relay (2), Nhận thức (2), Du học sinh (1)...</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-medium text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-line text-emerald-400"></i> Báo Cáo 1-Pager Trực Quan
+                  </td>
+                  <td class="py-2 px-3 font-semibold text-emerald-300"><span class="font-mono">5</span> bản HTML</td>
+                  <td class="py-2 px-3 text-corp-slate">Blockchain Stack, HuggingFace Leaks, Logos RFP-017, Hồ sơ AI Engineer Sơn Trần (Song ngữ)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-medium text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-layer-group text-amber-400"></i> Slide Thuyết Trình &amp; Mẫu
+                  </td>
+                  <td class="py-2 px-3 font-semibold text-amber-300"><span class="font-mono">1</span> bộ + <span class="font-mono">34</span> mẫu</td>
+                  <td class="py-2 px-3 text-corp-slate">Bộ ZK Commercialization (HTML + PDF), thư viện 34 mẫu slide HTML chuẩn doanh nghiệp</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-medium text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-folder-tree text-blue-400"></i> Tài Liệu Nghiên Cứu &amp; Specs
+                  </td>
+                  <td class="py-2 px-3 font-semibold text-blue-300"><span class="font-mono">11</span> tài liệu</td>
+                  <td class="py-2 px-3 text-corp-slate">4 hồ sơ nghiên cứu sâu Logos RFP-017 + 7 đặc tả kỹ thuật kiến trúc LEZ, Privacy &amp; Vesting</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-medium text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-glasses text-purple-400"></i> Hồ Sơ Giọng Văn Tác Giả
+                  </td>
+                  <td class="py-2 px-3 font-semibold text-purple-300"><span class="font-mono">6</span> hồ sơ</td>
+                  <td class="py-2 px-3 text-corp-slate">Phân tích văn phong Jasmin Alić, Ryan Law, phong cách chuỗi Deep Tech...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ================= 5. THE 3-PHASE AGENTIC WORKFLOW PIPELINE ================= -->
+    <section class="glass-panel rounded-2xl p-6 border border-corp-border">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-sm">
+          <i class="fa-solid fa-diagram-project"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-white tracking-tight">Quy Trình 3 Bước Đảm Bảo Chất Lượng</h2>
+          <p class="text-xs text-corp-slate">Kiểm duyệt tính trung thực trước khi viết và loại bỏ giọng văn máy móc sau khi hoàn thành bản nháp</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
+        <!-- Phase 1 -->
+        <div class="rounded-xl p-4 bg-corp-card/60 border border-corp-border relative">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-500/30">Bước 1</span>
+            <span class="text-xs text-corp-slate font-mono">Cổng Kiểm Duyệt 1</span>
+          </div>
+          <h3 class="text-sm font-bold text-white mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-cat text-cyan-400"></i> Thẩm Định Giá Trị Câu Chuyện
+          </h3>
+          <p class="text-xs text-corp-slate leading-relaxed mb-3">
+            Trả lời câu hỏi: Câu chuyện này có đáng để kể không? Rà soát tính chân thực, trải nghiệm thực tế, mâu thuẫn cốt lõi và bài học thực sự trước khi bắt đầu viết bất kỳ dòng nào.
+          </p>
+          <div class="text-[11px] text-cyan-300/90 bg-cyan-950/40 p-2.5 rounded-lg border border-cyan-500/20 space-y-1">
+            <div class="flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px] text-cyan-400"></i> Đánh giá tính thuyết phục trước khi viết</div>
+            <div class="flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px] text-cyan-400"></i> Loại bỏ bài học bề nổi và sáo rỗng</div>
+          </div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="rounded-xl p-4 bg-corp-card/60 border border-corp-border relative">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-500/30">Bước 2</span>
+            <span class="text-xs text-corp-slate font-mono">Cổng Kiểm Duyệt 2</span>
+          </div>
+          <h3 class="text-sm font-bold text-white mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-shapes text-blue-400"></i> Định Hình Phong Cách &amp; Chuẩn Kênh
+          </h3>
+          <p class="text-xs text-corp-slate leading-relaxed mb-3">
+            Áp dụng các cấu trúc bài viết đã được chứng minh hiệu quả. Phỏng vấn ngắn để lấy bối cảnh, khớp khung mở bài cuốn hút và căn chỉnh câu từ theo đúng chất giọng của người viết.
+          </p>
+          <div class="text-[11px] text-blue-300/90 bg-blue-950/40 p-2.5 rounded-lg border border-blue-500/20 space-y-1">
+            <div class="flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px] text-blue-400"></i> Lựa chọn khung bài phù hợp với cảm xúc chủ đạo</div>
+            <div class="flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px] text-blue-400"></i> Căn chỉnh nhịp điệu câu theo phong cách riêng</div>
+          </div>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="rounded-xl p-4 bg-corp-card/60 border border-corp-border relative">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30">Bước 3</span>
+            <span class="text-xs text-corp-slate font-mono">Cổng Kiểm Duyệt 3</span>
+          </div>
+          <h3 class="text-sm font-bold text-white mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-pen-fancy text-emerald-400"></i> Tẩy Văn Mẫu AI &amp; Xuất Đồ Họa
+          </h3>
+          <p class="text-xs text-corp-slate leading-relaxed mb-3">
+            Rà soát bản thảo theo bộ tiêu chí chống văn mẫu AI: xóa bỏ từ nối gượng gạo, câu bị động và từ hoa mỹ sáo rỗng. Tự động chụp và xuất hình ảnh trực quan chất lượng cao bằng Playwright.
+          </p>
+          <div class="text-[11px] text-emerald-300/90 bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-500/20 space-y-1">
+            <div class="flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px] text-emerald-400"></i> 0% câu từ sáo rỗng, máy móc</div>
+            <div class="flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px] text-emerald-400"></i> Tự động xuất hình ảnh độ nét cao chuẩn khổ 1200px &amp; A4</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Chart.js Init Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const ctx = document.getElementById('postsChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Chuỗi Deep Tech "Bản Sao"', 'Tâm Thế Founder & Triết Lý', 'Đa Agent, Nhận Thức & Thực Chiến', 'Blockchain & Doanh Nghiệp'],
+          datasets: [{
+            data: [15, 8, 7, 5],
+            backgroundColor: [
+              '#00E5FF',
+              '#2563EB',
+              '#10B981',
+              '#F59E0B'
+            ],
+            borderColor: '#0F223D',
+            borderWidth: 3,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.parsed || 0;
+                  return `${label}: ${value} bài viết`;
+                }
+              }
+            }
+          },
+          cutout: '70%',
+          animation: {
+            duration: 800
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
