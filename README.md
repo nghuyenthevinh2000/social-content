@@ -19,4 +19,5 @@ This repository contains specialized agent skills, topic research, draft posts, 
 | --- | --- |
 | [`topics/`](./topics/) | Unified thematic content directories containing written posts, article series, deep-dive research, presentations, and visual assets organized by topic slug for smooth narrative continuation. |
 | [`reflections/`](./reflections/) | Style DNA reports, creator style analyses, and retrospective reviews (e.g., produced by `writing-style-analyzer`). |
+| [`projects/`](./projects/) | Dedicated sub-projects and external repositories managed as submodules (e.g., [`projects/innovation-research`](./projects/innovation-research/)). |
 | [`.agents/skills/`](./.agents/skills/) | Custom agent skills and workflows powering the content generation, analysis, humanization, presentation design, and refinement pipeline. |
