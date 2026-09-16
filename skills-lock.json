@@ -1,17 +1,23 @@
 {
   "version": 1,
   "skills": {
-    "documentation": {
-      "source": "mcollina/skills",
-      "sourceType": "github",
-      "skillPath": "skills/documentation/SKILL.md",
-      "computedHash": "9a43f2e8ebb01dbc162ad78d865ff9e20bf20270e0514095c3bf3f1ac43599c6"
-    },
     "beautiful-html-templates": {
       "source": "zarazhangrui/beautiful-html-templates",
       "sourceType": "github",
       "skillPath": "SKILL.md",
       "computedHash": "eff9e67ac17a685c2a148fc216985eff3279c393181510470a95c51d23d0e1e4"
+    },
+    "branding": {
+      "source": "cofoundy/brand-skills",
+      "sourceType": "local",
+      "skillPath": "SKILL.md",
+      "computedHash": "d0734c5360060d13885d35bbdd783c2bdfddb02d5b9a8669a2ebbed75a9432e4"
+    },
+    "documentation": {
+      "source": "mcollina/skills",
+      "sourceType": "github",
+      "skillPath": "skills/documentation/SKILL.md",
+      "computedHash": "9a43f2e8ebb01dbc162ad78d865ff9e20bf20270e0514095c3bf3f1ac43599c6"
     },
     "humanizer": {
       "source": "blader/humanizer",

@@ -1,0 +1,106 @@
+{
+  "skill_name": "branding",
+  "evals": [
+    {
+      "id": 1,
+      "workflow": "strategy",
+      "prompt": "I have a new branding client — it's a sustainable skincare brand for Indian women aged 25-40. They filled out the questionnaire. Help me build the brand strategy.",
+      "expected_output": "Should recognize this is a filled-questionnaire scenario and proceed to generate the full brand strategy report. Should produce all 12 sections: brand origin, vision, mission, values, goals, target audience with personas, brand personality, brand voice, competitor analysis, positioning, differentiation, and tagline suggestions. Should write in a confident, editorial voice — not generic or AI-sounding. Should include India-specific context in audience and competitor sections. Should offer 3-5 tagline options.",
+      "assertions": [
+        "Generates all 12 report sections",
+        "Writes in confident editorial voice, not AI-sounding",
+        "Includes audience personas with real-feeling detail",
+        "Includes competitor analysis with named competitors",
+        "Offers 3-5 tagline options with rationale",
+        "Uses brand-specific language throughout, not generic filler",
+        "Positioning section includes both narrative and statement"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "workflow": "strategy",
+      "prompt": "I have a new branding client and need to start collecting information. Can you help me?",
+      "expected_output": "Should recognize this as a fresh-start scenario and present the full brand questionnaire. Should present all 5 sections of the questionnaire in clean, formatted structure: The Basics, Audience & Market, Brand Values & Personality, Brand Personality Sliders, and Goals. Should wait for the user to fill it out before generating the report.",
+      "assertions": [
+        "Presents the questionnaire (not the report)",
+        "Includes all 5 questionnaire sections",
+        "Includes personality slider questions",
+        "Presents in clean, formatted structure",
+        "Instructs user to fill out before proceeding"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "workflow": "audit",
+      "prompt": "Something feels off with our brand. We've been growing but the brand hasn't kept up. Can you help us figure out what's wrong?",
+      "expected_output": "Should recognize this as a brand audit situation triggered by 'something feels off'. Should ask for brand materials to review (website, social, guidelines). Should conduct the audit across all 6 dimensions. Should produce a scored scorecard. Should list what's working, what's not working, and prioritized recommendations.",
+      "assertions": [
+        "Triggers on 'something feels off' phrasing",
+        "Requests brand materials before auditing",
+        "Audits all 6 dimensions",
+        "Produces a scored scorecard",
+        "Lists strengths specifically",
+        "Lists issues with evidence and impact",
+        "Provides prioritized recommendations (immediate, short-term, long-term)"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "workflow": "audit",
+      "prompt": "our brand feels outdated",
+      "expected_output": "Should trigger on casual phrasing. Should ask diagnostic questions to understand whether this is a visual identity problem, positioning problem, or both. Should not assume it's just a logo refresh.",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Asks diagnostic questions",
+        "Does not assume it's purely a visual identity problem",
+        "May reference rebranding workflow if deeper change is needed"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "workflow": "audit",
+      "prompt": "Audit our brand. We have a brand book in docs/brand/ and our site is live at example.com. We also have an old landing-v1 repo and a newer landing-v2 repo.",
+      "expected_output": "Should establish the source of truth before scoring: confirm which repo/site is the CURRENT production touchpoint (landing-v2 vs landing-v1) and whether the brand book is still current, rather than assuming the brand book or the first repo found is ground truth. Should treat the brand book as 'declared' and production as 'real', score the live brand, and surface the declared-vs-real gap as a primary finding — explicitly distinguishing stale docs (documentation debt) from real drift.",
+      "assertions": [
+        "Asks which repo/site is the current production version before scoring",
+        "Does not assume the brand book or first repo found is ground truth",
+        "Treats docs as 'declared' and production as 'real'",
+        "Scores the live brand, not the documented brand, when they diverge",
+        "Surfaces the declared-vs-real gap as a primary finding",
+        "Distinguishes stale docs (documentation debt) from real drift"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "workflow": "positioning",
+      "prompt": "We make project management software but we're tired of competing with Asana and Monday. They're too big. How do we find a position we can own?",
+      "expected_output": "Should recognize this is a competitive positioning problem. Should help reframe the category (not just 'project management' — what specific audience or use case can be owned?). Should map the competitive landscape and identify open territory. Should produce a positioning statement. Should address what the brand refuses to be.",
+      "assertions": [
+        "Addresses competitive positioning problem directly",
+        "Challenges the category framing",
+        "Maps competitive landscape",
+        "Identifies open or underserved territory",
+        "Produces a positioning statement",
+        "Includes 'what this brand refuses to be' section"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "workflow": "positioning",
+      "prompt": "positioning statement",
+      "expected_output": "Should trigger on the keyword phrase. Should recognize there is no brand context and ask for the minimum information needed: category, audience, key differentiator, and competitors.",
+      "assertions": [
+        "Triggers on keyword phrase",
+        "Asks for context before producing positioning",
+        "Does not generate a generic positioning statement without information"
+      ],
+      "files": []
+    }
+  ]
+}
