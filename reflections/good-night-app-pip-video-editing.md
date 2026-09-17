@@ -27,7 +27,7 @@ Mục tiêu của bài toán là tạo ra một video demo sản phẩm phong c�
 ### 2.1. Thử Thách 1: Metadata xoay của iPhone (`Display Matrix`) & Không gian màu HEVC 10-bit
 
 * **Hiện tượng**: File `talk.MOV` xuất ra từ iPhone báo kích thước gốc trong stream là `1920x1080` (ngang) kèm side data `Display Matrix: rotation of -90.00 degrees` và định dạng màu `yuv420p10le` (HDR/Dolby Vision).
-* **Bài học**: Nếu chỉ đọc width/height thuần qua regex hoặc parser ngây thơ, code sẽ tính toán tọa độ sai lệch 90 độ. 
+* **Bài học**: Nếu chỉ đọc width/height thuần qua regex hoặc parser ngây thơ, code sẽ tính toán tọa độ sai lệch 90 độ.
 * **Cách xử lý**: Dựa trên cơ chế `autorotate` mặc định của FFmpeg để giải mã đúng tỉ lệ khung hình thực tế là `1080x1920` (dọc), từ đó thực hiện các bước crop chuẩn xác.
 
 ---
@@ -35,7 +35,7 @@ Mục tiêu của bài toán là tạo ra một video demo sản phẩm phong c�
 ### 2.2. Thử Thách 2: Cắt Mặt Chính Xác Tránh "Cắt Mất Cằm" (Visual Inspection Loop)
 
 * **Hiện tượng**: Nếu crop hình vuông tâm tuyệt đối `(in_w-900)/2` và `(in_h-900)/2`, khuôn mặt sẽ bị lệch hoặc bị đứt ngang trán/cằm.
-* **Quy trình giải quyết**: 
+* **Quy trình giải quyết**:
   Thay vì đoán mò pixel, hệ thống đã thực hiện vòng lặp **trích xuất khung hình mẫu $\rightarrow$ kiểm tra thị giác (Visual Inspection)**:
   * Thử nghiệm 1: `Y=220` $\rightarrow$ Quá cao, mất miệng và cằm.
   * Thử nghiệm 2: `Y=480` $\rightarrow$ Đã thấy cằm nhưng đường cong tròn phía dưới vẫn cấn râu.
@@ -49,7 +49,7 @@ Một câu hỏi rất hay gặp khi làm video composite: *Tại sao không g�
 
 Thực tế, quá trình compositing video đòi hỏi tách rời **tính trong suốt (transparency)** và **vẽ viền (decorating)** theo thứ tự 3 tầng:
 
-```
+```text
 [Layer 3 - Top]       ring.png            (Vẽ viền trắng sắc nét)
                             ▲
 [Layer 2 - Middle]    talk.MOV + mask.png (Đục lỗ video vuông thành hình tròn)
@@ -73,7 +73,7 @@ Thực tế, quá trình compositing video đòi hỏi tách rời **tính trong
 
 Khi người dùng ghi âm lại lời thoại mới (`talk.MOV` rút gọn từ 14.5s xuống còn **8.17s**), trong khi `app.mov` dài **14.48s**:
 
-* **Nguy cơ**: 
+* **Nguy cơ**:
   * Nếu dùng `shortest=1` thuần túy: Video bị ngắt cụt ở giây thứ 8, làm mất đoạn demo đổi sang tiền đô và đếm tiền phía sau.
   * Nếu để mặc định: Khuôn mặt người nói sẽ **bị đông cứng (freeze frame)** từ giây 8.2 đến giây 14.5 như một cuộc gọi video bị lag.
 * **Giải pháp đột phá**:
@@ -108,6 +108,7 @@ python3 make_pip.py --position top_right --size 320
 ```
 
 Các tọa độ được tính toán tự động:
+
 * `bottom_right`: `x=W-w-margin`, `y=H-h-margin`
 * `bottom_center`: `x=(W-w)/2`, `y=H-h-(margin*3)` (tránh chạm bottom bar)
 * `top_right`: `x=W-w-margin`, `y=margin*2`

@@ -11,7 +11,7 @@
 
 This topic directory is organized into three dedicated modules for easy navigation:
 
-```
+```text
 topics/logos-rfp-017/
 ├── README.md                                  # [Current File] Master Directory & Overview
 │
@@ -65,16 +65,19 @@ flowchart TD
 ```
 
 ### 1. The Multi-Billion Dollar Opportunity
+
 * **Massive Captive Market:** Over **$97.43B in token unlocks** occurred in 2025 alone (*Tokenomist*). Every token launched on the Logos ecosystem must escrow tokens via vesting.
 * **M&A & Buyout Precedent:** In February 2026, **Payward (Kraken)** acquired enterprise vesting leader **Magna** after it achieved **$60B in peak TVL**, validating token vesting infrastructure as an indispensable institutional asset.
 * **The 100% Privacy Vacuum:** Across 10 incumbent protocols surveyed (**Magna, Sablier, Streamflow, Hedgey, Jupiter Lock**), **zero competitors offer privacy**. Building on LEZ creates an uncontested monopoly on high-net-worth founders, VC funds, and institutional whales who refuse to have their unlock dates front-run.
 
 ### 2. Core Architectural Model
+
 * **Public Macro-State vs Private Micro-Settlement:** The macro parameters (total token lock, cliff date, linear duration, beneficiary pubkey) remain publicly auditable on-chain. When claimed, tokens are credited straight into an encrypted **shielded private account**, preventing MEV front-running and wallet clustering.
 * **Three Schedule Types:** Cliff + Linear (Teams/VCs), Fully Linear (Advisors/Grants), and Milestone-Based (Qualitative deliverable tranches).
 * **Universal Revocation Invariant:** Already-vested tokens remain 100% claimable forever; unvested tokens return to the creator upon cancellation.
 
 ### 3. Logos Ecosystem Support Package
+
 * **Grant Funding:** Tier Large (L) non-dilutive milestone-based grant.
 * **Developer Tools:** SPEL framework (`#[lez_program]` macros, IDL generator, typed Rust/TS client generator).
 * **Distribution:** Pre-built distribution into the **Logos Basecamp** Desktop Store and standard integration across all LEZ Launchpads ([RFP-015](ref-specs/RFP-015-bonding-curve-launchpad.md)/[RFP-016](ref-specs/RFP-016-lbp-launchpad.md)).
@@ -84,14 +87,14 @@ flowchart TD
 ## 🔗 Quick Navigation Links
 
 * 📊 **1-Pager Briefs:**
-  - [Visual HTML 1-Pager](1-pager/index.html)
-  - [Executive Markdown 1-Pager](1-pager/one-pager-rfp-017.md)
-  - [Rendered Preview PNG](1-pager/preview.png)
+  * [Visual HTML 1-Pager](1-pager/index.html)
+  * [Executive Markdown 1-Pager](1-pager/one-pager-rfp-017.md)
+  * [Rendered Preview PNG](1-pager/preview.png)
 * 🔬 **Research Deep-Dives:**
-  - [01. Specification Deep-Dive](research/01-rfp-017-specification-deep-dive.md)
-  - [02. Privacy & LEZ Architecture](research/02-privacy-mechanisms-lez-architecture.md)
-  - [03. Competitive Landscape & M&A Benchmark](research/03-competitive-landscape-market-analysis.md)
-  - [04. Technical Implementation Blueprint](research/04-technical-implementation-blueprint.md)
+  * [01. Specification Deep-Dive](research/01-rfp-017-specification-deep-dive.md)
+  * [02. Privacy & LEZ Architecture](research/02-privacy-mechanisms-lez-architecture.md)
+  * [03. Competitive Landscape & M&A Benchmark](research/03-competitive-landscape-market-analysis.md)
+  * [04. Technical Implementation Blueprint](research/04-technical-implementation-blueprint.md)
 * 📄 **Upstream Reference Documents:**
-  - [RFP-017 Full Raw Specification](ref-specs/RFP-017-token-vesting-raw.md)
-  - [Token Vesting Ecosystem Survey](ref-specs/token-vesting-ecosystem-raw.md)
+  * [RFP-017 Full Raw Specification](ref-specs/RFP-017-token-vesting-raw.md)
+  * [Token Vesting Ecosystem Survey](ref-specs/token-vesting-ecosystem-raw.md)

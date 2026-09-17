@@ -32,6 +32,7 @@ flowchart TD
 ```
 
 ### What is LEZ (Logos Execution Zone)?
+
 * **zkVM Execution:** LEZ is a programmable layer built on top of **RISC Zero zkVM**. All program executions produce succinct cryptographic zero-knowledge proofs of computational integrity.
 * **Dual-State System:** LEZ supports both transparent public accounts and shielded private accounts natively within the same execution environment.
 * **SPEL Framework:** An Anchor-inspired declarative Rust framework providing `#[lez_program]` macros, automatic IDL generation, client SDK bindings (`spel-client-gen`), and registry cataloging (`spelbook`).
@@ -62,12 +63,14 @@ graph TD
     TransparentScope -.->|Claim Execution| PrivacyShield
 ```
 
-### What is Public on LEZ:
+### What is Public on LEZ
+
 1. **Schedule Invariant:** Token mint, total allocation, cliff date, end date, and milestone tranches.
 2. **Beneficiary Identifier:** The public address designated to authorize claims.
 3. **Execution Timestamp & Claim Size:** The exact number of tokens claimed at a specific timestamp.
 
-### What is Private on LEZ:
+### What is Private on LEZ
+
 1. **Destination Shielded Account:** The exact private balance credited during the claim.
 2. **Post-Claim Token Flow:** All downstream transactions (transfers to other private addresses, shielded DeFi interactions, private swaps) are untraceable.
 3. **Identity Clustering:** Block analytics bots cannot map the beneficiary's cold storage or active operational wallets to the vesting contract.
@@ -78,7 +81,8 @@ graph TD
 
 On traditional chains (Ethereum, Solana), transferring tokens requires specifying a public recipient address that updates a transparent on-chain ledger.
 
-### The LEZ Innovation:
+### The LEZ Innovation
+
 In LEZ, programs possess the primitive capability to **increase the balance of foreign private accounts directly** without routing tokens through an intermediate public account:
 
 ```mermaid
@@ -107,11 +111,13 @@ sequenceDiagram
 ## 4. Threat Model & Adversarial Dynamics Mitigated
 
 ### Threat 1: Adversarial Front-Running of Unlock Calendars
+
 * **The Vulnerability:** Public analytics platforms (Tokenomist, CoinGecko, DeFiLlama) index upcoming token unlocks. When a large team or investor unlock approaches, predatory traders open massive short positions, front-running the recipient's liquidity.
 * **Real-World Case Study:** In April 2025, the MANTRA ($OM) token suffered a **90% market collapse in hours** (crashing from over $6.00 to under $0.50 and wiping >$5B in market cap) triggered by panic and forced liquidations surrounding perceived transparent unlock events.
 * **LEZ Mitigation:** Because claimed tokens enter a private account, the market cannot determine whether the recipient held, staked, or OTC-transferred their tokens, eliminating predictable sell-pressure front-running.
 
 ### Threat 2: Social Engineering & Recipient Doxxing
+
 * **The Vulnerability:** High-profile contributors, founders, and seed investors with known public addresses are constantly targeted for phishing, targeted malware, and physical coercion once their multi-million dollar vesting claims are broadcast on-chain.
 * **LEZ Mitigation:** Post-claim privacy ensures that asset accumulation remains confidential to the viewing key holder.
 
@@ -135,11 +141,14 @@ To prevent user error and maintain legal/compliance clarity, the Logos Basecamp 
 
 ## 6. Future Privacy Evolution: LP-0003 & Full Anonymity
 
-### Current Boundary:
+### Current Boundary
+
 In RFP-017, the beneficiary's public address is associated with the schedule at creation time. Observers know *who* earned the right to claim and *when* they claimed, even though they cannot trace *where* the tokens went afterwards.
 
-### Future Upgrade (Commitment-Based Registration):
+### Future Upgrade (Commitment-Based Registration)
+
 Future iterations will incorporate **LP-0003** (Shielded Allow-lists & Merkle Tree Commitments):
+
 * Creators will initialize schedules using a **Merkle root of beneficiary commitments** (hashes of secret viewing keys).
 * Beneficiaries will claim using zero-knowledge membership proofs without ever revealing their public address.
 * This will achieve **100% End-to-End Anonymity** (complete decoupling of creator, beneficiary, schedule, and claimed assets).

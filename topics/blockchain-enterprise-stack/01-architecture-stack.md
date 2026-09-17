@@ -1,4 +1,5 @@
 # Architectural Specification: The Sovereign Financial Stack
+
 **MPC Custody, ZK Privacy, and Quant-Curated Risk Architecture**
 
 ---
@@ -8,6 +9,7 @@
 Traditional private key storage creates single points of failure (SPOFs) that are unacceptable for institutional fiduciary mandates. Our custody layer replaces raw private keys with **Multi-Party Computation (MPC) Threshold Signature Schemes (TSS)** combined with hardware-isolated execution environments.
 
 ### 1.1 Cryptographic Core & Protocol Specs
+
 - **Supported Curves & Algorithms:**
   - **ECDSA (secp256k1):** Native compatibility with Bitcoin, Ethereum, and EVM-compatible networks.
   - **EdDSA (Ed25519):** Native compatibility with Solana, Near, Aptos, Sui, and Cosmos ecosystems.
@@ -15,9 +17,10 @@ Traditional private key storage creates single points of failure (SPOFs) that ar
   - **Key Properties:** Non-interactive signing options, identifiable aborts (identifies malicious or offline nodes immediately), and proactive security.
 
 ### 1.2 Key Generation & Shard Topology (3-of-4 Hybrid Institutional Model)
+
 Private keys never exist in complete form at any point in the lifecycle—neither at generation, storage, nor execution.
 
-```
+```text
        ┌─────────────────────────────────────────────────────────────┐
        │                DISTRIBUTED KEY GENERATION (DKG)             │
        └──────────────────────────────┬──────────────────────────────┘
@@ -50,7 +53,9 @@ Private keys never exist in complete form at any point in the lifecycle—neithe
   - Cryptographic key shares are dynamically rotated every 24 hours (or on-demand post-incident) without altering the underlying public address or on-chain assets. Even if an attacker compromises a shard, old shards become mathematically useless before an additional threshold can be breached.
 
 ### 1.3 Enterprise Policy & Velocity Engine
+
 Before Shard 3 participates in any signing ceremony, the transaction payload passes through an immutable, real-time deterministic policy evaluator:
+
 - **Role-Based Access Control (RBAC):** Tiered roles (Trader, Risk Officer, Compliance Approver, Super Admin).
 - **Time-Lock & Multi-Signature Hierarchies:**
   - Standard operations (< $500,000): Requires Trader + Shard 1 + Shard 3 auto-approval.
@@ -66,7 +71,7 @@ Institutions face a paradox: **commercial confidentiality is mandatory** (to avo
 
 Our ZK engine bridges this gap by decoupling **validity verification** from **data exposure**.
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                                 ZK PRIVACY ARCHITECTURE                                │
 └──────────────────────────────────────────┬─────────────────────────────────────────────┘
@@ -92,6 +97,7 @@ Our ZK engine bridges this gap by decoupling **validity verification** from **da
 ```
 
 ### 2.1 Cryptographic Proving Scheme
+
 - **Proving System:** Hybrid **Plonky2 / Halo2** (and Groth16 for ultra-compact EVM settlement):
   - Fast proof generation (< 1.5 seconds on client workstations or confidential server enclaves).
   - No trusted setup required (in transparent PLONK / Halo2 modes) or battle-tested universal CRS.
@@ -100,7 +106,9 @@ Our ZK engine bridges this gap by decoupling **validity verification** from **da
   - Transactions consume spent nullifiers and generate new output commitments without revealing sender, receiver, token type, or transfer amount.
 
 ### 2.2 Selective Disclosure & Regulatory Viewing Keys
+
 To satisfy regulatory scrutiny without exposing corporate positions to the public internet:
+
 1. **Auditor Viewing Keys (Role-Restricted):**
    - Cryptographic asymmetric keys (e.g., based on ElGamal or Jubjub keypairs) that allow designated regulators (FINMA, MAS, SEC, FCA) or internal audit teams to decrypt transaction metadata and trace specific balance histories.
    - Granular time-bound and asset-bound viewing keys: An auditor can be granted read-only visibility into Q3 2026 transactions for EUR stablecoins without decrypting the firm's broader portfolio.
@@ -120,7 +128,7 @@ Decentralized financial instruments fail at the institutional level because they
 
 Our **Quant Risk Curation Layer** acts as an institutional-grade automated risk officer, conducting real-time continuous underwriting, dynamic collateral parameterization, and programmatic vault management.
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                              QUANT RISK ENGINE PIPELINE                                │
 └──────────────────────────────────────────┬─────────────────────────────────────────────┘
@@ -140,6 +148,7 @@ Our **Quant Risk Curation Layer** acts as an institutional-grade automated risk 
 ```
 
 ### 3.1 Quantitative Risk Modeling & Underwriting Core
+
 - **Dynamic LTV & Haircut Adjustment:**
   Instead of hardcoded collateral parameters, the risk engine calculates Loan-to-Value thresholds as an empirical function of market depth, realized volatility, and asset concentration:
   $$\text{LTV}_{\text{dynamic}} = \min\left(\text{LTV}_{\text{base}}, \; \kappa \cdot \frac{\mathcal{D}_{\text{10min}}(slippage \le 2\%)}{\text{Outstanding Debt}} \cdot \frac{1}{\sigma_{\text{realized}} \sqrt{\Delta t}}\right)$$
@@ -154,6 +163,7 @@ Our **Quant Risk Curation Layer** acts as an institutional-grade automated risk 
     - *Aggressive (DeFi Tactical Alpha):* Curated leverage, structured credit tranches, cross-chain yield optimization.
 
 ### 3.2 Automated Liquidations, Telemetry, and Circuit Breakers
+
 - **Dutch Auction & MEV-Shielded Liquidations:**
   - Liquidations bypass public mempools to avoid toxic front-running or sandwich attacks.
   - Executed via private CoW (Coincidence of Wants) auctions and pre-integrated institutional market makers (Wintermute, Flow Traders, Jane Street).
@@ -200,6 +210,7 @@ sequenceDiagram
 ```
 
 ### Step-by-Step Execution Narrative
+
 1. **Initiation:** Institutional portfolio manager submits an order via FIX protocol or REST/gRPC dashboard.
 2. **Quant Risk Pre-Flight Check:** The transaction is routed to the Quant Risk Engine. It executes simulated stress-testing, verifies portfolio margin limits, and inspects counterparty liquidity.
 3. **Policy & MPC Ceremony:** Once risk-cleared, the transaction payload hits the MPC policy engine. If authorization rules pass (quorum thresholds, velocity checks), Shards 1, 2, and 3 collaborate across hardware enclaves to construct the threshold signature without reconstructing the private key.

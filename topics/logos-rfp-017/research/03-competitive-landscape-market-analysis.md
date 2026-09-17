@@ -35,20 +35,24 @@ Token vesting is one of the most mature, mission-critical infrastructure vertica
 ## 3. Deep-Dive on Major Protocols
 
 ### 1. Magna (The Enterprise Giant)
+
 * **Architecture:** Hybrid on-chain smart contract escrow + off-chain treasury distribution workflows. Supports custom legal agreements, tax withholding, and enterprise multi-sig integrations.
 * **Traction:** Supported major ecosystem foundations before being acquired by Kraken in February 2026 to form Kraken’s institutional token lifecycle vertical.
 
 ### 2. Sablier (The Composability Pioneer)
+
 * **Pioneering Features:** Deployed since 2019 across 27 EVM networks. Introduces four product tiers: `LockupLinear`, `LockupTranched`, `LockupDynamic` (custom mathematical curves), and `Flow`.
 * **NFT Architecture:** Every vesting stream is minted as an **ERC-721 NFT**. The holder owns the cash-flow rights, allowing streams to be sold on OpenSea/Blur, used as collateral in lending protocols, or transferred OTC.
 * **Broker Fee Model:** Core contract is free; third-party builders (launchpads, interfaces) can charge an optional 0–10% fee.
 
 ### 3. Streamflow (The Solana Benchmark)
+
 * **Architecture:** Optimized for Solana speed and low fees. Charges 0.16 SOL per created contract, with an optional 0.25 SOL automated claim crank (auto-pushes tokens to recipients upon unlock).
 * **Airdrop Clawback Fee:** Implements a 1.70% fee on reclaimed tokens during cancelled airdrop campaigns.
 * **Position Model:** Non-transferable account bindings (ideal for team employment).
 
 ### 4. Hedgey Finance (The Clean Dual-Product Model)
+
 * **Product Separation:**
   1. **Vesting Plans:** Revocable by the Vesting Admin, tailored for employees and service providers.
   2. **Lockup Plans:** 100% Non-revocable and transferable by design, tailored for token investors.
@@ -56,6 +60,7 @@ Token vesting is one of the most mature, mission-critical infrastructure vertica
 * **Security Incident (April 2024):** A deprecated `ClaimCampaigns.sol` contract suffered a **$44.5M flash loan exploit** due to improper token approval validation. Core vesting/lockup contracts were untouched, highlighting the vital need for isolated contract scope.
 
 ### 5. Jupiter Lock (The Distribution Masterclass)
+
 * **Architecture:** Launched in August 2024 by Jupiter DEX. Completely free and open-source, audited by Sec3 and OtterSec.
 * **Strategy:** Leverages Jupiter's massive DEX trading volume as a natural funnel. Every lock is displayed on a public explorer, marketing transparency as a trust badge.
 
@@ -65,7 +70,7 @@ Token vesting is one of the most mature, mission-critical infrastructure vertica
 
 ### A. Schedule Types Supported
 
-```
+```text
 Schedule Type Breakdown:
 ├── Cliff + Linear     ──> Supported by 10/10 Protocols (De-facto Standard)
 ├── Fully Linear       ──> Supported by 10/10 Protocols
@@ -96,7 +101,7 @@ $$\text{Total Escrow} = \text{Earned Vested (Kept by Beneficiary)} + \text{Unear
 
 ## 5. The Critical Industry Void: The Privacy Gap
 
-```
+```text
       ╔══════════════════════════════════════════════════════════════╗
       ║             100% OF EXISTING PROTOCOLS HAVE ZERO PRIVACY    ║
       ╚══════════════════════════════════════════════════════════════╝

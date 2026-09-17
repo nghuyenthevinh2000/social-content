@@ -56,6 +56,7 @@ Hệ sinh thái tự động hóa quy trình viết và xuất bản đa tác t�
 ## 4. Danh Mục Nội Dung Đã Xuất Bản Trong Topics
 
 ### Phân bổ theo 4 nhóm chủ đề thực tế (35 bài viết)
+
 - **Chuỗi Deep Tech "Bản Sao" (15 bài viết)**:
   - Phân tích cạm bẫy của founder công nghệ (series-2 đến 9), bài toán thương mại hóa sản phẩm, hội chứng "Antinous", bẫy chọn co-founder và cách vượt qua hai thung lũng chết.
 - **Tâm Thế Founder & Triết Lý Sống (8 bài viết)**:
@@ -66,6 +67,7 @@ Hệ sinh thái tự động hóa quy trình viết và xuất bản đa tác t�
   - Kiến trúc blockchain doanh nghiệp, chiến lược GTM thể chế, bài học vụ án 4.2 tỷ USD chuỗi Thanh Đảo và bản đồ tư duy tài chính phi tập trung.
 
 ### Báo cáo 1-Pager & Slide Trực Quan (5 bản 1-Pager + 1 Bộ Slide)
+
 - **1-Pager Kiến Trúc Blockchain**: `topics/blockchain-enterprise-stack/index.html`
 - **1-Pager Phân Tích Rò Rỉ Dữ Liệu HuggingFace**: `topics/HuggingFace-data-leaks/index.html`
 - **1-Pager Quyền Riêng Tư & Vesting Logos RFP-017**: `topics/logos-rfp-017/1-pager/index.html`

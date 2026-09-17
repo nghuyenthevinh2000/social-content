@@ -8,6 +8,7 @@
 ## 1. System Architecture Overview
 
 The RFP-017 implementation consists of four primary components:
+
 1. **Core LEZ Program (`lez-vesting`):** The guest zkVM program compiled for RISC Zero using the SPEL framework.
 2. **Client SDK (`@logos-lez/vesting-sdk` / `lez_vesting_sdk`):** High-level client libraries in Rust and TypeScript.
 3. **Logos Basecamp Mini-App:** A local-first Web/React mini-app loadable in the Logos ecosystem.
@@ -122,17 +123,18 @@ pub struct MilestoneTranche {
 | `batch_create` | Creator | `Vec<ScheduleParams>` (up to tx CU limit) | Iterates over tranches, transfers aggregate tokens, and initializes multiple schedule PDAs. |
 | `claim_public` | Beneficiary | `schedule_id`, `amount_to_claim` | Computes claimable delta. Transfers tokens from escrow vault to beneficiary's public token account. |
 | `claim_private` | Beneficiary | `schedule_id`, `shielded_account_id` | Computes claimable delta. Directs Token Program to credit tokens into the shielded state commitment. |
-| `cancel_schedule`| Creator / Authority | `schedule_id` | Asserts `is_cancelable == true`. Computes vested vs unvested tokens. Refunds unvested tokens to creator. |
-| `signal_milestone`| Creator / Authority | `schedule_id`, `milestone_index` | Asserts milestone not already signaled (idempotent). Unlocks tranche amount. Emits `MilestoneSignaledEvent`. |
-| `transfer_beneficiary`| Beneficiary | `schedule_id`, `new_beneficiary` | Asserts `is_transferable == true`. Updates beneficiary pubkey. Emits `BeneficiaryTransferredEvent`. |
-| `set_non_cancelable`| Creator | `schedule_id` | Permanently sets `is_cancelable = false`. Irreversible one-way transition. |
+| `cancel_schedule` | Creator / Authority | `schedule_id` | Asserts `is_cancelable == true`. Computes vested vs unvested tokens. Refunds unvested tokens to creator. |
+| `signal_milestone` | Creator / Authority | `schedule_id`, `milestone_index` | Asserts milestone not already signaled (idempotent). Unlocks tranche amount. Emits `MilestoneSignaledEvent`. |
+| `transfer_beneficiary` | Beneficiary | `schedule_id`, `new_beneficiary` | Asserts `is_transferable == true`. Updates beneficiary pubkey. Emits `BeneficiaryTransferredEvent`. |
+| `set_non_cancelable` | Creator | `schedule_id` | Permanently sets `is_cancelable = false`. Irreversible one-way transition. |
 
 ---
 
 ## 4. Mathematical Accrual Logic
 
-### Cliff + Linear Accrual:
-$$\text{Claimable}(t) = \begin{cases} 
+### Cliff + Linear Accrual
+
+$$\text{Claimable}(t) = \begin{cases}
 0 & t < t_{\text{cliff}} \\
 A_{\text{cliff}} + (A_{\text{total}} - A_{\text{cliff}}) \times \frac{t - t_{\text{cliff}}}{t_{\text{end}} - t_{\text{cliff}}} - A_{\text{claimed}} & t_{\text{cliff}} \le t < t_{\text{end}} \\
 A_{\text{total}} - A_{\text{claimed}} & t \ge t_{\text{end}}
@@ -174,7 +176,7 @@ export const PrivacyDisclosureModal = ({ amount, tokenSymbol, isPrivate, onConfi
       <p>Amount to Claim: <strong>{amount} {tokenSymbol}</strong></p>
       <p>Destination Mode: <Badge variant={isPrivate ? "shielded" : "public"}>{isPrivate ? "Shielded Private Account" : "Public Account"}</Badge></p>
     </div>
-    
+
     {isPrivate && (
       <div className="privacy-alert">
         <h4>🔒 On-Chain Privacy Guarantee</h4>
@@ -184,7 +186,7 @@ export const PrivacyDisclosureModal = ({ amount, tokenSymbol, isPrivate, onConfi
         </ul>
       </div>
     )}
-    
+
     <Button onClick={onConfirm} variant="primary">Authorize & Submit Claim</Button>
   </Modal>
 );

@@ -4,9 +4,10 @@
 
 ## 💰 1. The Goldmine: An Uncontested Multi-Billion Dollar Monopoly
 
-Every single token project, founder, venture fund, and crypto whale on Earth is forced to lock up their tokens. In 2025 alone, **$97.43 Billion** poured through token vesting contracts. 
+Every single token project, founder, venture fund, and crypto whale on Earth is forced to lock up their tokens. In 2025 alone, **$97.43 Billion** poured through token vesting contracts.
 
 Whoever controls the vesting infrastructure owns the ultimate **tollbooth of Web3**:
+
 * **A Guaranteed Captive Market:** Every new token launched on the Logos ecosystem is required to lock up tokens. You aren't chasing users—they are funneled straight into your protocol from Day 1.
 * **Massive M&A & Buyout Upside:** Building the category leader in vesting produces life-changing institutional exits. In February 2026, **Kraken bought out Magna after it reached $60 Billion in locked assets**. This is proof of massive institutional appetite and lucrative buyout potential.
 * **A 100% Blue Ocean Monopoly:** EVM and Solana tools are completely broken. **Zero competitors offer private lockups.** By building the only stealth vesting engine on the market, you capture an uncontested monopoly on high-net-worth founders, VC funds, and institutional whales.
@@ -32,7 +33,7 @@ Why will founders and venture capitalists flock to your platform? **To protect t
 
 * **The Brutal Reality of Public Vesting:** On Ethereum and Solana, predatory trading bots track every single team unlock date. Short-sellers build massive short positions weeks in advance, ruthlessly crashing the token price before founders or VCs can ever cash out.
 * **The $5 Billion Disaster (MANTRA Case Study):** In April 2025, transparent unlock tracking triggered panic and liquidations that wiped **90% of MANTRA's value ($5B+ in market cap) in just hours**.
-* **Your Stealth Vault Solution:** On Logos, the public sees the project's macro commitment, but the tokens land directly in the recipient's **secret, un-trackable private vault**. Nobody knows where the money went, nobody can track down your wallet, and nobody can front-run your liquidity. 
+* **Your Stealth Vault Solution:** On Logos, the public sees the project's macro commitment, but the tokens land directly in the recipient's **secret, un-trackable private vault**. Nobody knows where the money went, nobody can track down your wallet, and nobody can front-run your liquidity.
 * **The Result:** Founders and whales will refuse to vest anywhere else.
 
 ---
@@ -41,9 +42,9 @@ Why will founders and venture capitalists flock to your platform? **To protect t
 
 1. **The Secret Claim Vault:** Tokens teleport straight from the public lock into a shielded private account. Total stealth, zero tracking, zero front-running.
 2. **The 3 Golden Vesting Templates:**
-   - **Founder & VC Fortresses:** 1-year cliff + 3-year steady unlock (standard for big money).
-   - **Advisor & Contributor Streams:** Continuous, instant accrual.
-   - **Milestone Payouts:** Deliverable-based tranches released when goals are hit.
+   * **Founder & VC Fortresses:** 1-year cliff + 3-year steady unlock (standard for big money).
+   * **Advisor & Contributor Streams:** Continuous, instant accrual.
+   * **Milestone Payouts:** Deliverable-based tranches released when goals are hit.
 3. **Ironclad Wealth Protection:** Vested money is locked-in earned property that can never be stolen back; unvested money returns safely if a rogue contributor leaves.
 4. **Permanent Irrevocable Trust Locks:** Upgrade locks to 100% permanent with one click, giving investors ironclad confidence to pour millions into your token.
 

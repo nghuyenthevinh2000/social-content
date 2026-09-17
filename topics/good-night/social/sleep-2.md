@@ -16,7 +16,7 @@ Nó chỉ là một chiếc gương phản chiếu không biết nói dối.
 
 Hãy để ý chất lượng giấc ngủ của chính bạn:
 
-Có những ngày bạn bận tối mắt tối mũi. Bạn mở 30 tab trình duyệt, chạy đôn chạy đáo từ cuộc họp này sang cuộc họp khác, trả lời hàng trăm tin nhắn dồn dập. Cơ thể rã rời, mắt cay xè. 
+Có những ngày bạn bận tối mắt tối mũi. Bạn mở 30 tab trình duyệt, chạy đôn chạy đáo từ cuộc họp này sang cuộc họp khác, trả lời hàng trăm tin nhắn dồn dập. Cơ thể rã rời, mắt cay xè.
 
 Thế nhưng khi vừa đặt lưng xuống nệm, não bộ lại đột ngột "bật công tắc" thức trắng.
 
@@ -50,4 +50,4 @@ Muốn chữa lành đêm nay, hãy bắt đầu bằng cách quản trị sự 
 
 Giấc ngủ sẽ kể cho bạn nghe điều gì về ngày hôm nay?
 
-#GoodNight #SleepQuality #Mindfulness #Productivity #SelfReflection
+\#GoodNight #SleepQuality #Mindfulness #Productivity #SelfReflection

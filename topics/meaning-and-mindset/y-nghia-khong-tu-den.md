@@ -24,9 +24,9 @@ Nam ngập ngừng, nhưng trước sự dứt khoát của người thợ mộc
 
 ---
 
-Trời mưa như trút nước vào mặt. Trên mái nhà trơn trượt, Nam phải gồng mình giữ thăng bằng. Đôi bàn tay vốn chỉ quen cầm bút của anh run lên vì lạnh và vất vả. 
+Trời mưa như trút nước vào mặt. Trên mái nhà trơn trượt, Nam phải gồng mình giữ thăng bằng. Đôi bàn tay vốn chỉ quen cầm bút của anh run lên vì lạnh và vất vả.
 
-Ông Tám giữ bạt, còn Nam phải đóng từng chiếc đinh vào xà gỗ. Chiếc búa nặng trịch làm tay anh mỏi lừ. Một lần trượt tay, đầu búa đập vào ngón cái đau nhói, máu ứa ra hòa cùng nước mưa. Đất cát, rêu mốc trên mái nhà bám đầy vào mặt, vào áo quần anh. 
+Ông Tám giữ bạt, còn Nam phải đóng từng chiếc đinh vào xà gỗ. Chiếc búa nặng trịch làm tay anh mỏi lừ. Một lần trượt tay, đầu búa đập vào ngón cái đau nhói, máu ứa ra hòa cùng nước mưa. Đất cát, rêu mốc trên mái nhà bám đầy vào mặt, vào áo quần anh.
 
 Trong suốt hai tiếng đồng hồ chiến đấu với trận mưa, Nam phải tập trung cao độ vào từng nhịp đập của búa, từng mép bạt cần kéo căng, từng điểm buộc dây nhựa. Anh không còn một giây phút nào để nghĩ về vũ trụ, về định mệnh, hay về sự vô nghĩa của kiếp người. Tất cả những gì tồn tại trong đầu anh lúc đó chỉ là: **Làm sao để mái nhà này hết dột.**
 
@@ -46,18 +46,19 @@ Nó không phải là sự phấn khởi tột cùng, mà là một niềm bình
 
 ---
 
-Nam ngồi lặng đi giữa tiếng mưa. 
+Nam ngồi lặng đi giữa tiếng mưa.
 
 Anh nhìn xuống đôi bàn tay lấm lem đất cát, nhìn ngón tay đang sưng đỏ của mình. Lần đầu tiên sau mười năm, anh nhận ra sai lầm lớn nhất của đời mình: **Anh đã biến ý nghĩa thành một danh từ để đi tìm, thay vì một động từ để thực hiện.**
 
-Ý nghĩa cuộc sống chưa bao giờ là một kho báu bị giấu sẵn dưới lòng đất để chờ người đến nhặt. Nó cũng không phải là một chiếc chìa khóa vạn năng rơi từ trên trời xuống. 
+Ý nghĩa cuộc sống chưa bao giờ là một kho báu bị giấu sẵn dưới lòng đất để chờ người đến nhặt. Nó cũng không phải là một chiếc chìa khóa vạn năng rơi từ trên trời xuống.
 
 Ý nghĩa là thứ được nhào nặn hàng ngày:
+
 * Khi bạn chìa tay giúp một người xóm giềng trong trận mưa.
 * Khi bạn dọn dẹp gọn gàng một góc phòng tối.
 * Khi bạn kiên nhẫn lắng nghe một ai đó.
 * Khi bạn đổ mồ hôi hoàn thành một công việc, dù là nhỏ nhất.
 
-Tối hôm đó, Nam trở về phòng. Anh không mở những cuốn sổ triết học ra nữa. Anh lau sạch vết bẩn trên bàn, dán băng cá nhân vào ngón tay đau, và mở cửa sổ nhìn ra cơn mưa đêm. 
+Tối hôm đó, Nam trở về phòng. Anh không mở những cuốn sổ triết học ra nữa. Anh lau sạch vết bẩn trên bàn, dán băng cá nhân vào ngón tay đau, và mở cửa sổ nhìn ra cơn mưa đêm.
 
 Anh biết rằng ngày mai trời sẽ lại sáng, và anh sẽ không ngồi chờ đợi nữa. Anh sẽ bước ra ngoài và bắt đầu tự tay nhào nặn nên ý nghĩa cho ngày mới của chính mình.

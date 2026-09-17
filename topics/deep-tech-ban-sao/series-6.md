@@ -4,15 +4,16 @@ Tuần này, mình có dịp ngồi lại với một vị chuyên gia kỳ cự
 
 Đó là thói quen hễ nghe ai gợi ý một hướng đi hay một loại "vũ khí" mới — từ Marketing, BD, Sales cho đến quy trình Management hay feature công nghệ — mình lập tức lao vào cắm đầu thử nghiệm ngay.
 
-Nhìn qua thì tưởng thế là năng nổ, là tinh thần Lean Startup biết nhanh chóng thử nghiệm để tìm đường. Bản thân việc thử nghiệm các loại vũ khí thực ra là rất tốt — chính nhờ liên tục thử nghiệm thì người làm sản phẩm mới dần biết đâu là vũ khí phù hợp nhất, đâu là "cung thần" (unfair advantage) cốt lõi của chính mình. 
+Nhìn qua thì tưởng thế là năng nổ, là tinh thần Lean Startup biết nhanh chóng thử nghiệm để tìm đường. Bản thân việc thử nghiệm các loại vũ khí thực ra là rất tốt — chính nhờ liên tục thử nghiệm thì người làm sản phẩm mới dần biết đâu là vũ khí phù hợp nhất, đâu là "cung thần" (unfair advantage) cốt lõi của chính mình.
 
 Nhưng cái bẫy chết người nằm ở chỗ: **chúng mình thử nghiệm một cách mù quáng và hoàn toàn thiếu chiến lược.**
 
 Hễ nghe một vị mentor phán một câu về Marketing, mình lao đi làm Marketing. Nghe một advisor bảo làm B2B Enterprise Sales, mình lại vội vã chuyển hướng làm BD. Thấy người ta nói về Agile/Okrs, mình lại quay sang cải tổ Management. Sự thử nghiệm thiếu chiến lược giống như một kẻ ra chiến trường hễ thấy ai rơi mất vũ khí gì cũng vơ lấy múa thử vài đường. Kết quả là vũ khí nào cũng thử dở dang, tài nguyên bị xé nhỏ, gân cổ lên kéo nhưng không tạo ra bất kỳ kết quả thực sự nào ngoài sự kiệt sức và mất thời gian.
 
-Nhìn lại vị chuyên gia và đội ngũ thực chiến của anh ấy, mình mới thấy thế nào là **chiến lược thử nghiệm vũ khí**. 
+Nhìn lại vị chuyên gia và đội ngũ thực chiến của anh ấy, mình mới thấy thế nào là **chiến lược thử nghiệm vũ khí**.
 
 Đứng trước một bài toán hay một hướng đi mới, họ không ai vội vã gõ dòng code nào hay dựng slide bán hàng ngay. Họ ngồi lại với nhau, mổ xẻ xem bài toán này cần loại vũ khí gì. Nhưng quan trọng hơn cả, họ có một quy trình thử nghiệm cực kỳ bài bản:
+
 - **Chọn thầy**: Họ chủ động tìm đến những người đi trước đã từng thực chiến với loại vũ khí đó để xin chỉ dẫn, tránh lặp lại những cái bẫy ngớ ngẩn.
 - **Chọn bạn tập**: Họ lập ra một đội ngũ nội bộ sẵn sàng mở những cuộc tranh luận gay gắt nhưng thống nhất, cùng nhau nhúng tay vào làm thử để đo lường độ nặng thực sự.
 - **Chọn thao trường**: Họ không thử nghiệm tràn lan trên quy mô lớn hay ngồi trong phòng kín suy đoán, mà đưa vũ khí vào đúng một môi trường thử nghiệm thu nhỏ để cảm nhận áp lực thực tế của thị trường trước khi quyết định dốc toàn lực.

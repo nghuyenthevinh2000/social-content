@@ -1,18 +1,21 @@
 # Institutional Digital Asset Stack: The Sovereign Financial Architecture
+
 **A Unified Enterprise Solution: MPC Custody, ZK Privacy, and Quant-Driven Risk Curation**
 
 ---
 
 ## 1. Executive Summary
 
-Institutions (tier-1 investment banks, sovereign wealth funds, global asset managers, hedge funds, and prime brokers) cannot enter decentralized finance or institutional on-chain capital markets using consumer-grade or piecemeal Web3 tooling. 
+Institutions (tier-1 investment banks, sovereign wealth funds, global asset managers, hedge funds, and prime brokers) cannot enter decentralized finance or institutional on-chain capital markets using consumer-grade or piecemeal Web3 tooling.
 
 Today's institutional digital asset landscape is plagued by **three fatal architectural silos**:
+
 1. **Custody without Privacy:** Traditional MPC or cold storage solutions execute transactions transparently on public ledgers, leaking confidential trading strategies, counterparty identities, portfolio allocations, and alpha directly to front-runners and competitors.
 2. **Privacy without Compliance or Custody:** Standalone zero-knowledge or mixer protocols trigger immediate anti-money laundering (AML) and counter-terrorist financing (CFT) red flags, offering no institutional key-quorum governance or auditable regulatory hooks.
 3. **Yield/Lending without Real-Time Quant Risk Underwriting:** Smart contract vaults and institutional lending pools rely on static parameters, slow governance votes, or naive oracle feeds, leading to cascading insolvencies during market dislocations.
 
 This document outlines a **vertically integrated, institutional-grade blockchain financial stack** that synthesizes:
+
 - **Enterprise MPC Custody:** Threshold signature schemes (TSS), granular multi-tier authorization policies, HSM/Nitro Enclave security, and key-shard segregation.
 - **ZK Confidentiality & Selective Compliance:** Zero-Knowledge state isolation, private execution, confidential balance proofs, and cryptographic viewing keys for regulatory auditability (Travel Rule, AML/CFT, Proof of Solvency).
 - **Quant Risk Curation:** Algorithmic vault curation, dynamic LTV/haircut engines, real-time value-at-risk (VaR/CVaR) stress testing, on-chain telemetry, and automated circuit breakers.
@@ -23,7 +26,7 @@ Together, they form an unassailable end-to-end platform sold to enterprise buyin
 
 ## 2. High-Level Architecture Map
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                                INSTITUTIONAL CLIENT PORTAL                             │
 │       Treasury Dashboard  │  Portfolio Blotter  │  Risk Telemetry  │  Compliance Hub   │

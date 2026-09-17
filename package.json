@@ -1,0 +1,13 @@
+{
+  "name": "social-content",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Social content creation, storytelling, and skill workflows",
+  "scripts": {
+    "lint:md": "markdownlint \"**/*.md\"",
+    "lint:md:fix": "markdownlint --fix \"**/*.md\""
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.49.1"
+  }
+}

@@ -51,17 +51,17 @@ On transparent blockchains (EVM, Solana), vesting contracts operate as public su
 
 ### C. Reliability & Safety Guarantees
 
-* **Atomic Claims:** A claim either transfers tokens and updates state atomically, or completely reverts without gas token leakage or state corruption.
-* **Atomic Cancellation:** Reclaims unvested tokens and locks remaining unvested accrual in a single state transition.
-* **Idempotent Milestone Signalling:** Signalling an already-completed milestone index is rejected with a deterministic error code, preventing double-minting / double-unlocking exploits.
-* **Concurrency Safety:** Independent claims across disparate schedules execute concurrently without state collisions.
+- **Atomic Claims:** A claim either transfers tokens and updates state atomically, or completely reverts without gas token leakage or state corruption.
+- **Atomic Cancellation:** Reclaims unvested tokens and locks remaining unvested accrual in a single state transition.
+- **Idempotent Milestone Signalling:** Signalling an already-completed milestone index is rejected with a deterministic error code, preventing double-minting / double-unlocking exploits.
+- **Concurrency Safety:** Independent claims across disparate schedules execute concurrently without state collisions.
 
 ---
 
 ### D. Performance Benchmarks
 
-* **Single-Transaction Claims:** Every claim must complete within a single LEZ transaction execution.
-* **Compute Unit (CU) Accounting:** Deliver detailed CU measurement tables across all instructions for LEZ Testnet 0.2, Testnet 0.3, and Mainnet.
+- **Single-Transaction Claims:** Every claim must complete within a single LEZ transaction execution.
+- **Compute Unit (CU) Accounting:** Deliver detailed CU measurement tables across all instructions for LEZ Testnet 0.2, Testnet 0.3, and Mainnet.
 
 ---
 
@@ -89,18 +89,22 @@ graph LR
 ```
 
 ### 1. LP-0013: Token Authorities (Hard Dependency - In Progress)
+
 - **Role:** The vesting contract acts as a custodial escrow. It requires the LEZ token transfer-authority primitives to hold tokens during the lockup period and transfer them to beneficiaries upon valid claim invocations.
 - **Status:** Open Lambda Prize.
 
 ### 2. LP-0015: General Cross-Program Tail Calls (Resolved)
+
 - **Role:** Enables the vesting program to initiate a token transfer via CPI (cross-program invocation) to the token program and execute schedule state updates in a protected continuation.
 - **Status:** Closed / Delivered in core LEZ runtime.
 
 ### 3. LEZ-Clock: On-Chain Timestamp Account (Resolved)
+
 - **Role:** Time-based linear accrual and cliff checking require reliable on-chain clock accounts accessible within zkVM execution.
 - **Status:** Closed / Delivered.
 
 ### 4. LP-0012: Event/Log Emission Mechanism (Resolved)
+
 - **Role:** Emits structured execution logs for indexers and Basecamp UI notifications.
 - **Status:** Closed / Delivered.
 

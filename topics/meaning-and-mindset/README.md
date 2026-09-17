@@ -20,7 +20,7 @@ Chuỗi bài viết trong chủ đề này được cấu trúc theo 3 chặng t
 ## 2. Danh sách bài viết dự kiến chuyển vào (Theo mạch dẫn dắt)
 
 | Nhánh | File bài viết | Tài nguyên kèm | Nội dung chính |
-|:---|:---|:---|:---|
+| :--- | :--- | :--- | :--- |
 | **Chặng 1: Bẫy đo lường & máy móc** | `tech_career_meaning.md` | - | Vượt qua cảm giác là "bánh răng nhận lương"; chọn trường phái cống hiến (EA, e/acc, d/acc) |
 | | `reflective_founder_exit.md` | `reflective_founder_moment.jpg` | Đạt exit startup thứ 2 ở tuổi 26 nhưng trống rỗng; chuyển từ khai thác giá trị sang nuôi dưỡng cuộc sống không thể đo đếm |
 | | `meaning-economy-story-vi.md` | - | Nền kinh tế ý nghĩa: Thế hệ trước cần của cải, thế hệ sau cần trải nghiệm, Gen Z cần lý do để sống sâu |
@@ -33,6 +33,7 @@ Chuỗi bài viết trong chủ đề này được cấu trúc theo 3 chặng t
 ---
 
 ## 3. Ý tưởng phát triển tiếp nối (Future Content Continuation)
+
 - **Bài viết tiếp theo:** *Tâm lý học về sự kiệt sức của người cầu toàn (Perfectionist Burnout)*
 - **Bài viết tiếp theo:** *Nghệ thuật trò chuyện không mục đích* — Cách xây dựng quan hệ sâu sắc trong một thế giới ngập tràn networking vụ lợi.
 - **Bài viết tiếp theo:** *Sống chậm trong thời đại thuật toán kích thích*

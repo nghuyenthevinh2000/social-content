@@ -57,6 +57,7 @@ An enterprise-grade, multi-agent publishing and storytelling ecosystem that tran
 ## 4. Content Portfolio Breakdown (Articles In Topics)
 
 ### Breakdown by 4 Consolidated Tracks (35 articles)
+
 - **Deep Tech "Bản Sao" Series (15 articles)**:
   - Series #2 to #9 deep-dives examining founder traps, technology vs. product commercialization, the "Antinous" syndrome, co-founder traps, and navigating the two valleys of death.
 - **Mindset & Founder Reflection (8 articles)**:
@@ -67,6 +68,7 @@ An enterprise-grade, multi-agent publishing and storytelling ecosystem that tran
   - Institutional blockchain architecture, institutional GTM strategies, the $4.2B Qingdao chain case study, and decentralized finance mindmaps.
 
 ### Visual 1-Pagers & Slide Decks (5 HTML 1-Pagers + 1 Slide Deck)
+
 - **Enterprise Blockchain Stack 1-Pager**: `topics/blockchain-enterprise-stack/index.html`
 - **HuggingFace Data Leaks 1-Pager**: `topics/HuggingFace-data-leaks/index.html`
 - **Logos RFP-017 Vesting & Privacy 1-Pager**: `topics/logos-rfp-017/1-pager/index.html`
@@ -79,5 +81,6 @@ An enterprise-grade, multi-agent publishing and storytelling ecosystem that tran
 ## 5. Visual One-Pager Deliverable
 
 The visual 1-pager has been rendered into a self-contained HTML asset and captured via Playwright:
+
 - **English Version**: [`topics/ai-social-content-engine/index_en.html`](./index_en.html) & [`output_en.png`](./output_en.png)
 - **Vietnamese Version**: [`topics/ai-social-content-engine/index.html`](./index.html) & [`output.png`](./output.png)

@@ -261,7 +261,7 @@ irrevocable right to locked tokens with secondary market exit.
 
 **Configurable cancel permissions** (Streamflow, Jupiter Lock) allow the same
 contract interface to serve both revocable team vesting and irrevocable investor
-lockups by setting the cancellation authority at creation time [4][6].
+lockups by setting the cancellation authority at creation time [4]\[6\].
 
 RFP-017 follows the universal invariant: on cancellation, vested tokens remain
 claimable by the beneficiary and unvested tokens return to the creator.
@@ -300,7 +300,7 @@ accept revocation risk. Hedgey also offers "bound" (soulbound) variants for
 identity-linked vesting where secondary market trading is undesirable.
 
 **Jupiter Lock and Streamflow** offer a simpler model: the recipient address can
-be changed if the creator granted that permission at creation [4][6]. This is
+be changed if the creator granted that permission at creation [4]\[6\]. This is
 less flexible than NFT-based ownership because it typically requires explicit
 permission and does not enable frictionless secondary market trading.
 
@@ -379,60 +379,60 @@ production, even in this limited claim-and-re-shield form.
 
 [1] The Block, "Kraken buys token vesting platform Magna, which hit peak TVL of
 $60 billion in 2025," Feb 2026.
-https://www.theblock.co/post/390358/kraken-buys-token-vesting-platform-magna-hit-peak-tvl-60-billion-in-2025
+<https://www.theblock.co/post/390358/kraken-buys-token-vesting-platform-magna-hit-peak-tvl-60-billion-in-2025>
 
-[2] Sablier documentation: Fees. https://docs.sablier.com/concepts/protocol/fees
+[2] Sablier documentation: Fees. <https://docs.sablier.com/concepts/protocol/fees>
 
-[3] DeFiLlama: Sablier protocol page. https://defillama.com/protocol/sablier
+[3] DeFiLlama: Sablier protocol page. <https://defillama.com/protocol/sablier>
 
 [4] Streamflow documentation: Costs of using Streamflow.
-https://docs.streamflow.finance/costs-of-using-streamflow
+<https://docs.streamflow.finance/costs-of-using-streamflow>
 
 [5] Hedgey Finance website and GitHub: Locked_VestingTokenPlans.
-https://hedgey.finance/ ;
-https://github.com/hedgey-finance/Locked_VestingTokenPlans
+<https://hedgey.finance/> ;
+<https://github.com/hedgey-finance/Locked_VestingTokenPlans>
 
 [6] Jupiter Exchange, Jupiter Lock announcement and support article.
-https://x.com/JupiterExchange/status/1826959175089545604 ;
-https://support.jup.ag/hc/en-us/articles/22620899015452-What-is-Jupiter-Lock
+<https://x.com/JupiterExchange/status/1826959175089545604> ;
+<https://support.jup.ag/hc/en-us/articles/22620899015452-What-is-Jupiter-Lock>
 
 [7] Team Finance documentation: pricing and fee blog.
-https://docs.team.finance/team-finance-pricing ;
-https://blog.team.finance/token-management-service-fees/
+<https://docs.team.finance/team-finance-pricing> ;
+<https://blog.team.finance/token-management-service-fees/>
 
 [8] Superfluid documentation: vesting use case.
-https://docs.superfluid.org/docs/use-cases/vesting
+<https://docs.superfluid.org/docs/use-cases/vesting>
 
-[9] LlamaPay website and GitHub. https://llamapay.io/ ;
-https://github.com/LlamaPay/llamapay
+[9] LlamaPay website and GitHub. <https://llamapay.io/> ;
+<https://github.com/LlamaPay/llamapay>
 
 [10] Bonfida token-vesting GitHub repository.
-https://github.com/Bonfida/token-vesting
+<https://github.com/Bonfida/token-vesting>
 
 [11] AbdelStark/token-vesting-contracts GitHub and Hacken audit.
-https://github.com/AbdelStark/token-vesting-contracts ;
-https://github.com/abdelhamidbakhta/token-vesting-contracts/blob/main/audits/hacken_audit_report.pdf
+<https://github.com/AbdelStark/token-vesting-contracts> ;
+<https://github.com/abdelhamidbakhta/token-vesting-contracts/blob/main/audits/hacken_audit_report.pdf>
 
 [12] Tokenomist (formerly TokenUnlocks), "2025 Token Unlocks Review."
-https://insights.unlocks.app/2025-token-unlocks-review-a-complete-breakdown-of-emissions-insider-vesting-and-market-impact/
+<https://insights.unlocks.app/2025-token-unlocks-review-a-complete-breakdown-of-emissions-insider-vesting-and-market-impact/>
 
 [13] CoinDesk, "Kraken continues acquisition streak by buying token management
 firm Magna ahead of IPO push," Feb 2026.
-https://www.coindesk.com/business/2026/02/18/kraken-continues-acquisition-streak-by-buying-token-management-firm-magna-ahead-of-ipo-push
+<https://www.coindesk.com/business/2026/02/18/kraken-continues-acquisition-streak-by-buying-token-management-firm-magna-ahead-of-ipo-push>
 
 [14] Halborn, "Explained: the Hedgey Finance hack (April 2024)."
-https://www.halborn.com/blog/post/explained-the-hedgey-finance-hack-april-2024
+<https://www.halborn.com/blog/post/explained-the-hedgey-finance-hack-april-2024>
 
 [15] Sablier documentation: cancelability.
-https://docs.sablier.com/concepts/cancelability
+<https://docs.sablier.com/concepts/cancelability>
 
 [16] Kraken blog, "Payward acquires Magna."
-https://blog.kraken.com/news/payward-acquires-magna
+<https://blog.kraken.com/news/payward-acquires-magna>
 
 [17] arXiv 2501.03391, "Privacy-Preserving Smart Contracts for Permissioned
 Blockchains: A zk-SNARK-Based Recipe," Jan 2025.
-https://arxiv.org/html/2501.03391v1
+<https://arxiv.org/html/2501.03391v1>
 
 [18] CoinDesk, "Mantra's OM Crashes 90% in Bizarre Sell-Off as Team Alleges
 'Forced Liquidations'," Apr 2025.
-https://www.coindesk.com/markets/2025/04/14/mantra-s-om-crashes-90-in-bizarre-selloff-as-team-alleges-forced-liquidations
+<https://www.coindesk.com/markets/2025/04/14/mantra-s-om-crashes-90-in-bizarre-selloff-as-team-alleges-forced-liquidations>

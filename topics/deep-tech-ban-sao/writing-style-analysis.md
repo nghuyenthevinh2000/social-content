@@ -9,7 +9,7 @@
 Mỗi bài viết theo một khuôn nhất định:
 
 | Phần | Vai trò |
-|------|---------|
+| ------ | --------- |
 | **Tiêu đề** | Định danh series + đặt vấn đề lớn ngay từ đầu |
 | **Mở bài** | Bối cảnh tuần này, ai tham gia, gặp ai — viết như kể chuyện cho bạn |
 | **Thân bài** | Phân tích vấn đề bằng hình ảnh / ẩn dụ dân dã |
@@ -30,6 +30,7 @@ Mỗi bài viết theo một khuôn nhất định:
 ## 3. Kỹ thuật kể chuyện nổi bật
 
 ### 3.1 Ẩn dụ dân gian (Folk Metaphor)
+
 Thay vì dùng thuật ngữ kỹ thuật khô khan, tác giả chuyển đổi thành hình ảnh quen thuộc:
 
 - "thóc lúa trồng lên rồi thì bán ở đâu" → vấn đề go-to-market của sản phẩm deep tech
@@ -39,13 +40,16 @@ Thay vì dùng thuật ngữ kỹ thuật khô khan, tác giả chuyển đổi 
 Đây là kỹ thuật chủ lực: **giải thích điều phức tạp bằng hình ảnh ai cũng sống qua.**
 
 ### 3.2 Nhân vật hóa (Personification)
+
 Thay vì nói "ecosystem", tác giả dựng nhân vật sống động:
+
 - "Anh Tây" có chú làm quỹ, bạn gái làm bên mua hàng, bạn nhậu là tiến sĩ
 - "Anh nông dân Việt Nam" chăm chỉ nhưng xa lạ với thế giới đang diễn ra quanh mình
 
 Nhân vật không có tên nhưng rất cụ thể — người đọc tự chiếu mình vào.
 
 ### 3.3 Kết thúc mở — không đưa đáp án
+
 Cả hai bài không kết luận giải pháp. Series-2 kết bằng "đi tìm người mẹ, người cha hiền từ đỡ đầu". Series-3 kết bằng hình ảnh "nếu như anh Tây và anh nông dân hiểu nhau hơn thì…"
 
 → Kỹ thuật này **giữ người đọc trong trạng thái muốn tiếp tục**, phù hợp với format series dài kỳ.
@@ -55,7 +59,7 @@ Cả hai bài không kết luận giải pháp. Series-2 kết bằng "đi tìm 
 ## 4. Cấu trúc ngôn ngữ
 
 | Đặc điểm | Ví dụ |
-|----------|-------|
+| ---------- | ------- |
 | Câu ngắn đan xen câu dài | "Đây là hai sản phẩm deep tech, nhiều toán..." → rồi xuống câu rất ngắn tiếp theo |
 | Dùng "mình" / "chúng mình" | Tạo cảm giác cộng đồng nhỏ, ấm, không phải broadcast |
 | Không gạch đầu dòng liệt kê dài | Thông tin được dệt vào câu chuyện, không list bullet |
@@ -65,7 +69,7 @@ Cả hai bài không kết luận giải pháp. Series-2 kết bằng "đi tìm 
 
 ## 5. Cấu trúc thông tin (Information Architecture)
 
-```
+```text
 [Hook tiêu đề — đặt vấn đề lớn]
     ↓
 [Bối cảnh tuần này — ai, gặp ai, tại sao]

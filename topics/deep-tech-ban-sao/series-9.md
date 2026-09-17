@@ -20,7 +20,7 @@ Tự nhiên lúc này mình thấy nơi đây giống một cái làng xóm bìn
 
 Ngồi giữa không gian này gõ mấy dòng này, mình tự hỏi lại bản thân khá nhiều. Rốt cuộc thì chúng ta làm founder, nỗ lực giải quyết những bài toán kỹ thuật hóc búa để làm gì, nếu như chính bản thân mình lại ăn không ngon, ngủ không yên và ngày càng xa cách với thế giới thực?
 
-Hóa ra những founder đang đi đầu trong cuộc chơi này lại không xem sự kiệt quệ là một huy chương danh dự. Việc họ dưỡng sức, chú ý từng bữa ăn, leo một ngọn đồi hay ngồi trò chuyện với cộng đồng thực ra có một mục tiêu rất rõ ràng: nuôi dưỡng năng lượng ra quyết định và năng lượng sáng tạo. 
+Hóa ra những founder đang đi đầu trong cuộc chơi này lại không xem sự kiệt quệ là một huy chương danh dự. Việc họ dưỡng sức, chú ý từng bữa ăn, leo một ngọn đồi hay ngồi trò chuyện với cộng đồng thực ra có một mục tiêu rất rõ ràng: nuôi dưỡng năng lượng ra quyết định và năng lượng sáng tạo.
 
 Với một founder, tài sản lớn nhất không phải là số giờ ngồi lì trước máy tính, mà là sự minh mẫn khi phải đưa ra những quyết định sống còn và độ nhạy bén để đi tìm cảm hứng mới. Khi cơ thể kiệt quệ, hai thứ năng lượng này sẽ là thứ cạn sạch đầu tiên. Dưỡng sức và giữ kết nối với đời sống thực, vì thế, là điều kiện tiên quyết để giữ được sự bền bỉ cho chặng đường dài.
 

@@ -10,7 +10,7 @@ Trong căn phòng trọ 12m² chật hẹp ở Hà Nội, quạt trần kêu xè
 
 Còn trên màn hình chiếc máy tính cũ của Sơn, chỉ toàn những thuật toán và tài liệu toán học phức tạp về công nghệ kháng lượng tử.
 
-Những người xung quanh nhìn Sơn và hỏi: 
+Những người xung quanh nhìn Sơn và hỏi:
 *"Nghiên cứu cái này làm gì? Máy tính lượng tử còn chưa phổ biến, học cái này bao giờ mới ra tiền?"*
 
 Sơn chỉ mỉm cười. Cậu biết rằng khi máy tính lượng tử thực sự xuất hiện, toàn bộ hệ thống bảo mật của thế giới — từ giao dịch ngân hàng đến công nghệ blockchain — sẽ bị bẻ gãy trong vài giây nếu không chuẩn bị ngay từ hôm nay. Sơn chọn dấn thân vào một con đường đầy thử thách: **nghiên cứu công nghệ lượng tử và bảo mật kháng lượng tử**.
@@ -21,7 +21,7 @@ Sơn chỉ mỉm cười. Cậu biết rằng khi máy tính lượng tử thự
 
 Nhiều tháng trời miệt mài tự học, tự đọc hàng trăm tài liệu chuyên sâu của các tổ chức quốc tế và Ethereum Foundation, Sơn bắt tay vào viết những bài phân tích tối ưu hóa thuật toán bảo mật cho mạng lưới Ethereum trước làn sóng lượng tử. Cậu công khai toàn bộ nghiên cứu của mình trên GitHub và X (Twitter) — không kỳ vọng danh vọng, chỉ với mong muốn đóng góp một góc nhìn nhỏ cho cộng đồng toàn cầu.
 
-Vào một đêm cuối tháng 7, một thông báo bất ngờ xuất hiện trên màn hình của Sơn. 
+Vào một đêm cuối tháng 7, một thông báo bất ngờ xuất hiện trên màn hình của Sơn.
 
 Người gửi: **Justin Drake** — Nhà nghiên cứu lâu năm (Researcher) tại Ethereum Foundation, một trong những nhà toán học và kiến trúc sư mật mã uy tín hàng đầu thế giới Web3.
 
@@ -44,7 +44,7 @@ Chỗ ở tại Jesus College đã được Ethereum Foundation tài trợ 100%.
 
 ## 4. Chắp Cánh Cho Một Bộ Óc Việt Ra Thế Giới
 
-Trần Thế Sơn đã chứng minh được năng lực và sự kiên trì phi thường nhờ sự đam mê nghiên cứu lượng tử để nhận được tấm vé mời danh giá tới Đại học Cambridge từ Justin Drake. 
+Trần Thế Sơn đã chứng minh được năng lực và sự kiên trì phi thường nhờ sự đam mê nghiên cứu lượng tử để nhận được tấm vé mời danh giá tới Đại học Cambridge từ Justin Drake.
 
 Cái Sơn cần lúc me này không phải là một sự thương hại, mà là **một sự đồng hành** — một tấm vé máy bay khứ hồi để đưa trí tuệ trẻ Việt Nam bước ra vũ đài công nghệ thế giới, ngồi chung bàn thảo luận về tương lai công nghệ lượng tử cùng những nhà khoa học xuất sắc nhất hành tinh.
 

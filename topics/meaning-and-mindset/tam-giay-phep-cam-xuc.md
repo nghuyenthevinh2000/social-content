@@ -2,7 +2,7 @@
 
 Suốt 21 ngày liên tiếp, Nam ngồi trước chiếc màn hình máy tính trắng xóa và không gõ nổi một dòng code hay thiết kế được một nét vẽ nào.
 
-Dự án đã trễ hạn. Nỗi lo âu gõ cửa mỗi sáng. Nhưng mỗi khi đặt tay lên bàn phím, một tiếng nói bên trong Nam lại thì thầm: 
+Dự án đã trễ hạn. Nỗi lo âu gõ cửa mỗi sáng. Nhưng mỗi khi đặt tay lên bàn phím, một tiếng nói bên trong Nam lại thì thầm:
 *"Hôm nay tâm trạng chưa tốt. Đầu óc chưa đủ thăng hoa. Phải chờ đến khi có hứng, cảm xúc thật ‘đúng’ thì làm mới chất lượng."*
 
 Thế là Nam đứng dậy. Anh dọn dẹp bàn làm việc bóng loáng, pha một tách cà phê thơm lừng, bật playlist nhạc lo-fi. Anh làm mọi thứ để "tạo bầu không khí", rồi ngồi đợi cái cảm giác hứng khởi xuất hiện.
@@ -10,6 +10,7 @@ Thế là Nam đứng dậy. Anh dọn dẹp bàn làm việc bóng loáng, pha 
 Nhưng cái "cảm giác đúng" ấy chưa bao giờ đến.
 
 Nam rơi vào đúng vòng lặp tàn nhẫn mà tâm lý học Phật giáo gọi là bẫy **Vedanā – Taṇhā – Upādāna** (Thập Nhị Nhân Duyên):
+
 1. Một cảm giác trì trệ, uể uách xuất hiện (*Vedanā*).
 2. Tâm trí nảy sinh sự kháng cự và thèm muốn một trạng thái cảm xúc tốt hơn (*Taṇhā*).
 3. Ta dán chặt hành động của mình vào cảm xúc: *"Phải có hứng mới được làm"* (*Upādāna*).
@@ -36,7 +37,7 @@ Nam nhìn ông lão miệt mài đẩy từng đường bào trên mặt gỗ x�
 
 Tối hôm đó, Nam quay về phòng. Anh ngồi xuống trước chiếc màn hình trắng. Trong lồng ngực anh, cảm giác chán nản và uể uách vẫn còn nguyên đó.
 
-Nhưng lần này, Nam không đợi nó biến mất. Anh nhìn thẳng vào sự uể uách đó với một sự quan sát trung tính (*Bare Attention - Sati*). 
+Nhưng lần này, Nam không đợi nó biến mất. Anh nhìn thẳng vào sự uể uách đó với một sự quan sát trung tính (*Bare Attention - Sati*).
 
 Anh thở sâu và tự nói với chính mình:
 > *"Sự uể uách đang ở đây. Và tay mình vẫn đang đặt lên bàn phím."*

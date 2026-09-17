@@ -103,7 +103,7 @@ After finishing:
 
 ## The Architecture of the Four Tensions
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                 THE FOUR CORE TENSIONS                  │
 └────────────────────────┬────────────────────────────────┘

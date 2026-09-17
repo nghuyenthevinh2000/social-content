@@ -88,4 +88,4 @@ And until we build products and learning systems around that ceiling — not aga
 
 ---
 
-#AI #ProductDesign #TechIndustry #CognitiveFriction #SoftwareEngineering
+# AI #ProductDesign #TechIndustry #CognitiveFriction #SoftwareEngineering

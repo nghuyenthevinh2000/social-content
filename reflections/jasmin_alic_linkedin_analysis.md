@@ -16,7 +16,7 @@ He does not teach hacks. He teaches that the human behind the post — their cla
 Three beliefs underpin everything he does:
 
 | Belief | Implication |
-|:-------|:------------|
+| :------- | :------------ |
 | **Authenticity outlasts algorithms** | Never write AI-generated content; it lacks the human resonance required for real connection |
 | **Every post is a proof point** | You don't say you're an expert — you prove it through the insight in every post |
 | **Top of mind = business** | Consistent, value-first content makes you the first person someone thinks of when they need a solution |
@@ -34,7 +34,7 @@ The hook is not the post. It does not explain, summarize, or sell. It creates a 
 Hook types he uses:
 
 | Hook Type | Structure | Example |
-|:----------|:----------|:--------|
+| :---------- | :---------- | :-------- |
 | **Bold statement** | Counter-intuitive claim | *"The day I got fired was the best day of my life."* |
 | **Quoted objection** | Someone says something wrong — you correct it | *"Can't one person just handle all of marketing?" ...said by someone who's clearly never done it.* |
 | **Rumour / insider signal** | Casual observation that implies exclusive knowledge | *"I wasn't shocked… but still had to share this."* |
@@ -50,11 +50,12 @@ Hook types he uses:
 **Purpose**: Slam the door. Keep the reader inside.
 
 The rehook is the sentence immediately after the hook. It:
+
 - Justifies or contextualizes the hook
 - Addresses the reader's instant skepticism
 - Makes a promise for what follows
 
-```
+```text
 Hook:    "I wasn't shocked… but still had to share this."
 Rehook:  "LinkedIn just quietly changed how it ranks text-only posts —
           and most people haven't noticed yet."
@@ -79,7 +80,7 @@ Body formatting principles:
 Body structures he uses:
 
 | Structure | When to use |
-|:----------|:------------|
+| :---------- | :------------ |
 | **Numbered list** | Teaching multiple related points; scannable, promise-fulfilling |
 | **Scene → lesson** | Personal story grounded in a real moment, then the insight extracted |
 | **Myth → truth** | State the false belief, then dismantle it with specifics |
@@ -101,10 +102,11 @@ The closing should not explain. It should land.
 ## 3. The Five Post Formats He Uses
 
 ### Format 1: The Hook + List
+
 **Structure**: Provocative hook → rehook → numbered list → punch close
 **Best for**: Education, authority positioning, scannable insight delivery
 
-```
+```text
 [Hook — bold statement or common misconception]
 [Rehook — context or promise]
 
@@ -121,10 +123,11 @@ Here's what most people miss:
 ---
 
 ### Format 2: The Contrarian / Myth-Buster
+
 **Structure**: False belief → why it's believed → why it's wrong → truth → implication
 **Best for**: Establishing authority by taking a position, generating comments/debate
 
-```
+```text
 [Common belief, stated as others hold it]
 
 Most people think this is true.
@@ -143,10 +146,11 @@ The implication:
 ---
 
 ### Format 3: The Scene → Insight (Personal Story)
+
 **Structure**: Real scene → tension → turning point → lesson extracted
 **Best for**: Building trust, humanizing expertise, making insight memorable
 
-```
+```text
 [Opening — scene-based, active, specific. No context first.]
 [Tension — what was at stake]
 [Turning point — the moment things changed]
@@ -162,10 +166,11 @@ The **"Dear Son" technique** applies here: draft the post as if writing to your 
 ---
 
 ### Format 4: The Insider / Rumour Post
+
 **Structure**: Casual observational hook → specific inside information → broader implication → CTA or punch close
 **Best for**: Timely content, algorithm changes, industry news framed through expertise
 
-```
+```text
 [Hook — casual, observational, implies exclusive knowledge]
 [Rehook — the specific thing worth knowing]
 
@@ -180,10 +185,11 @@ What this means for you:
 ---
 
 ### Format 5: The Proof Point (Authority Post)
+
 **Structure**: Result or specific outcome → how it happened → transferable lesson → invitation
 **Best for**: Business development without selling, demonstrating credibility through demonstrated outcomes
 
-```
+```text
 [Hook — a specific result, not a claim: "6 months of clients booked. Zero sales posts."]
 [Rehook — why this matters and is replicable]
 
@@ -203,7 +209,7 @@ The principle behind it:
 Jay teaches that commenting is often **more powerful than posting**.
 
 | Metric | Post | Comment |
-|:-------|:-----|:--------|
+| :------- | :----- | :-------- |
 | Daily limit | 1-2 posts/day | 20-30 comments/day |
 | Discoverability | Algorithm-dependent | Profile visits from every comment |
 | Relationship building | One-to-many | One-to-one |
@@ -217,6 +223,7 @@ Jay teaches that commenting is often **more powerful than posting**.
 - Asks a specific, non-generic question
 
 **Feed management**: He organizes connections into custom lists:
+
 - Prospects
 - Peers / Collaborators  
 - Influencers in niche
@@ -266,7 +273,7 @@ And the formatting check:
 ## 7. What NOT to Do (Failure Modes He Explicitly Teaches Against)
 
 | Failure | What it looks like | Fix |
-|:--------|:-------------------|:----|
+| :-------- | :------------------- | :---- |
 | Opening with context | "Today I want to share thoughts about…" | Open with conflict, surprise, tension |
 | Writing to everyone | "Hey LinkedIn family!" | Pick one reader. Write only to them. |
 | Leading with a stat | "78% of marketers say…" | Lead with the human moment behind the stat |
@@ -283,7 +290,7 @@ And the formatting check:
 These principles map directly onto the `story-engine` skill:
 
 | Jay's Principle | story-engine Equivalent |
-|:----------------|:------------------------|
+| :---------------- | :------------------------ |
 | Hook → get in the room | "Start with a Bang" (Principle 1) |
 | Rehook → slam the door | Missing from current skill — **add this** |
 | Write to ONE person | "Write to ONE Person" (Principle 4) |

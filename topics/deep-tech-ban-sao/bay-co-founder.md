@@ -1,6 +1,6 @@
 # Bẫy "Mọi con đường đều đúng" — Cái chết êm ái nhất của một Startup
 
-Công ty chúng tôi không phá sản vì lục đục nội bộ. 
+Công ty chúng tôi không phá sản vì lục đục nội bộ.
 
 Chúng tôi không ai tham ô, không ai lười biếng, và tuyệt đối không ai muốn công ty thất bại. Chúng tôi chết vì một lý do cay đắng hơn nhiều: **Ai trong chúng tôi cũng đúng.**
 
@@ -17,7 +17,7 @@ Còn tôi — CEO, vẽ một đường màu xanh dương đâm ngang bảng:
 
 ---
 
-Cái bẫy nguy hiểm nhất trên đời không phải là lựa chọn giữa **Đúng** và **Sai**. Lựa chọn giữa Đúng và Sai rất dễ. 
+Cái bẫy nguy hiểm nhất trên đời không phải là lựa chọn giữa **Đúng** và **Sai**. Lựa chọn giữa Đúng và Sai rất dễ.
 
 Cái bẫy thực sự là khi bạn phải lựa chọn giữa **Đúng, Đúng Hơn và Cũng Đúng.**
 
@@ -32,6 +32,7 @@ Nhưng vì ai cũng tâm huyết, ai cũng đưa ra lý lẽ thuyết phục, v�
 ---
 
 Chúng tôi giống như ba người mù cùng mò một con voi trong đêm tối.
+
 * Người sờ vào cái vòi bảo đó là con rắn.
 * Người sờ vào cái chân bảo đó là cái cột nhà.
 * Người sờ vào cái tai bảo đó là cái quạt.
@@ -52,18 +53,18 @@ Vì không muốn bác bỏ công sức hay làm tổn thương góc nhìn của
 * Ads chạy nửa chừng, ngân sách quá mỏng không đủ tạo độ phủ conversion.
 * B2B chốt được 2 hợp đồng nhỏ nhưng không đủ nhân sự để triển khai và chăm sóc khách hàng.
 
-Tài nguyên hữu hạn bị xé lẻ làm ba. Thay vì đi được 100 bước trên một con đường để đến đích, chúng tôi đi mỗi đường 33 bước — và dừng lại ở giữa hư không. 
+Tài nguyên hữu hạn bị xé lẻ làm ba. Thay vì đi được 100 bước trên một con đường để đến đích, chúng tôi đi mỗi đường 33 bước — và dừng lại ở giữa hư không.
 
-Đêm cuối cùng trước khi làm thủ tục giải thể, 3 đứa ngồi lại trong văn phòng tối om. Cốc cà phê đen trên bàn đã nguội ngắt từ lâu. 
+Đêm cuối cùng trước khi làm thủ tục giải thể, 3 đứa ngồi lại trong văn phòng tối om. Cốc cà phê đen trên bàn đã nguội ngắt từ lâu.
 
-Không có tiếng chửi rủa. Không có ai đổ lỗi cho ai. Chỉ có những ánh mắt mệt mỏi và sự bất lực đến xé lòng. 
+Không có tiếng chửi rủa. Không có ai đổ lỗi cho ai. Chỉ có những ánh mắt mệt mỏi và sự bất lực đến xé lòng.
 
-Nam nhìn lên chiếc bảng trắng vẫn còn nguyên 3 vệt màu, thở dài: 
+Nam nhìn lên chiếc bảng trắng vẫn còn nguyên 3 vệt màu, thở dài:
 > *"Giá như hồi đó... có ai trong chúng ta sai thì tốt biết mấy."*
 
 ---
 
-### Bài học sau cái chết:
+## Bài học sau cái chết
 
 1. **Sự đồng thuận hòa nhã đôi khi là bản án tử hình được bọc đường:**
    Thà rằng chọn **SAI** một hướng, nhưng toàn bộ team dốc 100% tài nguyên chèo chung một ngả — để nếu sai thì thất bại nhanh, nhận ra nhanh và sửa nhanh. Còn hơn là chọn **ĐÚNG** cả ba hướng, nhưng mỗi co-founder lại kéo chiếc xe về một ngả cho đến khi khung xe gãy nát.

@@ -2,11 +2,12 @@ Làm kỹ sư blockchain 6 năm, lead tech một protocol tỷ đô, nhưng mìn
 
 Lúc đó, mình nhận ra một sự thật ê chề: mình chỉ đang "dịch" các công thức toán học thành code, chứ chưa bao giờ thực sự hiểu vì sao những công thức đó tồn tại. Trong làn sóng DeFi và Web3, những người làm Tech và Product như chúng ta rất dễ bị ảo tưởng. Chúng ta tự tay thiết kế những mô hình tokenomics phức tạp, tính toán APY, thiết lập Liquidity Pool, và nghĩ rằng mình đang định hình lại tương lai tài chính.
 
-Nhưng khi bước vào những buổi họp chiến lược thực sự với các quỹ đầu tư hay đối tác tài chính truyền thống, lớp vỏ bọc đó lập tức bị bóc trần. Khi họ bắt đầu thảo luận về Net Present Value (Giá trị hiện tại ròng), Cơ cấu vốn, hay Quản trị rủi ro thanh khoản... mình chỉ biết gật đầu bối rối. Kiến thức tài chính rời rạc, chắp vá thu lượm từ vài bài báo mạng trở thành một bức trần vô hình chặn đứng mình. mình nhận ra: nếu không hiểu cốt lõi, những sản phẩm mình tạo ra chỉ là những mô hình đầu cơ bong bóng, thiếu đi giá trị thực tế lâu dài. 
+Nhưng khi bước vào những buổi họp chiến lược thực sự với các quỹ đầu tư hay đối tác tài chính truyền thống, lớp vỏ bọc đó lập tức bị bóc trần. Khi họ bắt đầu thảo luận về Net Present Value (Giá trị hiện tại ròng), Cơ cấu vốn, hay Quản trị rủi ro thanh khoản... mình chỉ biết gật đầu bối rối. Kiến thức tài chính rời rạc, chắp vá thu lượm từ vài bài báo mạng trở thành một bức trần vô hình chặn đứng mình. mình nhận ra: nếu không hiểu cốt lõi, những sản phẩm mình tạo ra chỉ là những mô hình đầu cơ bong bóng, thiếu đi giá trị thực tế lâu dài.
 
 Mình quyết định cần "đập đi xây lại" từ đầu.
 
 Không thuật ngữ Web3 phức tạp. Không smart contract. mình đặt từ khóa "DÒNG CHẢY GIÁ TRỊ" ở trung tâm và bắt đầu vẽ một bản đồ tư duy (mind map) của những điều cơ bản nhất:
+
 1. **Vốn (Capital) từ đâu ra?** Nó dịch chuyển như thế nào giữa các chủ thể kinh tế?
 2. **Chi phí cơ hội (Opportunity Cost)** và **Rủi ro (Risk)** được định giá thế nào để quyết định lãi suất?
 3. **Đòn bẩy (Leverage)** thực chất là gì và tại sao nó vừa là động cơ vừa là thuốc độc?

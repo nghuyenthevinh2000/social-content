@@ -11,6 +11,7 @@ Hầu hết founder đều ngã ngựa ở 1 trong 2 cái bẫy sinh tử này:
 🔴 **Vòng 1: Cái bẫy mê đắm món đồ chơi của mình**
 
 Chúng ta tự nhốt mình trong góc phòng an toàn:
+
 - Cắm cúi viết code, tối ưu từng thông số
 - Chăm chút từng tính năng "xịn xò"
 - Tự hào vì giải được bài toán kỹ thuật hóc búa
@@ -23,7 +24,7 @@ Thế là hơn một nửa số founder "ngã ngựa" ngay từ vòng gửi xe: 
 
 🟢 **Vòng 2: Cái bẫy bước ra đời thực**
 
-Nếu sống sót qua vòng 1, bạn có một sản phẩm chạy mượt mà. 
+Nếu sống sót qua vòng 1, bạn có một sản phẩm chạy mượt mà.
 
 Nhưng bi kịch là hầu hết mọi người đều nghĩ: *"Xong phần khó nhất rồi, đồ xịn thế này thiên hạ sẽ tự tìm đến mua."*
 
@@ -40,6 +41,7 @@ Ngay cả với những sản phẩm rất tốt, chỉ khoảng 10% thực sự
 ---
 
 Sáng chế và Đưa ra thị trường là 2 mặt của cùng một đồng xu:
+
 - Có công nghệ đột phá mà không biết mang ra ngoài = Giá trị bằng 0.
 - Giỏi chào mời mà không có sản phẩm cốt lõi = Sớm muộn cũng bị đè bẹp.
 
