@@ -1,6 +1,6 @@
 ---
 name: one-pager-html
-description: "Use when: the user asks to create a visual chart or infographic, render data as a stunning HTML chart, produce a screenshot of a visual, or save chart output. This skill authors a self-contained HTML file with embedded chart logic, then captures a full-page screenshot using Playwright. All output goes to a dedicated folder under topics/<topic-slug>/."
+description: "Use when: the user asks to create a visual chart or infographic, render data as a stunning HTML chart, produce a screenshot of a visual, or save chart output. This skill authors a self-contained HTML file with embedded chart logic, then captures a full-page screenshot using Playwright. All output goes to a dedicated folder under topics/<topic-slug>/. The agent must ALWAYS confirm first with the user which template to use, why using it, and the planned content on the 1-pager. ONLY proceed after explicit user approval."
 ---
 
 # one-pager-html: Author HTML charts and capture screenshots
@@ -9,12 +9,19 @@ description: "Use when: the user asks to create a visual chart or infographic, r
 
 You produce a **self-contained, single-file HTML visual** (charts, infographics, data stories) — no build step, no external bundler. After writing the file, you capture a **full-page screenshot** with Playwright and save it alongside the HTML in the output folder.
 
+> [!IMPORTANT]
+> **MANDATORY CONFIRMATION GATE**: You must **ALWAYS** confirm with the user first before creating files or taking screenshots:
+> 1. **Which template** to use (from `inforgraphic-templates/` or custom).
+> 2. **Why** you recommend this template (rationale).
+> 3. **The planned content & data outline** to be included on the 1-pager.
+> **DO NOT** write code, create directories, or execute screenshots until the user has explicitly approved.
+
 The workflow is:
 
-1. **Plan** — understand the data, visual goal, and folder target
-2. **Author** — write `index.html` to `topics/<topic-slug>/`
-3. **Screenshot** — run `npx playwright screenshot --full-page` to capture `output.png`
-4. **Verify** — confirm the PNG exists and embed it in your reply
+1. **Plan & Confirm (MANDATORY GATE)** — Select template, formulate rationale, outline content, and ask the user for approval. Stop calling tools and wait for confirmation.
+2. **Author** — Once approved, copy template or write `index.html` to `topics/<topic-slug>/` (or user-requested directory).
+3. **Screenshot** — Run Playwright screenshot command to capture `output.png`.
+4. **Verify** — Confirm the PNG exists and embed it in your reply.
 
 ---
 
@@ -53,14 +60,21 @@ mkdir -p "$REPO_ROOT/topics/<topic-slug>"
 
 ---
 
-## Step 1 — Plan the visual
+## Step 1 — Plan & Confirm with User (MANDATORY GATE)
 
-Before writing any code, decide:
+Before writing any files, creating directories, or running commands, you **MUST STOP AND ASK FOR USER APPROVAL** with the following 3 elements:
 
-- **Chart type**: bar, line, area, pie/donut, heatmap, scatter, stat cards, infographic, etc.
-- **Data**: what numbers/labels are you visualizing? Inline them if small; no external CSV fetches.
-- **Story**: what is the one takeaway this visual communicates? State it in your title and a headline.
-- **Aesthetic**: follow the design tokens in "Design system" below. Dark mode, glassmorphism, vibrant accent colors, animated counters.
+1. **Which template to use**: Identify the template from `inforgraphic-templates/` (or explain if a custom layout is needed).
+2. **Why using it (Rationale)**: Explain why this template's layout, structure, and design style match the user's objective and dataset.
+3. **Planned content outline**: Detail the exact content to be presented on the 1-pager:
+   - Headline and branding
+   - Key metrics / KPI cards
+   - Core sections and tables/lists
+   - Chart visualization type and data points
+   - Takeaways or quote
+
+> [!CAUTION]
+> **DO NOT PROCEED TO STEP 2 UNTIL THE USER EXPLICITLY APPROVES.** Stop tool execution and wait for user feedback or approval.
 
 ---
 
@@ -125,7 +139,9 @@ npx playwright screenshot --viewport-size "900,1273" --wait-for-timeout 2000 \
 
 ---
 
-## Step 2 — Author index.html
+## Step 2 — Author index.html (Only After User Approval)
+
+> **Prerequisite**: Only proceed with this step after the user has explicitly approved the proposed template, rationale, and content outline from Step 1.
 
 ### File rules
 
