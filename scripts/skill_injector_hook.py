@@ -37,6 +37,11 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 NO_INJECTION = {"injectSteps": []}
 
+# How many top-scoring skills to drill into for resource-level (template /
+# reference) selection. Keeps the extra TypeSafe calls bounded even when
+# several skills score above threshold.
+MAX_RESOURCE_DRILLDOWNS = 2
+
 
 def extract_user_message(payload: dict) -> str:
     """Get the latest user message from the payload, falling back to the
@@ -81,7 +86,7 @@ def extract_user_message(payload: dict) -> str:
     return last_user_text
 
 
-def format_message(result: dict) -> str:
+def format_message(result: dict, resource_results: dict) -> str:
     lines = ["NOTICE: TypeSafe skill router suggests the following for this request:"]
 
     if result.get("primary"):
@@ -97,9 +102,26 @@ def format_message(result: dict) -> str:
     for r in others:
         lines.append(f"- Also relevant: '{r['skill']}' (p={r['probability']:.2f})")
 
+    for skill_name, resource_result in resource_results.items():
+        if not resource_result.get("primary") and not resource_result.get("recommended"):
+            continue
+        lines.append(f"  Within '{skill_name}':")
+        if resource_result.get("primary"):
+            lines.append(
+                f"  - Lead resource: '{resource_result['primary']}' "
+                f"(confidence {resource_result['primary_confidence']:.2f})"
+            )
+        resource_others = [
+            r for r in resource_result.get("recommended", [])
+            if r["resource"] != resource_result.get("primary")
+        ]
+        for r in resource_others:
+            lines.append(f"  - Also relevant: '{r['resource']}' (p={r['probability']:.2f})")
+
     lines.append(
         "Review the suggested skill(s) by viewing their SKILL.md via `view_file` if they fit, "
-        "or proceed without them if none actually apply."
+        "or proceed without them if none actually apply. If a lead resource (template/reference) "
+        "was named above, open that specific file too before deciding what to load."
     )
     return "\n".join(lines)
 
@@ -120,7 +142,13 @@ def main() -> None:
         from dotenv import load_dotenv
         load_dotenv(REPO_ROOT / ".env")
 
-        from skill_selector import discover_skills, select_skills
+        from skill_selector import (
+            SKILLS_DIR,
+            discover_skill_resources,
+            discover_skills,
+            select_resources,
+            select_skills,
+        )
 
         skills = discover_skills()
         if not skills:
@@ -128,6 +156,26 @@ def main() -> None:
             return
 
         result = select_skills(user_message, skills)
+
+        # Stage 2: for the skill(s) worth surfacing, drill into their
+        # templates/references and let Jev pick which specific one(s) apply.
+        # Capped to the top MAX_RESOURCE_DRILLDOWNS skills by probability so
+        # a broad match across many skills doesn't fan out into a pile of
+        # extra TypeSafe calls.
+        candidate_names = []
+        if result.get("primary"):
+            candidate_names.append(result["primary"])
+        for r in result.get("recommended", []):
+            if r["skill"] not in candidate_names:
+                candidate_names.append(r["skill"])
+        candidate_names = candidate_names[:MAX_RESOURCE_DRILLDOWNS]
+
+        resource_results = {}
+        for skill_name in candidate_names:
+            resources = discover_skill_resources(SKILLS_DIR / skill_name)
+            if not resources:
+                continue
+            resource_results[skill_name] = select_resources(user_message, resources)
     except Exception:
         # Fail open: TypeSafe unavailable, bad request, etc.
         print(json.dumps(NO_INJECTION))
@@ -137,7 +185,7 @@ def main() -> None:
         print(json.dumps(NO_INJECTION))
         return
 
-    message = format_message(result)
+    message = format_message(result, resource_results)
     print(json.dumps({"injectSteps": [{"ephemeralMessage": message}]}))
 
 
