@@ -87,13 +87,14 @@ def extract_user_message(payload: dict) -> str:
 
 
 def format_message(result: dict, resource_results: dict) -> str:
+    from skill_selector import display_primary
+
     lines = ["NOTICE: TypeSafe skill router suggests the following for this request:"]
 
-    if result.get("primary"):
-        lines.append(
-            f"- Lead skill: '{result['primary']}' "
-            f"(confidence {result['primary_confidence']:.2f})"
-        )
+    lines.append(
+        f"- Lead skill: '{display_primary(result.get('primary'))}' "
+        f"(confidence {result['primary_confidence']:.2f})"
+    )
 
     others = [
         r for r in result.get("recommended", [])
@@ -102,26 +103,39 @@ def format_message(result: dict, resource_results: dict) -> str:
     for r in others:
         lines.append(f"- Also relevant: '{r['skill']}' (p={r['probability']:.2f})")
 
-    for skill_name, resource_result in resource_results.items():
-        if not resource_result.get("primary") and not resource_result.get("recommended"):
+    for skill_name, groups in resource_results.items():
+        # A group is worth showing whenever it was actually evaluated (has
+        # scores), even if nothing cleared the recommend threshold — that's
+        # exactly the "no strong candidate" case we want to surface, not
+        # silently drop.
+        has_any = any(g.get("all_scores") for g in groups.values())
+        if not has_any:
             continue
         lines.append(f"  Within '{skill_name}':")
-        if resource_result.get("primary"):
+
+        for group_label, resource_result in groups.items():
+            if not resource_result.get("all_scores"):
+                continue
+            # Named groups mean this skill needs multiple *independent*
+            # picks at once (e.g. a layout AND a design style) — label each
+            # so they don't read as mutually-exclusive alternatives.
+            prefix = f"  [{group_label}] " if group_label else "  "
             lines.append(
-                f"  - Lead resource: '{resource_result['primary']}' "
+                f"{prefix}- Lead resource: '{display_primary(resource_result.get('primary'))}' "
                 f"(confidence {resource_result['primary_confidence']:.2f})"
             )
-        resource_others = [
-            r for r in resource_result.get("recommended", [])
-            if r["resource"] != resource_result.get("primary")
-        ]
-        for r in resource_others:
-            lines.append(f"  - Also relevant: '{r['resource']}' (p={r['probability']:.2f})")
+            resource_others = [
+                r for r in resource_result.get("recommended", [])
+                if r["resource"] != resource_result.get("primary")
+            ]
+            for r in resource_others:
+                lines.append(f"{prefix}- Also relevant: '{r['resource']}' (p={r['probability']:.2f})")
 
     lines.append(
         "Review the suggested skill(s) by viewing their SKILL.md via `view_file` if they fit, "
-        "or proceed without them if none actually apply. If a lead resource (template/reference) "
-        "was named above, open that specific file too before deciding what to load."
+        "or proceed without them if none actually apply. If lead resources (template/reference/design) "
+        "were named above, open those specific files too before deciding what to load — when a skill "
+        "lists multiple bracketed groups, each is an independent pick to combine, not alternatives."
     )
     return "\n".join(lines)
 
@@ -172,10 +186,10 @@ def main() -> None:
 
         resource_results = {}
         for skill_name in candidate_names:
-            resources = discover_skill_resources(SKILLS_DIR / skill_name)
-            if not resources:
+            resources_by_group = discover_skill_resources(SKILLS_DIR / skill_name)
+            if not resources_by_group:
                 continue
-            resource_results[skill_name] = select_resources(user_message, resources)
+            resource_results[skill_name] = select_resources(user_message, resources_by_group)
     except Exception:
         # Fail open: TypeSafe unavailable, bad request, etc.
         print(json.dumps(NO_INJECTION))

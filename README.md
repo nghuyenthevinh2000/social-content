@@ -7,6 +7,7 @@ This repository contains specialized agent skills, topic research, draft posts, 
 | Name | Description |
 | --- | --- |
 | [`beautiful-html-templates`](./.agents/skills/beautiful-html-templates/SKILL.md) | A library of 34+ reusable, production-ready HTML slide deck templates and styling systems across diverse aesthetics (editorial, brutalist, minimal, playful, retro, technical, bold). Use when building, designing, generating, or adapting interactive HTML slide presentations, keynotes, or pitch decks with tone-first template matching, live previews, and design-system adaptations. |
+| [`branding`](./.agents/skills/branding/SKILL.md) | Comprehensive end-to-end brand operating system covering strategy, identity, naming, positioning, messaging, voice, guidelines, audience research, audits, architecture, and rebranding. Manages brands as structured, persistent packages on disk (`brand.yaml` + markdown artifacts) across 15 specialized branding workflows. |
 | [`documentation`](./.agents/skills/documentation/SKILL.md) | Creates, structures, and reviews technical documentation following the Diátaxis framework (tutorials, how-to guides, reference, and explanation pages). Use when a user needs to write or reorganize docs, structure a tutorial vs. a how-to guide, build reference docs or API documentation, create explanation pages, choose between Diátaxis documentation types, or improve existing documentation structure. |
 | [`humanizer`](./.agents/skills/humanizer/SKILL.md) | Rewrite AI-sounding text so it reads naturally without changing what it says. Use when editing or reviewing prose for inflated claims, sales language, vague sources, repetitive structure, stock AI words, passive voice, filler, or chatbot artifacts. Based on Wikipedia's "Signs of AI writing." |
 | [`infographic`](./.agents/skills/infographic/SKILL.md) | Author high-impact visual infographics and executive one-pagers as self-contained HTML files with embedded chart logic and Playwright 2x Retina screenshots. Combines 5 structural infographic templates (business plans, executive summaries, enterprise architecture stacks, financial reports, social media dashboards) with 34 curated design styles. Use when the user asks to create an infographic, one-pager, visual chart, executive briefing visual, or architecture stack. |
@@ -27,6 +28,14 @@ This repository contains specialized agent skills, topic research, draft posts, 
 A [TypeSafe](https://typesafe.ai)-backed PreInvocation hook picks the right
 skill *and* the right resource inside it (template/reference) for every
 request, before the agent reasons on its own.
+
+**Features:**
+- Two-stage selection — which skill(s) apply, then which specific resource inside the top skill applies
+- Multi-group support — skills needing more than one independent pick at once (e.g. a layout *and* a design style) get separate rankings, not one merged/forced choice
+- Honest confidence — reports "No strong existing candidate, LLM decides" instead of forcing a weak pick
+- Fails open — any error (missing key, bad payload, no match) never blocks the turn
+- One-click install into any workspace via `uv`
+- Optional visual demo — animated bar-chart view of Jev's confidence per skill/resource
 
 Quick install into another workspace:
 

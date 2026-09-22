@@ -10,8 +10,9 @@
   <main class="stage">
     <h1>Jev Suggestion</h1>
     <p class="subtitle">
-      Type a request. Top section: which skill Jev picks. Bottom section:
-      which resource inside that skill Jev picks. Longer, brighter bar wins.
+      Type a request. Top section: which skill Jev picks. Below: one section
+      per resource Jev needs to pick within that skill (some skills need more
+      than one independent pick at once). Longer, brighter bar wins.
     </p>
 
     <section class="chart-section">
@@ -21,12 +22,14 @@
       </div>
     </section>
 
-    <section class="chart-section">
-      <div class="section-title">2 · Resource within that skill</div>
-      <div class="chart" id="resourcesChart">
-        <div class="chart-empty">waiting on a skill first</div>
-      </div>
-    </section>
+    <div id="resourceSections">
+      <section class="chart-section">
+        <div class="section-title">2 · Resource within that skill</div>
+        <div class="chart">
+          <div class="chart-empty">waiting on a skill first</div>
+        </div>
+      </section>
+    </div>
 
     <form id="form" class="input-row">
       <textarea

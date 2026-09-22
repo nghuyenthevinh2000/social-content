@@ -31,22 +31,46 @@ index.html <title>/<h1> as a last resort), and `select_resources()` runs the
 same Noul-per-option + Choice pattern over those to recommend which specific
 template/reference to actually use.
 
+Some skills require more than one independent pick at once — e.g.
+`infographic` needs both a layout (`inforgraphic-templates/`) AND a design
+style (`design/`); those aren't alternatives to each other, they're two
+separate dial-in choices that combine. `discover_skill_resources()` detects
+this by looking for multiple sibling "collection" directories at the skill's
+root (each holding several resource sub-folders) and returns them as
+separate named groups instead of merging everything into one flat list that
+would force a single mutually-exclusive winner across unrelated concerns.
+`select_resources()` then runs an independent Jev pass per group.
+
 Output (stdout, JSON):
     {
-      "primary": "beautiful-html-templates",
+      "primary": "infographic",
       "primary_confidence": 0.93,
       "recommended": [
-        {"skill": "beautiful-html-templates", "probability": 0.96},
+        {"skill": "infographic", "probability": 0.96},
         {"skill": "branding", "probability": 0.61}
       ],
-      "all_scores": {"beautiful-html-templates": 0.96, "branding": 0.61, ...},
+      "all_scores": {"infographic": 0.96, "branding": 0.61, ...},
       "resources": {
-        "primary": "coral",
-        "primary_confidence": 0.88,
-        "recommended": [{"resource": "coral", "probability": 0.91}, ...],
-        "all_scores": {"coral": 0.91, "8-bit-orbit": 0.02, ...}
+        "design": {
+          "primary": "coral",
+          "primary_confidence": 0.88,
+          "recommended": [{"resource": "coral", "probability": 0.91}, ...],
+          "all_scores": {"coral": 0.91, "8-bit-orbit": 0.02, ...}
+        },
+        "inforgraphic-templates": {
+          "primary": "monthly-social-media-report",
+          "primary_confidence": 0.9,
+          "recommended": [...],
+          "all_scores": {...}
+        }
       }
     }
+
+  For skills with only one natural resource domain (branding,
+  beautiful-html-templates, ...), `resources` has a single group under the
+  key `""` (empty string) so existing single-group consumers can keep
+  reading `resources[""]` without caring whether a skill happens to be a
+  dual-choice one.
 
 Setup:
     uv add typesafe-sdk python-dotenv pyyaml
@@ -67,6 +91,20 @@ SKILLS_DIR = REPO_ROOT / ".agents" / "skills"
 RECOMMEND_THRESHOLD = 0.5
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?\n)---\s*\n", re.DOTALL)
+
+# Shown in place of a `null` primary in any user-facing output (CLI JSON,
+# the hook's injected notice, ...) — i.e. Jev didn't find a strong enough
+# single winner among the candidates. Internal control flow (e.g. deciding
+# whether to drill into a skill's resources) keeps using the real `None`;
+# only display/output layers should ever see this string.
+NO_STRONG_CANDIDATE = "No strong existing candidate, LLM decides"
+
+
+def display_primary(primary):
+    """Map a `primary` value (a name, or None) to what should actually be
+    shown to a human/model: the real name, or the NO_STRONG_CANDIDATE
+    fallback when Jev didn't land on a single best fit."""
+    return primary if primary else NO_STRONG_CANDIDATE
 
 
 def discover_skills(skills_dir: Path = SKILLS_DIR) -> dict:
@@ -230,45 +268,174 @@ def _extract_html_description(html_path: Path) -> str:
     return ""
 
 
-def discover_skill_resources(skill_dir: Path) -> dict:
-    """Discover the sub-resources (templates, references, etc.) inside a
-    single skill directory and return {resource_id: short_description}.
+def _from_index_json(index_json: Path) -> dict:
+    """Parse a `templates` array out of an index.json (slug/name/tagline/
+    best_for/avoid_for -> description). Returns {} if missing/unusable."""
+    if not index_json.exists():
+        return {}
+    try:
+        data = json.loads(index_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
 
-    Tries, in order, and returns on first non-empty match:
+    resources = {}
+    templates = data.get("templates") if isinstance(data, dict) else data
+    for t in templates or []:
+        if not isinstance(t, dict):
+            continue
+        slug = t.get("slug") or t.get("name")
+        if not slug:
+            continue
+        parts = [t.get("name", ""), t.get("tagline", "")]
+        if t.get("best_for"):
+            parts.append(f"Best for: {t['best_for']}")
+        if t.get("avoid_for"):
+            parts.append(f"Avoid for: {t['avoid_for']}")
+        resources[str(slug)] = _clean_text(" ".join(p for p in parts if p))
+    return resources
+
+
+def _extract_resource_description(entry_dir: Path) -> str:
+    """Best-effort short description for one resource folder (a template or
+    reference's own directory), trying structured metadata first."""
+    template_json = entry_dir / "template.json"
+    if template_json.exists():
+        try:
+            t = json.loads(template_json.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            t = {}
+        parts = [t.get("name", ""), t.get("tagline", "")]
+        if t.get("best_for"):
+            parts.append(f"Best for: {t['best_for']}")
+        if t.get("avoid_for"):
+            parts.append(f"Avoid for: {t['avoid_for']}")
+        desc = _clean_text(" ".join(p for p in parts if p))
+        if desc:
+            return desc
+
+    for md_path in sorted(entry_dir.glob("*.md")):
+        try:
+            text = md_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        description = None
+        match = FRONTMATTER_RE.match(text)
+        if match:
+            try:
+                meta = yaml.safe_load(match.group(1)) or {}
+            except yaml.YAMLError:
+                meta = {}
+            description = meta.get("description")
+            if isinstance(description, str):
+                description = _clean_text(description)
+        if not description:
+            description = _first_paragraph(text)
+        if description:
+            return description
+
+    index_html = entry_dir / "index.html"
+    if index_html.exists():
+        desc = _extract_html_description(index_html)
+        if desc:
+            return desc
+
+    return entry_dir.name.replace("-", " ")
+
+
+def _is_collection_dir(dir_path: Path) -> bool:
+    """A directory 'looks like a collection' of resources when at least one
+    of its immediate subdirectories is itself a self-contained resource
+    (has template.json, design.md, or index.html directly inside it)."""
+    if not dir_path.is_dir():
+        return False
+    for child in dir_path.iterdir():
+        if not child.is_dir():
+            continue
+        if (
+            (child / "template.json").exists()
+            or (child / "design.md").exists()
+            or (child / "index.html").exists()
+        ):
+            return True
+    return False
+
+
+def _extract_collection(dir_path: Path) -> dict:
+    """{resource_id: description} for every resource sub-folder directly
+    inside a collection directory (e.g. design/coral, design/8-bit-orbit)."""
+    local_index = _from_index_json(dir_path / "index.json")
+    if local_index:
+        return local_index
+
+    resources = {}
+    for entry in sorted(dir_path.iterdir()):
+        if entry.is_dir():
+            resources[entry.name] = _extract_resource_description(entry)
+    return resources
+
+
+def discover_skill_resources(skill_dir: Path) -> dict:
+    """Discover the sub-resources (templates, references, design styles,
+    etc.) inside a single skill directory and return
+    {group_label: {resource_id: short_description}}.
+
+    Most skills have exactly one natural resource domain, returned under the
+    group label `""` (empty string) so callers that only expect one flat set
+    can just read `resources[""]`. Some skills need more than one
+    *independent* pick at once (e.g. `infographic` needs both a layout AND a
+    design style — not alternatives to each other) — those are detected by
+    finding multiple sibling "collection" directories at the skill root and
+    returned as separate named groups so each is selected independently
+    instead of being merged into one list that would force a single
+    mutually-exclusive winner across unrelated concerns.
+
+    Discovery order (first non-empty wins, checked at each level):
       1. A root `index.json` with a `templates` array (structured metadata:
          slug/name/tagline/best_for/avoid_for) — e.g. beautiful-html-templates.
-      2. Frontmattered markdown files anywhere under the skill (excluding its
-         own SKILL.md) — e.g. branding's references/*.md, templates/*/design.md.
-         Falls back to the first paragraph when there's no `description` key.
-      3. Bare template folders that only contain an index.html with no
-         markdown/JSON metadata — e.g. infographic's inforgraphic-templates.
-         Description is scraped from <title>/<h1>.
+         -> single group.
+      2. Two or more sibling top-level directories that each look like a
+         resource collection (immediate subdirs with template.json/
+         design.md/index.html) -> one named group per directory, e.g.
+         infographic's `design/` + `inforgraphic-templates/`.
+      3. Exactly one such collection directory -> single group (flattened,
+         no directory-name prefix), e.g. one-pager-html's
+         `inforgraphic-templates/`.
+      4. Frontmattered markdown files anywhere under the skill (excluding
+         its own SKILL.md) — e.g. branding's references/*.md. Falls back to
+         the first paragraph when there's no `description` key. -> single
+         group.
+      5. Bare folders that only contain an index.html with no markdown/JSON
+         metadata, found anywhere under the skill. Description is scraped
+         from <title>/<h1>. -> single group.
     """
-    resources = {}
-
-    index_json = skill_dir / "index.json"
-    if index_json.exists():
-        try:
-            data = json.loads(index_json.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            data = {}
-        templates = data.get("templates") if isinstance(data, dict) else data
-        for t in templates or []:
-            if not isinstance(t, dict):
-                continue
-            slug = t.get("slug") or t.get("name")
-            if not slug:
-                continue
-            parts = [t.get("name", ""), t.get("tagline", "")]
-            if t.get("best_for"):
-                parts.append(f"Best for: {t['best_for']}")
-            if t.get("avoid_for"):
-                parts.append(f"Avoid for: {t['avoid_for']}")
-            resources[str(slug)] = _clean_text(" ".join(p for p in parts if p))
-        if resources:
-            return resources
+    root_index = _from_index_json(skill_dir / "index.json")
+    if root_index:
+        return {"": root_index}
 
     skip_dirs = {"evals", "scripts", "runtime", ".git"}
+    candidates = [
+        d
+        for d in sorted(skill_dir.iterdir())
+        if d.is_dir()
+        and d.name not in skip_dirs
+        and not d.name.startswith(".")
+        and _is_collection_dir(d)
+    ]
+
+    if len(candidates) >= 2:
+        groups = {}
+        for d in candidates:
+            resources = _extract_collection(d)
+            if resources:
+                groups[d.name] = resources
+        if groups:
+            return groups
+    elif len(candidates) == 1:
+        resources = _extract_collection(candidates[0])
+        if resources:
+            return {"": resources}
+
+    resources = {}
     for md_path in sorted(skill_dir.rglob("*.md")):
         if md_path == skill_dir / "SKILL.md":
             continue
@@ -297,7 +464,7 @@ def discover_skill_resources(skill_dir: Path) -> dict:
         if description:
             resources[rel] = description
     if resources:
-        return resources
+        return {"": resources}
 
     for html_path in sorted(skill_dir.rglob("index.html")):
         rel_dir = html_path.parent.relative_to(skill_dir)
@@ -305,23 +472,32 @@ def discover_skill_resources(skill_dir: Path) -> dict:
             continue
         key = rel_dir.as_posix()
         resources[key] = _extract_html_description(html_path) or key.replace("-", " ")
+    if resources:
+        return {"": resources}
 
-    return resources
+    return {}
 
 
-def select_resources(request_text: str, resources: dict) -> dict:
-    """Stage-2 selection: given a skill's discovered sub-resources, pick
-    which one(s) actually apply to this request."""
-    result = _typesafe_select(request_text, resources)
-    return {
-        "primary": result["primary"],
-        "primary_confidence": result["primary_confidence"],
-        "recommended": [
-            {"resource": r["option"], "probability": r["probability"]}
-            for r in result["recommended"]
-        ],
-        "all_scores": result["all_scores"],
-    }
+def select_resources(request_text: str, resources_by_group: dict) -> dict:
+    """Stage-2 selection: given a skill's discovered sub-resource groups
+    (from discover_skill_resources), run an independent Jev pass per group
+    and return {group_label: single_group_result}. Groups are independent
+    picks (e.g. layout AND design style), never merged into one ranking."""
+    output = {}
+    for group_label, resources in resources_by_group.items():
+        if not resources:
+            continue
+        result = _typesafe_select(request_text, resources)
+        output[group_label] = {
+            "primary": result["primary"],
+            "primary_confidence": result["primary_confidence"],
+            "recommended": [
+                {"resource": r["option"], "probability": r["probability"]}
+                for r in result["recommended"]
+            ],
+            "all_scores": result["all_scores"],
+        }
+    return output
 
 
 def main() -> None:
@@ -346,9 +522,17 @@ def main() -> None:
     result = select_skills(request_text, skills)
 
     if result.get("primary"):
-        resources = discover_skill_resources(SKILLS_DIR / result["primary"])
-        if resources:
-            result["resources"] = select_resources(request_text, resources)
+        resources_by_group = discover_skill_resources(SKILLS_DIR / result["primary"])
+        if resources_by_group:
+            result["resources"] = select_resources(request_text, resources_by_group)
+
+    # Display-layer only: swap a null primary for a human-readable fallback
+    # in the printed output. Done last, after the real (possibly None)
+    # value has already been used above to decide whether to drill into
+    # resources.
+    result["primary"] = display_primary(result.get("primary"))
+    for group_result in result.get("resources", {}).values():
+        group_result["primary"] = display_primary(group_result.get("primary"))
 
     print(json.dumps(result, indent=2))
 

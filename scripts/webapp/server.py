@@ -10,11 +10,19 @@ policy rejects arbitrary origins).
 Every request re-runs the two-stage skill router
 (scripts/skill_selector.py) against whatever text the user typed and
 returns BOTH stages, always:
-  1. `skills`   — every discovered skill, ranked by confidence.
-  2. `resources` — the top skill's discoverable templates/references,
-     ranked by confidence (empty if that skill has none).
-The frontend renders these as two stacked, animated bar sections — no
-raw JSON or digits are shown, only bar length/color per item.
+  1. `skills`          — every discovered skill, ranked by confidence.
+  2. `resource_groups` — a list of the top skill's discoverable resource
+     groups (templates/references/design styles/...), each ranked by
+     confidence. Most skills have exactly one group; skills that need
+     more than one independent pick at once (e.g. `infographic` needs
+     both a layout AND a design style) return one entry per group here
+     instead of merging them into a single ranking.
+Each section also carries `has_strong_primary`: whether Jev actually landed
+on a single best-fit winner for that section, vs. every candidate scoring
+too low/close to call — the frontend renders that as a distinct "no strong
+candidate" state instead of just quietly ranking mediocre options.
+The frontend renders these as stacked, animated bar sections — no raw
+JSON or digits are shown, only bar length/color per item.
 
 Run:
     uv run --project . python scripts/webapp/server.py
@@ -48,8 +56,8 @@ def _ranked(scores: dict) -> list:
 
 def _analyze(text: str) -> dict:
     """Run the text through the two-stage Jev skill router and return both
-    the skill-level ranking and the resource-level ranking (within the top
-    skill), each with their confidence scores."""
+    the skill-level ranking and one resource-level ranking per resource
+    group discovered within the top skill."""
     from dotenv import load_dotenv
     load_dotenv(REPO_ROOT / ".env")
 
@@ -64,26 +72,39 @@ def _analyze(text: str) -> dict:
     skills = discover_skills()
     if not skills:
         return {
-            "skills": {"group": "skills", "items": []},
-            "resources": {"group": "", "items": []},
+            "skills": {"group": "skills", "items": [], "has_strong_primary": False},
+            "resource_groups": [],
         }
 
     result = select_skills(text, skills)
-    skills_section = {"group": "skills", "items": _ranked(result.get("all_scores"))}
+    skills_section = {
+        "group": "skills",
+        "items": _ranked(result.get("all_scores")),
+        "has_strong_primary": bool(result.get("primary")),
+    }
 
     top_skill = result.get("primary")
-    resources_section = {"group": "", "items": []}
+    resource_groups = []
 
     if top_skill:
-        resources = discover_skill_resources(SKILLS_DIR / top_skill)
-        if resources:
-            resource_result = select_resources(text, resources)
-            resources_section = {
-                "group": top_skill,
-                "items": _ranked(resource_result.get("all_scores")),
-            }
+        resources_by_group = discover_skill_resources(SKILLS_DIR / top_skill)
+        if resources_by_group:
+            selection_by_group = select_resources(text, resources_by_group)
+            for group_label, group_result in selection_by_group.items():
+                # "" means the skill has just one natural resource domain —
+                # label the section with the skill name. A named group means
+                # this is one of several independent picks (e.g. "design",
+                # "inforgraphic-templates") that combine, not alternatives.
+                label = top_skill if not group_label else f"{top_skill} \u2192 {group_label}"
+                resource_groups.append(
+                    {
+                        "group": label,
+                        "items": _ranked(group_result.get("all_scores")),
+                        "has_strong_primary": bool(group_result.get("primary")),
+                    }
+                )
 
-    return {"skills": skills_section, "resources": resources_section}
+    return {"skills": skills_section, "resource_groups": resource_groups}
 
 
 class Handler(BaseHTTPRequestHandler):

@@ -2,7 +2,7 @@ const form = document.getElementById("form");
 const textEl = document.getElementById("text");
 const submitBtn = document.getElementById("submit");
 const skillsChartEl = document.getElementById("skillsChart");
-const resourcesChartEl = document.getElementById("resourcesChart");
+const resourceSectionsEl = document.getElementById("resourceSections");
 const statusEl = document.getElementById("status");
 
 // Cool -> warm spectrum. Normalized per-batch (min..max of the current
@@ -28,7 +28,7 @@ function shortLabel(name) {
   return name.length > 42 ? "…" + name.slice(-40) : name;
 }
 
-function renderSection(chartEl, group, items, emptyText) {
+function renderSection(chartEl, items, emptyText, hasStrongPrimary) {
   chartEl.innerHTML = "";
 
   if (!items.length) {
@@ -39,11 +39,11 @@ function renderSection(chartEl, group, items, emptyText) {
     return;
   }
 
-  if (group) {
-    const tag = document.createElement("div");
-    tag.className = "group-tag";
-    tag.textContent = `within: ${group}`;
-    chartEl.appendChild(tag);
+  if (!hasStrongPrimary) {
+    const banner = document.createElement("div");
+    banner.className = "no-strong-candidate";
+    banner.textContent = "No strong existing candidate — LLM decides";
+    chartEl.appendChild(banner);
   }
 
   const maxConfidence = items[0].confidence || 1;
@@ -51,19 +51,24 @@ function renderSection(chartEl, group, items, emptyText) {
   const spread = maxConfidence - minConfidence || 1; // avoid divide-by-zero
 
   items.forEach((item, i) => {
+    // Only crown a "top" bar with the bold/glow treatment when Jev
+    // actually landed on a strong winner — otherwise every option is
+    // genuinely close/weak and singling one out would be misleading.
+    const isTop = i === 0 && hasStrongPrimary;
+
     const row = document.createElement("div");
     row.className = "bar-row";
     row.style.animationDelay = `${i * 60}ms`;
 
     const label = document.createElement("div");
-    label.className = "bar-label" + (i === 0 ? " top" : "");
+    label.className = "bar-label" + (isTop ? " top" : "");
     label.textContent = shortLabel(item.name);
 
     const track = document.createElement("div");
     track.className = "bar-track";
 
     const fill = document.createElement("div");
-    fill.className = "bar-fill" + (i === 0 ? " glow" : "");
+    fill.className = "bar-fill" + (isTop ? " glow" : "");
     // Rank (0..1) within this batch, not raw confidence — keeps colors
     // spread across the full spectrum even when scores are clustered.
     const rank01 = (item.confidence - minConfidence) / spread;
@@ -77,30 +82,73 @@ function renderSection(chartEl, group, items, emptyText) {
     chartEl.appendChild(row);
 
     // Animate the width in on the next frame so the CSS transition fires.
+    // Fixed 0-100% scale against the true confidence value — NOT relative
+    // to the batch's max. A 0.37 confidence always fills 37% of the bar,
+    // even if it's the highest-scoring item in a weak batch, so bar length
+    // always shows how far that candidate genuinely got, not just its rank.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const relative = maxConfidence
-          ? (item.confidence / maxConfidence) * 100
-          : 0;
-        fill.style.width = `${Math.max(4, relative)}%`;
+        const width = (item.confidence || 0) * 100;
+        fill.style.width = `${Math.max(2, width)}%`;
       });
     });
   });
 }
 
-function renderCharts(data) {
-  const skills = data.skills || { group: "", items: [] };
-  const resources = data.resources || { group: "", items: [] };
+function renderResourceGroups(groups) {
+  resourceSectionsEl.innerHTML = "";
 
-  renderSection(skillsChartEl, "", skills.items, "nothing stood out for that one");
+  if (!groups.length) {
+    const section = document.createElement("section");
+    section.className = "chart-section";
+    section.innerHTML = `
+      <div class="section-title">2 · Resource within that skill</div>
+      <div class="chart"><div class="chart-empty">waiting on a skill first</div></div>
+    `;
+    resourceSectionsEl.appendChild(section);
+    return;
+  }
+
+  // A single group is the common case (one resource domain). Multiple
+  // groups mean the skill needs several *independent* picks at once (e.g.
+  // a layout AND a design style) — each gets its own numbered section so
+  // they never read as mutually-exclusive alternatives of one another.
+  groups.forEach((group, i) => {
+    const section = document.createElement("section");
+    section.className = "chart-section";
+
+    const title = document.createElement("div");
+    title.className = "section-title";
+    title.textContent =
+      groups.length > 1 ? `${2 + i} · ${group.group}` : `2 · ${group.group}`;
+
+    const chart = document.createElement("div");
+    chart.className = "chart";
+
+    section.appendChild(title);
+    section.appendChild(chart);
+    resourceSectionsEl.appendChild(section);
+
+    renderSection(
+      chart,
+      group.items,
+      "no sub-resources found for this skill",
+      group.has_strong_primary
+    );
+  });
+}
+
+function renderCharts(data) {
+  const skills = data.skills || { group: "", items: [], has_strong_primary: false };
+  const resourceGroups = data.resource_groups || [];
+
   renderSection(
-    resourcesChartEl,
-    resources.group,
-    resources.items,
-    resources.group
-      ? "no sub-resources found for this skill"
-      : "waiting on a skill first"
+    skillsChartEl,
+    skills.items,
+    "nothing stood out for that one",
+    skills.has_strong_primary
   );
+  renderResourceGroups(resourceGroups);
 }
 
 async function analyze(text) {
