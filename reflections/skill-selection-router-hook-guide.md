@@ -2,7 +2,7 @@
 
 Every skill in `.agents/skills/` is more than its `SKILL.md` — `branding`
 alone has 15+ reference docs and a `naming/` sub-tree, `beautiful-html-templates`
-has 34 templates, `one-pager-html` has bare template folders. Picking the
+has 34 templates, `infographic` has bare template folders. Picking the
 right skill *and* the right resource inside it by hand doesn't scale.
 
 This repo ships a **PreInvocation hook** that runs before the agent reasons

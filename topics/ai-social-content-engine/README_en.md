@@ -50,7 +50,7 @@ An enterprise-grade, multi-agent publishing and storytelling ecosystem that tran
 | **X (Twitter)** | Thread & Micro-Hook Engine | High-velocity threads, byte-sized punchlines, tension-building contrasts, and dense technical teardowns. |
 | **Instagram / Visual Social** | Carousel & Slide Storytelling | Slide-by-slide narrative pacing, visual hooks, punchy caption summaries, and visual cards. |
 | **Substack / Blogs** | Long-Form & Diátaxis | 35 deep-dive technical essays, founder retrospectives, and Diátaxis structured guides. |
-| **Executive & Sales Briefs** | **`one-pager-html`** & **`beautiful-html-templates`** | 5 HTML 1-Pagers + ZK Slide Deck + 34+ HTML slide templates + automated headless Playwright PNG/PDF capture. |
+| **Executive & Sales Briefs** | **`infographic`** (one-pager) & **`beautiful-html-templates`** | 5 HTML 1-Pagers + ZK Slide Deck + 34+ HTML slide templates + automated headless Playwright PNG/PDF capture. |
 
 ---
 

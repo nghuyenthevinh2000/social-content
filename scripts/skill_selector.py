@@ -23,7 +23,7 @@ Usage:
 
 Stage 2: a skill is more than its SKILL.md — branding has 15+ reference docs
 and a naming/ sub-tree, beautiful-html-templates has 34 templates described in
-index.json, one-pager-html has bare template folders with no metadata at all.
+index.json, infographic has bare template folders with no metadata at all.
 Once a primary skill is chosen, `discover_skill_resources()` finds whatever
 templates/references/etc. live inside that skill directory (trying a
 structured index.json first, then frontmattered markdown, then scraping
@@ -241,7 +241,7 @@ def discover_skill_resources(skill_dir: Path) -> dict:
          own SKILL.md) — e.g. branding's references/*.md, templates/*/design.md.
          Falls back to the first paragraph when there's no `description` key.
       3. Bare template folders that only contain an index.html with no
-         markdown/JSON metadata — e.g. one-pager-html's inforgraphic-templates.
+         markdown/JSON metadata — e.g. infographic's inforgraphic-templates.
          Description is scraped from <title>/<h1>.
     """
     resources = {}

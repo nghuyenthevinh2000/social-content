@@ -49,7 +49,7 @@ Hệ sinh thái tự động hóa quy trình viết và xuất bản đa tác t�
 | **X (Twitter)** | Chuỗi tweet & Micro-Hook | Chuỗi bài ngắn trực diện, câu mở đầu kích thích tò mò, nhịp viết nhanh. |
 | **Instagram / Mạng trực quan** | Carousel & Trình bày thẻ | Bài viết dạng ảnh lướt nhiều trang, chia nhỏ nội dung từng slide, thiết kế thẻ trực quan. |
 | **Substack / Blog** | Bài luận dài & Diátaxis | Phân tích sâu nhiều góc độ, đúc kết sau các dự án, tài liệu hướng dẫn chuẩn chỉnh. |
-| **Bản thuyết trình & Báo cáo** | **`one-pager-html`** | Hơn 34 mẫu giao diện HTML chuyên nghiệp, tự động xuất ảnh PNG và file PDF chất lượng cao. |
+| **Bản thuyết trình & Báo cáo** | **`infographic`** (one-pager) | Hơn 34 mẫu giao diện HTML chuyên nghiệp, tự động xuất ảnh PNG và file PDF chất lượng cao. |
 
 ---
 
