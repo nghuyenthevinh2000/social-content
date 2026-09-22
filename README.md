@@ -21,3 +21,23 @@ This repository contains specialized agent skills, topic research, draft posts, 
 | [`reflections/`](./reflections/) | Style DNA reports, creator style analyses, and retrospective reviews (e.g., produced by `writing-style-analyzer`). |
 | [`projects/`](./projects/) | Dedicated sub-projects and external repositories managed as submodules (e.g., [`projects/innovation-research`](./projects/innovation-research/)). |
 | [`.agents/skills/`](./.agents/skills/) | Custom agent skills and workflows powering the content generation, analysis, humanization, presentation design, and refinement pipeline. |
+
+## Skill-Selection Router (Jev Hook)
+
+A [TypeSafe](https://typesafe.ai)-backed PreInvocation hook picks the right
+skill *and* the right resource inside it (template/reference) for every
+request, before the agent reasons on its own.
+
+Quick install into another workspace:
+
+```bash
+./scripts/install-skill-hook.sh /path/to/other/workspace
+```
+
+This vendors `scripts/skill_selector.py` + `scripts/skill_injector_hook.py`,
+fetches `python-dotenv` / `pyyaml` / `typesafe-sdk` via `uv`, and registers
+the hook in `.agents/hooks.json`. Requires `uv` and a `TYPESAFE_API_KEY`.
+
+See **[reflections/skill-selection-router-hook-guide.md](./reflections/skill-selection-router-hook-guide.md)**
+for the full guide: how it works, all relevant files, install steps for
+this repo vs. other workspaces, testing, and the optional visual demo.
