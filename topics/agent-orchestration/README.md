@@ -17,6 +17,8 @@ Chuyên đề kỹ thuật và vận hành thực tế về kiến trúc điều
 | :--- | :--- | :--- | :--- |
 | 01 | `roll-call-introduction.md` | *A Storyteller for the Work Between the Facts*: Bản giới thiệu vai trò và hợp đồng giao nhận tác vụ của tác tử Storyteller trong mạng lưới Buzz | Đặt nền móng về cách định nghĩa vai trò, ngữ cảnh, input/output và ranh giới trách nhiệm của từng agent |
 | 02 | `bao-cao-dieu-phoi-agents-tren-buzz-qua-relay.md` | *Báo cáo thực tế: Điều phối agents trên Buzz qua relay*: Kiến trúc con người giao việc qua channel, agent đọc ngữ cảnh chạy CLI, case study YC News Reporter | Báo cáo kỹ thuật thực địa chi tiết về hạ tầng, audit trail và nguyên tắc vận hành không nói dối trạng thái |
+| 03 | `skill-selection-hook-typesafe-jev.md` | *A Girl Asks Her AI: "Which Dress Should I Wear?"*: Skill-Selection Hook với TypeSafe Jev giải cứu Decision Layer khỏi căn bệnh overthinking | Bài viết truyền thông/marketing trực quan, hài hước giải thích kiến trúc 2 tầng Decision/Execution và sức mạnh của System One model Jev (Bản tiếng Anh) |
+| 04 | `skill-selection-hook-typesafe-jev-vi.md` | *Một Cô Gái Hỏi AI: "Tối Nay Em Mặc Váy Nào?"*: Bản tiếng Việt đậm chất đời thường, dí dỏm về kiến trúc Decision/Execution Layer và Jev | Bản viết lại tiếng Việt giữ trọn tinh thần châm biếm, viral và dễ hiểu cho đại chúng |
 
 ---
 

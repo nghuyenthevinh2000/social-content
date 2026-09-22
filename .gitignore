@@ -27,6 +27,9 @@
 *.vob
 *.ogv
 
+# Music formats
+*.mp3
+
 # OS metadata
 .DS_Store
 Thumbs.db
