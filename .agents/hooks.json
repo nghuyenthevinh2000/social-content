@@ -1,0 +1,12 @@
+{
+  "skill-selection-router": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "uv run --project . scripts/skill_injector_hook.py",
+        "timeout": 15
+      }
+    ]
+  }
+}

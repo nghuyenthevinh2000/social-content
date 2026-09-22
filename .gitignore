@@ -33,3 +33,4 @@ Thumbs.db
 
 local
 node_modules/
+.env__pycache__/

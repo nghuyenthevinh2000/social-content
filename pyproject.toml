@@ -1,0 +1,21 @@
+[project]
+name = "social-content"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "nghuyenthevinh2000", email = "nghuyenthevinh@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "python-dotenv>=1.2.3",
+    "pyyaml>=6.0.3",
+    "typesafe-sdk>=0.7.1",
+]
+
+[project.scripts]
+social-content = "social_content:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
