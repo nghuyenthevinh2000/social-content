@@ -26,6 +26,7 @@ Expected stdout:
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -49,7 +50,7 @@ def extract_user_message(payload: dict) -> str:
 
     last_user_text = ""
     try:
-        with open(transcript_path, "r") as f:
+        with open(transcript_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -58,14 +59,21 @@ def extract_user_message(payload: dict) -> str:
                     entry = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                if entry.get("role") == "user":
+                if (
+                    entry.get("type") == "USER_INPUT"
+                    or entry.get("role") == "user"
+                    or entry.get("source") == "USER_EXPLICIT"
+                ):
                     content = entry.get("content", "")
                     if isinstance(content, list):
                         content = " ".join(
                             part.get("text", "") for part in content
                             if isinstance(part, dict)
                         )
-                    if content:
+                    if isinstance(content, str) and content:
+                        m = re.search(r"<USER_REQUEST>(.*?)</USER_REQUEST>", content, re.DOTALL)
+                        if m:
+                            content = m.group(1).strip()
                         last_user_text = content
     except Exception:
         return ""
@@ -90,7 +98,7 @@ def format_message(result: dict) -> str:
         lines.append(f"- Also relevant: '{r['skill']}' (p={r['probability']:.2f})")
 
     lines.append(
-        "Load the suggested skill(s) with the `skill` tool if they fit, "
+        "Review the suggested skill(s) by viewing their SKILL.md via `view_file` if they fit, "
         "or proceed without them if none actually apply."
     )
     return "\n".join(lines)
@@ -125,7 +133,7 @@ def main() -> None:
         print(json.dumps(NO_INJECTION))
         return
 
-    if not result.get("recommended"):
+    if not result.get("primary") and not result.get("recommended"):
         print(json.dumps(NO_INJECTION))
         return
 
