@@ -129,13 +129,14 @@ cp -r "$TEMPLATE_DIR/executive-summary-report" "$REPO_ROOT/topics/<new-slug>"
 
 # 2. Edit topics/<new-slug>/index.html with new data/colors
 
-# 3. Re-shoot using the A4 viewport
-npx playwright screenshot --viewport-size "900,1273" --wait-for-timeout 2000 \
-  "file://$REPO_ROOT/topics/<new-slug>/index.html" \
-  "$REPO_ROOT/topics/<new-slug>/output.png"
+# 3. Re-shoot using High-DPI 2x Retina upscale (prevents blurriness on Mac/4K displays)
+node "$REPO_ROOT/.agents/skills/one-pager-html/scripts/screenshot-retina.js" \
+  "$REPO_ROOT/topics/<new-slug>/index.html" \
+  "$REPO_ROOT/topics/<new-slug>/output.png" \
+  --scale 2 --width 900 --height 1273
 ```
 
-> **A4 viewport**: all templates are 900 × 1273 px. Always use `--viewport-size "900,1273"` (not `--full-page`) when re-shooting A4-style infographics.
+> **A4 Retina standard**: All templates are 900 × 1273 px. Using `--scale 2` renders at **1800 × 2546 px** with `document.fonts.ready` checks to ensure vector-sharp typography and crisp borders without pixelation.
 
 ---
 
@@ -238,37 +239,48 @@ Keep animation duration <= 1500ms. Use --wait-for-timeout 2000 in Playwright.
 
 ---
 
-## Step 3 — Capture the screenshot
+## Step 3 — Capture the screenshot (High-DPI 2x Retina Standard)
 
-After writing index.html, resolve the repo root and run Playwright:
+> [!IMPORTANT]
+> **Avoid Blurry Screenshots**: Running standard `npx playwright screenshot` captures at low 1x pixel density (72 DPI), resulting in fuzzy, pixelated text on Retina/Mac and 4K displays.
+> **Always use the bundled Retina capture utility** (`scripts/screenshot-retina.js`), which enables Chromium's `deviceScaleFactor: 2` (or higher) and waits for `document.fonts.ready`.
+
+After writing `index.html`, resolve the repo root and run:
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
 SLUG="<topic-slug>"
 
-npx playwright screenshot \
-  --full-page \
-  --wait-for-timeout 2000 \
-  "file://$REPO_ROOT/topics/$SLUG/index.html" \
-  "$REPO_ROOT/topics/$SLUG/output.png"
+# Preferred: 2x High-DPI Retina capture (A4 standard: 1800x2546px output)
+node "$REPO_ROOT/.agents/skills/one-pager-html/scripts/screenshot-retina.js" \
+  "$REPO_ROOT/topics/$SLUG/index.html" \
+  "$REPO_ROOT/topics/$SLUG/output.png" \
+  --scale 2 --width 900 --height 1273 --timeout 2000
+
+# For full-page scrollable layouts (instead of fixed A4):
+node "$REPO_ROOT/.agents/skills/one-pager-html/scripts/screenshot-retina.js" \
+  "$REPO_ROOT/topics/$SLUG/index.html" \
+  "$REPO_ROOT/topics/$SLUG/output.png" \
+  --scale 2 --width 1200 --full-page --timeout 2000
 ```
 
-Flags:
-- --full-page: captures the entire page height
-- --wait-for-timeout 2000: waits 2s for chart rendering to complete
-- Arg 1: file:// URL (absolute path) of the HTML file
-- Arg 2: absolute output PNG path
-
-If Playwright browsers are not installed: npx playwright install chromium
+Flags for `screenshot-retina.js`:
+- `--scale 2`: 2x device pixel ratio (doubles resolution for ultra-sharp Retina rendering)
+- `--width 900 --height 1273`: viewport size for A4 templates (outputs 1800 × 2546 px)
+- `--full-page`: captures entire scrollable document height (for web-style infographics)
+- `--timeout 2000`: waits 2s after `document.fonts.ready` for charts and CSS transitions
+- Arg 1: path or `file://` URL of the HTML file
+- Arg 2: output PNG file path
 
 ### Error handling
 
 | Symptom | Fix |
 |---|---|
-| Charts blank / canvas empty | Add --wait-for-timeout 3000 |
-| Page cut off at the right | Ensure max-width <= 1200px |
-| Animations incomplete | Shorten durations or add more wait time |
-| File not found | Confirm REPO_ROOT resolved correctly with: echo $REPO_ROOT |
+| Blurry text on high-res displays | Use `scripts/screenshot-retina.js` with `--scale 2` |
+| Charts blank / canvas empty | Add `--timeout 3500` |
+| Fonts rendering unstyled (FOUT) | `screenshot-retina.js` handles `document.fonts.ready` automatically |
+| Page cut off at the right | Ensure max-width matches the `--width` parameter |
+| File not found | Confirm REPO_ROOT resolved correctly with: `echo $REPO_ROOT` |
 
 ---
 
@@ -304,7 +316,7 @@ ls -lh "$REPO_ROOT/topics/<slug>/output.png"
 | Resolve repo root | REPO_ROOT=$(git rev-parse --show-toplevel) |
 | Create folder | mkdir -p "$REPO_ROOT/topics/<slug>" |
 | Write HTML | write_to_file -> topics/<slug>/index.html (repo-relative) |
-| Screenshot | npx playwright screenshot --full-page --wait-for-timeout 2000 "file://$REPO_ROOT/topics/<slug>/index.html" "$REPO_ROOT/topics/<slug>/output.png" |
+| Screenshot (Retina 2x) | `node "$REPO_ROOT/.agents/skills/one-pager-html/scripts/screenshot-retina.js" "$REPO_ROOT/topics/<slug>/index.html" "$REPO_ROOT/topics/<slug>/output.png" --scale 2` |
 | Verify | ls -lh "$REPO_ROOT/topics/<slug>/output.png" |
 | Install browsers | npx playwright install chromium |
 | View output | Embed with ![...](file:///resolved-absolute-path/output.png) |
