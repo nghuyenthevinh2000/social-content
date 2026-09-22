@@ -10,12 +10,12 @@ description: "Use when: the user asks to create an infographic, one-pager, visua
 You produce a **self-contained, single-file HTML visual** (charts, infographics, data stories) — no build step, no external bundler. After writing the file, you capture a **full-page screenshot** with Playwright and save it alongside the HTML in the output folder.
 
 Every one-pager is composed of two coordinated choices:
-1. **Infographic Template (Layout & Structure)** from `inforgraphic-templates/`: Defines the layout geometry, structural hierarchy, data containers, tables, and chart visualization types.
+1. **Infographic Template (Layout & Structure)** from `layout/`: Defines the layout geometry, structural hierarchy, data containers, tables, and chart visualization types.
 2. **Design Style (Aesthetic & Skin)** from `design/`: Defines the visual personality, color palette tokens, typography pairing (Google Fonts), borders, corner radii, shadow treatments, and emotional tone.
 
 > [!IMPORTANT]
 > **MANDATORY CONFIRMATION GATE**: You must **ALWAYS** confirm with the user first before creating files or taking screenshots:
-> 1. **Which Infographic Template** to use (from `inforgraphic-templates/` or custom layout).
+> 1. **Which Infographic Template** to use (from `layout/` or custom layout).
 > 2. **Which Design Style** to apply (from `design/` — 34 production-ready styles).
 > 3. **Why** you recommend this combination (rationale for layout structure + aesthetic match).
 > 4. **The planned content & data outline** to be included on the 1-pager.
@@ -70,7 +70,7 @@ mkdir -p "$REPO_ROOT/topics/<topic-slug>"
 Before writing any files, creating directories, or running commands, you **MUST STOP AND ASK FOR USER APPROVAL** with the following 4 elements:
 
 1. **Infographic Template (Structure & Layout)**:
-   - Identify the template from `inforgraphic-templates/` (e.g., `executive-summary-report`, `business-plan-summary-report`, `enterprise-architecture-stack`, `financial-performance-report`, `monthly-social-media-report`, or explain if a custom layout is needed).
+   - Identify the template from `layout/` (e.g., `executive-summary-report`, `business-plan-summary-report`, `enterprise-architecture-stack`, `financial-performance-report`, `monthly-social-media-report`, or explain if a custom layout is needed).
    - Check the template's `design.md` for specific content slots and layout rules.
 2. **Design Style (Aesthetic & Skin)**:
    - Identify the design style from `design/` (e.g., `blue-professional`, `monochrome`, `neo-grid-bold`, `editorial-forest`, `bold-poster`, `cobalt-grid`, etc.).
@@ -90,12 +90,12 @@ Before writing any files, creating directories, or running commands, you **MUST 
 
 ---
 
-## 1. Infographic Templates Library (`inforgraphic-templates/`)
+## 1. Infographic Templates Library (`layout/`)
 
 The repository includes **five production-ready layout templates**. Each folder contains the HTML source, a rendered PNG preview, and a comprehensive `design.md` detailing content slots, component dimensions, and data structures:
 
 ```
-$REPO_ROOT/.agents/skills/infographic/inforgraphic-templates/
+$REPO_ROOT/.agents/skills/infographic/layout/
 ├── business-plan-summary-report/
 │   ├── design.md       ← layout specs, content slots & rationale guide
 │   ├── index.html      ← ready-to-edit HTML
@@ -205,7 +205,7 @@ The repository includes **34 curated aesthetic design systems** in `design/`. Ea
 When creating the 1-pager in `topics/<topic-slug>/index.html`:
 
 1. **Start with the Infographic Template Structure**:
-   Copy the chosen template from `inforgraphic-templates/<template>/` or use its DOM hierarchy (header, cards, KPI grids, tables, charts).
+   Copy the chosen template from `layout/<template>/` or use its DOM hierarchy (header, cards, KPI grids, tables, charts).
 2. **Apply the Chosen Design Style**:
    Open `design/<style>/design.md` and `design/<style>/template.json` to extract:
    - **Google Fonts**: Add the `<link>` for the style's `display` and `body` fonts into `<head>`.
@@ -291,7 +291,7 @@ node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" \
 | Task | Command / Action |
 |---|---|
 | Resolve repo root | `REPO_ROOT=$(git rev-parse --show-toplevel)` |
-| Inspect Layout Specs | View `$REPO_ROOT/.agents/skills/infographic/inforgraphic-templates/<template>/design.md` |
+| Inspect Layout Specs | View `$REPO_ROOT/.agents/skills/infographic/layout/<template>/design.md` |
 | Inspect Style Specs | View `$REPO_ROOT/.agents/skills/infographic/design/<style>/design.md` |
 | Create topic directory | `mkdir -p "$REPO_ROOT/topics/<slug>"` |
 | Author visual | Write `topics/<slug>/index.html` combining layout + style |

@@ -139,7 +139,7 @@ When proposing this template during **Step 1 (Plan & Confirm Gate)**, adapt this
 
 1. **Copy Template Directory**:
    ```bash
-   cp -r "$REPO_ROOT/.agents/skills/infographic/inforgraphic-templates/financial-performance-report" "$REPO_ROOT/topics/<new-slug>"
+   cp -r "$REPO_ROOT/.agents/skills/infographic/layout/financial-performance-report" "$REPO_ROOT/topics/<new-slug>"
    ```
 2. **Update Company Branding**:
    - Update `.sub-brand` text (e.g., `WARNER & SPENCER` → `ACME CORP FINANCIAL`).

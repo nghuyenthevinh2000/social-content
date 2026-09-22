@@ -143,7 +143,7 @@ When proposing this template during **Step 1 (Plan & Confirm Gate)**, adapt this
 
 1. **Copy Template Directory**:
    ```bash
-   cp -r "$REPO_ROOT/.agents/skills/infographic/inforgraphic-templates/monthly-social-media-report" "$REPO_ROOT/topics/<new-slug>"
+   cp -r "$REPO_ROOT/.agents/skills/infographic/layout/monthly-social-media-report" "$REPO_ROOT/topics/<new-slug>"
    ```
 2. **Update Header & Brand Info**:
    - Customize `.main-title` (e.g., `Q3 / LinkedIn & X / Performance`).

@@ -120,7 +120,7 @@ When proposing this template during **Step 1 (Plan & Confirm Gate)**, adapt this
 
 1. **Copy Template Directory**:
    ```bash
-   cp -r "$REPO_ROOT/.agents/skills/infographic/inforgraphic-templates/executive-summary-report" "$REPO_ROOT/topics/<new-slug>"
+   cp -r "$REPO_ROOT/.agents/skills/infographic/layout/executive-summary-report" "$REPO_ROOT/topics/<new-slug>"
    ```
 2. **Customize Branding & Header**:
    - Update `.brand-banner` icon and name ("Ingoude Company" → User's brand).

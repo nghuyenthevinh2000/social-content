@@ -124,7 +124,7 @@ When proposing this template during **Step 1 (Plan & Confirm Gate)**, adapt this
 
 1. **Copy Template Directory**:
    ```bash
-   cp -r "$REPO_ROOT/.agents/skills/infographic/inforgraphic-templates/enterprise-architecture-stack" "$REPO_ROOT/topics/<new-slug>"
+   cp -r "$REPO_ROOT/.agents/skills/infographic/layout/enterprise-architecture-stack" "$REPO_ROOT/topics/<new-slug>"
    ```
 2. **Populate Sidebar Category Names**:
    Insert the text directly inside `.layer-label-item` elements (or via inner text in HTML):
