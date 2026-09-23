@@ -7,9 +7,13 @@ listing sub-modules / files and rolling up child summaries to parent folders.
 Strictly ignores dependency, environment, and build directories like
 node_modules, site-packages, .venv, etc.
 
+For the repository root, synchronizes directly to `FRONTMATTER.md` at the project
+root, serving as the master tree root for semantic routing.
+
 Usage:
     uv run --project . scripts/sync_readme_tree.py topics/blockchain
-    uv run --project . scripts/sync_readme_tree.py --all
+    uv run --project . scripts/sync_readme_tree.py .                 # Syncs root FRONTMATTER.md
+    uv run --project . scripts/sync_readme_tree.py --all            # Syncs entire tree including root FRONTMATTER.md
     uv run --project . scripts/sync_readme_tree.py projects/innovation-research --recursive
 """
 
@@ -24,6 +28,7 @@ import yaml
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
+ROOT_FRONTMATTER_FILE = "FRONTMATTER.md"
 
 IGNORE_DIRS: Set[str] = {
     ".git",
@@ -108,6 +113,13 @@ def is_ignored_path(path: Path) -> bool:
     return False
 
 
+def get_target_manifest_path(directory: Path, repo_root: Path = REPO_ROOT) -> Path:
+    """Return FRONTMATTER.md for repository root, and README.md for subdirectories."""
+    if directory.resolve() == repo_root.resolve():
+        return repo_root / ROOT_FRONTMATTER_FILE
+    return directory / "README.md"
+
+
 def extract_file_title_or_snippet(file_path: Path) -> str:
     """Extract a quick 1-line description of a file for submodule listing."""
     ext = file_path.suffix.lower()
@@ -140,25 +152,26 @@ def extract_file_title_or_snippet(file_path: Path) -> str:
 
 
 def sync_directory_readme(directory: Path, repo_root: Path = REPO_ROOT) -> bool:
-    """Sync frontmatter for a single directory's README.md."""
+    """Sync frontmatter for a single directory (FRONTMATTER.md at root, README.md elsewhere)."""
     if not directory.is_dir():
         return False
 
+    is_root = (directory.resolve() == repo_root.resolve())
     try:
         rel_path = directory.resolve().relative_to(repo_root.resolve())
     except Exception:
         rel_path = directory
 
     # Strictly skip if inside node_modules, site-packages, etc.
-    if is_ignored_path(rel_path):
+    if not is_root and is_ignored_path(rel_path):
         return False
 
-    readme_path = directory / "README.md"
+    manifest_path = get_target_manifest_path(directory, repo_root)
     existing_text = ""
     existing_meta = {}
 
-    if readme_path.exists():
-        existing_text = readme_path.read_text(encoding="utf-8", errors="ignore")
+    if manifest_path.exists():
+        existing_text = manifest_path.read_text(encoding="utf-8", errors="ignore")
         match = FRONTMATTER_RE.match(existing_text)
         if match:
             try:
@@ -167,7 +180,7 @@ def sync_directory_readme(directory: Path, repo_root: Path = REPO_ROOT) -> bool:
                 pass
             existing_text = existing_text[match.end():]
 
-    folder_name = directory.name
+    folder_name = repo_root.name if is_root else directory.name
 
     # Collect submodules (immediate subdirectories with summaries, or key files)
     submodules: Dict[str, str] = {}
@@ -198,26 +211,33 @@ def sync_directory_readme(directory: Path, repo_root: Path = REPO_ROOT) -> bool:
                 child_desc = f"Subdirectory containing {child.name} modules"
             submodules[f"{child.name}/"] = child_desc
 
-    # 2. Key files in current directory (excluding README.md, lockfiles, package noise)
-    for child in sorted(directory.iterdir()):
-        if child.is_file() and child.name != "README.md" and not child.name.startswith("."):
-            if child.name in IGNORE_FILENAMES or child.suffix.lower() in IGNORE_EXTENSIONS:
-                continue
-            submodules[child.name] = extract_file_title_or_snippet(child)
+    # 2. Key files in current directory (excluding README.md / FRONTMATTER.md, lockfiles, package noise)
+    if not is_root:
+        for child in sorted(directory.iterdir()):
+            if child.is_file() and child.name not in {"README.md", "FRONTMATTER.md"} and not child.name.startswith("."):
+                if child.name in IGNORE_FILENAMES or child.suffix.lower() in IGNORE_EXTENSIONS:
+                    continue
+                submodules[child.name] = extract_file_title_or_snippet(child)
 
     # Build metadata
     name = existing_meta.get("name") or folder_name
     summary = existing_meta.get("summary")
     if not summary:
-        first_h1 = None
-        for line in existing_text.splitlines():
-            if line.startswith("# "):
-                first_h1 = line.lstrip("#").strip()
-                break
-        if first_h1:
-            summary = f"{first_h1}. Purpose and documentation for {rel_path}."
+        if is_root:
+            summary = (
+                "Central repository root and semantic tree orchestrator for social content, "
+                "AI agent orchestration, innovation research, topic deep-dives, and creative publishing workflows."
+            )
         else:
-            summary = f"Documentation and resources for {rel_path}."
+            first_h1 = None
+            for line in existing_text.splitlines():
+                if line.startswith("# "):
+                    first_h1 = line.lstrip("#").strip()
+                    break
+            if first_h1:
+                summary = f"{first_h1}. Purpose and documentation for {rel_path}."
+            else:
+                summary = f"Documentation and resources for {rel_path}."
 
     tags = existing_meta.get("tags") or [folder_name]
 
@@ -230,10 +250,18 @@ def sync_directory_readme(directory: Path, repo_root: Path = REPO_ROOT) -> bool:
         frontmatter_dict["submodules"] = submodules
 
     fm_yaml = yaml.dump(frontmatter_dict, sort_keys=False, allow_unicode=True).strip()
+
+    if is_root and not existing_text.strip():
+        existing_text = (
+            "# Repository Semantic Routing Tree Root\n\n"
+            "This file serves as the root manifest for TypeSafe Jev semantic directory navigation across the repository.\n"
+        )
+
     new_content = f"---\n{fm_yaml}\n---\n\n{existing_text.strip()}\n"
 
-    readme_path.write_text(new_content, encoding="utf-8")
-    print(f"✅ Synced frontmatter for `{rel_path}/README.md`")
+    manifest_path.write_text(new_content, encoding="utf-8")
+    rel_display = "FRONTMATTER.md" if is_root else f"{rel_path}/README.md"
+    print(f"✅ Synced frontmatter for `{rel_display}`")
     return True
 
 
@@ -247,11 +275,10 @@ def sync_path_recursive(directory: Path, repo_root: Path = REPO_ROOT) -> None:
     except Exception:
         rel = directory
 
-    if is_ignored_path(rel):
+    if directory.resolve() != repo_root.resolve() and is_ignored_path(rel):
         return
 
     for root, dirs, _ in os.walk(directory.resolve(), topdown=False):
-        # Prune ignored directories in place
         dirs[:] = [
             d for d in dirs
             if not is_ignored_path((Path(root) / d).resolve().relative_to(repo_root.resolve()))
@@ -261,7 +288,7 @@ def sync_path_recursive(directory: Path, repo_root: Path = REPO_ROOT) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Synchronize README.md frontmatter tree")
-    parser.add_argument("--all", action="store_true", help="Sync all project directories")
+    parser.add_argument("--all", action="store_true", help="Sync all project directories including root FRONTMATTER.md")
     parser.add_argument("-r", "--recursive", action="store_true", help="Sync recursively for specified paths")
     parser.add_argument("paths", nargs="*", help="Specific folder paths to sync")
     args = parser.parse_args()
@@ -269,16 +296,20 @@ def main():
     if args.paths:
         for p in args.paths:
             path = Path(p).resolve()
-            if path.is_dir():
+            if path == REPO_ROOT.resolve() or p in {".", "FRONTMATTER.md"}:
+                sync_directory_readme(REPO_ROOT, REPO_ROOT)
+            elif path.is_dir():
                 if args.recursive:
                     sync_path_recursive(path, REPO_ROOT)
                 else:
                     sync_directory_readme(path, REPO_ROOT)
     elif args.all:
-        for target in ["topics", "projects", "local", "src", "scripts"]:
+        for target in ["topics", "projects", "local", "src", "scripts", "reflections"]:
             tpath = REPO_ROOT / target
             if tpath.is_dir():
                 sync_path_recursive(tpath, REPO_ROOT)
+        # Always sync root FRONTMATTER.md at the end so child summaries roll up
+        sync_directory_readme(REPO_ROOT, REPO_ROOT)
     else:
         print("Please provide directory paths or use --all.")
         sys.exit(1)

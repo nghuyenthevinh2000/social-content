@@ -1,9 +1,14 @@
 # Agent Guidelines & Repository Operating System
 
 ## 1. Documentation & Frontmatter Integrity Rule
-Every directory in this project must maintain a `README.md` containing standardized YAML frontmatter. This frontmatter forms the hierarchical semantic routing tree used by TypeSafe Jev to navigate the repository without reading around the bush.
 
-### Frontmatter Schema:
+Every directory in this project must maintain standardized YAML frontmatter. This frontmatter forms the hierarchical semantic routing tree used by TypeSafe Jev to navigate the repository without reading around the bush.
+
+- **Repository Root:** The master root of the tree is maintained in [`FRONTMATTER.md`](./FRONTMATTER.md).
+- **Subdirectories:** Each folder maintains its frontmatter at the top of its `README.md`.
+
+### Frontmatter Schema
+
 ```yaml
 ---
 name: <folder-name>
@@ -14,14 +19,19 @@ submodules:
 ---
 ```
 
-### Mandatory End-of-Turn Workflow:
+### Mandatory End-of-Turn Workflow
+
 Whenever you create or modify files in any project folder:
+
 1. You MUST update that folder's `README.md` frontmatter so `summary` and `submodules` accurately reflect the changes.
 2. You can automatically sync or refresh the frontmatter by running:
+
    ```bash
    uv run --project . scripts/sync_readme_tree.py <path/to/folder>
    ```
+
 3. Verify compliance before completing your turn:
+
    ```bash
    uv run --project . scripts/lint_readme_tree.py --changed-only
    ```

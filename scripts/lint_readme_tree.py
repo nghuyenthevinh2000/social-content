@@ -143,13 +143,19 @@ def validate_readme_frontmatter(readme_path: Path) -> List[str]:
 
 
 def lint_directory(directory: Path, repo_root: Path = REPO_ROOT) -> List[str]:
-    """Lint a single directory for README frontmatter compliance."""
-    rel = directory.resolve().relative_to(repo_root.resolve())
-    readme = directory / "README.md"
-    errors = validate_readme_frontmatter(readme)
+    """Lint a single directory for frontmatter compliance (FRONTMATTER.md at root, README.md elsewhere)."""
+    is_root = (directory.resolve() == repo_root.resolve())
+    if is_root:
+        target = repo_root / "FRONTMATTER.md"
+        rel = "FRONTMATTER.md"
+    else:
+        target = directory / "README.md"
+        rel = str(directory.resolve().relative_to(repo_root.resolve()))
+
+    errors = validate_readme_frontmatter(target)
 
     if errors:
-        return [f"Directory `{rel}`: {'; '.join(errors)}"]
+        return [f"`{rel}`: {'; '.join(errors)}"]
     return []
 
 
