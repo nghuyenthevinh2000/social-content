@@ -8,5 +8,15 @@
         "timeout": 15
       }
     ]
+  },
+  "folder-relevance-router": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "uv run --project . scripts/folder_injector_hook.py",
+        "timeout": 15
+      }
+    ]
   }
 }
