@@ -11,10 +11,10 @@ For the repository root, synchronizes directly to `FRONTMATTER.md` at the projec
 root, serving as the master tree root for semantic routing.
 
 Usage:
-    uv run --project . scripts/sync_readme_tree.py topics/blockchain
-    uv run --project . scripts/sync_readme_tree.py .                 # Syncs root FRONTMATTER.md
-    uv run --project . scripts/sync_readme_tree.py --all            # Syncs entire tree including root FRONTMATTER.md
-    uv run --project . scripts/sync_readme_tree.py projects/innovation-research --recursive
+    uv run --project . .agents/hooks/sync_readme_tree.py topics/blockchain
+    uv run --project . .agents/hooks/sync_readme_tree.py .                 # Syncs root FRONTMATTER.md
+    uv run --project . .agents/hooks/sync_readme_tree.py --all            # Syncs entire tree including root FRONTMATTER.md
+    uv run --project . .agents/hooks/sync_readme_tree.py projects/innovation-research --recursive
 """
 
 import argparse
@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import yaml
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent
+REPO_ROOT = SCRIPT_DIR.parent.parent
 ROOT_FRONTMATTER_FILE = "FRONTMATTER.md"
 
 IGNORE_DIRS: Set[str] = {
@@ -124,7 +124,7 @@ def extract_file_title_or_snippet(file_path: Path) -> str:
     """Extract a quick 1-line description of a file for submodule listing."""
     ext = file_path.suffix.lower()
     try:
-        text = file_path.read_text(encoding="utf-8", errors="ignore")[:1000]
+        text = file_path.read_text(encoding="utf-8", errors="ignore")[:3000]
     except Exception:
         return f"{file_path.name}"
 
@@ -147,6 +147,35 @@ def extract_file_title_or_snippet(file_path: Path) -> str:
                 return line.lstrip("#").strip()
             if not line.startswith("|") and len(line) > 20:
                 return " ".join(line.split())[:120]
+
+    elif ext in {".py", ".sh", ".bash"}:
+        doc_open_m = re.match(r'^(?:#[^\n]*\n)*\s*(?:"""|\'\'\')', text)
+        if doc_open_m:
+            after_open = text[doc_open_m.end():]
+            close_m = re.search(r'"""|\'\'\'', after_open)
+            doc_body = after_open[:close_m.start()] if close_m else after_open
+            doc = " ".join(doc_body.split())
+            if doc:
+                return doc[:150]
+        comments = [
+            line.lstrip("#").strip()
+            for line in text.splitlines()[:15]
+            if line.strip().startswith("#") and not line.strip().startswith("#!") and len(line.strip()) > 3
+        ]
+        if comments:
+            return " ".join(comments)[:150]
+
+    elif ext in {".html", ".htm"}:
+        title_m = re.search(r"<title>(.*?)</title>", text, re.IGNORECASE | re.DOTALL)
+        h1_m = re.search(r"<h1[^>]*>(.*?)</h1>", text, re.IGNORECASE | re.DOTALL)
+        title = re.sub(r"<[^>]+>", "", title_m.group(1)).strip() if title_m else ""
+        h1 = re.sub(r"<[^>]+>", "", h1_m.group(1)).strip() if h1_m else ""
+        if title and h1 and title.lower() != h1.lower():
+            return f"{title} — {h1}"[:150]
+        if title:
+            return title[:150]
+        if h1:
+            return h1[:150]
 
     return f"File {file_path.name}"
 

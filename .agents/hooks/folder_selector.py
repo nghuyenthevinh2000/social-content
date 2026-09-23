@@ -11,8 +11,8 @@ Two-stage hierarchical selection:
 Prevents the AI from reading broadly or wandering around the repository.
 
 Usage:
-    uv run --project . scripts/folder_selector.py "how to start a company"
-    uv run --project . scripts/folder_selector.py "pop up city and digital nomads"
+    uv run --project . .agents/hooks/folder_selector.py "how to start a company"
+    uv run --project . .agents/hooks/folder_selector.py "pop up city and digital nomads"
 """
 
 import json
@@ -22,8 +22,10 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
+import yaml
+
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent
+REPO_ROOT = SCRIPT_DIR.parent.parent
 
 RECOMMEND_THRESHOLD = 0.30
 MAX_FOLDER_DRILLDOWNS = 2
@@ -109,8 +111,76 @@ GROUPED_PARENT_DIRS = {"topics", "projects", "local"}
 STANDALONE_TOP_DIRS = {"scripts", "src", "reflections"}
 
 
+FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+
+
+def read_frontmatter(md_path: Path) -> Optional[dict]:
+    """
+    Parse the enforced YAML frontmatter (name/summary/tags/submodules) from a
+    README.md, per the Frontmatter & Documentation Integrity Rule in AGENTS.md.
+    Returns None if the file is missing, has no frontmatter block, or fails to parse.
+    """
+    if not md_path.exists():
+        return None
+    try:
+        text = md_path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return None
+
+    m = FRONTMATTER_RE.match(text)
+    if not m:
+        return None
+
+    try:
+        data = yaml.safe_load(m.group(1))
+    except Exception:
+        return None
+
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def frontmatter_folder_summary(fm: dict, rel_path: str) -> str:
+    """Build a rich folder summary directly from enforced README frontmatter."""
+    parts: List[str] = []
+
+    summary = fm.get("summary")
+    if isinstance(summary, str) and summary.strip():
+        parts.append(" ".join(summary.split()))
+
+    tags = fm.get("tags")
+    if isinstance(tags, list) and tags:
+        clean_tags = [str(t).strip() for t in tags if str(t).strip()]
+        if clean_tags:
+            parts.append(f"Tags: {', '.join(clean_tags[:10])}")
+
+    submodules = fm.get("submodules")
+    if isinstance(submodules, dict) and submodules:
+        entries = []
+        for name, desc in list(submodules.items())[:10]:
+            desc_str = " ".join(str(desc).split()) if desc else ""
+            entries.append(f"{name}: {desc_str}" if desc_str else str(name))
+        parts.append("Sub-modules: " + " | ".join(entries))
+
+    if not parts:
+        return f"Directory {rel_path}"
+
+    return " || ".join(parts)
+
+
 def extract_folder_summary(folder_path: Path, rel_path: str) -> str:
-    """Extract a rich, concise summary of what a folder contains and covers."""
+    """Extract a rich, concise summary of what a folder contains and covers.
+
+    Prefers the enforced README.md frontmatter (summary/tags/submodules) since
+    it is authoritative and kept in sync via the repo's frontmatter guard hook.
+    Falls back to heuristic content-scraping only when frontmatter is missing
+    or invalid.
+    """
+    fm = read_frontmatter(folder_path / "README.md")
+    if fm is not None:
+        return frontmatter_folder_summary(fm, rel_path)
+
     summary_parts: List[str] = []
 
     best_md = folder_path / "README.md"
@@ -193,10 +263,32 @@ def extract_folder_summary(folder_path: Path, rel_path: str) -> str:
     return " | ".join(summary_parts)
 
 
-def extract_file_summary(file_path: Path, rel_path: str) -> str:
-    """Extract a concise summary of what a file contains, including title and goal/summary."""
+def extract_file_summary(
+    file_path: Path,
+    rel_path: str,
+    submodule_desc: Optional[str] = None,
+) -> str:
+    """Extract a concise summary of what a file contains, including title and goal/summary.
+
+    If the parent folder's README frontmatter already describes this exact
+    file/dir entry in its `submodules` map, that authoritative description is
+    used verbatim (it's kept accurate by the repo's frontmatter guard hook)
+    instead of re-deriving a summary by scraping file content.
+    """
+    if submodule_desc:
+        return submodule_desc
+
     ext = file_path.suffix.lower()
     summary_parts: List[str] = []
+
+    # For a folder's own README.md, prefer its frontmatter `summary` field
+    # over scraping the rendered markdown body.
+    if file_path.name == "README.md":
+        fm = read_frontmatter(file_path)
+        if fm is not None:
+            fm_summary = fm.get("summary")
+            if isinstance(fm_summary, str) and fm_summary.strip():
+                return " ".join(fm_summary.split())
 
     try:
         raw_text = file_path.read_text(encoding="utf-8", errors="ignore")[:4000]
@@ -293,13 +385,37 @@ def discover_folder_files(
     max_depth: int = MAX_WALK_DEPTH,
     max_files: int = MAX_FILES_PER_FOLDER,
 ) -> Dict[str, str]:
-    """Discover candidate files within a directory and extract summaries."""
+    """Discover candidate files within a directory and extract summaries.
+
+    Whenever a file/subdir is already described in its parent folder's
+    README frontmatter `submodules` map, that authoritative, human/AI-curated
+    description is used instead of re-deriving a summary from raw content.
+    This depends on the frontmatter guard hook keeping submodules accurate.
+    """
     files: Dict[str, str] = {}
     folder_res = folder_path.resolve()
     root_res = root_dir.resolve()
 
     if not folder_res.exists() or not folder_res.is_dir():
         return files
+
+    # Cache of {dir_path: submodules dict} to avoid re-parsing README frontmatter.
+    submodules_cache: Dict[Path, Dict[str, str]] = {}
+
+    def get_submodules(dir_path: Path) -> Dict[str, str]:
+        if dir_path in submodules_cache:
+            return submodules_cache[dir_path]
+        fm = read_frontmatter(dir_path / "README.md")
+        submodules = {}
+        if fm is not None:
+            raw_submodules = fm.get("submodules")
+            if isinstance(raw_submodules, dict):
+                submodules = {
+                    str(k).rstrip("/"): " ".join(str(v).split())
+                    for k, v in raw_submodules.items()
+                }
+        submodules_cache[dir_path] = submodules
+        return submodules
 
     candidate_paths: List[Path] = []
     for root, dirs, filenames in os.walk(folder_res):
@@ -321,11 +437,14 @@ def discover_folder_files(
                 continue
             candidate_paths.append(fpath)
 
-    # Prioritize markdown files, guides, and docs over miscellaneous files
-    def file_priority(p: Path) -> Tuple[int, int, str]:
+    # Prioritize files explicitly described in a parent's submodules map
+    # (authoritative signal), then markdown files, then guides/docs.
+    def file_priority(p: Path) -> Tuple[int, int, int, str]:
+        parent_submodules = get_submodules(p.parent)
+        has_submodule_desc = 0 if parent_submodules.get(p.name) else 1
         is_md = 0 if p.suffix == ".md" else 1
         is_guide_or_stage = 0 if any(part in {"guides", "stages", "structures"} for part in p.parts) else 1
-        return (is_md, is_guide_or_stage, p.name)
+        return (has_submodule_desc, is_md, is_guide_or_stage, p.name)
 
     candidate_paths.sort(key=file_priority)
     candidate_paths = candidate_paths[:max_files]
@@ -333,7 +452,9 @@ def discover_folder_files(
     for fpath in candidate_paths:
         try:
             rel = str(fpath.resolve().relative_to(root_res))
-            files[rel] = extract_file_summary(fpath, rel)
+            parent_submodules = get_submodules(fpath.parent)
+            submodule_desc = parent_submodules.get(fpath.name)
+            files[rel] = extract_file_summary(fpath, rel, submodule_desc=submodule_desc)
         except Exception:
             pass
 

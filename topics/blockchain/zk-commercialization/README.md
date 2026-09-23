@@ -7,7 +7,7 @@ submodules:
   experience.md: This is my experience trying to push ZK technology in Viet Nam
   export-pdf.sh: File export-pdf.sh
   slide-content.md: 'Slide Deck: Exploring ZK Commercialization: Perspectives & Realities'
-  slides.html: File slides.html
+  slides.html: The Reality of ZK Commercialization — Slide Deck
 ---
 
 

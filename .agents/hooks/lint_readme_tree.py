@@ -12,8 +12,8 @@ submodules:
 ---
 
 Usage:
-    uv run --project . scripts/lint_readme_tree.py --changed-only   # Checks directories modified in git
-    uv run --project . scripts/lint_readme_tree.py --all            # Full tree validation
+    uv run --project . .agents/hooks/lint_readme_tree.py --changed-only   # Checks directories modified in git
+    uv run --project . .agents/hooks/lint_readme_tree.py --all            # Full tree validation
 """
 
 import argparse
@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import yaml
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent
+REPO_ROOT = SCRIPT_DIR.parent.parent
 
 IGNORE_DIRS: Set[str] = {
     ".git",
@@ -197,7 +197,7 @@ def main():
         print("❌ README Frontmatter Lint Violations Found:")
         for v in all_violations:
             print(f"  • {v}")
-        print("\nRun `uv run scripts/sync_readme_tree.py <dir>` or manually add frontmatter to resolve.")
+        print("\nRun `uv run .agents/hooks/sync_readme_tree.py <dir>` or manually add frontmatter to resolve.")
         sys.exit(1)
     else:
         print("✅ README Frontmatter check passed! (All inspected directories comply)")

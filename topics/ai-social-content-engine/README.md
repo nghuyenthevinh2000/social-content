@@ -6,8 +6,8 @@ tags:
 - ai-social-content-engine
 submodules:
   README_en.md: AI Social Content Engine — Corporate One-Pager & Portfolio Dossier
-  index.html: File index.html
-  index_en.html: File index_en.html
+  index.html: 'Báo cáo 1 Trang: AI Social Content Engine'
+  index_en.html: 'Corporate 1-Pager: AI Social Content Engine'
 ---
 
 # AI Social Content Engine — Báo Cáo 1 Trang & Hồ Sơ Năng Lực

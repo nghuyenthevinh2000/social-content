@@ -8,7 +8,8 @@ submodules:
   01-architecture-stack.md: 'Architectural Specification: The Sovereign Financial
     Stack'
   02-institutional-gtm-and-sales.md: Institutional Go-To-Market & Commercial Strategy
-  index.html: File index.html
+  index.html: 'The Sovereign Financial Stack: MPC Custody • ZK Privacy • Quant Risk
+    Curators'
   mother-and-child-stacks.md: 'Enterprise Blockchain Financial Architecture: The 3
     Mother Stacks'
 ---

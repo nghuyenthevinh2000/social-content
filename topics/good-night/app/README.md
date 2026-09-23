@@ -5,8 +5,9 @@ summary: 🌙 Good Night - Minimal Sleep Counter (Mobile Web App). Purpose and d
 tags:
 - app
 submodules:
-  index.html: File index.html
-  make_pip.py: File make_pip.py
+  index.html: Good Night
+  make_pip.py: 'make_pip.py - Programmatic circular Video-in-Video (Picture-in-Picture)
+    composite generator. Supports positioning, crisp circular antialiasing, sleek '
 ---
 
 # 🌙 Good Night - Minimal Sleep Counter (Mobile Web App)

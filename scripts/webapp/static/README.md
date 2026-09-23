@@ -5,7 +5,7 @@ tags:
 - static
 submodules:
   app.js: File app.js
-  index.html: File index.html
+  index.html: Jev Suggestion
   style.css: File style.css
 ---
 
