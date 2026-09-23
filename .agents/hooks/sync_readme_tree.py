@@ -137,15 +137,28 @@ def extract_file_title_or_snippet(file_path: Path) -> str:
                     return data["summary"]
                 if data.get("title"):
                     return data["title"]
+                # VitePress-style hero frontmatter (layout: home): use
+                # hero.name + hero.text/tagline instead of falling through
+                # to a random body line.
+                hero = data.get("hero")
+                if isinstance(hero, dict):
+                    hero_name = hero.get("name")
+                    hero_desc = hero.get("tagline") or hero.get("text")
+                    if hero_name and hero_desc:
+                        return f"{hero_name}: {hero_desc}"[:150]
+                    if hero_name:
+                        return str(hero_name)[:150]
             except Exception:
                 pass
             text = text[fm_m.end():]
 
         for line in text.splitlines():
             line = line.strip()
+            if not line or line.startswith("<") or line.startswith("|") or line.startswith(":::"):
+                continue
             if line.startswith("#"):
                 return line.lstrip("#").strip()
-            if not line.startswith("|") and len(line) > 20:
+            if len(line) > 20:
                 return " ".join(line.split())[:120]
 
     elif ext in {".py", ".sh", ".bash"}:
