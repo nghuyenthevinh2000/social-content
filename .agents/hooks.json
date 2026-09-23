@@ -14,7 +14,7 @@
     "PreInvocation": [
       {
         "type": "command",
-        "command": "uv run --project .. hooks/folder_injector_hook.py",
+        "command": "uv run --project .. hooks/file-selector/file_injector_hook.py",
         "timeout": 15
       }
     ]
@@ -24,7 +24,7 @@
     "Stop": [
       {
         "type": "command",
-        "command": "uv run --project .. hooks/frontmatter_guard_hook.py",
+        "command": "uv run --project .. hooks/file-selector/frontmatter_guard_hook.py",
         "timeout": 15
       }
     ]

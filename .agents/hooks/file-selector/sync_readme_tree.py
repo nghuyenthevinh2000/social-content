@@ -11,10 +11,10 @@ For the repository root, synchronizes directly to `FRONTMATTER.md` at the projec
 root, serving as the master tree root for semantic routing.
 
 Usage:
-    uv run --project . .agents/hooks/sync_readme_tree.py topics/blockchain
-    uv run --project . .agents/hooks/sync_readme_tree.py .                 # Syncs root FRONTMATTER.md
-    uv run --project . .agents/hooks/sync_readme_tree.py --all            # Syncs entire tree including root FRONTMATTER.md
-    uv run --project . .agents/hooks/sync_readme_tree.py projects/innovation-research --recursive
+    uv run --project . .agents/hooks/file-selector/sync_readme_tree.py topics/blockchain
+    uv run --project . .agents/hooks/file-selector/sync_readme_tree.py .                 # Syncs root FRONTMATTER.md
+    uv run --project . .agents/hooks/file-selector/sync_readme_tree.py --all            # Syncs entire tree including root FRONTMATTER.md
+    uv run --project . .agents/hooks/file-selector/sync_readme_tree.py projects/innovation-research --recursive
 """
 
 import argparse
@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import yaml
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent.parent
+REPO_ROOT = SCRIPT_DIR.parent.parent.parent
 ROOT_FRONTMATTER_FILE = "FRONTMATTER.md"
 
 IGNORE_DIRS: Set[str] = {

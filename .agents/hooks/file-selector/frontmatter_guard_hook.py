@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent.parent
+REPO_ROOT = SCRIPT_DIR.parent.parent.parent
 
 sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -73,7 +73,7 @@ def main():
             + "\n\nREQUIRED ACTION:\n"
             "Update the YAML frontmatter (with 'name', 'summary', and 'submodules') in each touched directory's "
             "README.md before finishing your turn. You can also run:\n"
-            "  `uv run --project . .agents/hooks/sync_readme_tree.py <dir>`"
+            "  `uv run --project . .agents/hooks/file-selector/sync_readme_tree.py <dir>`"
         )
         print(json.dumps({
             "decision": "continue",

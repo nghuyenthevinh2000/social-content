@@ -11,8 +11,8 @@ Two-stage hierarchical selection:
 Prevents the AI from reading broadly or wandering around the repository.
 
 Usage:
-    uv run --project . .agents/hooks/folder_selector.py "how to start a company"
-    uv run --project . .agents/hooks/folder_selector.py "pop up city and digital nomads"
+    uv run --project . .agents/hooks/file-selector/file_selector.py "how to start a company"
+    uv run --project . .agents/hooks/file-selector/file_selector.py "pop up city and digital nomads"
 """
 
 import json
@@ -25,7 +25,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import yaml
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent.parent
+REPO_ROOT = SCRIPT_DIR.parent.parent.parent
 
 RECOMMEND_THRESHOLD = 0.30
 MAX_FOLDER_DRILLDOWNS = 2

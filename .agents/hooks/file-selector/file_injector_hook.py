@@ -4,7 +4,7 @@ Folder and File Relevance Injector Hook (PreInvocation), backed by TypeSafe Jev.
 
 Fires before the model begins reasoning on a turn. Reads the PreInvocation
 payload from stdin, extracts the latest user message, determines which
-directory AND specific files are relevant via `folder_selector.py` (hierarchical
+directory AND specific files are relevant via `file_selector.py` (hierarchical
 selection), and injects an ephemeral directive to drive the agent directly
 to the right file without reading around the bush.
 
@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent.parent
+REPO_ROOT = SCRIPT_DIR.parent.parent.parent
 
 sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -80,7 +80,7 @@ def extract_user_message(payload: dict) -> str:
 
 
 def display_folder_name(folder: str) -> str:
-    """Human-friendly label for the synthetic repo-root key ('.') from folder_selector."""
+    """Human-friendly label for the synthetic repo-root key ('.') from file_selector."""
     return "(repository root)" if folder == "." else folder
 
 
@@ -142,7 +142,7 @@ def main() -> None:
         from dotenv import load_dotenv
         load_dotenv(REPO_ROOT / ".env")
 
-        from folder_selector import select_hierarchical
+        from file_selector import select_hierarchical
 
         workspace_paths = payload.get("workspacePaths") or []
         workspace = Path(workspace_paths[0]) if workspace_paths else REPO_ROOT
