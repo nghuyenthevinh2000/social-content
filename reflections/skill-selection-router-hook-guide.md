@@ -9,9 +9,9 @@ This repo ships a **PreInvocation hook** that runs before the agent reasons
 on a turn: it sends the user's message to [TypeSafe](https://typesafe.ai)'s
 Jev model, which returns calibrated probabilities across two stages —
 
-1. **Which skill(s) apply** (`scripts/skill_selector.py::select_skills`)
+1. **Which skill(s) apply** (`.agents/hooks/skill-selector/skill_selector.py::select_skills`)
 2. **Which specific resource inside the top skill applies**
-   (`scripts/skill_selector.py::select_resources`, via
+   (`.agents/hooks/skill-selector/skill_selector.py::select_resources`, via
    `discover_skill_resources`, which understands three shapes: structured
    `index.json` template metadata, frontmattered markdown references, and
    bare HTML template folders)
@@ -25,8 +25,8 @@ failure of the turn.
 
 | File | Purpose |
 | --- | --- |
-| [`scripts/skill_selector.py`](../scripts/skill_selector.py) | Discovers skills + their sub-resources and runs the two-stage Jev selection. |
-| [`scripts/skill_injector_hook.py`](../scripts/skill_injector_hook.py) | The PreInvocation entry point; reads the hook payload, calls the selector, formats the injected notice. |
+| [`.agents/hooks/skill-selector/skill_selector.py`](../.agents/hooks/skill-selector/skill_selector.py) | Discovers skills + their sub-resources and runs the two-stage Jev selection. |
+| [`.agents/hooks/skill-selector/skill_injector_hook.py`](../.agents/hooks/skill-selector/skill_injector_hook.py) | The PreInvocation entry point; reads the hook payload, calls the selector, formats the injected notice. |
 | [`.agents/hooks.json`](../.agents/hooks.json) | Registers the hook to run on every turn. |
 | [`scripts/install-skill-hook.sh`](../scripts/install-skill-hook.sh) | One-click installer that vendors this router into *any other* workspace. |
 | [`scripts/skill-selector-demo/`](../scripts/skill-selector-demo/) | Local-only visual demo — type a request, watch two bar charts (skill, then resource) light up with Jev's confidence. |
@@ -56,7 +56,7 @@ Run the installer, pointing it at the target project:
 
 This will:
 
-1. Copy `skill_selector.py` + `skill_injector_hook.py` into `<target>/scripts/`
+1. Copy `skill_selector.py` + `skill_injector_hook.py` into `<target>/.agents/hooks/skill-selector/`
 2. Run `uv init --bare` in `<target>` if it isn't a uv project yet, then
    `uv add python-dotenv pyyaml typesafe-sdk` there — **downloading and
    locking the dependencies through `uv`**, isolated in that workspace's own
@@ -82,7 +82,7 @@ echo "TYPESAFE_API_KEY=your-key-here" >> /path/to/other/workspace/.env
 
 # 3. Test it directly
 echo '{"userMessage": "help me name my new brand"}' \
-  | uv run --project /path/to/other/workspace python scripts/skill_injector_hook.py
+  | uv run --project /path/to/other/workspace python .agents/hooks/skill-selector/skill_injector_hook.py
 ```
 
 A working response looks like:

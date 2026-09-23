@@ -18,8 +18,8 @@ Skills are discovered dynamically from each skill's YAML frontmatter
 skill under .agents/skills/ requires no change here.
 
 Usage:
-    echo "make a pitch deck about our new pricing" | uv run --project . scripts/skill_selector.py
-    uv run --project . scripts/skill_selector.py "make a pitch deck about our new pricing"
+    echo "make a pitch deck about our new pricing" | uv run --project . .agents/hooks/skill-selector/skill_selector.py
+    uv run --project . .agents/hooks/skill-selector/skill_selector.py "make a pitch deck about our new pricing"
 
 Stage 2: a skill is more than its SKILL.md — branding has 15+ reference docs
 and a naming/ sub-tree, beautiful-html-templates has 34 templates described in
@@ -85,7 +85,7 @@ from pathlib import Path
 import yaml
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent
+REPO_ROOT = SCRIPT_DIR.parent.parent.parent
 SKILLS_DIR = REPO_ROOT / ".agents" / "skills"
 
 RECOMMEND_THRESHOLD = 0.5

@@ -4,7 +4,7 @@
     "PreInvocation": [
       {
         "type": "command",
-        "command": "uv run --project .. ../scripts/skill_injector_hook.py",
+        "command": "uv run --project .. hooks/skill-selector/skill_injector_hook.py",
         "timeout": 15
       }
     ]

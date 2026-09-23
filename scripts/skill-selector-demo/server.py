@@ -8,7 +8,7 @@ server-side (the browser can never call TypeSafe directly: its CORS
 policy rejects arbitrary origins).
 
 Every request re-runs the two-stage skill router
-(scripts/skill_selector.py) against whatever text the user typed and
+(.agents/hooks/skill-selector/skill_selector.py) against whatever text the user typed and
 returns BOTH stages, always:
   1. `skills`          — every discovered skill, ranked by confidence.
   2. `resource_groups` — a list of the top skill's discoverable resource
@@ -38,7 +38,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
 STATIC_DIR = SCRIPT_DIR / "static"
 
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / ".agents" / "hooks" / "skill-selector"))
 
 HOST = "127.0.0.1"
 PORT = 8765

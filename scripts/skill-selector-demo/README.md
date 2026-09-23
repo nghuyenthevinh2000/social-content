@@ -1,8 +1,8 @@
 ---
-name: webapp
-summary: Documentation and resources for scripts/webapp.
+name: skill-selector-demo
+summary: Documentation and resources for scripts/skill-selector-demo.
 tags:
-- webapp
+- skill-selector-demo
 submodules:
   static/: Documentation and resources for scripts/webapp/static.
   server.py: Jev Percentage Suggestion — local-only demo server. Serves the static/

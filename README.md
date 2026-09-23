@@ -45,7 +45,7 @@ Quick install into another workspace:
 ./scripts/install-skill-hook.sh /path/to/other/workspace
 ```
 
-This vendors `scripts/skill_selector.py` + `scripts/skill_injector_hook.py`,
+This vendors `.agents/hooks/skill-selector/skill_selector.py` + `skill_injector_hook.py`,
 fetches `python-dotenv` / `pyyaml` / `typesafe-sdk` via `uv`, and registers
 the hook in `.agents/hooks.json`. Requires `uv` and a `TYPESAFE_API_KEY`.
 

@@ -4,7 +4,7 @@ Skill Selection Injector (PreInvocation), backed by TypeSafe.
 
 Fires before the model reasons on a turn. Reads the PreInvocation payload
 from stdin, pulls the latest user message, runs it through
-scripts/skill_selector.py's TypeSafe-backed skill router, and — if any
+.agents/hooks/skill-selector/skill_selector.py's TypeSafe-backed skill router, and — if any
 skill scores above threshold — injects an ephemeralMessage naming the
 recommended skill(s) so the model considers loading them via the `skill`
 tool before picking a path on its own.
@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent
+REPO_ROOT = SCRIPT_DIR.parent.parent.parent
 
 sys.path.insert(0, str(SCRIPT_DIR))
 

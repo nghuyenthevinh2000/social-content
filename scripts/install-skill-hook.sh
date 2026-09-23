@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
 # install-skill-hook.sh — one-click installer for the TypeSafe/Jev-backed
-# skill-selection router hook (scripts/skill_selector.py +
-# scripts/skill_injector_hook.py) into any workspace.
+# skill-selection router hook (.agents/hooks/skill-selector/skill_selector.py +
+# .agents/hooks/skill-selector/skill_injector_hook.py) into any workspace.
 #
 # What it does:
 #   1. Copies skill_selector.py + skill_injector_hook.py into
-#      <target>/scripts/.
+#      <target>/.agents/hooks/skill-selector/.
 #   2. Ensures <target> is a uv project (uv init --bare if it isn't one
 #      yet) and runs `uv add` there to fetch python-dotenv, pyyaml, and
 #      typesafe-sdk into that project's own lockfile/venv.
@@ -55,10 +55,10 @@ echo "Installing skill-selection router into: $TARGET_DIR"
 echo
 
 # --- 1. Vendor the router scripts -------------------------------------------
-mkdir -p "$TARGET_DIR/scripts"
-cp "$SOURCE_REPO/scripts/skill_selector.py" "$TARGET_DIR/scripts/skill_selector.py"
-cp "$SOURCE_REPO/scripts/skill_injector_hook.py" "$TARGET_DIR/scripts/skill_injector_hook.py"
-echo "✓ copied scripts/skill_selector.py + scripts/skill_injector_hook.py"
+mkdir -p "$TARGET_DIR/.agents/hooks/skill-selector"
+cp "$SOURCE_REPO/.agents/hooks/skill-selector/skill_selector.py" "$TARGET_DIR/.agents/hooks/skill-selector/skill_selector.py"
+cp "$SOURCE_REPO/.agents/hooks/skill-selector/skill_injector_hook.py" "$TARGET_DIR/.agents/hooks/skill-selector/skill_injector_hook.py"
+echo "✓ copied .agents/hooks/skill-selector/skill_selector.py + skill_injector_hook.py"
 
 # --- 2. Ensure a uv project + fetch dependencies ----------------------------
 if [ ! -f "$TARGET_DIR/pyproject.toml" ]; then
@@ -92,7 +92,7 @@ existing["skill-selection-router"] = {
     "PreInvocation": [
         {
             "type": "command",
-            "command": "uv run --project . scripts/skill_injector_hook.py",
+            "command": "uv run --project .. hooks/skill-selector/skill_injector_hook.py",
             "timeout": 15,
         }
     ],
@@ -118,4 +118,4 @@ echo
 echo "Done. Next steps:"
 echo "  1. Set TYPESAFE_API_KEY in $ENV_FILE"
 echo "  2. Add skill folders (each with a SKILL.md) under $TARGET_DIR/.agents/skills/"
-echo "  3. Test it: echo '{\"userMessage\": \"...\"}' | uv run --project \"$TARGET_DIR\" python scripts/skill_injector_hook.py"
+echo "  3. Test it: echo '{\"userMessage\": \"...\"}' | uv run --project \"$TARGET_DIR\" python .agents/hooks/skill-selector/skill_injector_hook.py"
