@@ -52,7 +52,7 @@ the hook in `.agents/hooks.json`. Requires `uv` and a `TYPESAFE_API_KEY`.
 Quick deploy / run visual demo webapp:
 
 ```bash
-uv run --project . python scripts/webapp/server.py
+uv run --project . python scripts/skill-selector-demo/server.py
 # open http://127.0.0.1:8765
 ```
 

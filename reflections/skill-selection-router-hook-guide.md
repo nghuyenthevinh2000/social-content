@@ -29,7 +29,7 @@ failure of the turn.
 | [`scripts/skill_injector_hook.py`](../scripts/skill_injector_hook.py) | The PreInvocation entry point; reads the hook payload, calls the selector, formats the injected notice. |
 | [`.agents/hooks.json`](../.agents/hooks.json) | Registers the hook to run on every turn. |
 | [`scripts/install-skill-hook.sh`](../scripts/install-skill-hook.sh) | One-click installer that vendors this router into *any other* workspace. |
-| [`scripts/webapp/`](../scripts/webapp/) | Local-only visual demo — type a request, watch two bar charts (skill, then resource) light up with Jev's confidence. |
+| [`scripts/skill-selector-demo/`](../scripts/skill-selector-demo/) | Local-only visual demo — type a request, watch two bar charts (skill, then resource) light up with Jev's confidence. |
 
 ## Requirements
 
@@ -101,7 +101,7 @@ To see the router's confidence scores as an animated two-section bar chart
 instead of raw JSON:
 
 ```bash
-uv run --project . python scripts/webapp/server.py
+uv run --project . python scripts/skill-selector-demo/server.py
 # open http://127.0.0.1:8765
 ```
 

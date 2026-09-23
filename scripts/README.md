@@ -6,7 +6,7 @@ summary: Documentation and resources for scripts. Folder/frontmatter routing hoo
 tags:
 - scripts
 submodules:
-  webapp/: Documentation and resources for scripts/webapp.
+  skill-selector-demo/: Documentation and resources for scripts/webapp.
   install-skill-hook.sh: install-skill-hook.sh — one-click installer for the TypeSafe/Jev-backed
     skill-selection router hook (scripts/skill_selector.py + scripts/skill_injecto
   skill_injector_hook.py: Skill Selection Injector (PreInvocation), backed by TypeSafe.

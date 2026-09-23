@@ -25,7 +25,7 @@ The frontend renders these as stacked, animated bar sections — no raw
 JSON or digits are shown, only bar length/color per item.
 
 Run:
-    uv run --project . python scripts/webapp/server.py
+    uv run --project . python scripts/skill-selector-demo/server.py
     # then open http://127.0.0.1:8765 in a browser
 """
 
