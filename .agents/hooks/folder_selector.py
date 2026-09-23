@@ -110,6 +110,12 @@ IGNORE_FILENAMES: Set[str] = {
 GROUPED_PARENT_DIRS = {"topics", "projects", "local"}
 STANDALONE_TOP_DIRS = {"scripts", "src", "reflections"}
 
+# Synthetic key representing the repository root itself, so loose top-level
+# files (AGENTS.md, FRONTMATTER.md, README.md, pyproject.toml, etc.) and any
+# top-level folder not in the two sets above are still reachable, instead of
+# being silently invisible to the selector.
+ROOT_FOLDER_KEY = "."
+
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
@@ -263,6 +269,24 @@ def extract_folder_summary(folder_path: Path, rel_path: str) -> str:
     return " | ".join(summary_parts)
 
 
+def extract_root_summary(root_resolved: Path) -> str:
+    """Build a summary for the repository root itself.
+
+    Prefers FRONTMATTER.md (the enforced root manifest, per AGENTS.md), same
+    as `extract_folder_summary` prefers a folder's README.md. Falls back to a
+    generic description if FRONTMATTER.md is missing or invalid.
+    """
+    fm = read_frontmatter(root_resolved / "FRONTMATTER.md")
+    if fm is not None:
+        return frontmatter_folder_summary(fm, ROOT_FOLDER_KEY)
+
+    return (
+        f"Repository root ({root_resolved.name}). Contains top-level configuration, "
+        "policy, and documentation files not scoped to any single subdirectory "
+        "(e.g. AGENTS.md, README.md, pyproject.toml)."
+    )
+
+
 def extract_file_summary(
     file_path: Path,
     rel_path: str,
@@ -376,6 +400,11 @@ def discover_candidate_folders(root_dir: Path = REPO_ROOT) -> Dict[str, str]:
         if top_path.is_dir():
             candidates[top_name] = extract_folder_summary(top_path, top_name)
 
+    # Repository root itself: covers loose top-level files (AGENTS.md,
+    # FRONTMATTER.md, README.md, pyproject.toml, etc.) and any top-level
+    # folder not already covered by the two named sets above.
+    candidates[ROOT_FOLDER_KEY] = extract_root_summary(root_resolved)
+
     return candidates
 
 
@@ -455,6 +484,60 @@ def discover_folder_files(
             parent_submodules = get_submodules(fpath.parent)
             submodule_desc = parent_submodules.get(fpath.name)
             files[rel] = extract_file_summary(fpath, rel, submodule_desc=submodule_desc)
+        except Exception:
+            pass
+
+    return files
+
+
+def discover_root_files(
+    root_dir: Path = REPO_ROOT,
+    max_files: int = MAX_FILES_PER_FOLDER,
+) -> Dict[str, str]:
+    """Discover loose top-level files directly in the repository root.
+
+    Intentionally shallow (non-recursive): subdirectories are already covered
+    as their own candidates via `discover_candidate_folders`, so recursing
+    here would just re-walk the entire repository tree.
+    """
+    files: Dict[str, str] = {}
+    root_res = root_dir.resolve()
+
+    if not root_res.exists() or not root_res.is_dir():
+        return files
+
+    fm = read_frontmatter(root_res / "FRONTMATTER.md")
+    submodules: Dict[str, str] = {}
+    if fm is not None:
+        raw_submodules = fm.get("submodules")
+        if isinstance(raw_submodules, dict):
+            submodules = {
+                str(k).rstrip("/"): " ".join(str(v).split())
+                for k, v in raw_submodules.items()
+            }
+
+    candidate_paths: List[Path] = []
+    for child in sorted(root_res.iterdir()):
+        if not child.is_file():
+            continue
+        if child.name.startswith(".") or child.name in IGNORE_FILENAMES:
+            continue
+        if child.suffix.lower() in IGNORE_EXTENSIONS:
+            continue
+        candidate_paths.append(child)
+
+    def file_priority(p: Path) -> Tuple[int, int, str]:
+        has_submodule_desc = 0 if submodules.get(p.name) else 1
+        is_md = 0 if p.suffix == ".md" else 1
+        return (has_submodule_desc, is_md, p.name)
+
+    candidate_paths.sort(key=file_priority)
+    candidate_paths = candidate_paths[:max_files]
+
+    for fpath in candidate_paths:
+        try:
+            rel = str(fpath.resolve().relative_to(root_res))
+            files[rel] = extract_file_summary(fpath, rel, submodule_desc=submodules.get(fpath.name))
         except Exception:
             pass
 
@@ -642,8 +725,11 @@ def select_hierarchical(
 
     best_folder = folder_result.get("primary")
     for folder_name in candidate_folders:
-        folder_path = root_res / folder_name
-        files = discover_folder_files(folder_path, root_dir=root_res)
+        if folder_name == ROOT_FOLDER_KEY:
+            files = discover_root_files(root_dir=root_res)
+        else:
+            folder_path = root_res / folder_name
+            files = discover_folder_files(folder_path, root_dir=root_res)
         if not files:
             continue
         f_res = select_files(request_text, files)

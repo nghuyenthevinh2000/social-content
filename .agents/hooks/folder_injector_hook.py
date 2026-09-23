@@ -79,6 +79,11 @@ def extract_user_message(payload: dict) -> str:
     return last_user_text
 
 
+def display_folder_name(folder: str) -> str:
+    """Human-friendly label for the synthetic repo-root key ('.') from folder_selector."""
+    return "(repository root)" if folder == "." else folder
+
+
 def format_scope_directive(result: dict) -> str:
     """Format the folder and file scoping instructions for the agent."""
     folder_res = result.get("folder", {})
@@ -97,7 +102,7 @@ def format_scope_directive(result: dict) -> str:
     ]
 
     if primary_folder:
-        lines.append(f"- Target Directory: `{primary_folder}` (confidence: {folder_conf:.2f})")
+        lines.append(f"- Target Directory: `{display_folder_name(primary_folder)}` (confidence: {folder_conf:.2f})")
 
     if lead_file:
         lines.append(f"- Target Lead File: `{lead_file}` (confidence: {lead_conf:.2f})")
