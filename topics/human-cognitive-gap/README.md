@@ -1,3 +1,15 @@
+---
+name: human-cognitive-gap
+summary: Human Cognitive Gap & Vitality (Khoảng cách nhận thức & Sinh khí công nghệ).
+  Purpose and documentation for topics/human-cognitive-gap.
+tags:
+- human-cognitive-gap
+submodules:
+  human-cognitive-ultimate-tech-gap.md: Two years ago, I was the engineer people called
+    when something was too new for anyone else to touch.
+  sinh-khi-la-nang-luong-song-cua-tri-tue.md: Khi trí tuệ cạn sinh khí
+---
+
 # Human Cognitive Gap & Vitality (Khoảng cách nhận thức & Sinh khí công nghệ)
 
 Chủ đề này tập trung vào mâu thuẫn cốt lõi giữa **tốc độ gia tốc của công nghệ (đặc biệt là AI)** và **giới hạn thích ứng sinh học, nhận thức tự nhiên của con người**.

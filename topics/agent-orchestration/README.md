@@ -1,3 +1,22 @@
+---
+name: agent-orchestration
+summary: Agent Orchestration (Hệ thống Điều phối AI Agents & Vận hành). Purpose and
+  documentation for topics/agent-orchestration.
+tags:
+- agent-orchestration
+submodules:
+  skill-selection-hook/: Documentation and resources for topics/agent-orchestration/skill-selection-hook.
+  bao-cao-dieu-phoi-agents-tren-buzz-qua-relay.md: 'Báo cáo thực tế: Điều phối agents
+    trên Buzz qua relay'
+  roll-call-introduction.md: A Storyteller for the Work Between the Facts
+  skill-selection-hook-typesafe-jev-vi.md: 'Một cô gái hỏi AI: "Tối nay em nên mặc
+    váy nào: đỏ hay đen?"'
+  skill-selection-hook-typesafe-jev-x.md: 'Twitter / X Version: Skill Selection Hook
+    (TypeSafe Jev)'
+  skill-selection-hook-typesafe-jev.md: 'A girl asks an AI: *"Which dress should I
+    wear tonight: the red or the black?"*'
+---
+
 # Agent Orchestration (Hệ thống Điều phối AI Agents & Vận hành)
 
 Chuyên đề kỹ thuật và vận hành thực tế về kiến trúc điều phối hệ thống đa tác tử (Multi-Agent Systems), giao thức sự kiện qua relay, mô hình Human-in-the-loop, và quản trị tác vụ agent.

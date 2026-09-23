@@ -1,3 +1,22 @@
+---
+name: meaning-and-mindset
+summary: Meaning & Mindset (Hành trình Ý nghĩa & Đời sống Nội tâm). Purpose and documentation
+  for topics/meaning-and-mindset.
+tags:
+- meaning-and-mindset
+submodules:
+  meaning-economy-story-vi.md: Nền kinh tế ý nghĩa
+  nghich-ly-khat-ket-noi.md: Nghịch Lý Nước Mặn và Cơn Khát Kết Nối
+  nguoi-doc-khong-buoc-ra-ngoai.md: Người Đọc Không Bước Ra Ngoài
+  odyssey-return-home.md: 'Hành trình Odyssey của bản thân: Lối về từ hòn đảo của
+    những kẻ ăn sen'
+  reflective_founder_exit.md: The Exit
+  tam-giay-phep-cam-xuc.md: Cái Bẫy Của "Tấm Giấy Phép Cảm Xúc"
+  tech_career_meaning.md: 'The tech executive looked at me, and said: "I don''t need
+    you to change the world. I need you to ship the code."'
+  y-nghia-khong-tu-den.md: Người Chờ Đợi Ý nghĩa không bao giờ đến
+---
+
 # Meaning & Mindset (Hành trình Ý nghĩa & Đời sống Nội tâm)
 
 Chủ đề quy tụ các bài viết tự sự chiều sâu, phân tích tâm lý và triết học hành động: từ bẫy tối ưu hoá máy móc của giới công nghệ đến hành trình tìm kiếm ý nghĩa chân thật trong đời sống và công việc.

@@ -1,3 +1,14 @@
+---
+name: app
+summary: 🌙 Good Night - Minimal Sleep Counter (Mobile Web App). Purpose and documentation
+  for topics/good-night/app.
+tags:
+- app
+submodules:
+  index.html: File index.html
+  make_pip.py: File make_pip.py
+---
+
 # 🌙 Good Night - Minimal Sleep Counter (Mobile Web App)
 
 A serene, distraction-free bedtime companion designed to help you fall asleep. Built with an ultra-minimalist Zen aesthetic and responsive **up-down vertical swipe** mechanics.

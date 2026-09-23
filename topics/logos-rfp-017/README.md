@@ -1,3 +1,15 @@
+---
+name: logos-rfp-017
+summary: 'Logos RFP-017: Privacy-Preserving Token Vesting — Master Research & Brief.
+  Purpose and documentation for topics/logos-rfp-017.'
+tags:
+- logos-rfp-017
+submodules:
+  1-pager/: Documentation and resources for topics/logos-rfp-017/1-pager.
+  ref-specs/: Documentation and resources for topics/logos-rfp-017/ref-specs.
+  research/: Documentation and resources for topics/logos-rfp-017/research.
+---
+
 # Logos RFP-017: Privacy-Preserving Token Vesting — Master Research & Brief
 
 > **Target Directory:** `/topics/logos-rfp-017`  

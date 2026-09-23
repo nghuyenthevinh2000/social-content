@@ -39,17 +39,33 @@ IGNORE_DIRS: Set[str] = {
     ".system_generated",
     "brain",
     "node_modules",
+    "site-packages",
+    "dist-packages",
     "dist",
     "build",
     "__pycache__",
     ".venv",
     "venv",
+    "env",
     ".mypy_cache",
     ".pytest_cache",
+    ".ruff_cache",
     "scratch",
     ".cache",
     "coverage",
 }
+
+
+def is_ignored_path(path: Path) -> bool:
+    """Check if any segment in the path belongs to ignored dependency/build directories."""
+    for part in path.parts:
+        if part in IGNORE_DIRS:
+            return True
+        if part.startswith(".") and part not in {".", ".."}:
+            return True
+        if part.endswith(".egg-info") or part.endswith(".dist-info"):
+            return True
+    return False
 
 IGNORE_EXTENSIONS: Set[str] = {
     ".png",
@@ -62,6 +78,14 @@ IGNORE_EXTENSIONS: Set[str] = {
     ".pdf",
     ".mp4",
     ".mov",
+    ".mkv",
+    ".webm",
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".aac",
+    ".flac",
+    ".ogg",
     ".zip",
     ".tar",
     ".gz",
@@ -282,7 +306,7 @@ def discover_folder_files(
         # Exclude ignored directories anywhere in the walk tree
         dirs[:] = [
             d for d in dirs
-            if not d.startswith(".") and d not in IGNORE_DIRS
+            if not is_ignored_path((Path(root) / d).resolve().relative_to(root_res))
         ]
 
         depth = len(Path(root).relative_to(folder_res).parts)

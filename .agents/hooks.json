@@ -18,5 +18,15 @@
         "timeout": 15
       }
     ]
+  },
+  "frontmatter-guard": {
+    "enabled": true,
+    "Stop": [
+      {
+        "type": "command",
+        "command": "uv run --project . scripts/frontmatter_guard_hook.py",
+        "timeout": 15
+      }
+    ]
   }
 }
