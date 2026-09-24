@@ -15,6 +15,7 @@ submodules:
   series-6-v0.2-reflection.md: 'Reflection: Hành trình tái cấu trúc & Đột phá Story
     Engine cho Deep Tech Bản Sao Series #6 (v0.1 -> v0.2)'
   skill-selection-router-hook-guide.md: Skill-Selection Router (Jev Hook) — Full Guide
+  wireframe.md: +---------------------------------------------------------------------------------------------------------+
 ---
 
 
