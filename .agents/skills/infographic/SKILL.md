@@ -109,6 +109,8 @@ Example of the annotated view (landscape; replace all content and heights to mat
 Total: 100 + 180 + 300 + 140 = 720px
 ```
 
+The [wireframe preview reference](references/README.md) contains JSON-driven landscape and portrait examples. You can inspect these examples while planning, but do not edit files or run the preview before the user approves the proposed content and wireframe.
+
 > [!CAUTION]
 > **DO NOT PROCEED TO STEP 2 UNTIL THE USER EXPLICITLY APPROVES.** Stop tool execution and wait for user feedback or approval.
 
@@ -126,6 +128,8 @@ Total: 100 + 180 + 300 + 140 = 720px
 > **Prerequisite**: Only proceed with this step after the user has explicitly approved the proposed infographic template, design style, rationale, and content outline from Step 1.
 
 First save the approved wireframe as `<output-dir>/layout_content.md`. Keep its section order, exact content, pixel-height allocations, and canvas dimensions aligned with the HTML. If the content or section allocations must materially change, show the revised wireframe to the user and get approval before continuing.
+
+For a visual check, optionally follow the [wireframe preview instructions](references/README.md): copy the launcher, HTML, and JSON into the chosen output directory, fill in the approved content, and run `node preview.js` to load `wireframe_preview.json` automatically. Compare design styles independently of the content layout, then validate all band heights and cell widths. The preview helps refine the plan; the approved `layout_content.md` remains the source of truth for the final infographic.
 
 ### How to Combine Layout Structure and Design Style
 

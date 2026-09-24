@@ -31,6 +31,7 @@ RECOMMEND_THRESHOLD = 0.30
 MAX_FOLDER_DRILLDOWNS = 2
 MAX_FILES_PER_FOLDER = 40
 MAX_WALK_DEPTH = 6
+NO_PRIMARY_CANDIDATE = "No strong existing candidate, LLM decides"
 
 IGNORE_DIRS: Set[str] = {
     ".git",
@@ -403,7 +404,9 @@ def discover_candidate_folders(root_dir: Path = REPO_ROOT) -> Dict[str, str]:
     # Repository root itself: covers loose top-level files (AGENTS.md,
     # FRONTMATTER.md, README.md, pyproject.toml, etc.) and any top-level
     # folder not already covered by the two named sets above.
-    candidates[ROOT_FOLDER_KEY] = extract_root_summary(root_resolved)
+    # NOTE: Commented out to prevent the repository root from dominating
+    # candidate evaluation over specific subdirectories.
+    # candidates[ROOT_FOLDER_KEY] = extract_root_summary(root_resolved)
 
     return candidates
 
@@ -555,7 +558,7 @@ def select_folders(
 
     if not folders:
         return {
-            "primary": None,
+            "primary": NO_PRIMARY_CANDIDATE,
             "primary_confidence": 0.0,
             "recommended": [],
             "all_scores": {},
@@ -603,7 +606,7 @@ def select_folders(
     )
 
     primary_answer = response.answers["primary_folder"]
-    primary_choice = primary_answer.choice if primary_answer.choice != "none" else None
+    primary_choice = primary_answer.choice if primary_answer.choice != "none" else NO_PRIMARY_CANDIDATE
 
     return {
         "primary": primary_choice,
@@ -621,7 +624,7 @@ def select_files(
     """Evaluate candidate files within a folder against user request using Jev."""
     if not files:
         return {
-            "primary": None,
+            "primary": NO_PRIMARY_CANDIDATE,
             "primary_confidence": 0.0,
             "recommended": [],
             "all_scores": {},
@@ -648,10 +651,10 @@ def select_files(
         )
 
     choice_criteria = dict(files)
-    choice_criteria["none"] = "No single file is the clear lead file for this request."
-    questions["lead_file"] = Choice(
+    choice_criteria["none"] = "No single file is the primary focus, or no clear starting file exists for this request."
+    questions["primary_file"] = Choice(
         instructions=(
-            "Which single file is the best starting point or lead file to inspect/edit for this request? "
+            "Which single file is the primary focus or best starting point to inspect/edit for this request? "
             "Pick 'none' if no single file clearly leads."
         ),
         criteria=choice_criteria,
@@ -677,8 +680,8 @@ def select_files(
         key=lambda item: -item["probability"],
     )
 
-    primary_answer = response.answers["lead_file"]
-    primary_choice = primary_answer.choice if primary_answer.choice != "none" else None
+    primary_answer = response.answers["primary_file"]
+    primary_choice = primary_answer.choice if primary_answer.choice != "none" else NO_PRIMARY_CANDIDATE
 
     return {
         "primary": primary_choice,
@@ -699,7 +702,7 @@ def select_hierarchical(
     folder_result = select_folders(request_text, folders=folders)
 
     candidate_folders: List[str] = []
-    if folder_result.get("primary"):
+    if folder_result.get("primary") and folder_result.get("primary") != NO_PRIMARY_CANDIDATE:
         candidate_folders.append(folder_result["primary"])
     for r in folder_result.get("recommended", []):
         if r["folder"] not in candidate_folders:
@@ -719,41 +722,59 @@ def select_hierarchical(
     candidate_folders = candidate_folders[:max_folder_drilldowns]
 
     files_by_folder = {}
-    top_lead_file = None
-    top_lead_confidence = 0.0
+    top_primary_file = None
+    top_file_confidence = 0.0
     all_recommended_files = []
 
-    best_folder = folder_result.get("primary")
+    best_folder = (
+        folder_result.get("primary")
+        if folder_result.get("primary") != NO_PRIMARY_CANDIDATE
+        else None
+    )
     for folder_name in candidate_folders:
-        if folder_name == ROOT_FOLDER_KEY:
-            files = discover_root_files(root_dir=root_res)
-        else:
-            folder_path = root_res / folder_name
-            files = discover_folder_files(folder_path, root_dir=root_res)
+        # if folder_name == ROOT_FOLDER_KEY:
+        #     files = discover_root_files(root_dir=root_res)
+        # else:
+        folder_path = root_res / folder_name
+        if not folder_path.is_dir():
+            continue
+        files = discover_folder_files(folder_path, root_dir=root_res)
         if not files:
             continue
         f_res = select_files(request_text, files)
         files_by_folder[folder_name] = f_res
 
-        # If this folder produced higher-confidence lead file or primary had no files
-        if f_res.get("primary"):
-            if not top_lead_file or f_res.get("primary_confidence", 0.0) > top_lead_confidence or (folder_result.get("primary") and not files_by_folder.get(folder_result.get("primary", ""), {}).get("recommended")):
-                top_lead_file = f_res["primary"]
-                top_lead_confidence = f_res["primary_confidence"]
+        # If this folder produced higher-confidence primary file or primary had no files
+        if f_res.get("primary") and f_res.get("primary") != NO_PRIMARY_CANDIDATE:
+            if (
+                not top_primary_file
+                or f_res.get("primary_confidence", 0.0) > top_file_confidence
+                or (
+                    folder_result.get("primary")
+                    and folder_result.get("primary") != NO_PRIMARY_CANDIDATE
+                    and not files_by_folder.get(folder_result.get("primary", ""), {}).get("recommended")
+                )
+            ):
+                top_primary_file = f_res["primary"]
+                top_file_confidence = f_res["primary_confidence"]
                 best_folder = folder_name
 
         all_recommended_files.extend(f_res.get("recommended", []))
 
     if best_folder:
         folder_result["primary"] = best_folder
+    elif not folder_result.get("primary"):
+        folder_result["primary"] = NO_PRIMARY_CANDIDATE
 
     all_recommended_files.sort(key=lambda item: -item["probability"])
+
+    primary_file = top_primary_file if top_primary_file else NO_PRIMARY_CANDIDATE
 
     return {
         "folder": folder_result,
         "files": {
-            "lead_file": top_lead_file,
-            "lead_confidence": top_lead_confidence,
+            "primary": primary_file,
+            "primary_confidence": top_file_confidence,
             "recommended": all_recommended_files,
             "by_folder": files_by_folder,
         },

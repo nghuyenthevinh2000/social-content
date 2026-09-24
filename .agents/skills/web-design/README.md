@@ -1,11 +1,11 @@
 ---
 name: web-design
-summary: Web design and UI engineering skill covering grids, responsive layouts, conversion patterns, and a mandatory hero preview showcase for every design task.
+summary: Preview-first web design workflow with project-specific hero comparisons, exact page-content wireframes, layout references, and implementation guidance.
 tags: [web-design, ui, ux, layouts, css, tailwind, grid, landing-page]
 submodules:
   layouts: Curated collection of 28 modular web design layout systems with interactive demos and recreation prompts.
-  references: Design-first prompting guidance and a JSON-driven hero comparison tool with full specifications.
-  SKILL.md: Master web design playbook with a mandatory hero preview showcase before selecting a direction.
+  references: Design-first guidance, a Node preview server, and JSON-driven comparisons with exact page-content wireframes.
+  SKILL.md: Preview-first workflow requiring exact section content and project previews served through the Node script.
 ---
 
 # Web Design Skill
@@ -14,6 +14,7 @@ A centralized skill for designing, structuring, and engineering modern web inter
 
 ## Key Capabilities
 
+- **Preview-First Workflow:** Create project-specific `wireframe_preview.html` and `wireframe_preview.json`, then show the working preview before building the full page.
 - **Mathematical Layout Tokens:** Fluid clamp typography, 1px disciplined border grids, consistent gap scales.
 - **Anti-Generic Taste Rules:** Avoids repetitive floating cards, blurred drop shadows, and non-semantic div containers.
 - **28 Modular Layout Archetypes:** Stored in [`layouts/`](./layouts/) with full specs, token definitions, and zero-dependency interactive browser demos.
@@ -24,7 +25,8 @@ A centralized skill for designing, structuring, and engineering modern web inter
 ```text
 web-design/
 ├── README.md               # Folder frontmatter and overview
-├── SKILL.md                # Master agent execution instructions & catalog
+├── SKILL.md                # Preview-first web design workflow
+├── references/             # Preview templates and design-spec guidance
 └── layouts/                # Modular layout skills
     ├── README.md           # Layout library submodules frontmatter
     ├── framed-grid-layout/ # 12-col grid with visible boundaries & L-brackets
@@ -36,4 +38,4 @@ web-design/
 
 ## How to Use
 
-When building or reviewing web interfaces, consult [`SKILL.md`](./SKILL.md) to select an appropriate layout archetype, extract base CSS tokens, and follow the step-by-step layout engineering workflow.
+When building a web interface, follow [`SKILL.md`](./SKILL.md): create and show a project-specific browser preview from the templates in [`references/`](./references/) before implementing the finished page.

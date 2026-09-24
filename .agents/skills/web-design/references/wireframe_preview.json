@@ -40,6 +40,40 @@
           "metricLabel": "SHIFT IN PERSPECTIVE"
         }
       },
+      "wireframe": {
+        "title": "Page content / editorial clarity",
+        "rows": [
+          { "label": "Header", "cells": [
+            { "type": "brand", "text": "FORMA®", "pixels": 180 },
+            { "type": "space", "pixels": 400 },
+            { "type": "link", "text": "Work", "href": "#work", "pixels": 90 },
+            { "type": "link", "text": "Studio", "href": "#studio", "pixels": 90 },
+            { "type": "link", "text": "Contact", "href": "#contact", "pixels": 100 }
+          ] },
+          { "label": "Hero", "cells": [
+            { "type": "text", "text": "INDEPENDENT DESIGN PRACTICE / EST. 2026\nMake room for a better idea.\nWe build thoughtful digital experiences for ambitious people and the things they believe in.\nExplore the work  /  Our approach", "pixels": 540 },
+            { "type": "visual", "text": "SELECTED PROJECT / 001\nSpaces to think differently.\nA new perspective on the everyday.\n42°  SHIFT IN PERSPECTIVE", "pixels": 360 }
+          ] },
+          { "label": "Body 01 · Work", "id": "work", "cells": [
+            { "type": "visual", "text": "Spaces to think differently.\nA new perspective on the everyday.", "pixels": 540 },
+            { "type": "text", "text": "Selected work\nSpaces to think differently.\nA new perspective on the everyday.", "pixels": 360 }
+          ] },
+          { "label": "Body 02 · Studio", "id": "studio", "cells": [
+            { "type": "text", "text": "Our approach\nWe build thoughtful digital experiences for ambitious people and the things they believe in.", "pixels": 430 },
+            { "type": "space", "pixels": 120 },
+            { "type": "text", "text": "STRATEGY / DESIGN / DIGITAL", "pixels": 240 }
+          ] },
+          { "label": "Body 03 · Contact", "id": "contact", "cells": [
+            { "type": "text", "text": "Make room for a better idea.\nContact", "pixels": 540 },
+            { "type": "space", "pixels": 240 }
+          ] },
+          { "label": "Footer", "cells": [
+            { "type": "brand", "text": "FORMA®", "pixels": 180 },
+            { "type": "space", "pixels": 120 },
+            { "type": "text", "text": "STRATEGY / DESIGN / DIGITAL", "pixels": 360 }
+          ] }
+        ]
+      },
       "spec": {
         "goal": {
           "what": "Landing page hero for an independent design studio.",
@@ -120,6 +154,39 @@
         "index": "02 / 04",
         "interface": {}
       },
+      "wireframe": {
+        "title": "Page content / signal field",
+        "rows": [
+          { "label": "Header", "cells": [
+            { "type": "brand", "text": "FORMA®", "pixels": 180 },
+            { "type": "space", "pixels": 50 },
+            { "type": "link", "text": "Projects", "href": "#projects", "pixels": 110 },
+            { "type": "link", "text": "Practice", "href": "#practice", "pixels": 110 },
+            { "type": "link", "text": "Connect", "href": "#connect", "pixels": 110 }
+          ] },
+          { "label": "Hero", "cells": [
+            { "type": "text", "text": "FORMA / INDEPENDENT CREATIVE PRACTICE\nIdeas should change the room.\nA creative practice bringing clarity, energy, and intention to every digital experience.\nSee our projects  /  Read the direction", "pixels": 540 },
+            { "type": "visual", "text": "Electric-lime geometric form", "pixels": 360 }
+          ] },
+          { "label": "Body 01 · Projects", "id": "projects", "cells": [
+            { "type": "text", "text": "Projects\nSpaces to think differently.\nA new perspective on the everyday.", "pixels": 360 },
+            { "type": "visual", "text": "Spaces to think differently.", "pixels": 540 }
+          ] },
+          { "label": "Body 02 · Practice", "id": "practice", "cells": [
+            { "type": "text", "text": "Practice\nA creative practice bringing clarity, energy, and intention to every digital experience.", "pixels": 540 },
+            { "type": "space", "pixels": 240 }
+          ] },
+          { "label": "Body 03 · Connect", "id": "connect", "cells": [
+            { "type": "text", "text": "Ideas should change the room.\nConnect", "pixels": 540 },
+            { "type": "space", "pixels": 240 }
+          ] },
+          { "label": "Footer", "cells": [
+            { "type": "brand", "text": "FORMA®", "pixels": 180 },
+            { "type": "space", "pixels": 120 },
+            { "type": "text", "text": "DESIGNED TO MOVE IDEAS FORWARD", "pixels": 360 }
+          ] }
+        ]
+      },
       "spec": {
         "goal": {
           "what": "Alternative landing page hero for the same design studio.",
@@ -199,6 +266,39 @@
         "caption": "NOTES FROM THE STUDIO",
         "index": "03 / 04",
         "interface": {}
+      },
+      "wireframe": {
+        "title": "Page content / quiet archive",
+        "rows": [
+          { "label": "Header", "cells": [
+            { "type": "brand", "text": "FORMA®", "pixels": 180 },
+            { "type": "space", "pixels": 50 },
+            { "type": "link", "text": "Index", "href": "#index", "pixels": 110 },
+            { "type": "link", "text": "About", "href": "#about", "pixels": 110 },
+            { "type": "link", "text": "Inquiries", "href": "#inquiries", "pixels": 110 }
+          ] },
+          { "label": "Hero", "cells": [
+            { "type": "text", "text": "FORMA / THE WORK / 2026\nA practice in seeing differently.\nDistinctive places, identities, and experiences begin with the way we look at things.\nView selected work  /  The brief", "pixels": 540 },
+            { "type": "image", "src": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1200&q=85", "alt": "Light-filled studio interior with a long shared table", "pixels": 360 }
+          ] },
+          { "label": "Body 01 · Index", "id": "index", "cells": [
+            { "type": "image", "src": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1200&q=85", "alt": "Light-filled studio interior with a long shared table", "pixels": 540 },
+            { "type": "text", "text": "Selected work\nA practice in seeing differently.", "pixels": 360 }
+          ] },
+          { "label": "Body 02 · About", "id": "about", "cells": [
+            { "type": "text", "text": "About the practice\nDistinctive places, identities, and experiences begin with the way we look at things.", "pixels": 540 },
+            { "type": "space", "pixels": 240 }
+          ] },
+          { "label": "Body 03 · Inquiries", "id": "inquiries", "cells": [
+            { "type": "text", "text": "A practice in seeing differently.\nInquiries", "pixels": 540 },
+            { "type": "space", "pixels": 240 }
+          ] },
+          { "label": "Footer", "cells": [
+            { "type": "brand", "text": "FORMA®", "pixels": 180 },
+            { "type": "space", "pixels": 120 },
+            { "type": "text", "text": "AN INDEPENDENT DESIGN PRACTICE", "pixels": 360 }
+          ] }
+        ]
       },
       "spec": {
         "goal": {

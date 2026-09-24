@@ -1,0 +1,127 @@
+{
+  "project": "Infographic wireframe study",
+  "designs": [
+    {
+      "id": "cobalt-grid",
+      "name": "Cobalt Grid",
+      "note": "Studious, architectural, blue-on-cream",
+      "colors": { "paper": "#F0EBDE", "ink": "#202868", "accent": "#1F2BE0", "line": "#7683C3", "chart": "#e2e4fa" },
+      "displayFont": "Newsreader, Georgia, serif",
+      "bodyFont": "Hanken Grotesk, Arial, sans-serif"
+    },
+    {
+      "id": "editorial-forest",
+      "name": "Editorial Forest",
+      "note": "Warm, literary, forest and cream",
+      "colors": { "paper": "#efe7d4", "ink": "#1a1a17", "accent": "#2e4a2a", "line": "#80937a", "chart": "#e5cfce" },
+      "displayFont": "Source Serif 4, Georgia, serif",
+      "bodyFont": "Arial, sans-serif"
+    },
+    {
+      "id": "neo-grid-bold",
+      "name": "Neo-Grid Bold",
+      "note": "High-contrast, graphic, neon signal",
+      "colors": { "paper": "#F5F4EF", "ink": "#0A0A0A", "accent": "#0A0A0A", "line": "#0A0A0A", "chart": "#E6FF3D" },
+      "displayFont": "Space Grotesk, Arial, sans-serif",
+      "bodyFont": "Space Grotesk, Arial, sans-serif"
+    },
+    {
+      "id": "monochrome",
+      "name": "Monochrome",
+      "note": "Archival, typographic, ink and ivory",
+      "colors": { "paper": "#fafadf", "ink": "#1a1a16", "accent": "#1a1a16", "line": "#5e5e54", "chart": "#f2f2d2" },
+      "displayFont": "Lora, Georgia, serif",
+      "bodyFont": "Jost, Arial, sans-serif"
+    }
+  ],
+  "directions": [
+    {
+      "id": "evidence-landscape",
+      "name": "Evidence at a glance",
+      "orientation": "landscape",
+      "template": "custom (inspired by executive-summary-report)",
+      "style": "cobalt-grid",
+      "rationale": "A wide chart band keeps the comparison readable while the top metric provides an immediate takeaway.",
+      "bands": [
+        {
+          "label": "Header",
+          "height": 100,
+          "cells": [
+            { "type": "text", "width": 980, "text": "QUARTERLY ADOPTION / SAMPLE DATA\nWhere teams spend their AI time" },
+            { "type": "metric", "width": 300, "text": "Q2 / 2026" }
+          ]
+        },
+        {
+          "label": "Lead insight",
+          "height": 160,
+          "cells": [
+            { "type": "metric", "width": 360, "text": "62%\nUse it weekly" },
+            { "type": "text", "width": 920, "text": "Weekly use is strongest in drafting and research. These figures are illustrative; replace them with verified source data before publishing." }
+          ]
+        },
+        {
+          "label": "Evidence",
+          "height": 310,
+          "cells": [
+            { "type": "chart", "width": 850, "text": "Use cases / share of surveyed teams\nDrafting 62%\nResearch 48%\nAnalysis 31%" },
+            { "type": "text", "width": 430, "text": "Reading the chart\nDrafting leads research by 14 points. Analysis trails drafting by 31 points." }
+          ]
+        },
+        {
+          "label": "Takeaway & source",
+          "height": 150,
+          "cells": [
+            { "type": "text", "width": 980, "text": "TAKEAWAY\nStart with repeatable writing tasks, then expand into research and analysis." },
+            { "type": "source", "width": 300, "text": "Illustrative data\nReplace with source + date" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "story-portrait",
+      "name": "Portrait story stack",
+      "orientation": "portrait",
+      "template": "executive-summary-report",
+      "style": "editorial-forest",
+      "rationale": "A vertical narrative makes one headline, a key number, and a compact comparison legible on a portrait canvas.",
+      "bands": [
+        {
+          "label": "Header",
+          "height": 170,
+          "cells": [
+            { "type": "text", "width": 720, "text": "ILLUSTRATIVE REPORT / Q2 2026\nA clearer path from trial to habit" }
+          ]
+        },
+        {
+          "label": "Lead metric",
+          "height": 230,
+          "cells": [
+            { "type": "metric", "width": 280, "text": "62%\nWeekly use" },
+            { "type": "text", "width": 440, "text": "The biggest shift is consistency: teams return for repeatable tasks, not just one-off experiments." }
+          ]
+        },
+        {
+          "label": "How it breaks down",
+          "height": 450,
+          "cells": [
+            { "type": "chart", "width": 720, "text": "Use cases / share of surveyed teams\nDrafting 62%\nResearch 48%\nAnalysis 31%" }
+          ]
+        },
+        {
+          "label": "What it means",
+          "height": 300,
+          "cells": [
+            { "type": "text", "width": 720, "text": "Build the habit first\nGive each team a clear starting task and measure repeat use before adding more complex workflows." }
+          ]
+        },
+        {
+          "label": "Source",
+          "height": 130,
+          "cells": [
+            { "type": "source", "width": 720, "text": "Illustrative data only / Replace with verified source and date" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Infographic wireframe preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&family=Jost:wght@400;600&family=Lora:wght@400;700&family=Newsreader:wght@400;700&family=Source+Serif+4:wght@400;700&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root { font-family: ui-sans-serif, system-ui, sans-serif; color: #f2f4f0; background: #171c1b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button { font: inherit; cursor: pointer; }
+    .workspace { max-width: 1500px; margin: auto; padding: clamp(16px, 3vw, 42px); }
+    .top, .preview-heading, .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+    .top { padding-bottom: 22px; border-bottom: 1px solid #495553; }
+    .top h1 { margin: 0; font-size: clamp(20px, 2.5vw, 32px); font-weight: 550; letter-spacing: -.04em; }
+    .meta, .section-heading { font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .09em; text-transform: uppercase; color: #b6c5bd; }
+    .section-heading { margin: 30px 0 14px; }
+    .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(225px, 1fr)); gap: 12px; }
+    .choice { background: #232c29; color: inherit; border: 1px solid #53635b; padding: 18px; text-align: left; min-height: 115px; }
+    .choice:hover, .choice:focus-visible, .choice[aria-pressed="true"] { border-color: #d1e8d5; }
+    .choice[aria-pressed="true"] { background: #304039; }
+    .choice strong, .choice span { display: block; }
+    .choice strong { font-size: 17px; margin-bottom: 14px; }
+    .choice span { font: 11px ui-monospace, monospace; color: #bbcec2; text-transform: uppercase; }
+    .designs { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 10px; }
+    .design-choice { background: #232c29; color: inherit; border: 1px solid #53635b; padding: 14px 16px; text-align: left; }
+    .design-choice:hover, .design-choice:focus-visible, .design-choice[aria-pressed="true"] { border-color: #d1e8d5; }
+    .design-choice[aria-pressed="true"] { background: #304039; }
+    .design-choice strong, .design-choice small { display: block; }
+    .design-choice strong { margin: 8px 0 5px; font-size: 15px; }
+    .design-choice small { color: #bbcec2; line-height: 1.4; }
+    .swatches { display: flex; gap: 3px; }
+    .swatches i { width: 20px; height: 13px; border: 1px solid #ffffff55; }
+    .preview-heading { margin: 34px 0 16px; align-items: end; }
+    .preview-heading h2 { font-size: clamp(24px, 3vw, 38px); font-weight: 500; letter-spacing: -.04em; margin: 4px 0 0; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+    .controls button { background: none; color: inherit; border: 1px solid #65796e; padding: 10px 14px; }
+    .controls button:hover, .controls button:focus-visible { border-color: #f2f4f0; }
+    .details { color: #c9d3cb; max-width: 860px; line-height: 1.6; margin: 0 0 18px; }
+    .frame { background: #29332e; border: 1px solid #53635b; padding: clamp(10px, 2vw, 26px); }
+    .stage { position: relative; width: 100%; }
+    .canvas { --paper: #f2f0e9; --ink: #1b2b2b; --accent: #285b73; --line: #7f9893; --chart: #e7e9e7; --display: Georgia, serif; --body: Arial, sans-serif; position: absolute; top: 0; left: 0; transform-origin: top left; background: var(--paper); color: var(--ink); display: flex; flex-direction: column; font-family: var(--body); }
+    .band { display: flex; min-height: 0; border-bottom: 2px solid var(--line); position: relative; }
+    .band:last-child { border-bottom: 0; }
+    .cell { min-width: 0; height: 100%; padding: 26px 24px 10px; border-right: 1px dashed var(--line); white-space: pre-line; overflow-wrap: anywhere; font-size: 22px; line-height: 1.3; }
+    .cell:last-child { border-right: 0; }
+    .cell[data-type="metric"] { font-family: var(--display); font-size: 42px; font-weight: 700; color: var(--accent); }
+    .cell[data-type="source"] { font-size: 18px; color: var(--ink); }
+    .cell[data-type="chart"] { background: var(--chart); border-left: 4px solid var(--accent); }
+    .band-label { position: absolute; left: 10px; top: 7px; font: 12px ui-monospace, monospace; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; pointer-events: none; }
+    .band-range { position: absolute; right: 10px; top: 7px; font: 12px ui-monospace, monospace; color: var(--ink); pointer-events: none; }
+    .canvas[data-design="neo-grid-bold"] .band { border-bottom-width: 4px; }
+    .canvas[data-design="neo-grid-bold"] .cell[data-type="metric"] { background: var(--chart); }
+    .canvas[data-design="cobalt-grid"] { background-image: linear-gradient(#1f2be00c 1px, transparent 1px), linear-gradient(90deg, #1f2be00c 1px, transparent 1px); background-size: 36px 36px; }
+    .check { margin: 16px 0 0; border: 1px solid #537862; background: #24382d; color: #d2efd5; padding: 15px 18px; line-height: 1.5; }
+    .check[data-valid="false"] { border-color: #ab725d; background: #392b28; color: #ffd3c5; }
+    .check ul { margin: 8px 0 0; padding-left: 20px; }
+    .legend { display: flex; gap: 20px; flex-wrap: wrap; margin: 20px 0 0; font: 11px ui-monospace, monospace; color: #b6c5bd; }
+    .legend strong { color: #eef5ee; }
+    .error { color: #ffd3c5; background: #392b28; padding: 24px; border: 1px solid #ab725d; }
+    @media (max-width: 700px) {
+      .top, .preview-heading { align-items: start; flex-direction: column; }
+      .section-heading { flex-direction: column; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="workspace">
+    <header class="top">
+      <h1>Infographic / layout-content wireframe</h1>
+      <span class="meta" id="project">JSON-driven planning preview</span>
+    </header>
+    <section aria-label="Choose a wireframe direction">
+      <div class="section-heading"><span>01 / Compare directions</span><span>Select an orientation and content plan</span></div>
+      <div class="choices" id="choices"></div>
+    </section>
+    <section aria-label="Choose a design style">
+      <div class="section-heading"><span>02 / Compare designs</span><span>Apply any style to the selected wireframe</span></div>
+      <div class="designs" id="designs"></div>
+    </section>
+    <section aria-label="Selected wireframe">
+      <div class="preview-heading">
+        <div><span class="meta" id="direction-meta"></span><h2 id="direction-name">Loading…</h2></div>
+        <div class="controls">
+          <button type="button" id="previous">← Previous</button>
+          <button type="button" id="next">Next →</button>
+        </div>
+      </div>
+      <p class="details" id="rationale"></p>
+      <div class="frame"><div class="stage" id="stage"><div class="canvas" id="canvas" aria-label="Infographic content wireframe"></div></div></div>
+      <div class="check" id="check" role="status" aria-live="polite"></div>
+      <div class="legend"><span><strong>Widths:</strong> each row totals canvas width</span><span><strong>Heights:</strong> bands total canvas height</span><span><strong>Preview:</strong> uniformly scaled, never cropped</span></div>
+    </section>
+  </main>
+  <script>
+    const dimensions = { landscape: [1280, 720], portrait: [720, 1280] };
+    const $ = (id) => document.getElementById(id);
+    let directions = [];
+    let designs = [];
+    let selected = 0;
+    let selectedDesign = '';
+
+    function validate(direction) {
+      const errors = [];
+      const size = dimensions[direction.orientation];
+      if (!size) return ['Orientation must be landscape or portrait.'];
+      if (!Array.isArray(direction.bands) || direction.bands.length === 0) return ['Add at least one band.'];
+      let height = 0;
+      direction.bands.forEach((band, index) => {
+        if (!Number.isInteger(band.height) || band.height <= 0) errors.push(`Band ${index + 1}: height must be a positive integer.`);
+        else height += band.height;
+        if (!Array.isArray(band.cells) || band.cells.length === 0) {
+          errors.push(`Band ${index + 1}: add content cells.`);
+          return;
+        }
+        const width = band.cells.reduce((sum, cell) => {
+          if (!Number.isInteger(cell.width) || cell.width <= 0) errors.push(`Band ${index + 1}: cell widths must be positive integers.`);
+          if (!['text', 'metric', 'chart', 'source'].includes(cell.type)) errors.push(`Band ${index + 1}: unsupported cell type.`);
+          if (typeof cell.text !== 'string' || !cell.text.trim()) errors.push(`Band ${index + 1}: each cell needs actual content.`);
+          return sum + (Number.isInteger(cell.width) ? cell.width : 0);
+        }, 0);
+        if (width !== size[0]) errors.push(`Band ${index + 1}: widths add to ${width}px; expected ${size[0]}px.`);
+      });
+      if (height !== size[1]) errors.push(`Band heights add to ${height}px; expected ${size[1]}px.`);
+      return errors;
+    }
+
+    function fit() {
+      const direction = directions[selected];
+      if (!direction || !dimensions[direction.orientation]) return;
+      const [width, height] = dimensions[direction.orientation];
+      const scale = Math.min($('stage').clientWidth / width, Math.max(260, innerHeight - 260) / height, 1);
+      $('stage').style.height = `${height * scale}px`;
+      $('canvas').style.transform = `scale(${scale})`;
+    }
+
+    function render() {
+      const direction = directions[selected];
+      if (!direction) return;
+      const [width, height] = dimensions[direction.orientation] || dimensions.landscape;
+      $('direction-name').textContent = direction.name || 'Untitled direction';
+      $('direction-meta').textContent = `${direction.orientation} / ${width} × ${height} / ${direction.template} / ${selectedDesign}`;
+      $('rationale').textContent = direction.rationale || '';
+      const canvas = $('canvas');
+      const design = designs.find((item) => item.id === selectedDesign);
+      if (design) {
+        canvas.dataset.design = design.id;
+        for (const [key, value] of Object.entries(design.colors)) canvas.style.setProperty(`--${key}`, value);
+        canvas.style.setProperty('--display', design.displayFont);
+        canvas.style.setProperty('--body', design.bodyFont);
+      }
+      canvas.replaceChildren();
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      let y = 0;
+      (direction.bands || []).forEach((band) => {
+        const row = document.createElement('section');
+        row.className = 'band';
+        row.style.height = `${Math.max(0, Number(band.height) || 0)}px`;
+        row.style.flex = 'none';
+        for (const cell of band.cells || []) {
+          const content = document.createElement('div');
+          content.className = 'cell';
+          content.dataset.type = cell.type;
+          content.style.width = `${Math.max(0, Number(cell.width) || 0)}px`;
+          content.style.flex = 'none';
+          content.textContent = cell.text || '';
+          row.append(content);
+        }
+        const label = document.createElement('span');
+        label.className = 'band-label';
+        label.textContent = band.label || 'Untitled band';
+        const range = document.createElement('span');
+        range.className = 'band-range';
+        range.textContent = `${y}–${y + band.height}px · ${band.height}px`;
+        row.append(label, range);
+        canvas.append(row);
+        y += band.height;
+      });
+      fit();
+      const errors = validate(direction);
+      for (const cell of canvas.querySelectorAll('.cell')) {
+        if (cell.scrollHeight > cell.clientHeight + 1 || cell.scrollWidth > cell.clientWidth + 1) {
+          errors.push(`Text exceeds the ${cell.parentElement.querySelector('.band-label').textContent} band; shorten it or allocate more space.`);
+        }
+      }
+      const check = $('check');
+      check.dataset.valid = String(errors.length === 0);
+      check.replaceChildren();
+      const title = document.createElement('strong');
+      title.textContent = errors.length ? 'Wireframe needs revision' : `Valid canvas · ${width} × ${height}px · no planned overflow`;
+      check.append(title);
+      if (errors.length) {
+        const list = document.createElement('ul');
+        for (const error of errors) {
+          const item = document.createElement('li');
+          item.textContent = error;
+          list.append(item);
+        }
+        check.append(list);
+      }
+      $('choices').querySelectorAll('button').forEach((button, index) => { button.setAttribute('aria-pressed', String(index === selected)); });
+      $('designs').querySelectorAll('button').forEach((button) => { button.setAttribute('aria-pressed', String(button.dataset.design === selectedDesign)); });
+    }
+
+    function selectDirection(index) {
+      selected = index;
+      selectedDesign = designs.some((design) => design.id === directions[index].style) ? directions[index].style : designs[0]?.id;
+      render();
+    }
+
+    $('previous').addEventListener('click', () => { selectDirection((selected - 1 + directions.length) % directions.length); });
+    $('next').addEventListener('click', () => { selectDirection((selected + 1) % directions.length); });
+    addEventListener('resize', fit);
+
+    fetch('./wireframe_preview.json')
+      .then((response) => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+      .then((data) => {
+        if (!Array.isArray(data.directions) || !data.directions.length) throw new Error('Add at least one direction to the JSON.');
+        if (!Array.isArray(data.designs) || !data.designs.length) throw new Error('Add at least one design to the JSON.');
+        directions = data.directions;
+        designs = data.designs;
+        $('project').textContent = data.project || 'Infographic wireframe study';
+        designs.forEach((design) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'design-choice';
+          button.dataset.design = design.id;
+          const swatches = document.createElement('span');
+          swatches.className = 'swatches';
+          for (const color of [design.colors.paper, design.colors.ink, design.colors.accent]) {
+            const chip = document.createElement('i');
+            chip.style.backgroundColor = color;
+            swatches.append(chip);
+          }
+          const name = document.createElement('strong');
+          name.textContent = design.name;
+          const note = document.createElement('small');
+          note.textContent = design.note;
+          button.append(swatches, name, note);
+          button.addEventListener('click', () => { selectedDesign = design.id; render(); });
+          $('designs').append(button);
+        });
+        directions.forEach((direction, index) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'choice';
+          const name = document.createElement('strong');
+          name.textContent = direction.name || `Direction ${index + 1}`;
+          const info = document.createElement('span');
+          info.textContent = `${direction.orientation} / ${direction.template} / ${direction.style}`;
+          button.append(name, info);
+          button.addEventListener('click', () => { selectDirection(index); });
+          $('choices').append(button);
+        });
+        selectDirection(0);
+      })
+      .catch((error) => {
+        $('stage').replaceChildren();
+        $('check').className = 'error';
+        $('check').textContent = `Unable to load wireframe_preview.json: ${error.message}. Open through a local HTTP server, not file://.`;
+      });
+  </script>
+</body>
+</html>

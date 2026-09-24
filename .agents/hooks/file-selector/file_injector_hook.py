@@ -92,8 +92,8 @@ def format_scope_directive(result: dict) -> str:
     primary_folder = folder_res.get("primary")
     folder_conf = folder_res.get("primary_confidence", 0.0)
 
-    lead_file = files_res.get("lead_file")
-    lead_conf = files_res.get("lead_confidence", 0.0)
+    primary_file = files_res.get("primary")
+    file_conf = files_res.get("primary_confidence", 0.0)
     rec_files = files_res.get("recommended", [])
 
     lines = [
@@ -101,13 +101,17 @@ def format_scope_directive(result: dict) -> str:
         "Semantic evaluation identified the exact directory and file(s) relevant to your request:"
     ]
 
-    if primary_folder:
+    if primary_folder and primary_folder != "No strong existing candidate, LLM decides":
         lines.append(f"- Target Directory: `{display_folder_name(primary_folder)}` (confidence: {folder_conf:.2f})")
+    elif primary_folder == "No strong existing candidate, LLM decides":
+        lines.append("- Target Directory: No strong existing candidate, LLM decides")
 
-    if lead_file:
-        lines.append(f"- Target Lead File: `{lead_file}` (confidence: {lead_conf:.2f})")
+    if primary_file and primary_file != "No strong existing candidate, LLM decides":
+        lines.append(f"- Target Primary File: `{primary_file}` (confidence: {file_conf:.2f})")
+    elif primary_file == "No strong existing candidate, LLM decides":
+        lines.append("- Target Primary File: No strong existing candidate, LLM decides")
 
-    additional_files = [r for r in rec_files if r.get("file") != lead_file]
+    additional_files = [r for r in rec_files if r.get("file") != primary_file]
     if additional_files:
         lines.append("Additional relevant file(s):")
         for r in additional_files[:4]:
@@ -115,13 +119,15 @@ def format_scope_directive(result: dict) -> str:
 
     lines.append("")
     lines.append("Instructions for Agent:")
-    if lead_file:
-        lines.append(f"1. Start by inspecting `{lead_file}` directly using `view_file`.")
+    if primary_file and primary_file != "No strong existing candidate, LLM decides":
+        lines.append(f"1. Start by inspecting `{primary_file}` directly using `view_file`.")
         lines.append("2. DO NOT wander across the repository or read around the bush in unrelated folders.")
         lines.append("3. Keep all tool calls focused strictly on the file(s) and directory identified above.")
-    else:
+    elif primary_folder and primary_folder != "No strong existing candidate, LLM decides":
         lines.append("1. Confine your file reading (`view_file`) and searches to the target directory above.")
         lines.append("2. DO NOT wander into unrelated folders or perform broad directory traversals.")
+    else:
+        lines.append("1. No strong existing directory or file candidate was identified; use your judgment or inspect any recommended file(s) above.")
 
     return "\n".join(lines)
 
@@ -156,8 +162,14 @@ def main() -> None:
     folder_res = result.get("folder", {})
     files_res = result.get("files", {})
 
-    has_folder = folder_res.get("primary") or folder_res.get("recommended")
-    has_file = files_res.get("lead_file") or files_res.get("recommended")
+    has_folder = (
+        folder_res.get("primary")
+        and folder_res.get("primary") != "No strong existing candidate, LLM decides"
+    ) or folder_res.get("recommended")
+    has_file = (
+        files_res.get("primary")
+        and files_res.get("primary") != "No strong existing candidate, LLM decides"
+    ) or files_res.get("recommended")
 
     if not has_folder and not has_file:
         print(json.dumps(NO_INJECTION))

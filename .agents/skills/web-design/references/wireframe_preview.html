@@ -100,6 +100,22 @@
     .token { display: flex; align-items: center; gap: 8px; min-width: 110px; }
     .swatch { width: 22px; height: 22px; border: 1px solid #818b80; }
     .token small { font: 10px ui-monospace, monospace; color: #d2d9cd; }
+    .content-plan { padding: 40px 0 48px; border-bottom: 1px solid #404641; }
+    .content-plan h2 { font-size: clamp(25px, 3vw, 38px); font-weight: 500; letter-spacing: -.05em; margin: 0 0 24px; }
+    .plan-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .plan-table th, .plan-table td { border: 1px solid #404641; padding: 16px; text-align: left; vertical-align: top; }
+    .plan-table th { width: 170px; background: #283129; color: #d1dcce; font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
+    .plan-table tbody tr:nth-child(even) { background: #202721; }
+    .plan-cells { display: grid; gap: 8px; min-height: 64px; overflow-x: auto; }
+    .plan-cell { min-width: 0; border: 1px solid #475249; padding: 14px; color: #edf2e9; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-line; }
+    .plan-cell--brand { font-weight: 800; font-size: 18px; letter-spacing: -.04em; }
+    .plan-cell--link { text-align: center; text-decoration: underline; text-underline-offset: 4px; }
+    .plan-cell--visual, .plan-cell--image { border-color: var(--plan-accent, #aeb7ac); background: #2c352d; }
+    .plan-cell--image { padding: 0; }
+    .plan-cell--image img { display: block; width: 100%; height: 170px; object-fit: cover; }
+    .plan-cell--image span { display: block; padding: 8px 12px; color: #d1dcce; font-size: 11px; }
+    .plan-cell--space { border-style: dashed; background: repeating-linear-gradient(135deg, transparent 0 10px, #ffffff08 10px 11px); }
+    .plan-cell--space span { color: #aeb7ac; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; }
     .spec { padding: 40px 0 60px; border-bottom: 1px solid #404641; }
     .spec h2 { font-size: clamp(25px, 3vw, 38px); font-weight: 500; letter-spacing: -.05em; margin: 0 0 24px; }
     .spec-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -129,6 +145,11 @@
       .site-footer { flex-wrap: wrap; }
       .preview-header { align-items: start; flex-direction: column; }
       .preview-header .preview-controls .meta { display: inline; }
+      .plan-table, .plan-table tbody, .plan-table tr, .plan-table th, .plan-table td { display: block; width: 100%; }
+      .plan-table tbody { display: grid; gap: 12px; }
+      .plan-table td { border-top: 0; }
+      .plan-cells { grid-template-columns: 1fr !important; overflow-x: visible; }
+      .plan-cell--space { display: none; }
     }
   </style>
 </head>
@@ -189,8 +210,13 @@
         <div class="tokens" id="tokens"></div>
       </div>
     </section>
+    <section class="content-plan" id="content-plan" aria-labelledby="content-plan-title" hidden>
+      <p class="section-label">03 / LAYOUT + WIREFRAME</p>
+      <h2 id="content-plan-title"></h2>
+      <table class="plan-table" id="plan-table"></table>
+    </section>
     <section class="spec" id="design-spec" aria-label="Complete design specification">
-      <p class="section-label">03 / DESIGN-FIRST UI PROMPT SKELETON</p>
+      <p class="section-label">04 / DESIGN-FIRST UI PROMPT SKELETON</p>
       <h2>Full design specification</h2>
       <div class="spec-grid" id="spec-grid"></div>
     </section>
@@ -281,6 +307,44 @@
       }
     }
 
+    function renderWireFrame(plan) {
+      const section = $('content-plan');
+      const table = $('plan-table');
+      table.replaceChildren();
+      const rows = Array.isArray(plan?.rows) ? plan.rows : [];
+      section.hidden = rows.length === 0;
+      if (section.hidden) return;
+      text('content-plan-title', plan.title || 'Planned page content');
+      const body = addText(table, '', '', 'tbody');
+      for (const row of rows) {
+        const tr = addText(body, '', '', 'tr');
+        addText(tr, '', row?.label || 'Section', 'th').scope = 'row';
+        const td = addText(tr, '', '', 'td');
+        const cells = Array.isArray(row?.cells) ? row.cells : [];
+        const strip = addText(td, 'plan-cells', '', 'div');
+        strip.style.gridTemplateColumns = cells.map((cell) => {
+          const defaultPixels = cell?.type === 'space' ? 50 : 240;
+          const pixels = Number.isInteger(cell?.pixels) && cell.pixels >= (cell.type === 'space' ? 0 : 1) && cell.pixels <= 1600 ? cell.pixels : defaultPixels;
+          return `${pixels}px`;
+        }).join(' ');
+        for (const cell of cells) {
+          const kind = ['brand', 'text', 'link', 'image', 'visual', 'space'].includes(cell?.type) ? cell.type : 'text';
+          const block = addText(strip, `plan-cell plan-cell--${kind}`, '', 'div');
+          if (kind === 'space') {
+            addText(block, '', 'OPEN SPACE');
+          } else if (kind === 'image' && typeof cell.src === 'string' && cell.src) {
+            const image = document.createElement('img');
+            image.src = cell.src;
+            image.alt = cell.alt || '';
+            block.append(image);
+            if (cell.alt) addText(block, '', cell.alt);
+          } else {
+            block.textContent = cell?.text || (kind === 'image' ? cell?.alt || 'Image' : '');
+          }
+        }
+      }
+    }
+
     function render(config, direction) {
       const design = direction.design || {};
       const hero = direction.hero || {};
@@ -329,6 +393,9 @@
         link.href = typeof action.href === 'string' && /^#[\w-]+$/.test(action.href) ? action.href : '#preview-end';
       }
       renderVisual($('visual-stage'), mode, visual);
+      const planAccent = typeof colors.accent === 'string' && CSS.supports('color', colors.accent) ? colors.accent : '#aeb7ac';
+      $('content-plan').style.setProperty('--plan-accent', planAccent);
+      renderWireFrame(direction.wireframe);
       renderSpec(spec);
 
       const tokens = $('tokens');
@@ -376,7 +443,7 @@
       select(0);
     }
 
-    fetch(new URL('./design_hero_preview.json', document.baseURI), { cache: 'no-store' })
+    fetch(new URL('./wireframe_preview.json', document.baseURI), { cache: 'no-store' })
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
@@ -385,7 +452,7 @@
       .catch((error) => {
         $('canvas').replaceChildren();
         const message = addText($('canvas'), 'error', '', 'section');
-        addText(message, '', 'Could not load design_hero_preview.json', 'h3');
+        addText(message, '', 'Could not load wireframe_preview.json', 'h3');
         addText(message, '', 'Serve this folder over HTTP, then reload. Check that the JSON is valid and sits beside the HTML.', 'p');
         addText(message, '', `Details: ${error.message}`, 'code');
         text('direction-title', 'Preview unavailable');
