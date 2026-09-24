@@ -1,13 +1,13 @@
 ---
 name: infographic
-description: "Use when: the user asks to create an infographic, one-pager, visual chart, render data as a stunning HTML chart, produce a screenshot of a visual, or save chart output. This skill authors a self-contained HTML file with embedded chart logic, then captures a full-page screenshot using Playwright. All output goes to a dedicated folder under topics/<topic-slug>/. The agent must ALWAYS confirm first with the user: (1) which infographic layout template to use, (2) which design style to apply from design/, (3) rationale for both, and (4) planned content outline. ONLY proceed after explicit user approval."
+description: "Use when: the user asks to create an infographic, one-pager, visual chart, render data as an HTML chart, produce a screenshot of a visual, or save chart output. This skill authors a self-contained HTML infographic in a standard 16:9 landscape or 9:16 portrait canvas that fits within one browser screen without scrolling, then captures a viewport screenshot with Playwright. Save output in a directory appropriate to the user's request or project context. The agent must ALWAYS confirm first with the user: (1) infographic layout template, (2) design style, (3) rationale for both, (4) content outline, and (5) a dimensioned ASCII layout-content wireframe. ONLY proceed after explicit user approval."
 ---
 
 # infographic: Author HTML infographics, one-pagers, and charts
 
 ## What this skill does
 
-You produce a **self-contained, single-file HTML visual** (charts, infographics, data stories) — no build step, no external bundler. After writing the file, you capture a **full-page screenshot** with Playwright and save it alongside the HTML in the output folder.
+You produce a **self-contained, single-file HTML visual** (charts, infographics, data stories) — no build step, no external bundler. The entire visual must fit within one browser viewport without horizontal or vertical scrolling. After writing the file, capture a **viewport screenshot** with Playwright and save it alongside the HTML in the output folder.
 
 Every one-pager is composed of two coordinated choices:
 1. **Infographic Template (Layout & Structure)** from `layout/`: Defines the layout geometry, structural hierarchy, data containers, tables, and chart visualization types.
@@ -19,20 +19,22 @@ Every one-pager is composed of two coordinated choices:
 > 2. **Which Design Style** to apply (from `design/` — 34 production-ready styles).
 > 3. **Why** you recommend this combination (rationale for layout structure + aesthetic match).
 > 4. **The planned content & data outline** to be included on the 1-pager.
+> 5. **The orientation** (16:9 landscape or 9:16 portrait) and how the proposed content fits on one screen.
+> 6. **A dimensioned layout-content wireframe** showing real section titles, data, and pixel-height bands across the full canvas, following the example below.
 > **DO NOT** write code, create directories, or execute screenshots until the user has explicitly approved.
 
 The workflow is:
 
-1. **Plan & Confirm (MANDATORY GATE)** — Select infographic layout + design style, formulate rationale, outline content, and ask the user for approval. Stop calling tools and wait for confirmation.
-2. **Author** — Once approved, adapt the chosen layout template and skin it with the chosen design style in `topics/<topic-slug>/index.html`.
-3. **Screenshot** — Run Playwright Retina capture utility (`scripts/screenshot-retina.js`) to capture `output.png`.
+1. **Plan & Confirm (MANDATORY GATE)** — Select layout, style, and orientation; draft a dimensioned layout-content wireframe with the actual content; ask the user for approval. Stop calling tools and wait for confirmation.
+2. **Author** — Once approved, choose an output directory based on the user's requested location or project conventions, save the approved plan as `<output-dir>/layout_content.md`, then author `<output-dir>/index.html` from that plan with the chosen template and style.
+3. **Screenshot** — Run Playwright Retina capture utility (`scripts/screenshot-retina.js`) to capture `<output-dir>/output.png`.
 4. **Verify** — Confirm the PNG exists and embed it in your reply.
 
 ---
 
-## Repo root resolution
+## Skill asset resolution
 
-This skill is repo-local. All paths are relative to the **git repo root** that contains this skill file.
+This skill is repo-local. Resolve the **git repo root** that contains this skill file to locate its templates, design styles, and screenshot utility.
 
 Resolve the repo root at runtime before running any command:
 
@@ -40,40 +42,41 @@ Resolve the repo root at runtime before running any command:
 REPO_ROOT=$(git rev-parse --show-toplevel)
 ```
 
-All visual output paths in this skill use `$REPO_ROOT` as the base. Never hardcode an absolute machine path.
+Output may live anywhere the user requests. Do not use `$REPO_ROOT` as the output base unless the chosen directory is inside this repository.
 
 ---
 
-## Folder convention
+## Output directory
 
-All visual work lives under:
+Use the directory specified by the user. If no location is specified, choose a suitable directory using the current project or working-directory conventions. Keep the HTML and screenshot together:
 
 ```
-$REPO_ROOT/topics/<topic-slug>/
-├── index.html      the chart (self-contained)
-└── output.png      full-page screenshot
+<output-dir>/
+├── layout_content.md  approved, dimensioned content wireframe
+├── index.html         chart (self-contained)
+└── output.png         single-viewport screenshot
 ```
 
-**`topic-slug`** is a kebab-case name matching the subject (e.g. `huggingface-data-leaks`, `openai-model-benchmarks`). The user will often tell you the folder name directly. If they don't, derive it from the topic.
+If creating a new directory for the visual, give it a subject-based name unless the user or project already provides a naming convention. Resolve the chosen directory to an absolute path for capture commands.
 
 Create the folder before writing files:
 
 ```bash
-REPO_ROOT=$(git rev-parse --show-toplevel)
-mkdir -p "$REPO_ROOT/topics/<topic-slug>"
+OUTPUT_DIR="/absolute/path/to/chosen/output-directory"
+mkdir -p "$OUTPUT_DIR"
 ```
 
 ---
 
 ## Step 1 — Plan & Confirm with User (MANDATORY GATE)
 
-Before writing any files, creating directories, or running commands, you **MUST STOP AND ASK FOR USER APPROVAL** with the following 4 elements:
+Before writing any files, creating directories, or running commands, you **MUST STOP AND ASK FOR USER APPROVAL** with the following elements:
 
 1. **Infographic Template (Structure & Layout)**:
-   - Identify the template from `layout/` (e.g., `executive-summary-report`, `business-plan-summary-report`, `enterprise-architecture-stack`, `financial-performance-report`, `monthly-social-media-report`, or explain if a custom layout is needed).
+   - Choose a template from the [layout index](layout/README.md), or explain if a custom layout is needed.
    - Check the template's `design.md` for specific content slots and layout rules.
 2. **Design Style (Aesthetic & Skin)**:
-   - Identify the design style from `design/` (e.g., `blue-professional`, `monochrome`, `neo-grid-bold`, `editorial-forest`, `bold-poster`, `cobalt-grid`, etc.).
+   - Choose a style from the [design index](design/README.md).
    - Specify the target color mood and typography pairing (Google Fonts).
 3. **Rationale for Both**:
    - Explain why this **layout** fits the data format (KPI grids, comparison tables, multi-tier architecture, line charts, etc.).
@@ -84,115 +87,37 @@ Before writing any files, creating directories, or running commands, you **MUST 
    - Core sections and tables/lists
    - Chart visualization type and data points
    - Takeaways or quote
+   - Choose 16:9 landscape or 9:16 portrait; trim or reorganize the outline if it would require scrolling.
+5. **Layout-Content Wireframe (REQUIRED)**:
+   - Show the actual headline, sections, labels, metrics, chart data, and footer in a text-box/ASCII layout, not just generic placeholders.
+   - Provide a second, vertically annotated view like the example below: each major band has a pixel height and start/end Y coordinate. Heights must sum to **720 px landscape** or **1280 px portrait**, with no gaps, overlaps, or overflow. Split panels must show their content and fit within their shared band.
+   - State the chosen width and height, the content hierarchy, and what will be shortened or omitted to keep the text and charts readable on one screen. Adapt the example's measurements to the actual content and canvas.
+
+Example of the annotated view (landscape; replace all content and heights to match the proposal):
+
+```text
+1280 × 720 (16:9)
++--------------------------------------------------------+ [Y: 0]
+| HEADER: Actual headline and context              100px |
++--------------------------------------------------------+ [Y: 100]
+| INSIGHT: Key metric and supporting explanation   180px |
++--------------------------------------------------------+ [Y: 280]
+| EVIDENCE: Chart / comparison with data labels     300px |
++--------------------------------------------------------+ [Y: 580]
+| TAKEAWAY: Source, conclusion, footer              140px |
++--------------------------------------------------------+ [Y: 720]
+Total: 100 + 180 + 300 + 140 = 720px
+```
 
 > [!CAUTION]
 > **DO NOT PROCEED TO STEP 2 UNTIL THE USER EXPLICITLY APPROVES.** Stop tool execution and wait for user feedback or approval.
 
 ---
 
-## 1. Infographic Templates Library (`layout/`)
+## Template and style indexes
 
-The repository includes **five production-ready layout templates**. Each folder contains the HTML source, a rendered PNG preview, and a comprehensive `design.md` detailing content slots, component dimensions, and data structures:
-
-```
-$REPO_ROOT/.agents/skills/infographic/layout/
-├── business-plan-summary-report/
-│   ├── design.md       ← layout specs, content slots & rationale guide
-│   ├── index.html      ← ready-to-edit HTML
-│   └── output.png      ← rendered preview
-├── enterprise-architecture-stack/
-│   ├── design.md
-│   ├── index.html
-│   └── output.png
-├── executive-summary-report/
-│   ├── design.md
-│   ├── index.html
-│   └── output.png
-├── financial-performance-report/
-│   ├── design.md
-│   ├── index.html
-│   └── output.png
-└── monthly-social-media-report/
-    ├── design.md
-    ├── index.html
-    └── output.png
-```
-
-### Infographic Layout Reference
-
-| Template Folder | Format & Dimensions | Structural Layout | Best For |
-|---|---|---|---|
-| `business-plan-summary-report/` | A4 Portrait (900 × 1273 px) | Bold headline + top-right hanging brand banner · overview & findings · 3 blue goal cards with floating circular badges · audience segmentation table · 3-bar channel chart | Strategic business plans, GTM launches, 3-pillar commercial proposals |
-| `enterprise-architecture-stack/` | 16:9 Landscape (1618 × 752 px) | Left boundary axis with dot markers · 4-tier horizontal stack (Apps, Capabilities, Services, Infrastructure) · 24+ structured component blocks | Enterprise IT architecture, AI platform stacks, microservices, cloud topologies |
-| `executive-summary-report/` | A4 Portrait (900 × 1273 px) | Wave mesh watermark · signature rounded pill headers · balanced 2-column split: narrative & findings on left; 5 vertical goal items with icon circles + bar chart on right | Executive briefings, board reports, multi-objective program reviews |
-| `financial-performance-report/` | A4 Portrait (900 × 1273 px) | Top corner wave arches · 3 navy highlight cards · full-width 4-metric dashed KPI banner · stacked column expense chart · icon performance notes · striped footer | Quarterly earnings, P&L updates, expense allocations, budget vs actuals |
-| `monthly-social-media-report/` | A4 Portrait (900 × 1273 px) | Split navy/white header with cyan accent stripes · 2 KPI boxes · 3-platform weekly SVG trend line chart · 3 featured post cards with thumbnails · demographic progress bars · regional donut chart | Digital marketing performance, social audience growth, campaign engagement |
-
----
-
-## 2. Design Styles Library (`design/`)
-
-The repository includes **34 curated aesthetic design systems** in `design/`. Each folder provides a `design.md` (full color variables, typography hierarchy, component styling rules) and `template.json` (metadata, mood, typography pairing, palette).
-
-### Design Style Taxonomy
-
-#### A. Corporate, Consulting & Financial
-| Style Slug | Mood & Vibe | Display Font | Body Font | Palette Highlights |
-|---|---|---|---|---|
-| `blue-professional` | Consulting-grade, modern, calm, trustworthy | Space Grotesk | Inter | Warm cream (`#fdfae7`), electric cobalt (`#1e2bfa`), dark ink (`#111111`) |
-| `cobalt-grid` | Studious, design-research, architectural | Newsreader | Hanken Grotesk | Pure white, deep cobalt, structured slate gray borders |
-| `emerald-editorial` | Prestige banking, wealth, confident | Bodoni Moda | Inter | Deep emerald green, champagne accents, crisp white |
-| `signal` | Institutional, authoritative, considered | Source Serif 4 | DM Sans | Midnight navy (`#1c2644`), security orange, clean white |
-
-#### B. Minimalist, Architectural & Swiss
-| Style Slug | Mood & Vibe | Display Font | Body Font | Palette Highlights |
-|---|---|---|---|---|
-| `monochrome` | Swiss restraint, stark archival, high contrast | Lora | Jost | Archival pale parchment (`#fafadf`), deep black, gray tints |
-| `cartesian` | Technical blueprint, mathematical, quiet | Playfair Display | Inter | High-contrast black & white, fine 1px grid rules |
-| `mat` | Scandinavian matte, tactile, earth tones | Bricolage Grotesque | DM Sans | Deep matte slate-green (`#232e26`), soft moss, bone white |
-| `studio` | Sleek creative studio, graphic, modern | Barlow | Barlow | Dark charcoal (`#1c1c1c`), pure white, subtle silver borders |
-| `broadside` | Historic broadsheet, dramatic newspaper | Barlow | Barlow | Stark ink black (`#111111`), newsprint ivory |
-
-#### C. Editorial & Literary
-| Style Slug | Mood & Vibe | Display Font | Body Font | Palette Highlights |
-|---|---|---|---|---|
-| `editorial-forest` | Sustainable luxury, considered, organic | Serif Display | Sans Text | Deep pine forest green, warm cream, warm gold accents |
-| `editorial-tri-tone` | Tri-color lithograph, intentional, print | Bricolage Grotesque | Sans Text | 3-ink strict palette (Navy, Ochre, Off-white) |
-| `soft-editorial` | Gentle elegance, boutique editorial | Cormorant Garamond | Work Sans | Soft cashmere beige, warm charcoal, muted sage |
-| `vellum` | Scholarly archival, antiquarian warmth | Cormorant Garamond | DM Sans | Deep parchment navy (`#2a3870`), antiquarian gold, vellum white |
-| `biennale-yellow` | Contemporary art biennial, dramatic | Instrument Serif | Archivo | High-voltage yellow, gallery black, crisp white |
-
-#### D. Punchy, Bold & Brutalist
-| Style Slug | Mood & Vibe | Display Font | Body Font | Palette Highlights |
-|---|---|---|---|---|
-| `neo-grid-bold` | Neo-brutalist, punchy, sticker accents | Space Grotesk | Space Grotesk | Industrial gray (`#ecece8`), heavy 2px black borders, vivid pop chips |
-| `bold-poster` | Swiss poster, loud, heroic headline | Shrikhand | Space Grotesk | Bright saturated primaries on clean stark white |
-| `raw-grid` | Unfiltered wireframe, raw structural grid | System Monospace | System UI | Stark black/white, sharp unrounded corners, exposed borders |
-| `block-frame` | Framed modular containers, poster geometry | Space Grotesk | Inter | Bold border frames, high contrast, clean grid blocks |
-| `peoples-platform` | Grassroots activist, bold woodblock | Alfa Slab One | Sans Text | Solid heavy slab typography, deep brick red & ink |
-
-#### E. Creative, Playful & Warm
-| Style Slug | Mood & Vibe | Display Font | Body Font | Palette Highlights |
-|---|---|---|---|---|
-| `creative-mode` | Confident agency, energetic, playful | Archivo Black | Space Grotesk | High-contrast neon accents on deep ink canvas |
-| `coral` | Warm, welcoming, modern consumer | Bebas Neue | Inter | Vibrant coral peach, terracotta, soft cream |
-| `playful` | Bouncy geometry, approachable indie | Syne | Space Grotesk | Warm amber peach (`#f0c8a0`), indigo contrast |
-| `daisy-days` | Cheerful, fresh, sunny, friendly | Fredoka One | Quicksand | Pastel yellow, soft sky blue, warm rounded cards |
-| `scatterbrain` | Creative spark, dynamic, artistic | Shrikhand | Zilla Slab | Eclectic pastel accents, energetic layout hierarchy |
-| `capsule` | Modern SaaS, pill-shaped futuristic | Bodoni Moda | Space Grotesk | Soft mist gray (`#f5f5f0`), capsule pill geometry |
-| `long-table` | Culinary, hospitality, artisanal craft | Bricolage Grotesque | Fraunces | Rich warm terracotta, olive, linen white |
-
-#### F. Craft, Tactile & Retro
-| Style Slug | Mood & Vibe | Display Font | Body Font | Palette Highlights |
-|---|---|---|---|---|
-| `pin-and-paper` | Handmade bulletin, tactile paper craft | Caveat | Space Grotesk | Pinned card notes, kraft paper, soft shadow layers |
-| `retro-zine` | Lo-fi risograph, indie fanzine, textured | Bebas Neue | Space Grotesk | Distressed warm newsprint (`#c8b99a`), monochrome ink |
-| `retro-windows` | 90s vintage GUI, classic OS desktop | Press Start 2P | MS Sans Serif | Classic 90s gray window bevels, cyan/navy title bars |
-| `8-bit-orbit` | Retro pixel arcade, cyberpunk sci-fi | Tektur | Chakra Petch | Dark terminal background, neon cyan & magenta |
-| `stencil-tablet` | Industrial warehouse, rugged utilitarian | Bowlby One | Inter | Stencil display lettering, durable khaki & charcoal |
-| `sakura-chroma` | Neo-Tokyo cyberpunk, kawaii-tech | Big Shoulders Display | Albert Sans | Neon magenta, cherry blossom pink, obsidian dark |
-| `pink-script` | Nocturnal luxury, after-hours editorial | DM Serif Display | Inter | Deep midnight velvet, dusky rose pink accents |
-| `grove` | Organic botanical, forest canopy | Playfair Display | Jost | Deep pine green (`#192b1b`), leafy sage, warm parchment |
+- [Layout templates](layout/README.md): Browse source structures, previews, and content slots. Reflow source dimensions to the one-screen canvas specified below.
+- [Design styles](design/README.md): Browse palettes, typography pairings, and component treatments.
 
 ---
 
@@ -200,12 +125,14 @@ The repository includes **34 curated aesthetic design systems** in `design/`. Ea
 
 > **Prerequisite**: Only proceed with this step after the user has explicitly approved the proposed infographic template, design style, rationale, and content outline from Step 1.
 
+First save the approved wireframe as `<output-dir>/layout_content.md`. Keep its section order, exact content, pixel-height allocations, and canvas dimensions aligned with the HTML. If the content or section allocations must materially change, show the revised wireframe to the user and get approval before continuing.
+
 ### How to Combine Layout Structure and Design Style
 
-When creating the 1-pager in `topics/<topic-slug>/index.html`:
+When creating the 1-pager in `<output-dir>/index.html`:
 
 1. **Start with the Infographic Template Structure**:
-   Copy the chosen template from `layout/<template>/` or use its DOM hierarchy (header, cards, KPI grids, tables, charts).
+   Copy the chosen template from `layout/<template>/` or use its DOM hierarchy (header, cards, KPI grids, tables, charts), then adapt it to the approved `layout_content.md` rather than forcing the content into the source template's sections. Some template `design.md` examples use a fixed output path; use `$OUTPUT_DIR` instead when following their copy or screenshot commands.
 2. **Apply the Chosen Design Style**:
    Open `design/<style>/design.md` and `design/<style>/template.json` to extract:
    - **Google Fonts**: Add the `<link>` for the style's `display` and `body` fonts into `<head>`.
@@ -226,9 +153,36 @@ When creating the 1-pager in `topics/<topic-slug>/index.html`:
    - **Typography Rules**: Set headings (`h1`, `h2`, `h3`, metric numbers) to `var(--font-display)` with the style's specified weights and letter-spacing. Set paragraph body, tables, and labels to `var(--font-body)`.
    - **Corner Radii & Shadows**: Apply the style's border-radius rules (`radii.card-lg`, `radii.pill`, etc.) and shadow elevation language (e.g. flat borders for `neo-grid-bold`, soft tinted borders for `blue-professional`).
 3. **Populate Approved Content**:
-   Fill in the user's specific titles, metrics, tables, chart bars/lines, and takeaway copy.
+   Fill in the approved wireframe's specific titles, metrics, tables, chart bars/lines, and takeaway copy. Match the planned section order and Y bands.
 4. **Self-Contained File**:
    Ensure all CSS is inline in `<style>` and CDN scripts (if Chart.js/D3 are needed) are loaded directly. No external local file dependencies.
+
+### One-screen canvas contract (mandatory)
+
+- Use **1280 × 720 CSS px (16:9)** for landscape or **720 × 1280 CSS px (9:16)** for portrait. The rendered canvas must retain that aspect ratio. These are design and capture dimensions, not a demand for a browser window of that size.
+- Fit the entire canvas inside the *available browser viewport* by uniform scaling with `min(viewportWidth / canvasWidth, viewportHeight / canvasHeight, 1)` and center it. Scale down only; never let the page scroll. On narrow or short windows, letterboxing is acceptable. Set `html, body` to the viewport size with no margins, and position the canvas in a viewport-sized centering wrapper. Keep all content inside the canvas at the design dimensions before scaling. Do not rely on `overflow: hidden` to conceal excess content.
+- Use this pattern (substitute the chosen width and height); it centers the fixed-size canvas and scales it to fit the viewport:
+
+  ```html
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    #canvas { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px;
+      transform-origin: center center; }
+  </style>
+  <script>
+    const canvas = document.getElementById('canvas');
+    function fitCanvas() {
+      const scale = Math.min(innerWidth / 1280, innerHeight / 720, 1);
+      canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
+    addEventListener('resize', fitCanvas);
+    fitCanvas();
+  </script>
+  ```
+
+  For portrait, substitute `720` for width and `1280` for height everywhere in the example.
+- Adapt the template's fixed pixel coordinates, type sizes, chart labels, and padding to the chosen canvas. If the content cannot remain readable at the expected viewing size, reduce the content or choose a less dense layout rather than allowing scroll or clipping.
 
 ---
 
@@ -238,26 +192,22 @@ Always use the bundled Retina capture utility (`scripts/screenshot-retina.js`) t
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
-SLUG="<topic-slug>"
+OUTPUT_DIR="/absolute/path/to/chosen/output-directory"
 
-# For A4 Portrait Templates (business-plan, executive-summary, financial-performance, monthly-social-media):
+# For 9:16 portrait (adapt portrait templates to 720 × 1280):
 node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" \
-  "$REPO_ROOT/topics/$SLUG/index.html" \
-  "$REPO_ROOT/topics/$SLUG/output.png" \
-  --scale 2 --width 900 --height 1273 --timeout 2000
+  "$OUTPUT_DIR/index.html" \
+  "$OUTPUT_DIR/output.png" \
+  --scale 2 --width 720 --height 1280 --timeout 2000
 
-# For 16:9 Landscape Stack (enterprise-architecture-stack):
+# For 16:9 landscape (adapt landscape templates to 1280 × 720):
 node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" \
-  "$REPO_ROOT/topics/$SLUG/index.html" \
-  "$REPO_ROOT/topics/$SLUG/output.png" \
-  --scale 2 --width 1618 --height 752 --timeout 2000
-
-# For Custom Scrollable Web Infographics:
-node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" \
-  "$REPO_ROOT/topics/$SLUG/index.html" \
-  "$REPO_ROOT/topics/$SLUG/output.png" \
-  --scale 2 --width 1200 --full-page --timeout 2000
+  "$OUTPUT_DIR/index.html" \
+  "$OUTPUT_DIR/output.png" \
+  --scale 2 --width 1280 --height 720 --timeout 2000
 ```
+
+Do not use `--full-page`. The resulting image must be exactly 1440 × 2560 px (portrait) or 2560 × 1440 px (landscape) at 2x scale.
 
 ---
 
@@ -265,9 +215,9 @@ node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" \
 
 1. Confirm output file exists:
    ```bash
-   REPO_ROOT=$(git rev-parse --show-toplevel)
-   ls -lh "$REPO_ROOT/topics/<slug>/output.png"
+   ls -lh "$OUTPUT_DIR/output.png"
    ```
+   Open the HTML at the design viewport and at a smaller browser viewport. Check `document.documentElement.scrollWidth <= innerWidth` and `document.documentElement.scrollHeight <= innerHeight` (and the same for `body`); inspect the rendered canvas for clipped text, charts, or labels. Compare the section boundaries and content against `layout_content.md`: all planned bands must fit within the canvas, appear in order, and end exactly at the canvas height. Correct overflow or reduce content before delivery; seek approval for material revisions. Verify the PNG dimensions match the selected orientation.
 2. Embed the rendered screenshot in your response using a markdown file link:
    `![Visual](file:///absolute/resolved/path/output.png)`
 3. Briefly summarize the template structure used, the design style applied, and the key highlights.
@@ -277,10 +227,13 @@ node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" \
 ## Pre-Capture Checklist
 
 - [ ] User explicitly approved the **Infographic Template** AND **Design Style** selection in Step 1.
+- [ ] User approved the dimensioned layout-content wireframe and it is saved as `$OUTPUT_DIR/layout_content.md`.
+- [ ] HTML and screenshot match the wireframe's content, section order, and Y bands without clipping.
 - [ ] `index.html` is completely self-contained (Google Fonts / CDNs only, no relative local imports).
 - [ ] Design style palette (`--bg`, `--primary`, `--text`, `--border`) is cleanly applied.
 - [ ] Font pairings match the chosen design style (display + body).
-- [ ] Viewport dimensions in the capture command match the layout (`900×1273` for A4, `1618×752` for 16:9).
+- [ ] Canvas and capture viewport are `720×1280` (9:16 portrait) or `1280×720` (16:9 landscape).
+- [ ] The full infographic is legible and fits in both the design viewport and a smaller browser viewport without scrolling or clipped content.
 - [ ] All animations trigger on `DOMContentLoaded` (no scroll-triggered logic).
 - [ ] Output screenshot verified at 2x Retina resolution with non-zero file size.
 
@@ -293,8 +246,10 @@ node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" \
 | Resolve repo root | `REPO_ROOT=$(git rev-parse --show-toplevel)` |
 | Inspect Layout Specs | View `$REPO_ROOT/.agents/skills/infographic/layout/<template>/design.md` |
 | Inspect Style Specs | View `$REPO_ROOT/.agents/skills/infographic/design/<style>/design.md` |
-| Create topic directory | `mkdir -p "$REPO_ROOT/topics/<slug>"` |
-| Author visual | Write `topics/<slug>/index.html` combining layout + style |
-| Capture A4 Retina (2x) | `node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" "$REPO_ROOT/topics/<slug>/index.html" "$REPO_ROOT/topics/<slug>/output.png" --scale 2 --width 900 --height 1273` |
-| Capture 16:9 Retina (2x)| `node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" "$REPO_ROOT/topics/<slug>/index.html" "$REPO_ROOT/topics/<slug>/output.png" --scale 2 --width 1618 --height 752` |
-| Embed visual | `![Preview](file:///resolved/path/topics/<slug>/output.png)` |
+| Choose output directory | Follow the user's requested location or project conventions; set `OUTPUT_DIR` to its absolute path |
+| Create output directory | `mkdir -p "$OUTPUT_DIR"` |
+| Save approved layout plan | Write `$OUTPUT_DIR/layout_content.md` with the ASCII wireframe and pixel-height bands |
+| Author visual | Write `$OUTPUT_DIR/index.html` combining layout + style |
+| Capture 9:16 portrait Retina (2x) | `node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" "$OUTPUT_DIR/index.html" "$OUTPUT_DIR/output.png" --scale 2 --width 720 --height 1280` |
+| Capture 16:9 landscape Retina (2x)| `node "$REPO_ROOT/.agents/skills/infographic/scripts/screenshot-retina.js" "$OUTPUT_DIR/index.html" "$OUTPUT_DIR/output.png" --scale 2 --width 1280 --height 720` |
+| Embed visual | `![Preview](file:///absolute/path/to/chosen/output-directory/output.png)` |
