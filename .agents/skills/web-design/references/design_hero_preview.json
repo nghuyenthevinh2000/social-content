@@ -1,0 +1,251 @@
+{
+  "project": "FORMA / Studio",
+  "directions": [
+    {
+      "id": "editorial-clarity",
+      "name": "Editorial clarity",
+      "notes": "Warm paper, architectural type, and a single orange signal make the work feel considered and approachable.",
+      "design": {
+        "layout": "split",
+        "visual": "interface",
+        "font": "editorial",
+        "colors": {
+          "background": "#e9e6de",
+          "surface": "#f5f3ec",
+          "ink": "#232820",
+          "muted": "#6b7169",
+          "accent": "#c95536",
+          "line": "#c9ccc3"
+        },
+        "containerWidth": "1240px",
+        "cornerRadius": "4px"
+      },
+      "hero": {
+        "eyebrow": "INDEPENDENT DESIGN PRACTICE / EST. 2026",
+        "topLabel": "FORMA®",
+        "navigation": ["Work", "Studio", "Contact"],
+        "footerLeft": "STRATEGY / DESIGN / DIGITAL",
+        "footerRight": "SCROLL TO EXPLORE  ↓"
+      },
+      "visual": {
+        "imageUrl": "",
+        "imageAlt": "",
+        "caption": "A SPACE FOR WHAT'S NEXT",
+        "index": "01 / 04",
+        "interface": {
+          "label": "SELECTED PROJECT / 001",
+          "title": "Spaces to think differently.",
+          "description": "A new perspective on the everyday.",
+          "metric": "42°",
+          "metricLabel": "SHIFT IN PERSPECTIVE"
+        }
+      },
+      "spec": {
+        "goal": {
+          "what": "Landing page hero for an independent design studio.",
+          "audience": "Founders and creative teams looking for a thoughtful digital partner.",
+          "successCriteria": "Explain the studio quickly, establish trust, and lead visitors to selected work."
+        },
+        "format": {
+          "canvas": "Desktop-first hero within a 1240px container; responsive at tablet and mobile widths.",
+          "safeMargins": "Fluid outer gutters of 18–60px; 55px vertical hero padding on desktop."
+        },
+        "layout": {
+          "grid": "Two-column split, copy on the left and a framed project visual on the right.",
+          "placement": "Navigation above; eyebrow, headline, description, and actions left; project study right; metadata below.",
+          "hierarchy": "Headline → project visual → primary action → description → metadata."
+        },
+        "typeSystem": {
+          "display": "Georgia serif, oversized with tight tracking and a compact line height.",
+          "metadata": "System monospace, 10px uppercase with wide tracking.",
+          "contrast": "Large display type against small utility labels and a restrained body size."
+        },
+        "colorMaterial": {
+          "foundation": "Warm paper #e9e6de with charcoal ink #232820.",
+          "surfaces": "Soft cream #f5f3ec for the inset project visual.",
+          "borders": "Consistent 1px sage-gray #c9ccc3 hairlines; no drop shadows.",
+          "signal": "One terracotta accent #c95536 for the eyebrow, action, and visual detail."
+        },
+        "copy": {
+          "headline": "Make room for a better idea.",
+          "subtitle": "We build thoughtful digital experiences for ambitious people and the things they believe in.",
+          "actions": [
+            { "label": "Explore the work", "href": "#preview-end" },
+            { "label": "Our approach", "href": "#design-spec" }
+          ]
+        },
+        "constraints": {
+          "font": "Editorial serif display with system sans body; keep headline tracking tight.",
+          "accent": "Only terracotta #c95536; do not add other signal colors.",
+          "container": "1240px maximum, 4px corner radius, 1px borders, zero drop shadows."
+        },
+        "negativePrompt": [
+          "No purple gradients or multi-color highlights.",
+          "No floating cards with blurred shadows.",
+          "No generic pill buttons or extra decorative widgets.",
+          "No invented copy beyond the supplied text."
+        ]
+      }
+    },
+    {
+      "id": "signal-field",
+      "name": "Signal field",
+      "notes": "A centered, high-contrast composition lets a single electric-lime geometric form carry the visual identity.",
+      "design": {
+        "layout": "centered",
+        "visual": "abstract",
+        "font": "modern",
+        "colors": {
+          "background": "#101916",
+          "surface": "#19241f",
+          "ink": "#f1f3e9",
+          "muted": "#acb9ac",
+          "accent": "#b8ec71",
+          "line": "#3c4d41"
+        },
+        "containerWidth": "1160px",
+        "cornerRadius": "2px"
+      },
+      "hero": {
+        "eyebrow": "FORMA / INDEPENDENT CREATIVE PRACTICE",
+        "topLabel": "FORMA®",
+        "navigation": ["Projects", "Practice", "Connect"],
+        "footerLeft": "DESIGNED TO MOVE IDEAS FORWARD",
+        "footerRight": "01 / SIGNAL"
+      },
+      "visual": {
+        "imageUrl": "",
+        "imageAlt": "",
+        "caption": "A NEW POINT OF VIEW",
+        "index": "02 / 04",
+        "interface": {}
+      },
+      "spec": {
+        "goal": {
+          "what": "Alternative landing page hero for the same design studio.",
+          "audience": "Technology teams seeking a bold, focused creative collaborator.",
+          "successCriteria": "Make the studio memorable and draw attention to its project portfolio."
+        },
+        "format": {
+          "canvas": "Centered desktop hero with a wide 16:9 visual; mobile stacks vertically.",
+          "safeMargins": "1160px maximum content width with responsive outer gutters."
+        },
+        "layout": {
+          "grid": "One-column centered composition with a broad visual band below the copy.",
+          "placement": "Navigation at top, centered title and actions, abstract geometry below, utility footer at base.",
+          "hierarchy": "Headline → bright geometric visual → primary action → supporting line."
+        },
+        "typeSystem": {
+          "display": "Boldly scaled Arial/Helvetica sans with tight tracking.",
+          "metadata": "System monospace in 10px uppercase labels.",
+          "contrast": "Oversized display type against micro utility type."
+        },
+        "colorMaterial": {
+          "foundation": "Deep green-black #101916 with soft off-white ink #f1f3e9.",
+          "surfaces": "Inset green-charcoal #19241f.",
+          "borders": "1px muted green #3c4d41 frames, no shadows.",
+          "signal": "One electric lime #b8ec71 on actions and a single abstract object."
+        },
+        "copy": {
+          "headline": "Ideas should change the room.",
+          "subtitle": "A creative practice bringing clarity, energy, and intention to every digital experience.",
+          "actions": [
+            { "label": "See our projects", "href": "#preview-end" },
+            { "label": "Read the direction", "href": "#design-spec" }
+          ]
+        },
+        "constraints": {
+          "font": "Modern sans display and body with high headline-to-label contrast.",
+          "accent": "Only electric lime #b8ec71.",
+          "container": "1160px maximum; squared 2px framing; no drop shadows."
+        },
+        "negativePrompt": [
+          "No colorful gradients or decorative icon clusters.",
+          "No floating cards, pill buttons, or soft shadows.",
+          "No additional callouts inside the visual band.",
+          "No replacement or shortened headline copy."
+        ]
+      }
+    },
+    {
+      "id": "quiet-archive",
+      "name": "Quiet archive",
+      "notes": "A tall, image-led editorial layout with ink-blue type and a precise cobalt accent leaves space for the work to speak.",
+      "design": {
+        "layout": "editorial",
+        "visual": "image",
+        "font": "classic",
+        "colors": {
+          "background": "#f0efe9",
+          "surface": "#deddd5",
+          "ink": "#202b35",
+          "muted": "#64717a",
+          "accent": "#2459af",
+          "line": "#bfc6c6"
+        },
+        "containerWidth": "1280px",
+        "cornerRadius": "0px"
+      },
+      "hero": {
+        "eyebrow": "FORMA / THE WORK / 2026",
+        "topLabel": "FORMA®",
+        "navigation": ["Index", "About", "Inquiries"],
+        "footerLeft": "AN INDEPENDENT DESIGN PRACTICE",
+        "footerRight": "NEXT CHAPTER  →"
+      },
+      "visual": {
+        "imageUrl": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1200&q=85",
+        "imageAlt": "Light-filled studio interior with a long shared table",
+        "caption": "NOTES FROM THE STUDIO",
+        "index": "03 / 04",
+        "interface": {}
+      },
+      "spec": {
+        "goal": {
+          "what": "Image-led editorial hero for an independent design studio.",
+          "audience": "Art directors and brand teams evaluating the studio's taste and craft.",
+          "successCriteria": "Put the visual work first without losing a clear studio proposition."
+        },
+        "format": {
+          "canvas": "Desktop editorial composition within 1280px; tall portrait media, stacked on mobile.",
+          "safeMargins": "Fluid outer gutters and a deliberate gap between copy and media."
+        },
+        "layout": {
+          "grid": "Asymmetric two-column editorial grid with a taller media column.",
+          "placement": "Headline left with actions beneath; portrait photograph right; section markers at edges.",
+          "hierarchy": "Headline → documentary image → subtitle → understated action."
+        },
+        "typeSystem": {
+          "display": "Classic Times New Roman serif in an oversized, tightly tracked setting.",
+          "metadata": "10px uppercase system monospace for coordinates and section labels.",
+          "contrast": "Editorial display scale with restrained small metadata."
+        },
+        "colorMaterial": {
+          "foundation": "Pale gray paper #f0efe9 with dark ink-blue #202b35.",
+          "surfaces": "Cool gray #deddd5 behind project photography.",
+          "borders": "1px blue-gray #bfc6c6 dividers with square edges.",
+          "signal": "Single cobalt #2459af accent on the eyebrow and action."
+        },
+        "copy": {
+          "headline": "A practice in seeing differently.",
+          "subtitle": "Distinctive places, identities, and experiences begin with the way we look at things.",
+          "actions": [
+            { "label": "View selected work", "href": "#preview-end" },
+            { "label": "The brief", "href": "#design-spec" }
+          ]
+        },
+        "constraints": {
+          "font": "Classic serif display, serif body, and monospaced metadata.",
+          "accent": "Only cobalt #2459af; keep photography natural and untreated.",
+          "container": "1280px maximum, square media frame, 1px borders."
+        },
+        "negativePrompt": [
+          "No stock iconography or overlapping floating cards.",
+          "No heavy gradients or shadows on the image.",
+          "No extra sections or invented testimonials.",
+          "No pill buttons or additional accent colors."
+        ]
+      }
+    }
+  ]
+}
