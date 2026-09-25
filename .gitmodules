@@ -1,3 +1,6 @@
 [submodule "projects/innovation-research"]
 	path = projects/innovation-research
 	url = https://github.com/nghuyenthevinh2000/innovation-research.git
+[submodule "projects/transparency-fun"]
+	path = projects/transparency-fun
+	url = https://github.com/nghuyenthevinh2000/transparency-fun.git

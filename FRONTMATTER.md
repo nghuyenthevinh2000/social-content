@@ -7,7 +7,7 @@ tags:
 - social-content
 submodules:
   local/: Documentation and resources for local.
-  projects/: Documentation and resources for projects.
+  projects/: Innovation research and Transparency Fun project submodules.
   reflections/: Documentation and resources for reflections.
   scripts/: Documentation and resources for scripts.
   src/: Documentation and resources for src.

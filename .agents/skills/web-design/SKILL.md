@@ -5,7 +5,7 @@ description: "Design and build web pages and interfaces using a preview-first wo
 
 # Web Design: Preview First, Then Build
 
-For website and UI design work, **produce a browser-loadable hero preview before building the full interface**. A written design brief, `DESIGN_HERO.md`, layout demo, or finished `index.html` does not replace this deliverable. The preview is a separate artifact the user can open and compare.
+For website and UI design work, **produce a browser-loadable hero preview and obtain the user's explicit approval before building the full interface**. A written design brief, `DESIGN_HERO.md`, layout demo, or finished `index.html` does not replace this deliverable. The preview is a separate artifact the user can open and compare.
 
 ## Workflow
 
@@ -22,10 +22,11 @@ Before writing the full page, create **both** `wireframe_preview.html` and `wire
 - Fill each JSON direction's `wireframe.rows` as an **exact page wireframe**, from header through footer. Each row names a section; its ordered `cells` specify the actual visible copy, image asset/alt, link label/destination, or intentional empty space. Add/remove/reorder rows and cells and size every cell with `pixels` (CSS pixels) to match the intended page. Do not substitute abstract content categories or invented metrics. Then fill `design`, `hero`, `visual`, and all eight `spec` sections: GOAL, FORMAT, LAYOUT, TYPE SYSTEM, COLOR + MATERIAL, COPY, CONSTRAINTS, NEGATIVE PROMPT. `spec.copy` drives the hero headline, subtitle, and actions; keep it identical to the matching wireframe cells. See [`references/README.md`](references/README.md) for the schema.
 - Serve the **project copy** with `node .agents/skills/web-design/references/preview.js <web-serving-directory>`. The script prints a localhost URL and opens the browser; check that the JSON loads and the direction selector works. See [`references/README.md`](references/README.md) for setup. `file://` will not reliably fetch JSON.
 - **Show the user the working preview**: give its project path and reachable URL, or a rendered screenshot when available; explain how to compare both directions and their wireframes. Do this before settling on the final visual direction. A URL for the shared reference template, a spec-only document, or a claim that a preview exists is insufficient.
+- **Pause for approval**: ask the user to review the preview and approve a direction (or request changes). End the turn here if approval has not yet arrived. Showing a URL, receiving an unrelated reply, or interpreting silence as consent does not count as approval.
 
-**Gate:** Do not move to full-page implementation until the project-specific HTML and JSON are present and the preview has been shown. If the user already chose a direction, preview that direction anyway. If no browser is available, verify both files are served and clearly provide the URL and the command to open it.
+**Approval gate:** Do not create or modify the finished page (`index.html`, application UI, styles, components, routes, etc.) until the project-specific HTML and JSON are present, the preview has been shown, and the user has explicitly approved a direction. Revisions to the preview require showing the revised preview and obtaining approval before implementation. If the user already chose a direction, preview that direction anyway and ask for approval. If no browser is available, verify both files are served and provide the URL and the command to open it; still wait for approval.
 
-### 3. Build from the chosen direction
+### 3. Build from the approved direction
 
 - Build the real page in the `wireframe.rows` order, using their exact text, images, links, and intended cell relationships; carry the preview's tokens and typography through the layout. Implement the user's required interactions and backend contract. If copy or sections need to change, update the wireframe first so it remains the source of truth. The preview is a design checkpoint, not the finished product.
 - Build section by section. Use semantic HTML, responsive grid, consistent spacing and border weights, legible contrast, and accessible controls. Prefer deliberate framing and whitespace over unnecessary cards, gradients, and decorative widgets.
