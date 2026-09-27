@@ -20,6 +20,7 @@ submodules:
     & Brief. Purpose and documentation for topics/logos-rfp-017.'
   meaning-and-mindset/: Meaning & Mindset (Hành trình Ý nghĩa & Đời sống Nội tâm).
     Purpose and documentation for topics/meaning-and-mindset.
+  transparency/: Documentation and resources for topics/transparency.
   young-student/: Documentation and resources for topics/young-student.
 ---
 

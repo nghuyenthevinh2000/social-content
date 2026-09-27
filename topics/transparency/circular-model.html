@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Mô Hình 3 Trạng Thái Tiếp Nhận Sự Minh Bạch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      width: 1200px;
+      height: 1200px;
+      background: #f8fafc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Soft, bright background glows */
+    .bg-circle-1 {
+      position: absolute;
+      width: 800px;
+      height: 800px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+      top: 50px;
+      left: 50px;
+      pointer-events: none;
+    }
+    .bg-circle-2 {
+      position: absolute;
+      width: 800px;
+      height: 800px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(249, 115, 22, 0.09) 0%, transparent 70%);
+      top: 50px;
+      right: 50px;
+      pointer-events: none;
+    }
+
+    /* Main circular stage */
+    .stage {
+      position: relative;
+      width: 1100px;
+      height: 1100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    svg.track-svg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      overflow: visible;
+    }
+
+    /* Center Nucleus Hub */
+    .center-hub {
+      position: absolute;
+      width: 380px;
+      height: 380px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid #e2e8f0;
+      box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.12), 0 0 0 16px rgba(241, 245, 249, 0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+      z-index: 15;
+    }
+    .hub-tag {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .hub-title {
+      font-size: 34px;
+      font-weight: 900;
+      color: #0f172a;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      letter-spacing: -0.02em;
+    }
+    .hub-divider {
+      width: 48px;
+      height: 4px;
+      background: #3b82f6;
+      border-radius: 2px;
+      margin-bottom: 14px;
+    }
+    .hub-quote {
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: #334155;
+    }
+
+    /* Three Main Nodes */
+    .node {
+      position: absolute;
+      border-radius: 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      z-index: 20;
+      box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.1);
+      border: 2px solid transparent;
+    }
+
+    /* Node 1: Thụ động (Left) */
+    .node-passive {
+      width: 360px;
+      height: 300px;
+      left: 10px;
+      top: 130px;
+      background: #ffffff;
+      border-color: #10b981;
+      padding: 32px 30px;
+    }
+    .node-passive .node-badge {
+      background: #ecfdf5;
+      color: #059669;
+      border: 1.5px solid #a7f3d0;
+    }
+    .node-passive .icon-box {
+      background: #10b981;
+      color: white;
+    }
+
+    /* Node 2: Chủ động (Right) */
+    .node-active {
+      width: 360px;
+      height: 300px;
+      right: 10px;
+      top: 130px;
+      background: #ffffff;
+      border-color: #f97316;
+      padding: 32px 30px;
+    }
+    .node-active .node-badge {
+      background: #fff7ed;
+      color: #ea580c;
+      border: 1.5px solid #fed7aa;
+    }
+    .node-active .icon-box {
+      background: #f97316;
+      color: white;
+    }
+
+    /* Node 3: Ngủ đông (Bottom) */
+    .node-dormant {
+      width: 440px;
+      height: 220px;
+      bottom: 25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffffff;
+      border-color: #94a3b8;
+      padding: 24px 36px;
+      align-items: center;
+      text-align: center;
+    }
+    .node-dormant .node-badge {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1.5px solid #cbd5e1;
+    }
+    .node-dormant .icon-box {
+      background: #64748b;
+      color: white;
+    }
+
+    /* Node internal styles */
+    .node-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .icon-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.12);
+    }
+    .node-title-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .node-badge {
+      align-self: flex-start;
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-bottom: 4px;
+    }
+    .node-title {
+      font-size: 27px;
+      font-weight: 900;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+    .node-desc {
+      font-size: 18.5px;
+      font-weight: 600;
+      color: #475569;
+      line-height: 1.45;
+    }
+    .node-desc strong {
+      color: #0f172a;
+    }
+
+    /* Trigger Pill (Top Bridge) */
+    .bridge-trigger {
+      position: absolute;
+      top: 55px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffffff;
+      border: 2.5px solid #ea580c;
+      border-radius: 9999px;
+      padding: 14px 28px;
+      box-shadow: 0 12px 30px rgba(234, 88, 12, 0.18);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 25;
+    }
+    .trigger-icon {
+      font-size: 24px;
+    }
+    .trigger-label {
+      font-size: 17px;
+      font-weight: 800;
+      color: #c2410c;
+      letter-spacing: -0.01em;
+    }
+
+    /* Calming Pill (Bottom Bridge) */
+    .bridge-calm {
+      position: absolute;
+      bottom: 285px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffffff;
+      border: 2px solid #10b981;
+      border-radius: 9999px;
+      padding: 10px 24px;
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 25;
+    }
+    .calm-icon {
+      font-size: 18px;
+      color: #059669;
+      font-weight: 900;
+    }
+    .calm-label {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: #047857;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-circle-1"></div>
+  <div class="bg-circle-2"></div>
+
+  <div class="stage">
+    <!-- SVG Circular Tracks & Directional Arcs -->
+    <svg class="track-svg" viewBox="0 0 1100 1100">
+      <defs>
+        <!-- Gradients -->
+        <linearGradient id="grad-active-track" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#10b981" />
+          <stop offset="50%" stop-color="#f59e0b" />
+          <stop offset="100%" stop-color="#ea580c" />
+        </linearGradient>
+
+        <linearGradient id="grad-calm-track" x1="100%" y1="100%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#ea580c" />
+          <stop offset="50%" stop-color="#0284c7" />
+          <stop offset="100%" stop-color="#10b981" />
+        </linearGradient>
+
+        <!-- Arrow Markers -->
+        <marker id="arrow-orange" viewBox="0 0 12 12" refX="8" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 1 2 L 10 6 L 1 10 z" fill="#ea580c" />
+        </marker>
+        <marker id="arrow-green" viewBox="0 0 12 12" refX="8" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 1 2 L 10 6 L 1 10 z" fill="#10b981" />
+        </marker>
+      </defs>
+
+      <!-- Elegant Circular Orbit Lines -->
+      <circle cx="550" cy="550" r="410" fill="none" stroke="#e2e8f0" stroke-width="3" stroke-dasharray="10 12" />
+      <circle cx="550" cy="550" r="280" fill="none" stroke="#f1f5f9" stroke-width="2" />
+
+      <!-- Top Active Arc (Thụ động ➔ Chủ động) -->
+      <path d="M 320 220 A 380 380 0 0 1 780 220" fill="none" stroke="url(#grad-active-track)" stroke-width="5" stroke-dasharray="14 10" marker-end="url(#arrow-orange)" />
+
+      <!-- Lower Calming Arc (Chủ động ➔ Thụ động) -->
+      <path d="M 760 380 A 320 320 0 0 1 340 380" fill="none" stroke="url(#grad-calm-track)" stroke-width="4" stroke-dasharray="8 8" marker-end="url(#arrow-green)" />
+
+      <!-- Vertical Connect to Dormant -->
+      <line x1="550" y1="740" x2="550" y2="860" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6 8" />
+    </svg>
+
+    <!-- Top Trigger Bridge -->
+    <div class="bridge-trigger">
+      <span class="trigger-icon">⚡</span>
+      <span class="trigger-label">Khi Thấy Rủi Ro Hoặc Thông Tin Mập Mờ</span>
+    </div>
+
+    <!-- Center Nucleus Hub -->
+    <div class="center-hub">
+      <span class="hub-tag">Tâm Lý Con Người</span>
+      <h2 class="hub-title">Niềm Tin & Cho Đi</h2>
+      <div class="hub-divider"></div>
+      <p class="hub-quote">"Minh bạch là chiếc phao cứu sinh khi bất an, không phải lý do mở ví."</p>
+    </div>
+
+    <!-- Lower Reassuring Bridge -->
+    <div class="bridge-calm">
+      <span class="calm-icon">✓</span>
+      <span class="calm-label">Được giải tỏa nghi ngờ ➔ Quay về an tâm</span>
+    </div>
+
+    <!-- Node 1: Thụ Động (Left) -->
+    <div class="node node-passive">
+      <div class="node-top">
+        <div class="icon-box">❤️</div>
+        <div class="node-title-group">
+          <span class="node-badge">Chiếm ~90%</span>
+          <h3 class="node-title">Thụ Động</h3>
+        </div>
+      </div>
+      <p class="node-desc">
+        • <strong>Chọn tin để nhẹ đầu</strong>, không cần đọc báo cáo tài chính.<br><br>
+        • Ra quyết định bằng <strong>cảm xúc & trực giác</strong> khi thấy lòng tốt được chạm tới.
+      </p>
+    </div>
+
+    <!-- Node 2: Chủ Động (Right) -->
+    <div class="node node-active">
+      <div class="node-top">
+        <div class="icon-box">🔍</div>
+        <div class="node-title-group">
+          <span class="node-badge">Bật lên khi có biến</span>
+          <h3 class="node-title">Chủ Động</h3>
+        </div>
+      </div>
+      <p class="node-desc">
+        • <strong>Soi xét & đòi sao kê</strong> đến từng dòng số liệu.<br><br>
+        • <strong>Rất tốn sức lực trí óc</strong>, chỉ kích hoạt khi nghi ngờ hoặc sợ bị lừa dối.
+      </p>
+    </div>
+
+    <!-- Node 3: Ngủ Đông (Bottom) -->
+    <div class="node node-dormant">
+      <div class="node-top" style="margin-bottom: 10px;">
+        <div class="icon-box">💤</div>
+        <div class="node-title-group">
+          <span class="node-badge">Hoàn toàn không bận tâm</span>
+          <h3 class="node-title">Ngủ Đông</h3>
+        </div>
+      </div>
+      <p class="node-desc">
+        Thờ ơ, bỏ qua mọi báo cáo vì thấy không ảnh hưởng đến quyền lợi cá nhân.
+      </p>
+    </div>
+
+  </div>
+
+</body>
+</html>
