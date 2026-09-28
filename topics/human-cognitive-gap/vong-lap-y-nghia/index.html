@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vòng Lặp Khủng Hoảng Ý Nghĩa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #F8FAFC;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    #canvas {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 1280px;
+      height: 720px;
+      transform-origin: center center;
+      background: radial-gradient(circle at center, #FFFFFF 0%, #F1F5F9 100%);
+      overflow: hidden;
+    }
+
+    /* SVG Track */
+    .track-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1280px;
+      height: 720px;
+      pointer-events: none;
+    }
+
+    /* Central Hub */
+    .center-hub {
+      position: absolute;
+      top: 360px;
+      left: 640px;
+      transform: translate(-50%, -50%);
+      width: 250px;
+      height: 250px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      border: 3px solid #E2E8F0;
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06), 0 0 0 12px rgba(241, 245, 249, 0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      z-index: 5;
+    }
+    .center-tag {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #EF4444;
+      background: #FEE2E2;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+    .center-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #0F172A;
+      line-height: 1.25;
+      margin-bottom: 6px;
+    }
+    .center-desc {
+      font-size: 13px;
+      font-weight: 500;
+      color: #64748B;
+      line-height: 1.4;
+    }
+
+    /* Node Cards */
+    .node-card {
+      position: absolute;
+      border-radius: 18px;
+      background: #FFFFFF;
+      border: 2px solid #E2E8F0;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 10;
+      transition: all 0.2s ease;
+    }
+
+    .node-badge {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .node-content {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .node-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0F172A;
+      line-height: 1.25;
+      margin-bottom: 4px;
+    }
+
+    .node-sub {
+      font-size: 15px;
+      font-weight: 600;
+      color: #64748B;
+      line-height: 1.35;
+    }
+
+    /* Themes per stage */
+    /* Node 1: Sợ vô nghĩa */
+    .card-1 {
+      top: 22px;
+      left: 640px;
+      transform: translateX(-50%);
+      width: 440px;
+      border-color: #CBD5E1;
+    }
+    .card-1 .node-badge {
+      background: #F1F5F9;
+      color: #334155;
+    }
+
+    /* Node 2: Vay mượn mục tiêu */
+    .card-2 {
+      top: 200px;
+      right: 48px;
+      width: 370px;
+      border-color: #BFDBFE;
+    }
+    .card-2 .node-badge {
+      background: #EFF6FF;
+      color: #2563EB;
+    }
+    .card-2 .node-title {
+      color: #1E40AF;
+    }
+
+    /* Node 3: Dốc sức đạt được */
+    .card-3 {
+      bottom: 55px;
+      right: 90px;
+      width: 370px;
+      border-color: #FEF08A;
+    }
+    .card-3 .node-badge {
+      background: #FEFCE8;
+      color: #CA8A04;
+    }
+    .card-3 .node-title {
+      color: #854D0E;
+    }
+
+    /* Node 4: Thấy rỗng tuếch */
+    .card-4 {
+      bottom: 55px;
+      left: 90px;
+      width: 370px;
+      border-color: #FED7AA;
+    }
+    .card-4 .node-badge {
+      background: #FFF7ED;
+      color: #EA580C;
+    }
+    .card-4 .node-title {
+      color: #9A3412;
+    }
+
+    /* Node 5: Khủng hoảng */
+    .card-5 {
+      top: 200px;
+      left: 48px;
+      width: 370px;
+      border-color: #FECACA;
+    }
+    .card-5 .node-badge {
+      background: #FEF2F2;
+      color: #DC2626;
+    }
+    .card-5 .node-title {
+      color: #991B1B;
+    }
+
+    /* Return loop tag */
+    .loop-return-label {
+      position: absolute;
+      top: 170px;
+      left: 640px;
+      transform: translate(-50%, -50%);
+      background: #FFF1F2;
+      border: 1.5px dashed #F43F5E;
+      color: #BE123C;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 7px 18px;
+      border-radius: 20px;
+      box-shadow: 0 4px 14px rgba(225, 29, 72, 0.12);
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas">
+    <!-- SVG Vector Arrows & Circular Flow -->
+    <svg class="track-svg" viewBox="0 0 1280 720">
+      <defs>
+        <!-- Arrowhead Marker -->
+        <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="#94A3B8" />
+        </marker>
+        <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="#3B82F6" />
+        </marker>
+        <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="#F97316" />
+        </marker>
+        <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="#EF4444" />
+        </marker>
+        <marker id="arrow-rose" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="#F43F5E" />
+        </marker>
+      </defs>
+
+      <!-- Background Circular Orbit Guide -->
+      <circle cx="640" cy="360" r="235" fill="none" stroke="#E2E8F0" stroke-width="2.5" stroke-dasharray="6 6" />
+
+      <!-- Curved Flow Segments -->
+      <!-- 1 -> 2 (Top to Top-Right) -->
+      <path d="M 800 110 C 890 125, 960 170, 985 200" fill="none" stroke="#3B82F6" stroke-width="3.5" marker-end="url(#arrow-blue)" />
+
+      <!-- 2 -> 3 (Top-Right to Bottom-Right) -->
+      <path d="M 1070 300 C 1100 375, 1080 470, 1030 535" fill="none" stroke="#EAB308" stroke-width="3.5" marker-end="url(#arrow)" />
+
+      <!-- 3 -> 4 (Bottom-Right to Bottom-Left) -->
+      <path d="M 810 610 C 730 645, 550 645, 470 610" fill="none" stroke="#F97316" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+      <!-- 4 -> 5 (Bottom-Left to Top-Left) -->
+      <path d="M 250 535 C 200 470, 180 375, 210 300" fill="none" stroke="#EF4444" stroke-width="3.5" marker-end="url(#arrow-red)" />
+
+      <!-- 5 -> 2 Loop Return (Dashed return arch) -->
+      <path d="M 380 205 C 470 170, 810 170, 900 205" fill="none" stroke="#F43F5E" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-rose)" />
+    </svg>
+
+    <!-- Return loop badge -->
+    <div class="loop-return-label">
+      <span>↺</span>
+      <span>Nâng mức cược: Vay mượn mục tiêu to hơn</span>
+    </div>
+
+    <!-- Center Hub -->
+    <div class="center-hub">
+      <span class="center-tag">Vòng Lặp Khổ Đau</span>
+      <h2 class="center-title">10 NĂM ĐI LẠC</h2>
+      <p class="center-desc">Vay mượn ý nghĩa để xoa dịu nỗi sợ của tâm trí</p>
+    </div>
+
+    <!-- Node 1 -->
+    <div class="node-card card-1">
+      <div class="node-badge">1</div>
+      <div class="node-content">
+        <div class="node-title">Bộ não sợ vô nghĩa</div>
+        <div class="node-sub">Khát khao lý do để cho phép hành động</div>
+      </div>
+    </div>
+
+    <!-- Node 2 -->
+    <div class="node-card card-2">
+      <div class="node-badge">2</div>
+      <div class="node-content">
+        <div class="node-title">Vay mượn mục tiêu xã hội</div>
+        <div class="node-sub">Đỗ trường top, mở công ty, Forbes</div>
+      </div>
+    </div>
+
+    <!-- Node 3 -->
+    <div class="node-card card-3">
+      <div class="node-badge">3</div>
+      <div class="node-content">
+        <div class="node-title">Dốc sức đạt được</div>
+        <div class="node-sub">Cày cuốc ngày đêm, chứng minh bản thân</div>
+      </div>
+    </div>
+
+    <!-- Node 4 -->
+    <div class="node-card card-4">
+      <div class="node-badge">4</div>
+      <div class="node-content">
+        <div class="node-title">Nhận ra nó rỗng tuếch</div>
+        <div class="node-sub">Cầm cúp trên tay nhưng lòng trống hoác</div>
+      </div>
+    </div>
+
+    <!-- Node 5 -->
+    <div class="node-card card-5">
+      <div class="node-badge">5</div>
+      <div class="node-content">
+        <div class="node-title">Khủng hoảng hiện sinh</div>
+        <div class="node-sub">Sụp đổ tâm lý, cạn kiệt năng lượng sống</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    function fitCanvas() {
+      const scale = Math.min(innerWidth / 1280, innerHeight / 720, 1);
+      canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
+    window.addEventListener('resize', fitCanvas);
+    fitCanvas();
+  </script>
+</body>
+</html>

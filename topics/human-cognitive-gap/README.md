@@ -5,6 +5,9 @@ summary: Human Cognitive Gap & Vitality (Khoảng cách nhận thức & Sinh kh�
 tags:
 - human-cognitive-gap
 submodules:
+  vong-lap-y-nghia/: Documentation and resources for topics/human-cognitive-gap/vong-lap-y-nghia.
+  10-nam-di-lac-trong-nhung-y-nghia-song-vay-muon.md: 10 năm đi lạc trong những ý
+    nghĩa sống vay mượn
   human-cognitive-ultimate-tech-gap.md: Two years ago, I was the engineer people called
     when something was too new for anyone else to touch.
   sinh-khi-la-nang-luong-song-cua-tri-tue.md: Khi trí tuệ cạn sinh khí
