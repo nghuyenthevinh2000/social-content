@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đồ thị gia tốc tái định nghĩa thành công và khủng hoảng ý nghĩa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,500;0,700;1,500&family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,600;0,6..72,700;1,6..72,600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #E2DBD0;
+      font-family: 'Inter', sans-serif;
+    }
+    #canvas {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 1280px;
+      height: 720px;
+      transform: translate(-50%, -50%);
+      background-color: #F2ECE1;
+      background-image: 
+        linear-gradient(rgba(31, 43, 224, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(31, 43, 224, 0.08) 1px, transparent 1px);
+      background-size: 36px 36px;
+      overflow: hidden;
+      border: 3px solid #1F2BE0;
+    }
+
+    /* Chart SVG */
+    .chart-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1280px;
+      height: 520px;
+      pointer-events: none;
+    }
+
+    /* Axis lines and labels */
+    .axis-line {
+      stroke: #1F2BE0;
+      stroke-width: 2.5;
+    }
+    .grid-subline {
+      stroke: rgba(31, 43, 224, 0.15);
+      stroke-width: 1.5;
+      stroke-dasharray: 4 4;
+    }
+    .axis-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      fill: #1F2BE0;
+      letter-spacing: 0.05em;
+    }
+
+    /* Chart Callout Overlays */
+    .callout {
+      position: absolute;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .callout-blue {
+      top: 30px;
+      right: 50px;
+      background: rgba(242, 236, 225, 0.96);
+      border: 2.5px solid #1F2BE0;
+      border-radius: 8px;
+      padding: 12px 18px;
+      box-shadow: 5px 5px 0px rgba(31, 43, 224, 0.18);
+      max-width: 410px;
+    }
+    .callout-blue .title {
+      font-family: 'Newsreader', serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1F2BE0;
+      line-height: 1.2;
+      margin-bottom: 3px;
+    }
+    .callout-blue .sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: #3946EA;
+    }
+
+    .callout-red {
+      top: 270px;
+      right: 50px;
+      background: rgba(242, 236, 225, 0.96);
+      border: 2.5px solid #DC2626;
+      border-radius: 8px;
+      padding: 12px 18px;
+      box-shadow: 5px 5px 0px rgba(220, 38, 38, 0.18);
+      max-width: 410px;
+    }
+    .callout-red .title {
+      font-family: 'Newsreader', serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #DC2626;
+      line-height: 1.2;
+      margin-bottom: 3px;
+    }
+    .callout-red .sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: #B91C1C;
+    }
+
+    /* Cognitive Gap Banner */
+    .gap-badge {
+      position: absolute;
+      top: 90px;
+      left: 180px;
+      background: #FFFFFF;
+      border: 2.5px solid #0F172A;
+      border-radius: 8px;
+      padding: 14px 22px;
+      box-shadow: 5px 5px 0px rgba(15, 23, 42, 0.15);
+      z-index: 10;
+      text-align: left;
+      max-width: 470px;
+    }
+    .gap-badge .tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #DC2626;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .gap-badge .headline {
+      font-family: 'Newsreader', serif;
+      font-size: 25px;
+      font-weight: 700;
+      color: #0F172A;
+      line-height: 1.2;
+    }
+    .gap-badge .desc {
+      font-size: 15px;
+      line-height: 1.4;
+      color: #475569;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+
+    /* Bottom Epoch Cards Container */
+    .epoch-grid {
+      position: absolute;
+      bottom: 24px;
+      left: 40px;
+      right: 40px;
+      height: 185px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      z-index: 10;
+    }
+
+    .epoch-card {
+      background: #FFFFFF;
+      border: 2.5px solid #1F2BE0;
+      border-radius: 10px;
+      padding: 16px 20px;
+      box-shadow: 5px 5px 0px rgba(31, 43, 224, 0.12);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .epoch-card.card-alert {
+      border-color: #DC2626;
+      background: #FFFDFC;
+      box-shadow: 5px 5px 0px rgba(220, 38, 38, 0.15);
+    }
+
+    .card-badge {
+      display: inline-block;
+      align-self: flex-start;
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 3px 10px;
+      background: rgba(31, 43, 224, 0.1);
+      color: #1F2BE0;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .card-alert .card-badge {
+      background: rgba(220, 38, 38, 0.12);
+      color: #DC2626;
+    }
+
+    .card-title {
+      font-family: 'Newsreader', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #0F172A;
+      line-height: 1.25;
+      margin: 8px 0 6px 0;
+    }
+
+    .card-alert .card-title {
+      color: #991B1B;
+    }
+
+    .card-text {
+      font-size: 16px;
+      line-height: 1.45;
+      color: #334155;
+      font-weight: 500;
+    }
+
+    /* Small decorative technical markers */
+    .decor-corner {
+      position: absolute;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(31, 43, 224, 0.6);
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas">
+    <!-- Technical Corner Marks -->
+    <div class="decor-corner" style="top: 14px; left: 16px;">SYS://COGNITIVE_GAP_CHART</div>
+    <div class="decor-corner" style="top: 14px; right: 16px;">SCALE: EXPONENTIAL</div>
+
+    <!-- Main Chart SVG -->
+    <svg class="chart-svg" viewBox="0 0 1280 520">
+      <defs>
+        <!-- Gradients -->
+        <linearGradient id="gapGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#1F2BE0" stop-opacity="0.22" />
+          <stop offset="60%" stop-color="#DC2626" stop-opacity="0.18" />
+          <stop offset="100%" stop-color="#DC2626" stop-opacity="0.04" />
+        </linearGradient>
+
+        <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="5" refY="4" orient="auto">
+          <path d="M 1 1 L 7 4 L 1 7 Z" fill="#1F2BE0" />
+        </marker>
+        <marker id="arrowRed" markerWidth="8" markerHeight="8" refX="5" refY="4" orient="auto">
+          <path d="M 1 1 L 7 4 L 1 7 Z" fill="#DC2626" />
+        </marker>
+      </defs>
+
+      <!-- Horizontal Axis Baseline -->
+      <line x1="70" y1="465" x2="1220" y2="465" class="axis-line" marker-end="url(#arrowBlue)" />
+
+      <!-- Vertical Sub-grid ticks -->
+      <line x1="180" y1="465" x2="180" y2="90" class="grid-subline" />
+      <line x1="480" y1="465" x2="480" y2="90" class="grid-subline" />
+      <line x1="780" y1="465" x2="780" y2="90" class="grid-subline" />
+      <line x1="1060" y1="465" x2="1060" y2="50" class="grid-subline" />
+
+      <!-- Axis Labels -->
+      <text x="180" y="495" text-anchor="middle" class="axis-label">NÔNG NGHIỆP (~100 NĂM)</text>
+      <text x="480" y="495" text-anchor="middle" class="axis-label">CÔNG NGHIỆP (~30-50 NĂM)</text>
+      <text x="780" y="495" text-anchor="middle" class="axis-label">INTERNET / STARTUP (~10 NĂM)</text>
+      <text x="1060" y="495" text-anchor="middle" class="axis-label" style="fill: #DC2626; font-weight: 800;">KỶ NGUYÊN AI (&lt; 1 NĂM)</text>
+
+      <!-- Shaded Gap Area between Curves -->
+      <!-- Curve Blue top: (100,450) -> (450,440) -> (720,380) -> (900,240) -> (1040,65) -->
+      <!-- Curve Red bottom: (1040,240) -> (900,340) -> (720,430) -> (450,455) -> (100,460) -->
+      <path d="
+        M 100 450
+        C 400 445, 680 410, 840 300
+        C 940 220, 990 130, 1040 65
+        L 1040 240
+        C 980 270, 920 330, 840 375
+        C 700 435, 450 458, 100 460
+        Z
+      " fill="url(#gapGradient)" />
+
+      <!-- Curve 1: Blue - Success Redefinition Speed (Dựng đứng thẳng) -->
+      <path d="
+        M 80 450
+        C 380 448, 660 415, 820 310
+        C 930 225, 980 135, 1035 68
+      " fill="none" stroke="#1F2BE0" stroke-width="5.5" stroke-linecap="round" />
+
+      <!-- Curve 2: Red - Crisis of Meaning / Tang Ping (Leo dốc dữ dội) -->
+      <path d="
+        M 80 462
+        C 400 460, 680 445, 820 380
+        C 920 335, 970 275, 1035 240
+      " fill="none" stroke="#DC2626" stroke-width="5" stroke-linecap="round" stroke-dasharray="10 6" />
+
+      <!-- Highlight Dots at Peaks -->
+      <circle cx="1035" cy="68" r="9" fill="#1F2BE0" stroke="#FFFFFF" stroke-width="3" />
+      <circle cx="1035" cy="240" r="8" fill="#DC2626" stroke="#FFFFFF" stroke-width="3" />
+
+      <!-- Bracket / Indicator for Cognitive Gap -->
+      <line x1="1040" y1="78" x2="1040" y2="230" stroke="#0F172A" stroke-width="2" stroke-dasharray="3 3" />
+      <line x1="1030" y1="78" x2="1050" y2="78" stroke="#0F172A" stroke-width="2.5" />
+      <line x1="1030" y1="230" x2="1050" y2="230" stroke="#0F172A" stroke-width="2.5" />
+    </svg>
+
+    <!-- Callout Overlay 1 (Blue Curve) -->
+    <div class="callout callout-blue">
+      <div class="title">Tốc độ tái định nghĩa thành công ↑</div>
+      <div class="sub">Gia tốc hàm mũ: Chuẩn mực thay đổi theo tháng</div>
+    </div>
+
+    <!-- Callout Overlay 2 (Red Curve) -->
+    <div class="callout callout-red">
+      <div class="title">Khủng hoảng ý nghĩa & Nằm thẳng ↑</div>
+      <div class="sub">Phản xạ tự vệ: Não bộ kiệt quệ năng lượng sinh học</div>
+    </div>
+
+    <!-- Central Cognitive Gap Badge -->
+    <div class="gap-badge">
+      <div class="tag">● Điểm nghẽn sinh học</div>
+      <div class="headline">Khoảng cách nhận thức (Cognitive Gap)</div>
+      <div class="desc">Vạch đích di chuyển nhanh hơn năng lực thích nghi tự nhiên của con người</div>
+    </div>
+
+    <!-- Bottom 3 Epoch Cards -->
+    <div class="epoch-grid">
+      <!-- Card 1 -->
+      <div class="epoch-card">
+        <div>
+          <span class="card-badge">Chu kỳ thế hệ (100 năm)</span>
+          <div class="card-title">Thời Phong kiến & Nông nghiệp</div>
+        </div>
+        <div class="card-text">
+          Vạch đích cố định qua nhiều đời. Sinh học và nhận thức con người hoàn toàn đồng nhịp với nhịp độ của xã hội.
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="epoch-card">
+        <div>
+          <span class="card-badge">Chu kỳ thập kỷ (10 - 30 năm)</span>
+          <div class="card-title">Thời Công nghiệp & Internet</div>
+        </div>
+        <div class="card-text">
+          Thước đo chuyển sang bằng cấp, địa vị, tài sản. Bắt đầu xuất hiện áp lực cạnh tranh nhưng não bộ còn thích ứng kịp.
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="epoch-card card-alert">
+        <div>
+          <span class="card-badge">Chu kỳ gia tốc số (&lt; 1 năm)</span>
+          <div class="card-title">Kỷ nguyên AI & Gia tốc cực đại</div>
+        </div>
+        <div class="card-text">
+          Kỹ năng lỗi thời tức thì, vạch đích dời liên tục. Hiện tượng "nằm thẳng" xuất hiện như cơ chế tự bảo toàn sinh tồn.
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

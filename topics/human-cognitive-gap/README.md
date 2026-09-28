@@ -5,11 +5,15 @@ summary: Human Cognitive Gap & Vitality (Khoảng cách nhận thức & Sinh kh�
 tags:
 - human-cognitive-gap
 submodules:
+  do-thi-tai-dinh-nghia-thanh-cong/: Infographic đồ thị thể hiện gia tốc tái định
+    nghĩa thành công và sự bùng nổ của khủng hoảng ý nghĩa.
   vong-lap-y-nghia/: Documentation and resources for topics/human-cognitive-gap/vong-lap-y-nghia.
   10-nam-di-lac-trong-nhung-y-nghia-song-vay-muon.md: 10 năm đi lạc trong những ý
     nghĩa sống vay mượn
   human-cognitive-ultimate-tech-gap.md: Two years ago, I was the engineer people called
     when something was too new for anyone else to touch.
+  khung-hoang-dinh-nghia-thanh-cong.md: 'Khủng hoảng định nghĩa thành công: Khi vạch
+    đích liên tục bị dời đi'
   sinh-khi-la-nang-luong-song-cua-tri-tue.md: Khi trí tuệ cạn sinh khí
 ---
 
@@ -32,6 +36,7 @@ Chủ đề này tập trung vào mâu thuẫn cốt lõi giữa **tốc độ g
 | :--- | :--- | :--- | :--- |
 | 01 | `human-cognitive-ultimate-tech-gap.md` | AI thay đổi luật chơi nhanh hơn não người thích ứng; kỹ sư kẹt trong "beginner mode"; sản phẩm AI thất bại vì người dùng không kịp thích nghi | Mở đầu bằng bài toán vĩ mô về khoảng cách nhận thức trong kỷ nguyên AI |
 | 02 | `sinh-khi-la-nang-luong-song-cua-tri-tue.md` | Khi trí tuệ cạn sinh khí do màn hình và phố thị; tìm lại sức sống ở biển Bạc Liêu; bài toán thiết kế lại lối sống làm việc từ xa | Đưa ra giải pháp vi mô về phục hồi sinh khí và không gian thở cho tâm trí |
+| 03 | `khung-hoang-dinh-nghia-thanh-cong.md` | Khủng hoảng định nghĩa thành công khi công nghệ gia tốc; hiện tượng "nằm thẳng"; trở về với Từ bi và Trí tuệ để tự định nghĩa thành công | Giải pháp nhận thức nhân sinh trước khủng hoảng ý nghĩa và vòng xoáy tái định nghĩa |
 
 ---
 
