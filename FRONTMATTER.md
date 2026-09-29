@@ -2,7 +2,7 @@
 name: social-content
 summary: Central repository root and semantic tree orchestrator for social content,
   AI agent orchestration, innovation research, topic deep-dives, and creative publishing
-  workflows.
+  workflows, including local state tools for supervised X replies.
 tags:
 - social-content
 submodules:
@@ -11,6 +11,7 @@ submodules:
   reflections/: Documentation and resources for reflections.
   scripts/: Documentation and resources for scripts.
   src/: Documentation and resources for src.
+  tools/: Local automation tools and supervised X draft persistence.
   topics/: Documentation and resources for topics.
 ---
 

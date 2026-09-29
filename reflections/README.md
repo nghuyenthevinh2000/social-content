@@ -16,6 +16,7 @@ submodules:
     Engine cho Deep Tech Bản Sao Series #6 (v0.1 -> v0.2)'
   skill-selection-router-hook-guide.md: Skill-Selection Router (Jev Hook) — Full Guide
   wireframe.md: +---------------------------------------------------------------------------------------------------------+
+  twitter-reply-guy-strategy-2026.md: Research findings and tool improvement notes from the Teract Twitter Reply Guy Strategy 2026 article.
 ---
 
 

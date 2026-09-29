@@ -38,3 +38,6 @@ local
 node_modules/
 .env
 __pycache__/
+
+# Local supervised X draft database, audit data, and screenshots
+.twitter-agent/
