@@ -198,10 +198,13 @@ def score_tweet(post: dict, now: Optional[float] = None, post_timestamp_override
     return round(total_score, 1)
 
 
-def read_posts(page, mode: str, value: Optional[str] = None, limit: int = 10) -> dict:
+def read_posts(page, mode: str, value: Optional[str] = None, limit: int = 10, *, search_mode: str = 'latest') -> dict:
     """Read posts with bounded scrolling, deduplication, and safe extraction."""
     if not isinstance(limit, int) or limit < 1 or limit > 100:
         raise AgentError('invalid_limit', 'Limit must be between 1 and 100.')
+
+    if search_mode not in ('latest', 'top'):
+        raise AgentError('invalid_search_mode', 'search-mode must be latest or top.')
 
     if mode not in ('timeline', 'search', 'thread'):
         raise AgentError('invalid_mode', f'Unsupported read mode: {mode}.')
@@ -227,7 +230,8 @@ def read_posts(page, mode: str, value: Optional[str] = None, limit: int = 10) ->
             if not value or not value.strip():
                 raise AgentError('invalid_search_query', 'Search query cannot be empty.')
             encoded = urllib.parse.quote_plus(value.strip())
-            page.goto(f'https://x.com/search?q={encoded}&f=live', wait_until='domcontentloaded')
+            feed = 'live' if search_mode == 'latest' else 'top'
+            page.goto(f'https://x.com/search?q={encoded}&f={feed}', wait_until='domcontentloaded')
         elif mode == 'thread':
             if not value:
                 raise AgentError('invalid_target', 'Thread target is required.')

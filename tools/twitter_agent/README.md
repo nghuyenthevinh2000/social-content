@@ -1,20 +1,37 @@
 ---
 name: twitter_agent
-summary: Supervised X DOM CLI with visible browser review, exact approval binding, attempt quotas, and single-click submissions.
-tags: [x, twitter, playwright, cdp, supervisor, human-in-the-loop]
+summary: Supervised X DOM CLI with visible browser review, exact approval binding,
+  attempt quotas, single-click submissions, and audience-focused topic discovery.
+tags:
+- x
+- twitter
+- playwright
+- cdp
+- supervisor
+- human-in-the-loop
 submodules:
-  __init__.py: Package marker.
-  __main__.py: Executable module entry point.
-  models.py: Target normalization, exact-text digests, typed errors, and limits.
-  store.py: SQLite queue, attempt quotas, audit trail, recovery, and process lock.
-  selectors.py: Centralized X DOM selectors and challenge/block detection.
-  browser.py: Playwright CDP lifecycle and doctor connectivity checks.
-  posts.py: Post extraction and bounded read operations.
-  replies.py: Browser preparation, inspection, and one-click submission.
-  supervisor.py: Interactive human review loop and approval orchestration.
-  cli.py: Argparse dispatch, JSON output formatting, and error handling.
-  launch_browser.sh: Launch Chrome with remote debugging (CDP) enabled if not already running.
-  tests/: Test suite covering models, store, dom fixtures, supervisor, and CLI.
+  tests/: Unit, DOM fixture, supervisor review, topic configuration, and subprocess
+    CLI tests for the supervised X agent.
+  __init__.py: Persistent state and shared models for the supervised X CLI.
+  __main__.py: Entry point for python -m tools.twitter_agent.
+  browser.py: Playwright CDP browser lifecycle management and doctor connectivity
+    checks.
+  cli.py: CLI parser, JSON output formatting, and command dispatch.
+  launch_browser.sh: launch-browser.sh Detects whether Chrome is running with remote
+    debugging (CDP) enabled. If not detected, launches Chrome with a dedicated user
+    profil
+  models.py: Shared values, stable errors, and exact-content approval binding.
+  posts.py: Post extraction and bounded read operations for timeline, search, and
+    thread.
+  replies.py: Prepare, inspect, and submit browser interactions for replies.
+  report.py: Candidate selection, report orchestration, and artifact generation.
+  selectors.py: Centralized DOM selectors and block/challenge detection for X.
+  store.py: Transactional draft queue, attempt quotas, audit trail, and supervisor
+    lock.
+  supervisor.py: Interactive supervisor review orchestration, approval binding, and
+    submission loop.
+  topic_config.py: Topic JSON validation and explicit query construction.
+  topics.json: File topics.json
 ---
 
 # Supervised X DOM CLI
@@ -113,7 +130,73 @@ uv run python -m tools.twitter_agent resume
 
 # Cancel a pending draft
 uv run python -m tools.twitter_agent cancel DRAFT_ID
+
+# Generate high-engagement topic report across configured topics
+uv run python -m tools.twitter_agent report --window-hours 24 --per-topic 5
 ```
+
+## Topic Engagement Report
+
+The `report` command gathers high-engagement posts found within a rolling lookback window across topics defined in a JSON topics file.
+
+```bash
+uv run python -m tools.twitter_agent report \
+  [--topics-file PATH] \
+  [--window-hours 24] \
+  [--per-topic 5] \
+  [--candidate-limit 100] \
+  [--output-dir DIR]
+```
+
+### Options
+
+- `--topics-file PATH`: Path to topics JSON configuration (default: bundled `topics.json`).
+- `--window-hours INT`: Lookback window in hours from current UTC time (default: `24`, must be > 0).
+- `--per-topic INT`: Target number of top posts selected per topic (default: `5`, 1 <= N <= candidate-limit).
+- `--candidate-limit INT`: Candidate collection budget per topic split evenly between `Top` and `Latest` tabs (default: `100`, 2 <= N <= 100).
+- `--output-dir DIR`: Directory for output run artifacts (default: `<state-dir>/reports`).
+
+### Semantics & Ranking
+
+- **Bounded Collection:** Divides `candidate-limit` across `Top` (50%) and `Latest` (50%) search tabs using explicit boolean queries (`since_time` / `until_time`).
+- **Deduplication:** Posts seen in both tabs are merged, keeping the post record with highest total engagement.
+- **Filtering & Ranking:** Posts are strictly filtered to the UTC window `[start, end]`. Surviving candidates are ranked deterministically by: `likes DESC`, `retweets DESC`, `replies DESC`, `id DESC`.
+- **Fault Tolerance:** Search failures or timeouts on individual topics degrade that topic to `partial` or `failed` without halting the entire run. Browser-fatal errors record remaining topics as `skipped`.
+- **Atomic Artifacts:** Writes `evidence.json` atomically into a unique run directory `<output-dir>/report-<datetime>/` (formatted as `report-YYYYMMDD-HHMMSS`).
+
+### Exit Codes
+
+- `0`: Complete success (all topics completed cleanly).
+- `1`: Report writing or unhandled fatal runtime error.
+- `2`: Invalid CLI arguments or malformed topics file.
+- `3`: Browser connection failure or CDP session failure.
+- `4`: Partial / degraded run (one or more topics experienced timeouts, search errors, or unparseable timestamps).
+
+
+## Topic Configuration
+
+`topics.json` contains ten broad themes for technical builders, founders, and
+tech-curious professionals: AI and machine learning; agents and automation;
+software and developer tools; cybersecurity and privacy; startups and products;
+blockchain and digital finance; science and emerging technology; work, careers,
+and education; technology and society; and digital life and wellbeing.
+
+These themes guide discovery rather than encode personal projects or prescribed
+opinions. Careers and education also cover builder grants, hackathons,
+fellowships, remote jobs, and free education. Add or remove topics as the audience
+changes; report coverage follows the configured list rather than a fixed count.
+
+- `id`, `name`, and `search_keywords` are required by the topic loader.
+- `category` and `summary` describe the scope in neutral terms.
+- `search_keywords` are literal terms or quoted phrases; the report builds an
+  explicit OR query from them.
+- `watch_query` and `quick_presets` are comma-separated terms for passing to
+  `watch --topics`, not ready-made X search expressions. `watch` does not load
+  the JSON file automatically.
+
+Version 2 replaces the previous project-specific IDs and removes personal
+`relevance`, `priority`, `recommended_archetypes`, and `reply_angles` fields.
+Personal positioning and reply strategy belong outside the discovery list.
 
 ## Batch Queue Format
 

@@ -432,5 +432,121 @@ class CliTests(unittest.TestCase):
             self.assertEqual(opps[0]['id'], '10')
             self.assertEqual(opps[0]['watchlist_handle'], 'sama')
 
+    def test_report_help_subprocess(self):
+        res = subprocess.run(
+            self.base_cmd + ['report', '--help'],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res.returncode, 0)
+        self.assertIn('--topics-file', res.stdout)
+        self.assertIn('--window-hours', res.stdout)
+        self.assertIn('--per-topic', res.stdout)
+        self.assertIn('--candidate-limit', res.stdout)
+        self.assertIn('--output-dir', res.stdout)
 
+    def test_report_invalid_budget_does_not_connect(self):
+        invalid_args_cases = [
+            ['--candidate-limit', '1'],
+            ['--candidate-limit', '101'],
+            ['--window-hours', '0'],
+            ['--window-hours', '-5'],
+            ['--per-topic', '0'],
+            ['--per-topic', '15', '--candidate-limit', '10'],
+        ]
+        for extra in invalid_args_cases:
+            with patch('tools.twitter_agent.cli.Browser') as browser, \
+                 patch('sys.stdout', new_callable=io.StringIO) as out:
+                code = main(['--state-dir', str(self.state_dir), 'report'] + extra)
+                self.assertEqual(code, 2, msg=f"Failed on {extra}")
+                body = json.loads(out.getvalue())
+                self.assertFalse(body['ok'])
+                self.assertEqual(body['error']['code'], 'invalid_arguments')
+                browser.assert_not_called()
 
+    def test_report_invalid_topics_file_exits_2(self):
+        with patch('tools.twitter_agent.cli.Browser') as browser, \
+             patch('sys.stdout', new_callable=io.StringIO) as out:
+            bad_path = Path(self.temp_dir) / 'nonexistent_topics.json'
+            code = main(['--state-dir', str(self.state_dir), 'report', '--topics-file', str(bad_path)])
+            self.assertEqual(code, 2)
+            body = json.loads(out.getvalue())
+            self.assertFalse(body['ok'])
+            self.assertEqual(body['error']['code'], 'invalid_topics_file')
+            browser.assert_not_called()
+
+    @patch('tools.twitter_agent.cli.write_report')
+    @patch('tools.twitter_agent.cli.collect_report')
+    @patch('tools.twitter_agent.cli.Browser')
+    @patch('tools.twitter_agent.cli.time.time', return_value=1700000000.0)
+    def test_report_happy_path_exit_0(self, mock_time, mock_browser_cls, mock_collect, mock_write):
+        dummy_report = {
+            'partial': False,
+            'summary': {'total_topics': 1, 'by_status': {'ok': 1}},
+            'coverage': 'bounded_sample',
+            'window': {'start': 1699913600, 'end': 1700000000},
+        }
+        mock_collect.return_value = dummy_report
+        mock_write.return_value = {
+            'run_dir': '/tmp/report-123',
+            'evidence_json': '/tmp/report-123/evidence.json',
+            'report_markdown': '/tmp/report-123/report.md',
+        }
+        mock_browser = MagicMock()
+        mock_browser_cls.return_value.__enter__.return_value = mock_browser
+
+        with patch('sys.stdout', new_callable=io.StringIO) as out:
+            code = main(['--state-dir', str(self.state_dir), 'report', '--window-hours', '24'])
+            self.assertEqual(code, 0)
+            body = json.loads(out.getvalue())
+            self.assertTrue(body['ok'])
+            data = body['data']
+            self.assertEqual(data['artifacts']['run_dir'], '/tmp/report-123')
+            self.assertFalse(data['partial'])
+            self.assertEqual(data['window']['end'], 1700000000)
+            self.assertEqual(data['window']['start'], 1700000000 - 24 * 3600)
+
+    @patch('tools.twitter_agent.cli.write_report')
+    @patch('tools.twitter_agent.cli.collect_report')
+    @patch('tools.twitter_agent.cli.Browser')
+    def test_report_degraded_path_exit_4(self, mock_browser_cls, mock_collect, mock_write):
+        dummy_report = {
+            'partial': True,
+            'summary': {'total_topics': 1, 'by_status': {'partial': 1}},
+            'coverage': 'bounded_sample',
+            'window': {'start': 100, 'end': 200},
+        }
+        mock_collect.return_value = dummy_report
+        mock_write.return_value = {
+            'run_dir': '/tmp/report-deg',
+            'evidence_json': '/tmp/report-deg/evidence.json',
+            'report_markdown': '/tmp/report-deg/report.md',
+        }
+        mock_browser = MagicMock()
+        mock_browser_cls.return_value.__enter__.return_value = mock_browser
+
+        with patch('sys.stdout', new_callable=io.StringIO) as out:
+            code = main(['--state-dir', str(self.state_dir), 'report'])
+            self.assertEqual(code, 4)
+            body = json.loads(out.getvalue())
+            self.assertTrue(body['ok'])
+            self.assertTrue(body['data']['partial'])
+
+    @patch('tools.twitter_agent.cli.collect_report')
+    @patch('tools.twitter_agent.cli.Browser')
+    def test_report_write_failure_exit_1(self, mock_browser_cls, mock_collect):
+        from tools.twitter_agent.models import AgentError
+        mock_collect.return_value = {'partial': False}
+        mock_browser = MagicMock()
+        mock_browser_cls.return_value.__enter__.return_value = mock_browser
+
+        # Point output-dir to an existing file to trigger write_report failure
+        file_dir = Path(self.temp_dir) / 'file.txt'
+        file_dir.write_text('bad', encoding='utf-8')
+
+        with patch('sys.stdout', new_callable=io.StringIO) as out:
+            code = main(['--state-dir', str(self.state_dir), 'report', '--output-dir', str(file_dir)])
+            self.assertEqual(code, 1)
+            body = json.loads(out.getvalue())
+            self.assertFalse(body['ok'])
+            self.assertEqual(body['error']['code'], 'report_write_failed')

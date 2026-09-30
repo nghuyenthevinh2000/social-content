@@ -1,0 +1,195 @@
+{
+  "name": "twitter_agent_topics",
+  "version": "2.0.0",
+  "updated_at": "2026-09-30",
+  "description": "Broad discovery themes for technical builders and founders. Keywords are starting points for finding relevant conversations, not a fixed editorial position or a list of personal projects.",
+  "target_audience": [
+    "software engineers and technical builders",
+    "startup founders and product makers",
+    "tech-curious professionals"
+  ],
+  "quick_presets": {
+    "core_tech": "\"machine learning\", \"AI agents\", \"software engineering\", \"developer tools\", cybersecurity, robotics",
+    "ai_and_agents": "\"large language models\", \"open source models\", \"AI agents\", \"agentic workflow\", \"workflow automation\"",
+    "blockchain_and_zk": "blockchain, stablecoins, \"asset tokenization\", \"decentralized finance\", \"zero knowledge\"",
+    "founders_and_products": "\"startup founder\", bootstrapping, \"product market fit\", \"customer discovery\", \"build in public\"",
+    "work_and_wellbeing": "\"developer career\", \"future of work\", \"developer burnout\", \"digital wellbeing\", \"human AI interaction\"",
+    "opportunities": "\"builder grants\", hackathon, \"developer fellowship\", \"remote job\", \"free education\""
+  },
+  "topics": [
+    {
+      "id": "ai-machine-learning",
+      "name": "AI & Machine Learning",
+      "category": "AI",
+      "summary": "Model releases, research, evaluations, inference, and practical uses of machine learning across products and industries.",
+      "search_keywords": [
+        "\"artificial intelligence\"",
+        "\"machine learning\"",
+        "\"large language models\"",
+        "\"generative AI\"",
+        "\"open source models\"",
+        "\"multimodal AI\"",
+        "\"model evaluation\"",
+        "\"LLM inference\""
+      ],
+      "watch_query": "\"machine learning\", \"large language models\", \"generative AI\", \"open source models\""
+    },
+    {
+      "id": "ai-agents-automation",
+      "name": "AI Agents & Automation",
+      "category": "AI",
+      "summary": "Building and operating agents, tool integrations, automated workflows, and human oversight for useful real-world tasks.",
+      "search_keywords": [
+        "\"AI agents\"",
+        "\"autonomous agents\"",
+        "\"agentic workflow\"",
+        "\"agent orchestration\"",
+        "\"multi-agent systems\"",
+        "\"workflow automation\"",
+        "\"model context protocol\"",
+        "\"human in the loop\""
+      ],
+      "watch_query": "\"AI agents\", \"agentic workflow\", \"workflow automation\", \"model context protocol\""
+    },
+    {
+      "id": "software-developer-tools",
+      "name": "Software Engineering & Developer Tools",
+      "category": "Engineering",
+      "summary": "Software design, coding tools, testing, open-source software, cloud infrastructure, and reliable production systems.",
+      "search_keywords": [
+        "\"software engineering\"",
+        "\"developer tools\"",
+        "\"open source\"",
+        "\"software architecture\"",
+        "\"AI coding\"",
+        "\"software testing\"",
+        "\"platform engineering\"",
+        "\"cloud infrastructure\""
+      ],
+      "watch_query": "\"software engineering\", \"developer tools\", \"open source\", \"AI coding\""
+    },
+    {
+      "id": "cybersecurity-privacy",
+      "name": "Cybersecurity & Privacy",
+      "category": "Security",
+      "summary": "Application and infrastructure security, AI threats, data protection, cryptography, and privacy-preserving systems.",
+      "search_keywords": [
+        "cybersecurity",
+        "\"application security\"",
+        "\"AI security\"",
+        "\"prompt injection\"",
+        "\"data privacy\"",
+        "\"supply chain security\"",
+        "cryptography",
+        "\"zero knowledge\""
+      ],
+      "watch_query": "cybersecurity, \"AI security\", \"data privacy\", \"zero knowledge\""
+    },
+    {
+      "id": "startups-product-building",
+      "name": "Startups & Product Building",
+      "category": "Business & Product",
+      "summary": "Finding customer problems, building and launching products, bootstrapping, distribution, pricing, and learning from founder experiences.",
+      "search_keywords": [
+        "\"startup founder\"",
+        "bootstrapping",
+        "\"product market fit\"",
+        "\"customer discovery\"",
+        "\"build in public\"",
+        "\"indie hacker\"",
+        "\"product launch\"",
+        "\"SaaS pricing\""
+      ],
+      "watch_query": "\"startup founder\", bootstrapping, \"product market fit\", \"build in public\""
+    },
+    {
+      "id": "blockchain-digital-finance",
+      "name": "Blockchain & Digital Finance",
+      "category": "Finance & Infrastructure",
+      "summary": "Blockchain infrastructure and applications, digital payments, stablecoins, asset tokenization, and decentralized finance.",
+      "search_keywords": [
+        "blockchain",
+        "stablecoins",
+        "\"digital payments\"",
+        "\"asset tokenization\"",
+        "\"decentralized finance\"",
+        "\"smart contracts\"",
+        "\"Ethereum scaling\"",
+        "\"real world assets\""
+      ],
+      "watch_query": "blockchain, stablecoins, \"asset tokenization\", \"decentralized finance\""
+    },
+    {
+      "id": "science-emerging-technology",
+      "name": "Science & Emerging Technology",
+      "category": "Research & Innovation",
+      "summary": "Robotics, computing hardware, scientific breakthroughs, and the transition from research to practical technologies and businesses.",
+      "search_keywords": [
+        "robotics",
+        "\"deep tech\"",
+        "\"quantum computing\"",
+        "semiconductors",
+        "\"climate tech\"",
+        "biotechnology",
+        "\"research commercialization\"",
+        "\"open source hardware\""
+      ],
+      "watch_query": "robotics, \"deep tech\", \"quantum computing\", semiconductors"
+    },
+    {
+      "id": "work-careers-education",
+      "name": "Work, Careers & Education",
+      "category": "Careers & Community",
+      "summary": "Engineering careers, technical learning, mentorship, changing work practices, and opportunities through grants, hackathons, fellowships, and remote jobs.",
+      "search_keywords": [
+        "\"developer career\"",
+        "\"engineering leadership\"",
+        "\"learn to code\"",
+        "\"developer mentorship\"",
+        "\"future of work\"",
+        "\"remote job\"",
+        "\"remote work\"",
+        "\"builder grants\"",
+        "\"developer grant\"",
+        "hackathon",
+        "\"developer fellowship\"",
+        "\"free education\""
+      ],
+      "watch_query": "\"developer career\", \"builder grants\", hackathon, \"developer fellowship\", \"remote job\", \"free education\""
+    },
+    {
+      "id": "technology-society",
+      "name": "Technology & Society",
+      "category": "Society & Governance",
+      "summary": "How technology affects institutions, economies, public trust, access, and everyday life, including competing perspectives on policy and governance.",
+      "search_keywords": [
+        "\"AI governance\"",
+        "\"tech policy\"",
+        "\"AI regulation\"",
+        "\"digital rights\"",
+        "\"technology ethics\"",
+        "\"digital divide\"",
+        "\"algorithmic bias\"",
+        "\"open governance\""
+      ],
+      "watch_query": "\"AI governance\", \"tech policy\", \"digital rights\", \"technology ethics\""
+    },
+    {
+      "id": "digital-life-wellbeing",
+      "name": "Digital Life & Wellbeing",
+      "category": "Human Experience",
+      "summary": "Attention, sustainable work habits, burnout, digital wellbeing, and how people experience and adapt to technology and AI.",
+      "search_keywords": [
+        "\"digital wellbeing\"",
+        "\"digital minimalism\"",
+        "\"developer burnout\"",
+        "\"founder burnout\"",
+        "\"information overload\"",
+        "\"attention economy\"",
+        "\"human AI interaction\"",
+        "\"work life balance\""
+      ],
+      "watch_query": "\"digital wellbeing\", \"developer burnout\", \"information overload\", \"human AI interaction\""
+    }
+  ]
+}

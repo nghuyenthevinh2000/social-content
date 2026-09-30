@@ -363,3 +363,32 @@ class DomTests(unittest.TestCase):
         self.assertGreater(score_fresh, score_stale)
 
 
+class SearchModeTests(unittest.TestCase):
+    @patch('tools.twitter_agent.posts.selectors.detect_block', return_value=None)
+    def test_top_navigation(self, _detect):
+        from urllib.parse import parse_qs, urlsplit
+        page = MagicMock()
+        page.url = 'https://x.com/home'
+        page.evaluate.return_value = [{'id': '1', 'metrics': {'total': 0}}]
+        read_posts(page, 'search', 'AI agents', limit=1, search_mode='top')
+        params = parse_qs(urlsplit(page.goto.call_args.args[0]).query)
+        self.assertEqual(params['q'], ['AI agents'])
+        self.assertEqual(params['f'], ['top'])
+
+    @patch('tools.twitter_agent.posts.selectors.detect_block', return_value=None)
+    def test_latest_default_navigation(self, _detect):
+        from urllib.parse import parse_qs, urlsplit
+        page = MagicMock()
+        page.url = 'https://x.com/home'
+        page.evaluate.return_value = [{'id': '1', 'metrics': {'total': 0}}]
+        read_posts(page, 'search', 'AI agents', limit=1)
+        params = parse_qs(urlsplit(page.goto.call_args.args[0]).query)
+        self.assertEqual(params['q'], ['AI agents'])
+        self.assertEqual(params['f'], ['live'])
+
+    def test_invalid_search_mode_raises(self):
+        page = MagicMock()
+        with self.assertRaises(AgentError) as raised:
+            read_posts(page, 'search', 'AI agents', limit=1, search_mode='invalid_mode')
+        self.assertEqual(raised.exception.code, 'invalid_search_mode')
+

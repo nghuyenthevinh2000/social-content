@@ -11,8 +11,10 @@ from typing import List, Optional
 from .browser import Browser
 from .models import AgentError, Limits, normalize_target, validate_text
 from .posts import read_posts
+from .report import collect_report, write_report
 from .store import Store
 from .supervisor import supervise
+from .topic_config import load_topics
 
 
 DEFAULT_TOPICS = (
@@ -48,7 +50,8 @@ def error_exit_code(code: str) -> int:
     if code in (
         'invalid_target', 'invalid_text', 'invalid_limits', 'invalid_limit',
         'invalid_jsonl', 'invalid_arguments', 'invalid_mode', 'invalid_search_query',
-        'invalid_handle', 'invalid_window_minutes', 'invalid_min_score'
+        'invalid_handle', 'invalid_window_minutes', 'invalid_min_score',
+        'invalid_topics_file', 'invalid_search_mode'
     ):
         return 2
     if code in (
@@ -87,7 +90,7 @@ def build_parser() -> JsonArgumentParser:
     sr.add_argument('query', help='Search query string')
     sr.add_argument('--limit', type=int, default=10, help='Max posts to read (1-100)')
     sr.add_argument('--window-minutes', type=int, default=60, help='Restrict search to posts within the last N minutes')
-    sr.add_argument('--min-score', type=float, default=80, help='Minimum opportunity score (0-100) to return')
+    sr.add_argument('--min-score', type=float, default=None, help='Minimum opportunity score (0-100) to return')
 
     # thread
     th = subparsers.add_parser('thread', help='Read thread for post ID or URL')
@@ -144,6 +147,15 @@ def build_parser() -> JsonArgumentParser:
     sp.add_argument('--hourly-limit', type=int, default=None, help='Max attempts per rolling hour')
     sp.add_argument('--daily-limit', type=int, default=None, help='Max attempts per rolling 24 hours')
     sp.add_argument('--min-spacing', type=float, default=None, help='Min seconds between submission attempts')
+
+    # report
+    rp = subparsers.add_parser('report', help='Report high-engagement posts across configured topics')
+    rp.add_argument('--topics-file', type=Path, default=Path(__file__).with_name('topics.json'),
+                    help='Path to topics JSON file (default: bundled topics.json)')
+    rp.add_argument('--window-hours', type=int, default=24, help='Lookback window in hours (default: 24)')
+    rp.add_argument('--per-topic', type=int, default=5, help='Target number of selected posts per topic (default: 5)')
+    rp.add_argument('--candidate-limit', type=int, default=100, help='Total candidate budget per topic split between Top and Latest (default: 100)')
+    rp.add_argument('--output-dir', type=Path, default=None, help='Output directory for run artifacts (default: <state-dir>/reports)')
 
     return parser
 
@@ -381,6 +393,39 @@ def main(argv: Optional[List[str]] = None) -> int:
             with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
                 supervise(store, browser)
             return 0
+
+        elif args.subcommand == 'report':
+            if args.window_hours <= 0:
+                raise AgentError('invalid_arguments', 'window-hours must be positive.')
+            if not 2 <= args.candidate_limit <= 100:
+                raise AgentError('invalid_arguments', 'candidate-limit must be between 2 and 100.')
+            if not 1 <= args.per_topic <= args.candidate_limit:
+                raise AgentError('invalid_arguments', 'per-topic must be between 1 and candidate-limit.')
+
+            topics = load_topics(args.topics_file)
+            end = int(time.time())
+            start = end - args.window_hours * 3600
+
+            with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+                report = collect_report(
+                    browser.page,
+                    topics,
+                    topics_file=str(args.topics_file.resolve()),
+                    start=start,
+                    end=end,
+                    per_topic=args.per_topic,
+                    candidate_limit=args.candidate_limit,
+                )
+
+            paths = write_report(report, args.output_dir or Path(args.state_dir) / 'reports')
+            emit_success({
+                'artifacts': paths,
+                'summary': report['summary'],
+                'partial': report['partial'],
+                'coverage': report['coverage'],
+                'window': report['window'],
+            })
+            return 4 if report['partial'] else 0
 
     except AgentError as err:
         emit_error(err.code, err.message, err.human_action_required)

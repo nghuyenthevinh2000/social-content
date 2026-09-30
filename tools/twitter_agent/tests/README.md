@@ -1,13 +1,24 @@
 ---
 name: tests
-summary: Unit, DOM fixture, supervisor review, and subprocess CLI tests for the supervised X agent.
-tags: [tests, unittest, sqlite, playwright, dom, cli]
+summary: Unit, DOM fixture, supervisor review, topic configuration, and subprocess
+  CLI tests for the supervised X agent.
+tags:
+- tests
+- unittest
+- sqlite
+- playwright
+- dom
+- cli
 submodules:
-  test_models.py: URL validation, Unicode approval binding, and limit validation.
-  test_store.py: Real SQLite queue, control, quota, recovery, permission, and process-lock tests.
-  test_dom.py: Local Playwright DOM fixtures for extraction, block detection, and reply interactions.
-  test_supervisor.py: Human decision binding, approval checks, and submission failure boundary tests.
-  test_cli.py: Subprocess interface, JSON stdout/stderr, interactive supervisor guard, and queue imports.
+  test_cli.py: Subprocess interface tests for CLI commands, JSON output, and interactive
+    guard.
+  test_dom.py: Local fixture browser tests for DOM extraction and browser lifecycle.
+  test_models.py: Input and exact-content approval contracts.
+  test_report.py: Deterministic selection, bounded collection, and atomic JSON artifact writing tests.
+  test_store.py: Real SQLite, injected time, and process-lock regression tests.
+  test_supervisor.py: Tests for supervisor review loop, human decisions, and submission
+    boundaries.
+  test_topic_config.py: Topic validation, query construction, and configuration-driven bundled topic coverage.
 ---
 
 # Test suite for supervised X CLI
