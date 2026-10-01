@@ -253,7 +253,7 @@ Final conflict:  [the version the user confirmed feels true]
 ## Common Failure Modes
 
 | Failure | What It Looks Like | Question to Ask |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | Parable, not story | Protagonist gains insight without losing anything | What does the character give up? |
 | Too-fast reward | Character does the right thing; universe immediately validates them | Does the story hold ambiguity after the right action? |
 | Performative vulnerability | Storyteller shares something personal but avoids the most dangerous truth | Which detail am I most afraid to include? |
