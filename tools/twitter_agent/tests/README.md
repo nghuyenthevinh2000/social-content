@@ -1,6 +1,6 @@
 ---
 name: tests
-summary: Unit, DOM fixture, supervisor review, topic configuration, and subprocess
+summary: Unit, pacing, DOM fixture, supervisor review, topic configuration, and subprocess
   CLI tests for the supervised X agent.
 tags:
 - tests
@@ -14,6 +14,7 @@ submodules:
     guard.
   test_dom.py: Local fixture browser tests for DOM extraction and browser lifecycle.
   test_models.py: Input and exact-content approval contracts.
+  test_pacing.py: Deterministic delay ranges, action-budget breaks, and browser read pacing tests.
   test_report.py: Deterministic selection, bounded collection, and atomic JSON artifact writing tests.
   test_store.py: Real SQLite, injected time, and process-lock regression tests.
   test_supervisor.py: Tests for supervisor review loop, human decisions, and submission

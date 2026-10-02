@@ -1,7 +1,7 @@
 ---
 name: twitter_agent
 summary: Supervised X DOM CLI with visible browser review, exact approval binding,
-  attempt quotas, single-click submissions, and audience-focused topic discovery.
+  attempt quotas, randomized browsing delays, single-click submissions, and audience-focused topic discovery.
 tags:
 - x
 - twitter
@@ -10,20 +10,21 @@ tags:
 - supervisor
 - human-in-the-loop
 submodules:
-  tests/: Unit, DOM fixture, supervisor review, topic configuration, and subprocess
+  tests/: Unit, pacing, DOM fixture, supervisor review, topic configuration, and subprocess
     CLI tests for the supervised X agent.
   __init__.py: Persistent state and shared models for the supervised X CLI.
   __main__.py: Entry point for python -m tools.twitter_agent.
-  browser.py: Playwright CDP browser lifecycle management and doctor connectivity
+  browser.py: Playwright CDP browser lifecycle management and paced doctor connectivity
     checks.
   cli.py: CLI parser, JSON output formatting, and command dispatch.
   launch_browser.sh: launch-browser.sh Detects whether Chrome is running with remote
     debugging (CDP) enabled. If not detected, launches Chrome with a dedicated user
     profil
   models.py: Shared values, stable errors, and exact-content approval binding.
-  posts.py: Post extraction and bounded read operations for timeline, search, and
+  pacing.py: Shared randomized browsing delays and periodic action-budget breaks.
+  posts.py: Paced post extraction and bounded read operations for timeline, search, and
     thread.
-  replies.py: Prepare, inspect, and submit browser interactions for replies.
+  replies.py: Paced target preparation, inspection, and submission interactions for replies.
   report.py: Candidate selection, report orchestration, and artifact generation.
   selectors.py: Centralized DOM selectors and block/challenge detection for X.
   store.py: Transactional draft queue, attempt quotas, audit trail, and supervisor
@@ -49,6 +50,28 @@ An agent-facing CLI with visible browser operations and mandatory human approval
 
 > [!NOTE]
 > Same-user process access is not an OS security isolation boundary. Keep the supervisor terminal reserved for human interaction. DOM automation also does not guarantee immunity from platform restrictions or rate limits.
+
+## Browsing Delays
+
+Browsing is paced automatically before each live action:
+
+- Account discovery (`from:handle` searches): **3–7 seconds**.
+- Feed scrolling: **2–5 seconds**, plus the existing 500 ms rendering wait.
+- Hashtag and other topic searches (including report Top/Latest searches): **5–10 seconds**.
+- Home/thread navigation and supervisor target opening: **3–7 seconds**.
+- After a randomly selected **50–100 actions**, an additional **30–60 second**
+  break occurs before the next action; a new action budget is then selected.
+
+Each navigation or scroll counts as one action, not each extracted post or DOM
+inspection. The agent currently discovers accounts through search rather than
+opening profile pages. Delays and action counts are shared across pages, report
+topics, and polling cycles **within one CLI process**; separate CLI invocations
+start fresh and concurrent processes are not coordinated. Intentional scroll
+pauses do not consume the 30-second active collection budget. Local DOM fixtures
+skip randomized pacing. Submission quotas and mandatory approval are unchanged.
+
+These delays reduce request bursts; they do not guarantee avoidance of platform
+restrictions. Detected blocks and challenges still stop browser operations.
 
 ## Two-Terminal Workflow
 

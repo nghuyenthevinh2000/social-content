@@ -6,6 +6,7 @@ import time
 from typing import Optional, Set
 
 from .models import AgentError, draft_digest
+from .pacing import get_pacer
 from . import selectors
 
 
@@ -82,6 +83,7 @@ def prepare_reply(page, draft: dict, artifact_dir: Path) -> dict:
         block = selectors.detect_block(page)
         if block:
             raise block
+        get_pacer().wait('navigation')
         page.goto(draft['target_url'], wait_until='domcontentloaded')
         page.wait_for_timeout(1000)
 
