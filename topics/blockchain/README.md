@@ -7,6 +7,8 @@ tags:
 submodules:
   blockchain-enterprise-stack/: 'Institutional Digital Asset Stack: The Sovereign
     Financial Architecture. Purpose and documentation for topics/blockchain/blockchain-enterprise-stack.'
+  infographics/: Visual infographics, one-pagers, and data charts for real-world blockchain
+    and institutional digital assets.
   zk-commercialization/: Documentation and resources for topics/blockchain/zk-commercialization.
   blockchain_finance_mindmap.md: Làm kỹ sư blockchain 6 năm, lead tech một protocol
     tỷ đô, nhưng mình đã từng im lặng trong cuộc họp khi đối tác hỏi về "
@@ -14,6 +16,8 @@ submodules:
     niềm tin ngành logistics thế nào?'
   pop_up_village.md: Từ Những Bóng Ma Không Quốc Gia Đến Giấc Mơ Dựng Làng
   pop_up_village_fb.md: Sự dịch chuyển của nền kinh tế Digital Nomad
+  vietnam_blockchain_legal_report.md: 'Báo Cáo Phân Tích: Các Thảo Luận Pháp Lý Về
+    Blockchain Tại Việt Nam Trên X (Twitter) Trong 6 Tháng Qua'
 ---
 
 # Real-World Blockchain & Institutional Finance (Blockchain Thực chiến & Tài chính Định chế)

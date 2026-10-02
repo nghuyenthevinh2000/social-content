@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>5 Điều Người Làm Crypto Tại Việt Nam Cần Biết Rõ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-page: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --card-border: #E2E8F0;
+      
+      --text-main: #0F172A;
+      --text-body: #334155;
+      --text-muted: #64748B;
+      --text-dim: #94A3B8;
+
+      --accent-amber: #D97706;
+      --accent-blue: #0284C7;
+      --accent-rose: #DC2626;
+      --accent-emerald: #059669;
+      --accent-indigo: #4F46E5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 720px;
+      height: 1280px;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-page);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .canvas {
+      width: 720px;
+      height: 1280px;
+      background: #F8FAFC;
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(79, 70, 229, 0.04) 0%, transparent 45%),
+        radial-gradient(circle at 85% 90%, rgba(2, 132, 199, 0.04) 0%, transparent 45%);
+      padding: 22px 26px 20px 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    /* HEADER */
+    .header {
+      height: 98px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-bottom: 2px solid #E2E8F0;
+      padding-bottom: 12px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: #EEF2FF;
+      border: 1px solid #C7D2FE;
+      color: var(--accent-indigo);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 5px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .header-badge .dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent-indigo);
+      border-radius: 50%;
+    }
+
+    .header-source {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .header-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 27px;
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: -0.025em;
+      color: #0F172A;
+    }
+
+    .header-title span {
+      color: var(--accent-indigo);
+    }
+
+    /* CARDS CONTAINER */
+    .cards-container {
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+      flex: 1;
+      padding-top: 13px;
+    }
+
+    .topic-card {
+      height: 215px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 13px 18px 12px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    }
+
+    .topic-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 5px;
+      height: 100%;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 7px;
+    }
+
+    .target-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding: 3px 9px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      text-transform: uppercase;
+    }
+
+    .rank-share {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rank-share .pill {
+      background: #F1F5F9;
+      border: 1px solid #E2E8F0;
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: #0F172A;
+    }
+
+    .question-box {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 9px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-bottom: 7px;
+    }
+
+    .q-icon {
+      font-size: 15px;
+      line-height: 1.25;
+      flex-shrink: 0;
+    }
+
+    .question-text {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 15.5px;
+      font-weight: 700;
+      line-height: 1.35;
+      color: #0F172A;
+    }
+
+    .answer-box {
+      background: #F1F5F9;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 9px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      flex: 1;
+    }
+
+    .a-icon {
+      font-size: 15px;
+      line-height: 1.25;
+      flex-shrink: 0;
+    }
+
+    .answer-text {
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: var(--text-body);
+      font-weight: 500;
+    }
+
+    .answer-text strong {
+      color: #0F172A;
+      font-weight: 700;
+    }
+
+    .metric-bar-container {
+      margin-top: 7px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 5px;
+      background: #E2E8F0;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .bar-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* CARD THEMES (LIGHT MODE) */
+    /* 1. Trader Cá nhân (Amber) */
+    .card-1::before { background: var(--accent-amber); }
+    .card-1 .target-badge {
+      background: #FEF3C7;
+      border: 1px solid #FCD34D;
+      color: #B45309;
+    }
+    .card-1 .bar-fill { background: var(--accent-amber); width: 100%; }
+
+    /* 2. Startup Founders (Blue) */
+    .card-2::before { background: var(--accent-blue); }
+    .card-2 .target-badge {
+      background: #E0F2FE;
+      border: 1px solid #BAE6FD;
+      color: #0369A1;
+    }
+    .card-2 .bar-fill { background: var(--accent-blue); width: 92%; }
+
+    /* 3. Pro Trader & MMO (Rose) */
+    .card-3::before { background: var(--accent-rose); }
+    .card-3 .target-badge {
+      background: #FEE2E2;
+      border: 1px solid #FECACA;
+      color: #B91C1C;
+    }
+    .card-3 .bar-fill { background: var(--accent-rose); width: 61%; }
+
+    /* 4. Hodlers & Nạn nhân (Emerald) */
+    .card-4::before { background: var(--accent-emerald); }
+    .card-4 .target-badge {
+      background: #D1FAE5;
+      border: 1px solid #A7F3D0;
+      color: #047857;
+    }
+    .card-4 .bar-fill { background: var(--accent-emerald); width: 41%; }
+
+    /* 5. Airdrop & KOLs (Indigo) */
+    .card-5::before { background: var(--accent-indigo); }
+    .card-5 .target-badge {
+      background: #EEF2FF;
+      border: 1px solid #C7D2FE;
+      color: #4338CA;
+    }
+    .card-5 .bar-fill { background: var(--accent-indigo); width: 23%; }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-top">
+        <div class="header-badge">
+          <span class="dot"></span>
+          <span>Báo Cáo Thực Địa X (Twitter)</span>
+        </div>
+        <div class="header-source">
+          04/2026 – 10/2026 • 24 Mẫu Phân Tích
+        </div>
+      </div>
+      <h1 class="header-title">
+        5 Điều Người Làm Crypto Tại Việt Nam <span>Cần Biết Rõ</span>
+      </h1>
+    </header>
+
+    <!-- 5 CARDS CONTAINER -->
+    <main class="cards-container">
+      <!-- CARD #1 -->
+      <article class="topic-card card-1">
+        <div class="card-top">
+          <div class="target-badge">
+            DÀNH CHO: TRADER CÁ NHÂN & NGƯỜI LƯỚT SÓNG SÀN NGOẠI
+          </div>
+          <div class="rank-share">
+            <span>HẠNG #1</span>
+            <span class="pill">32% QUAN TÂM</span>
+          </div>
+        </div>
+        <div class="question-box">
+          <span class="q-icon">❓</span>
+          <div class="question-text">
+            "Trade trên Binance, Bybit có bị phạt 50 triệu không? Khi nào bị phạt?"
+          </div>
+        </div>
+        <div class="answer-box">
+          <span class="a-icon">💡</span>
+          <div class="answer-text">
+            <strong>Chưa bị phạt ngay!</strong> Bạn có ít nhất <strong>6 tháng ân hạn</strong> kể từ khi sàn nội địa đầu tiên được cấp phép để chuyển đổi an toàn. Không cần hoảng loạn cài VPN.
+          </div>
+        </div>
+        <div class="metric-bar-container">
+          <div class="bar-track">
+            <div class="bar-fill"></div>
+          </div>
+          <div class="bar-label">702+ Tương tác • Nóng nhất</div>
+        </div>
+      </article>
+
+      <!-- CARD #2 -->
+      <article class="topic-card card-2">
+        <div class="card-top">
+          <div class="target-badge">
+            DÀNH CHO: STARTUP FOUNDERS & ĐỘI NGŨ PHÁT TRIỂN WEB3
+          </div>
+          <div class="rank-share">
+            <span>HẠNG #2</span>
+            <span class="pill">29% QUAN TÂM</span>
+          </div>
+        </div>
+        <div class="question-box">
+          <span class="q-icon">❓</span>
+          <div class="question-text">
+            "Mở sàn đòi 10.000 tỷ vốn, dân startup có còn cửa sống trên sân nhà không?"
+          </div>
+        </div>
+        <div class="answer-box">
+          <span class="a-icon">💡</span>
+          <div class="answer-text">
+            Sân chơi mở sàn giao dịch thuộc về <strong>đại gia ngân hàng bắt tay sàn ngoại</strong> (VPBank, Techcom x OKX). Startup native nên chuyển hướng làm <strong>ví, công cụ, hạ tầng & RWA</strong>.
+          </div>
+        </div>
+        <div class="metric-bar-container">
+          <div class="bar-track">
+            <div class="bar-fill"></div>
+          </div>
+          <div class="bar-label">648+ Tương tác • Cạnh tranh vốn</div>
+        </div>
+      </article>
+
+      <!-- CARD #3 -->
+      <article class="topic-card card-3">
+        <div class="card-top">
+          <div class="target-badge">
+            DÀNH CHO: TRADER CHUYÊN NGHIỆP & DÂN KIẾM TIỀN ONLINE (MMO)
+          </div>
+          <div class="rank-share">
+            <span>HẠNG #3</span>
+            <span class="pill">19% QUAN TÂM</span>
+          </div>
+        </div>
+        <div class="question-box">
+          <span class="q-icon">❓</span>
+          <div class="question-text">
+            "Trade cắt lỗ có phải nộp thuế không? Khai thuế thế nào để không bị truy thu?"
+          </div>
+        </div>
+        <div class="answer-box">
+          <span class="a-icon">💡</span>
+          <div class="answer-text">
+            <strong>Thuế 0,1% trừ thẳng trên doanh số bán</strong> mỗi lệnh qua sàn được cấp phép (như chứng khoán). Sàn tự động nộp hộ, bạn <strong>không cần tự tính lãi lỗ hay lo truy thu</strong>.
+          </div>
+        </div>
+        <div class="metric-bar-container">
+          <div class="bar-track">
+            <div class="bar-fill"></div>
+          </div>
+          <div class="bar-label">427+ Tương tác • Thuế tự động</div>
+        </div>
+      </article>
+
+      <!-- CARD #4 -->
+      <article class="topic-card card-4">
+        <div class="card-top">
+          <div class="target-badge">
+            DÀNH CHO: NGƯỜI GIỮ COIN LÂU NĂM & NẠN NHÂN BỊ HACK VÍ
+          </div>
+          <div class="rank-share">
+            <span>HẠNG #4</span>
+            <span class="pill">13% QUAN TÂM</span>
+          </div>
+        </div>
+        <div class="question-box">
+          <span class="q-icon">❓</span>
+          <div class="question-text">
+            "Bị hack ví, scam token báo Công an có được giúp? Con cái có được thừa kế?"
+          </div>
+        </div>
+        <div class="answer-box">
+          <span class="a-icon">💡</span>
+          <div class="answer-text">
+            Crypto chính thức là <strong>tài sản dân sự hợp pháp</strong>. Bạn có quyền làm đơn tố giác khi bị trộm private key và <strong>được đưa số dư ví vào di chúc thừa kế</strong>.
+          </div>
+        </div>
+        <div class="metric-bar-container">
+          <div class="bar-track">
+            <div class="bar-fill"></div>
+          </div>
+          <div class="bar-label">286+ Tương tác • Bảo vệ tài sản</div>
+        </div>
+      </article>
+
+      <!-- CARD #5 -->
+      <article class="topic-card card-5">
+        <div class="card-top">
+          <div class="target-badge">
+            DÀNH CHO: DÂN SĂN AIRDROP, ADMIN HỘI NHÓM & KOLS CRYPTO
+          </div>
+          <div class="rank-share">
+            <span>HẠNG #5</span>
+            <span class="pill">7% QUAN TÂM</span>
+          </div>
+        </div>
+        <div class="question-box">
+          <span class="q-icon">❓</span>
+          <div class="question-text">
+            "Chia sẻ kèo airdrop, gắn link ref sàn quốc tế trên mạng xã hội có bị phạt?"
+          </div>
+        </div>
+        <div class="answer-box">
+          <span class="a-icon">💡</span>
+          <div class="answer-text">
+            <strong>Chia sẻ kiến thức công nghệ thì hoàn toàn hợp pháp</strong>. Nhưng nhận tiền shill quảng cáo, lôi kéo người khác nạp tiền vào sàn không phép sẽ bị xử phạt nghiêm.
+          </div>
+        </div>
+        <div class="metric-bar-container">
+          <div class="bar-track">
+            <div class="bar-fill"></div>
+          </div>
+          <div class="bar-label">104+ Tương tác • Lằn ranh tiếp thị</div>
+        </div>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

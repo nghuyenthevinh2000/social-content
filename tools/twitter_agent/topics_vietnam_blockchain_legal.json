@@ -1,0 +1,89 @@
+{
+  "name": "vietnam_blockchain_legal_topics",
+  "version": "1.0.0",
+  "updated_at": "2026-10-02",
+  "description": "Targeted discovery topics for Vietnamese legal, regulatory, and policy discussions on blockchain, crypto assets, and virtual assets.",
+  "target_audience": [
+    "Web3 founders and crypto builders in Vietnam",
+    "Legal and compliance counsels specializing in fintech/blockchain",
+    "Crypto investors and institutional market participants in Vietnam"
+  ],
+  "quick_presets": {
+    "vn_crypto_law": "\"Luật Công nghiệp công nghệ số\", \"Nghị quyết 05\", \"tài sản mã hóa\", \"tài sản số\"",
+    "vn_crypto_sanctions": "\"Nghị định 284\", \"sàn không phép\", \"xử phạt crypto\", \"crypto fine\"",
+    "vn_blockchain_strategy": "\"Quyết định 1236\", \"Chiến lược blockchain\", \"Hiệp hội Blockchain Việt Nam\", \"VBA\""
+  },
+  "topics": [
+    {
+      "id": "vn-resolution-05-crypto-pilot",
+      "name": "Resolution 05 & Crypto Market Pilot",
+      "category": "Regulation & Sandbox",
+      "summary": "Discussions on Government Resolution 05/2025/NQ-CP establishing the 5-year pilot framework for crypto asset trading, domestic exchange licensing, and charter capital requirements.",
+      "search_keywords": [
+        "\"Resolution 05\"",
+        "\"Nghị quyết 05\"",
+        "\"tài sản mã hóa\"",
+        "\"crypto pilot vietnam\"",
+        "\"sàn crypto việt nam\"",
+        "\"crypto sandbox vietnam\""
+      ],
+      "watch_query": "\"Resolution 05\", \"Nghị quyết 05\", \"tài sản mã hóa\", \"crypto pilot vietnam\""
+    },
+    {
+      "id": "vn-digital-tech-industry-law",
+      "name": "Law on Digital Technology Industry (Digital Assets Legal Status)",
+      "category": "Legislation",
+      "summary": "Analysis and public debate on the Law on Digital Technology Industry (passed mid-2025, effective Jan 1, 2026) granting civil property status to digital and virtual assets.",
+      "search_keywords": [
+        "\"Luật Công nghiệp công nghệ số\"",
+        "\"tài sản số\"",
+        "\"digital assets vietnam\"",
+        "\"virtual assets vietnam\"",
+        "\"tài sản ảo\""
+      ],
+      "watch_query": "\"Luật Công nghiệp công nghệ số\", \"tài sản số\", \"digital assets vietnam\""
+    },
+    {
+      "id": "vn-decree-284-enforcement",
+      "name": "Decree 284 Enforcement & Unlicensed Exchange Sanctions",
+      "category": "Enforcement & Penalties",
+      "summary": "Trending reactions and community concerns over Decree 284/2026/ND-CP imposing VND 30M-50M administrative penalties on domestic users trading on unlicensed offshore exchanges.",
+      "search_keywords": [
+        "\"Nghị định 284\"",
+        "\"xử phạt crypto\"",
+        "\"sàn không phép\"",
+        "\"unlicensed exchange vietnam\"",
+        "\"phạt tiền crypto\""
+      ],
+      "watch_query": "\"Nghị định 284\", \"xử phạt crypto\", \"sàn không phép\""
+    },
+    {
+      "id": "vn-national-blockchain-strategy",
+      "name": "National Blockchain Strategy & VBA Initiatives",
+      "category": "National Strategy",
+      "summary": "Prime Minister Decision 1236/QD-TTg on the National Blockchain Strategy toward 2030, government infrastructure pilots, and Vietnam Blockchain Association policy advocacy.",
+      "search_keywords": [
+        "\"Quyết định 1236\"",
+        "\"Chiến lược blockchain\"",
+        "\"blockchain vietnam 2030\"",
+        "\"Hiệp hội Blockchain Việt Nam\"",
+        "\"VBA\""
+      ],
+      "watch_query": "\"Quyết định 1236\", \"Chiến lược blockchain\", \"VBA\""
+    },
+    {
+      "id": "vn-crypto-tax-accounting",
+      "name": "Crypto Taxation & Circular 15 Accounting Standards",
+      "category": "Tax & Financial Compliance",
+      "summary": "Debates around Circular 15/2026/TT-BTC guidelines, digital asset corporate accounting standards, capital gains tax, and corporate compliance for Web3 companies.",
+      "search_keywords": [
+        "\"Thông tư 15\"",
+        "\"thuế crypto\"",
+        "\"thuế tài sản số\"",
+        "\"hạch toán crypto\"",
+        "\"crypto tax vietnam\""
+      ],
+      "watch_query": "\"Thông tư 15\", \"thuế crypto\", \"hạch toán crypto\""
+    }
+  ]
+}

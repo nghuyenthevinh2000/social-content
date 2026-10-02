@@ -33,6 +33,7 @@ submodules:
     submission loop.
   topic_config.py: Topic JSON validation and explicit query construction.
   topics.json: File topics.json
+  topics_vietnam_blockchain_legal.json: File topics_vietnam_blockchain_legal.json
 ---
 
 # Supervised X DOM CLI
