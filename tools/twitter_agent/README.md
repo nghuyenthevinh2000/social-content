@@ -1,19 +1,19 @@
 ---
 name: twitter_agent
-summary: Supervised X DOM CLI and explicitly approved standalone image posting with visible browser review, exact approval binding,
+summary: Terminal-operated X DOM CLI with direct reply submission and explicitly approved standalone image posting, exact content checks,
   attempt quotas, randomized browsing delays, single-click submissions, and JSON-configured topic reporting with an agent workflow.
 tags:
 - x
 - twitter
 - playwright
 - cdp
-- supervisor
+- terminal
 - human-in-the-loop
 submodules:
   topics/: Reusable report topic JSON configurations, a copyable template, and an agent how-to guide.
-  tests/: Unit, pacing, DOM fixture, supervisor review, topic configuration, and subprocess
-    CLI tests for the supervised X agent.
-  __init__.py: Persistent state and shared models for the supervised X CLI.
+  tests/: Unit, pacing, DOM fixture, direct submission, topic configuration, and subprocess
+    CLI tests for the terminal-operated X agent.
+  __init__.py: Persistent state and shared models for the terminal-operated X CLI.
   __main__.py: Entry point for python -m tools.twitter_agent.
   AGENTS.md: Agent instructions for creating topic JSON configurations and running evidence-backed reports.
   browser.py: Playwright CDP browser lifecycle management and paced doctor connectivity
@@ -30,21 +30,20 @@ submodules:
   replies.py: Paced target preparation, inspection, and submission interactions for replies.
   report.py: Candidate selection, report orchestration, and artifact generation.
   selectors.py: Centralized DOM selectors and block/challenge detection for X.
-  store.py: Transactional draft queue, attempt quotas, audit trail, and supervisor
+  store.py: Transactional draft queue, attempt quotas, audit trail, and submission
     lock.
-  supervisor.py: Interactive supervisor review orchestration, approval binding, and
-    submission loop.
+  submission.py: One-shot caller-selected reply submission with exact-content checks and no automatic retries.
   topic_config.py: Topic JSON validation and explicit query construction.
 ---
 
-# Supervised X DOM CLI
+# Terminal-operated X DOM CLI
 
-An agent-facing CLI with visible browser operations and mandatory human approval for every reply.
+An agent-facing CLI with visible browser operations and direct submission from the caller's terminal. No separate supervisor process or interactive approval prompt is required.
 
 ## Standalone image posts
 
 The separate image-post command saves the CDP publishing workflow used for the
-Ha Noi post. It does not modify the reply supervisor or publish on import.
+Ha Noi post. It does not publish on import.
 Launch Chrome with `./tools/twitter_agent/launch_browser.sh` and log into X first.
 
 ```bash
@@ -57,24 +56,24 @@ uv run python -m tools.twitter_agent.publish \
 
 Use `--approved` only after the human explicitly approves the exact text and image.
 The command checks the signed-in account, binds the uploaded image bytes by SHA-256,
-honors the existing pause, submission quotas, and supervisor lock, and clicks Post
+honors the existing pause, submission quotas, and submission lock, and clicks Post
 at most once. Confirmation verifies the returned text and one photo, accounting
 for X's appended media shortlink. Exit code 4 means uncertain submission: inspect
 X manually and **do not automatically retry**. Each invocation is a new attempt;
 there is no cross-run duplicate protection. Approval and attempt events use the
-existing `.twitter-agent` state directory. Replies still require supervisor approval.
+existing `.twitter-agent` state directory. The approval flag records approval already obtained through the caller's terminal; it does not launch a second review UI.
 
 ## Overview & Architecture
 
 - **Agent Commands:** Emit structured JSON to stdout and progress to stderr. Agents can read the timeline, search posts, inspect threads, and enqueue draft replies.
-- **Human Supervision:** A separate interactive terminal (`supervise`) owns the dedicated visible X tab. No reply can be submitted without explicit human approval typed in the supervisor terminal.
-- **Exact Approval Binding:** Approvals cryptographically bind the canonical target ID and exact reply text via SHA-256 digests. If composer text or target changes prior to submit, approval is invalidated and must be reviewed again.
+- **Direct Submission:** `reply submit DRAFT_ID` sends exactly the selected pending draft. Review the AI's work in your existing terminal before invoking it; no separate supervisor or FIFO submission loop runs.
+- **Exact Content Checks:** SHA-256 digests bind the canonical target ID and exact reply text. A changed composer blocks submission.
 - **One-Click Submission:** Exactly one click is dispatched per approved attempt. If DOM confirmation cannot be verified within a bounded window, the draft transitions to `uncertain` and requires manual review. No automatic retries occur.
 - **Operational Quotas & Burst Guard:** Enforces 6 submission attempts per rolling hour, 20 per rolling 24 hours, at least 120 seconds between attempts, and a maximum of 3 submissions within any 30-minute burst window.
-- **Strategy & Watchlist Discovery:** Maintains target accounts in SQLite, computes real-time opportunity scores based on recency and competition, and surfaces high-priority targets in the supervisor Strategy HUD. AI reply generation strategy is governed by `.agents/skills/twitter-reply-strategy/SKILL.md`.
+- **Strategy & Watchlist Discovery:** Maintains target accounts in SQLite and computes opportunity scores based on recency and competition. AI reply generation strategy is governed by `.agents/skills/twitter-reply-strategy/SKILL.md`.
 
 > [!NOTE]
-> Same-user process access is not an OS security isolation boundary. Keep the supervisor terminal reserved for human interaction. DOM automation also does not guarantee immunity from platform restrictions or rate limits.
+> Direct submission is a publishing action, not a dry run. DOM automation does not guarantee immunity from platform restrictions or rate limits.
 
 ## Browsing Delays
 
@@ -83,7 +82,7 @@ Browsing is paced automatically before each live action:
 - Account discovery (`from:handle` searches): **3–7 seconds**.
 - Feed scrolling: **2–5 seconds**, plus the existing 500 ms rendering wait.
 - Hashtag and other topic searches (including report Top/Latest searches): **5–10 seconds**.
-- Home/thread navigation and supervisor target opening: **3–7 seconds**.
+- Home/thread navigation and reply target opening: **3–7 seconds**.
 - After a randomly selected **50–100 actions**, an additional **30–60 second**
   break occurs before the next action; a new action budget is then selected.
 
@@ -93,12 +92,12 @@ opening profile pages. Delays and action counts are shared across pages, report
 topics, and polling cycles **within one CLI process**; separate CLI invocations
 start fresh and concurrent processes are not coordinated. Intentional scroll
 pauses do not consume the 30-second active collection budget. Local DOM fixtures
-skip randomized pacing. Submission quotas and mandatory approval are unchanged.
+skip randomized pacing. Submission quotas remain enforced.
 
 These delays reduce request bursts; they do not guarantee avoidance of platform
 restrictions. Detected blocks and challenges still stop browser operations.
 
-## Two-Terminal Workflow
+## Single-Terminal Workflow
 
 ### Step 1: Launch Chrome with Remote Debugging
 
@@ -127,23 +126,9 @@ uv sync
 uv run python -m tools.twitter_agent doctor
 ```
 
-### Step 3: Human Supervisor Terminal
+### Step 3: Read, prepare, and submit from your terminal
 
-In the human's terminal, launch the supervisor:
-
-```bash
-uv run python -m tools.twitter_agent supervise
-```
-
-The supervisor claims drafts FIFO, opens the target in the visible tab, fills the composer dialog, captures a screenshot, and displays draft details. The human reviews the draft and approves or rejects it using:
-
-- `approve DRAFT_ID`
-- `reject DRAFT_ID`
-- `defer`
-
-### Step 4: Agent Terminal
-
-In a separate terminal or subagent process, run read and preparation commands:
+Run read and preparation commands in the same terminal where you review the AI's work:
 
 ```bash
 # Manage target watchlist
@@ -170,7 +155,10 @@ uv run python -m tools.twitter_agent thread 123
 # Prepare a draft reply (123 is a placeholder ID)
 uv run python -m tools.twitter_agent reply prepare 123 --text "Your reply text here"
 
-# Check queue and supervisor status
+# After reviewing the returned draft, submit its exact ID (publishes immediately)
+uv run python -m tools.twitter_agent reply submit DRAFT_ID
+
+# Check queue and submission status
 uv run python -m tools.twitter_agent status
 
 # Pause or resume submissions
@@ -279,7 +267,13 @@ Import drafts atomically:
 uv run python -m tools.twitter_agent queue path/to/drafts.jsonl
 ```
 
-Each draft in the queue must still be individually reviewed and approved in the supervisor terminal. Note that `123` and `456` in examples above are placeholder IDs that users replace with real post IDs.
+Review drafts in your existing terminal, then invoke `reply submit DRAFT_ID` for each selected draft. Queue import never publishes automatically. `123` and `456` are placeholder post IDs.
+
+`supervise` has been removed. `status` now reports `submission` instead of
+`supervisor`. Existing drafts and audit history are preserved. Interrupted possible
+submissions become `uncertain` and cannot be submitted again. The legacy
+`supervisor.lock` filename is retained solely to exclude older running clients;
+it does not start or require a supervisor process.
 
 ## Global Options
 

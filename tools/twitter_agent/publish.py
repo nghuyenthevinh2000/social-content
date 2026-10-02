@@ -1,7 +1,7 @@
 """Publish one explicitly approved standalone image post via the existing CDP browser.
 
 Run as ``python -m tools.twitter_agent.publish --help``. Never retries a submit.
-This separate command does not change the reply supervisor approval workflow.
+No separate supervisor terminal is required.
 """
 
 import argparse
@@ -73,7 +73,7 @@ def publish(text: str, image: Path, store: Store, endpoint: str,
     if not expected_handle or not all(c.isascii() and (c.isalnum() or c == '_') for c in expected_handle):
         raise AgentError('invalid_account', 'Expected an X account handle.')
 
-    with store.supervisor_lock(), Browser(endpoint=endpoint) as browser:
+    with store.submission_lock(), Browser(endpoint=endpoint) as browser:
         page = browser.new_page()
         get_pacer().wait('navigation')
         page.goto('https://x.com/compose/post', wait_until='domcontentloaded')

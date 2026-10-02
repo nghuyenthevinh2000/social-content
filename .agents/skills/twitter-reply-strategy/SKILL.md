@@ -29,7 +29,7 @@ Only after the user confirms these values, proceed to discovery.
 
 - **The 70/30 Rule**: Spend 70% of X efforts replying to established audiences and 30% publishing original tweets. Replies borrow distribution immediately; original posts only reach your existing followers.
 - **Volume Target**: 15–20 high-quality replies per day. Hard ceiling at 50/day.
-- **Human-in-the-Loop Supervision**: All replies are enqueued as drafts. A human supervisor reviews and approves each one before it is posted.
+- **Terminal Review**: Enqueue replies as drafts and let the user review the AI's work in their existing terminal. Submit a selected draft only when the user requests publishing; no separate supervisor terminal is required.
 
 ---
 
@@ -140,12 +140,16 @@ For each approved candidate, draft a 1–3 sentence reply using the chosen arche
 uv run python -m tools.twitter_agent reply prepare <target_id> --text "<reply_text>"
 ```
 
-### Step 6 — Notify User
+### Step 6 — Submit When Requested
 
-Inform the operator that drafts are staged and ready for review:
+Inform the operator that drafts are staged for review in the existing terminal.
+When the operator requests publishing, submit the selected ID returned by `prepare`:
 ```bash
-uv run python -m tools.twitter_agent supervise
+uv run python -m tools.twitter_agent reply submit <draft_id>
 ```
+
+This publishes immediately. Do not automatically retry an `uncertain` attempt;
+inspect X manually instead. Queue import alone never authorizes publishing.
 
 ---
 

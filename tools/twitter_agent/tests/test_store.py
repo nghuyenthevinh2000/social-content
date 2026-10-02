@@ -52,7 +52,7 @@ class StoreTests(unittest.TestCase):
         self.store.claim_next()
         self.store.begin_submission(draft['id'], draft['digest'])
         restarted = Store(self.root, clock=lambda: self.now)
-        with restarted.supervisor_lock():
+        with restarted.submission_lock():
             restarted.recover()
         self.assertEqual(restarted.get(draft['id'])['state'], 'uncertain')
         self.assertIsNone(restarted.claim_next())
@@ -62,7 +62,7 @@ class StoreTests(unittest.TestCase):
         self.store.claim_next()
         with self.assertRaises(AgentError):
             self.store.recover()
-        with self.store.supervisor_lock():
+        with self.store.submission_lock():
             self.store.recover()
         self.assertEqual(self.store.get(draft['id'])['state'], 'pending')
         with self.assertRaises(AgentError):
@@ -214,7 +214,7 @@ class StoreTests(unittest.TestCase):
         status = other.status()
         self.assertTrue(status['paused'])
         self.assertEqual(status['limits'], {'hourly': 2, 'daily': 7, 'spacing': 5.5, 'burst_max': 3})
-        self.assertFalse(status['supervisor']['running'])
+        self.assertFalse(status['submission']['running'])
         self.assertIsNone(status['active_draft'])
         self.assertEqual(self.root.stat().st_mode & 0o777, 0o700)
         self.assertEqual(self.store.artifact_dir.stat().st_mode & 0o777, 0o700)
@@ -229,26 +229,26 @@ from pathlib import Path
 from tools.twitter_agent.models import AgentError
 from tools.twitter_agent.store import Store
 try:
-    with Store(Path(sys.argv[1])).supervisor_lock():
+    with Store(Path(sys.argv[1])).submission_lock():
         pass
 except AgentError as error:
     print(error.code)
     sys.exit(7)
 '''
-        with self.store.supervisor_lock():
-            status = self.store.status()['supervisor']
+        with self.store.submission_lock():
+            status = self.store.status()['submission']
             self.assertTrue(status['running'])
             self.assertEqual(status['pid'], os.getpid())
             self.assertTrue(status['session'])
             self.now += 100_000
-            self.assertTrue(Store(self.root).status()['supervisor']['running'])
+            self.assertTrue(Store(self.root).status()['submission']['running'])
             self.store.heartbeat()
-            self.assertEqual(self.store.status()['supervisor']['heartbeat'], self.now)
+            self.assertEqual(self.store.status()['submission']['heartbeat'], self.now)
             child = subprocess.run([sys.executable, '-c', script, str(self.root)],
                                    capture_output=True, text=True, timeout=10)
             self.assertEqual(child.returncode, 7, child.stderr)
-            self.assertEqual(child.stdout.strip(), 'supervisor_running')
-        self.assertFalse(self.store.status()['supervisor']['running'])
+            self.assertEqual(child.stdout.strip(), 'submission_running')
+        self.assertFalse(self.store.status()['submission']['running'])
         with self.assertRaises(AgentError):
             self.store.heartbeat()
         child = subprocess.run([sys.executable, '-c', script, str(self.root)],

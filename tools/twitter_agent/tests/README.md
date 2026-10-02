@@ -1,7 +1,7 @@
 ---
 name: tests
-summary: Unit, approved image-post confirmation and quota, pacing, DOM fixture, supervisor review, topic-folder configuration and template completeness, and subprocess
-  CLI tests for the supervised X agent.
+summary: Unit, approved image-post confirmation and quota, pacing, DOM fixture, direct reply submission, topic-folder configuration and template completeness, and subprocess
+  CLI tests for the terminal-operated X agent.
 tags:
 - tests
 - unittest
@@ -10,20 +10,18 @@ tags:
 - dom
 - cli
 submodules:
-  test_cli.py: Subprocess interface and topic-folder default tests for CLI commands, JSON output, and interactive
-    guard.
+  test_cli.py: Subprocess interface and topic-folder default tests for CLI commands, JSON output, and removed supervisor command.
   test_dom.py: Local fixture browser tests for DOM extraction and browser lifecycle.
   test_models.py: Input and exact-content approval contracts.
   test_pacing.py: Deterministic delay ranges, action-budget breaks, and browser read pacing tests.
   test_publish.py: Offline standalone image-post response verification, explicit approval, and shared quota tests.
   test_report.py: Deterministic selection, bounded collection, and atomic JSON artifact writing tests.
   test_store.py: Real SQLite, injected time, and process-lock regression tests.
-  test_supervisor.py: Tests for supervisor review loop, human decisions, and submission
-    boundaries.
+  test_submission.py: One-shot reply submission, selected drafts, exact-content checks, pause and quota enforcement, and no-retry tests.
   test_topic_config.py: Topic validation, query construction, config coverage, and template field parity with the reference configuration.
 ---
 
-# Test suite for supervised X CLI
+# Test suite for terminal-operated X CLI
 
 Run from the social-content root:
 

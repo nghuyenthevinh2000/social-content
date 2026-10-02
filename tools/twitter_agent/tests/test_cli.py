@@ -1,4 +1,4 @@
-"""Subprocess interface tests for CLI commands, JSON output, and interactive guard."""
+"""Subprocess interface tests for CLI commands and JSON output."""
 
 import io
 import json
@@ -22,7 +22,7 @@ class CliTests(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
-    def test_reply_prepare_and_supervise_interactive_guard(self):
+    def test_reply_prepare_and_removed_supervise_command(self):
         prepared = subprocess.run(
             self.base_cmd + ['reply', 'prepare', '123', '--text', 'Hello'],
             capture_output=True,
@@ -34,7 +34,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(body['data']['draft']['state'], 'pending')
         self.assertFalse(body['data']['browser_prepared'])
 
-        # piped input to supervise must be refused with interactive_required
+        # The separate supervisor command has been removed.
         supervisor = subprocess.run(
             self.base_cmd + ['supervise'],
             input='approve 123\n',
@@ -44,8 +44,8 @@ class CliTests(unittest.TestCase):
         self.assertNotEqual(supervisor.returncode, 0)
         supervisor_out = json.loads(supervisor.stdout)
         self.assertFalse(supervisor_out['ok'])
-        self.assertEqual(supervisor_out['error']['code'], 'interactive_required')
-        self.assertEqual(supervisor.returncode, 4)
+        self.assertEqual(supervisor_out['error']['code'], 'invalid_arguments')
+        self.assertEqual(supervisor.returncode, 2)
 
     def test_invalid_arguments_emits_json_exit_2(self):
         res = subprocess.run(
@@ -170,7 +170,23 @@ class CliTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(res.returncode, 0)
-        self.assertIn('Supervised X DOM CLI', res.stdout)
+        self.assertIn('Terminal-operated X DOM CLI', res.stdout)
+
+    def test_reply_submit_dispatches_without_interactive_prompt(self):
+        prepared = subprocess.run(
+            self.base_cmd + ['reply', 'prepare', '123', '--text', 'Hello'],
+            capture_output=True, text=True, check=True,
+        )
+        draft = json.loads(prepared.stdout)['data']['draft']
+        with patch('tools.twitter_agent.cli.Browser') as browser, \
+                patch('tools.twitter_agent.cli.submit_draft',
+                      return_value={**draft, 'state': 'submitted'}) as submit, \
+                patch('sys.stdout', new_callable=io.StringIO) as output:
+            code = main(['--state-dir', str(self.state_dir), 'reply', 'submit', draft['id']])
+        self.assertEqual(code, 0)
+        self.assertTrue(json.loads(output.getvalue())['ok'])
+        self.assertEqual(submit.call_args.args[2], draft['id'])
+        browser.assert_called_once()
 
     def test_watchlist_cli_commands(self):
         # Add

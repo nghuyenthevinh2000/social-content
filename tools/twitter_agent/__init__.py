@@ -1,1 +1,1 @@
-"""Persistent state and shared models for the supervised X CLI."""
+"""Persistent state and shared models for the terminal-operated X CLI."""

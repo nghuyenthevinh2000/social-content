@@ -43,7 +43,7 @@ class PublishTests(unittest.TestCase):
             store = Store(Path(root), clock=lambda: 10000)
             with self.assertRaises(AgentError):
                 reserve_attempt(store, {})
-            with store.supervisor_lock():
+            with store.submission_lock():
                 reserve_attempt(store, {'text': 'Hello'})
                 with self.assertRaises(AgentError) as caught:
                     reserve_attempt(store, {})
@@ -55,7 +55,7 @@ class PublishTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             store = Store(Path(root))
             store.set_paused(True)
-            with store.supervisor_lock(), self.assertRaises(AgentError) as caught:
+            with store.submission_lock(), self.assertRaises(AgentError) as caught:
                 reserve_attempt(store, {})
             self.assertEqual(caught.exception.code, 'paused')
 
