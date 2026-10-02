@@ -1,6 +1,6 @@
 ---
 name: social-content
-summary: Social content skills, research, publishing resources, and local tools for supervised X draft persistence.
+summary: Social content skills, research, publishing resources, and local tools for supervised X workflows and direct Facebook publishing.
 tags: [social-content, publishing, tools]
 submodules:
   FRONTMATTER.md: Master semantic routing manifest.
@@ -9,7 +9,7 @@ submodules:
   reflections/: Style analyses and retrospectives.
   scripts/: Repository automation and skill-hook tools.
   src/: Python application package.
-  tools/: Local automation and supervised X draft persistence.
+  tools/: Supervised X workflows and direct Facebook personal-profile publishing.
   topics/: Topic research, written posts, and visual assets.
 ---
 
@@ -38,7 +38,7 @@ This repository contains specialized agent skills, topic research, draft posts, 
 | [`topics/`](./topics/) | Unified thematic content directories containing written posts, article series, deep-dive research, presentations, and visual assets organized by topic slug for smooth narrative continuation. |
 | [`reflections/`](./reflections/) | Style DNA reports, creator style analyses, and retrospective reviews (e.g., produced by `writing-style-analyzer`). |
 | [`projects/`](./projects/) | Dedicated sub-projects and external repositories managed as submodules (e.g., [`projects/innovation-research`](./projects/innovation-research/)). |
-| [`tools/`](./tools/) | Local automation tools, including the persistent draft queue and guarded transitions for the supervised X CLI. |
+| [`tools/`](./tools/) | Supervised X automation and direct Facebook personal-profile publishing of approved text and images. |
 | [`.agents/skills/`](./.agents/skills/) | Custom agent skills and workflows powering the content generation, analysis, humanization, presentation design, and refinement pipeline. |
 
 ## Skill-Selection Router (Jev Hook)
