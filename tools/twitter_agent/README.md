@@ -1,6 +1,6 @@
 ---
 name: twitter_agent
-summary: Supervised X DOM CLI with visible browser review, exact approval binding,
+summary: Supervised X DOM CLI and explicitly approved standalone image posting with visible browser review, exact approval binding,
   attempt quotas, randomized browsing delays, single-click submissions, and JSON-configured topic reporting with an agent workflow.
 tags:
 - x
@@ -26,6 +26,7 @@ submodules:
   pacing.py: Shared randomized browsing delays and periodic action-budget breaks.
   posts.py: Paced post extraction and bounded read operations for timeline, search, and
     thread.
+  publish.py: Standalone approved image-post command with account checks, shared quotas, and single-click confirmation.
   replies.py: Paced target preparation, inspection, and submission interactions for replies.
   report.py: Candidate selection, report orchestration, and artifact generation.
   selectors.py: Centralized DOM selectors and block/challenge detection for X.
@@ -39,6 +40,29 @@ submodules:
 # Supervised X DOM CLI
 
 An agent-facing CLI with visible browser operations and mandatory human approval for every reply.
+
+## Standalone image posts
+
+The separate image-post command saves the CDP publishing workflow used for the
+Ha Noi post. It does not modify the reply supervisor or publish on import.
+Launch Chrome with `./tools/twitter_agent/launch_browser.sh` and log into X first.
+
+```bash
+uv run python -m tools.twitter_agent.publish \
+  --account TheVinhNguyen4 \
+  --text 'Your exact approved text' \
+  --image /absolute/path/to/image.jpg \
+  --approved
+```
+
+Use `--approved` only after the human explicitly approves the exact text and image.
+The command checks the signed-in account, binds the uploaded image bytes by SHA-256,
+honors the existing pause, submission quotas, and supervisor lock, and clicks Post
+at most once. Confirmation verifies the returned text and one photo, accounting
+for X's appended media shortlink. Exit code 4 means uncertain submission: inspect
+X manually and **do not automatically retry**. Each invocation is a new attempt;
+there is no cross-run duplicate protection. Approval and attempt events use the
+existing `.twitter-agent` state directory. Replies still require supervisor approval.
 
 ## Overview & Architecture
 
@@ -112,6 +136,7 @@ uv run python -m tools.twitter_agent supervise
 ```
 
 The supervisor claims drafts FIFO, opens the target in the visible tab, fills the composer dialog, captures a screenshot, and displays draft details. The human reviews the draft and approves or rejects it using:
+
 - `approve DRAFT_ID`
 - `reject DRAFT_ID`
 - `defer`
@@ -201,7 +226,6 @@ uv run python -m tools.twitter_agent report \
 - `3`: Browser connection failure or CDP session failure.
 - `4`: Partial / degraded run (one or more topics experienced timeouts, search errors, or unparseable timestamps).
 
-
 ## Topic Configuration
 
 [`topics/topics.json`](./topics/topics.json) contains ten broad themes for technical builders, founders, and
@@ -266,6 +290,7 @@ Global options may be specified before subcommands:
 - `--timeout-ms MS`: Timeout in milliseconds for browser operations (default: `15000`).
 
 Example:
+
 ```bash
 uv run python -m tools.twitter_agent --state-dir /path/to/state --cdp http://127.0.0.1:9222 status
 ```

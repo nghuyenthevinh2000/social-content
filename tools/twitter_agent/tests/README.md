@@ -1,6 +1,6 @@
 ---
 name: tests
-summary: Unit, pacing, DOM fixture, supervisor review, topic-folder configuration and template completeness, and subprocess
+summary: Unit, approved image-post confirmation and quota, pacing, DOM fixture, supervisor review, topic-folder configuration and template completeness, and subprocess
   CLI tests for the supervised X agent.
 tags:
 - tests
@@ -15,6 +15,7 @@ submodules:
   test_dom.py: Local fixture browser tests for DOM extraction and browser lifecycle.
   test_models.py: Input and exact-content approval contracts.
   test_pacing.py: Deterministic delay ranges, action-budget breaks, and browser read pacing tests.
+  test_publish.py: Offline standalone image-post response verification, explicit approval, and shared quota tests.
   test_report.py: Deterministic selection, bounded collection, and atomic JSON artifact writing tests.
   test_store.py: Real SQLite, injected time, and process-lock regression tests.
   test_supervisor.py: Tests for supervisor review loop, human decisions, and submission
