@@ -103,7 +103,7 @@ class TopicConfigTests(unittest.TestCase):
                 build_topic_query(topic, start=10, end=20)
 
     def test_bundled_topics_json_validates_cleanly(self):
-        bundled_path = Path(__file__).parent.parent / 'topics.json'
+        bundled_path = Path(__file__).parent.parent / 'topics' / 'topics.json'
         configured = json.loads(bundled_path.read_text(encoding='utf-8'))['topics']
         topics = load_topics(bundled_path)
         self.assertTrue(topics)
@@ -114,6 +114,26 @@ class TopicConfigTests(unittest.TestCase):
                 query = build_topic_query(topic, start=1000, end=2000)
                 self.assertTrue(query.startswith('('))
                 self.assertIn('since_time:1000 until_time:2000', query)
+
+    def test_all_topic_folder_configs_validate(self):
+        folder = Path(__file__).parent.parent / 'topics'
+        configs = list(folder.glob('*.json'))
+        self.assertTrue(configs)
+        for path in configs:
+            with self.subTest(config=path.name):
+                for topic in load_topics(path):
+                    self.assertIn('since_time:100 until_time:200',
+                                  build_topic_query(topic, start=100, end=200))
+
+    def test_template_matches_reference_config_fields(self):
+        folder = Path(__file__).parent.parent / 'topics'
+        template = json.loads((folder / 'template.json').read_text(encoding='utf-8'))
+        reference = json.loads((folder / 'topics_vietnam_blockchain_legal.json').read_text(encoding='utf-8'))
+        self.assertEqual(set(template), set(reference))
+        for topic in template['topics']:
+            self.assertEqual(set(topic), set(reference['topics'][0]))
+        # Report validation preserves the contextual fields rather than dropping them.
+        self.assertEqual(load_topics(folder / 'template.json'), template['topics'])
 
 
 if __name__ == '__main__':

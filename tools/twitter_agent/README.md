@@ -1,7 +1,7 @@
 ---
 name: twitter_agent
 summary: Supervised X DOM CLI with visible browser review, exact approval binding,
-  attempt quotas, randomized browsing delays, single-click submissions, and audience-focused topic discovery.
+  attempt quotas, randomized browsing delays, single-click submissions, and JSON-configured topic reporting with an agent workflow.
 tags:
 - x
 - twitter
@@ -10,13 +10,15 @@ tags:
 - supervisor
 - human-in-the-loop
 submodules:
+  topics/: Reusable report topic JSON configurations, a copyable template, and an agent how-to guide.
   tests/: Unit, pacing, DOM fixture, supervisor review, topic configuration, and subprocess
     CLI tests for the supervised X agent.
   __init__.py: Persistent state and shared models for the supervised X CLI.
   __main__.py: Entry point for python -m tools.twitter_agent.
+  AGENTS.md: Agent instructions for creating topic JSON configurations and running evidence-backed reports.
   browser.py: Playwright CDP browser lifecycle management and paced doctor connectivity
     checks.
-  cli.py: CLI parser, JSON output formatting, and command dispatch.
+  cli.py: CLI parser, JSON output formatting, and command dispatch with a topics-folder report default.
   launch_browser.sh: launch-browser.sh Detects whether Chrome is running with remote
     debugging (CDP) enabled. If not detected, launches Chrome with a dedicated user
     profil
@@ -32,8 +34,6 @@ submodules:
   supervisor.py: Interactive supervisor review orchestration, approval binding, and
     submission loop.
   topic_config.py: Topic JSON validation and explicit query construction.
-  topics.json: File topics.json
-  topics_vietnam_blockchain_legal.json: File topics_vietnam_blockchain_legal.json
 ---
 
 # Supervised X DOM CLI
@@ -163,6 +163,11 @@ uv run python -m tools.twitter_agent report --window-hours 24 --per-topic 5
 
 The `report` command gathers high-engagement posts found within a rolling lookback window across topics defined in a JSON topics file.
 
+**Agent workflow:** create or reuse a config in [`topics/`](./topics/), validate it,
+then run `report --topics-file tools/twitter_agent/topics/<subject>.json`.
+Follow the [step-by-step guide](./topics/README.md) and [agent instructions](./AGENTS.md).
+Generated evidence belongs in `.twitter-agent/reports/`, not the config folder.
+
 ```bash
 uv run python -m tools.twitter_agent report \
   [--topics-file PATH] \
@@ -174,7 +179,7 @@ uv run python -m tools.twitter_agent report \
 
 ### Options
 
-- `--topics-file PATH`: Path to topics JSON configuration (default: bundled `topics.json`).
+- `--topics-file PATH`: Path to topics JSON configuration (default: bundled `topics/topics.json`).
 - `--window-hours INT`: Lookback window in hours from current UTC time (default: `24`, must be > 0).
 - `--per-topic INT`: Target number of top posts selected per topic (default: `5`, 1 <= N <= candidate-limit).
 - `--candidate-limit INT`: Candidate collection budget per topic split evenly between `Top` and `Latest` tabs (default: `100`, 2 <= N <= 100).
@@ -199,7 +204,7 @@ uv run python -m tools.twitter_agent report \
 
 ## Topic Configuration
 
-`topics.json` contains ten broad themes for technical builders, founders, and
+[`topics/topics.json`](./topics/topics.json) contains ten broad themes for technical builders, founders, and
 tech-curious professionals: AI and machine learning; agents and automation;
 software and developer tools; cybersecurity and privacy; startups and products;
 blockchain and digital finance; science and emerging technology; work, careers,
@@ -211,9 +216,16 @@ fellowships, remote jobs, and free education. Add or remove topics as the audien
 changes; report coverage follows the configured list rather than a fixed count.
 
 - `id`, `name`, and `search_keywords` are required by the topic loader.
+- The JSON root must be an object with a nonempty `topics` array. Each `id` must
+  be unique within the file; `id` and `name` must be nonempty strings and
+  `search_keywords` a nonempty array of nonempty strings.
 - `category` and `summary` describe the scope in neutral terms.
 - `search_keywords` are literal terms or quoted phrases; the report builds an
   explicit OR query from them.
+- Hashtags are accepted. Unquoted X operators (`from:`, `lang:`, `min_faves:`),
+  parentheses, standalone `AND`/`OR`/`NOT`, malformed quotes, and control
+  characters are rejected. Multi-word terms are quoted automatically. Keep
+  query operators out of keyword phrases; the CLI adds the time filters.
 - `watch_query` and `quick_presets` are comma-separated terms for passing to
   `watch --topics`, not ready-made X search expressions. `watch` does not load
   the JSON file automatically.
@@ -221,6 +233,12 @@ changes; report coverage follows the configured list rather than a fixed count.
 Version 2 replaces the previous project-specific IDs and removes personal
 `relevance`, `priority`, `recommended_archetypes`, and `reply_angles` fields.
 Personal positioning and reply strategy belong outside the discovery list.
+
+Topic configs now live under `tools/twitter_agent/topics/`. Update older explicit
+paths from `tools/twitter_agent/topics.json` to
+`tools/twitter_agent/topics/topics.json`, and from
+`tools/twitter_agent/topics_vietnam_blockchain_legal.json` to
+`tools/twitter_agent/topics/topics_vietnam_blockchain_legal.json`.
 
 ## Batch Queue Format
 

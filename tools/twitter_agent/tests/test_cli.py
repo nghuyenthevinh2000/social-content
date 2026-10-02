@@ -445,6 +445,13 @@ class CliTests(unittest.TestCase):
         self.assertIn('--candidate-limit', res.stdout)
         self.assertIn('--output-dir', res.stdout)
 
+    def test_report_default_uses_topic_folder(self):
+        from tools.twitter_agent.cli import build_parser
+        args = build_parser().parse_args(['report'])
+        expected = Path(__file__).parent.parent / 'topics' / 'topics.json'
+        self.assertEqual(args.topics_file.resolve(), expected.resolve())
+        self.assertTrue(args.topics_file.is_file())
+
     def test_report_invalid_budget_does_not_connect(self):
         invalid_args_cases = [
             ['--candidate-limit', '1'],

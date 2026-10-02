@@ -1,0 +1,28 @@
+{
+  "name": "ai_agents_report_topics",
+  "version": "1.0.0",
+  "updated_at": "2026-10-02",
+  "description": "Example configuration to copy and adapt for a focused report.",
+  "target_audience": [
+    "software engineers building AI agents",
+    "technical founders evaluating agent tooling"
+  ],
+  "quick_presets": {
+    "ai_agent_tooling": "\"AI agents\", \"agent orchestration\", \"model context protocol\", #AIAgents"
+  },
+  "topics": [
+    {
+      "id": "ai-agent-tooling",
+      "name": "AI Agent Tooling",
+      "category": "AI & Developer Tools",
+      "summary": "Discover discussions about tools and workflows for building AI agents.",
+      "search_keywords": [
+        "AI agents",
+        "agent orchestration",
+        "model context protocol",
+        "#AIAgents"
+      ],
+      "watch_query": "\"AI agents\", \"agent orchestration\", \"model context protocol\", #AIAgents"
+    }
+  ]
+}

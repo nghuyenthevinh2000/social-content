@@ -117,7 +117,7 @@ Các thảo luận chất lượng cao và có lượng view lớn nhất trên 
 ## 5. Hướng Dẫn Sử Dụng `tools/twitter_agent` Để Quét Dữ Liệu Thực Tế
 
 Hệ thống đã chuẩn bị sẵn bộ từ khóa cấu hình tối ưu tại:
-`tools/twitter_agent/topics_vietnam_blockchain_legal.json`
+`tools/twitter_agent/topics/topics_vietnam_blockchain_legal.json`
 
 ### Quy trình chạy thu thập báo cáo
 
@@ -139,7 +139,7 @@ Hệ thống đã chuẩn bị sẵn bộ từ khóa cấu hình tối ưu tại
 
    ```bash
    uv run python -m tools.twitter_agent report \
-     --topics-file tools/twitter_agent/topics_vietnam_blockchain_legal.json \
+     --topics-file tools/twitter_agent/topics/topics_vietnam_blockchain_legal.json \
      --window-hours 4320 \
      --per-topic 10 \
      --candidate-limit 100 \

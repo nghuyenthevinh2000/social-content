@@ -150,8 +150,8 @@ def build_parser() -> JsonArgumentParser:
 
     # report
     rp = subparsers.add_parser('report', help='Report high-engagement posts across configured topics')
-    rp.add_argument('--topics-file', type=Path, default=Path(__file__).with_name('topics.json'),
-                    help='Path to topics JSON file (default: bundled topics.json)')
+    rp.add_argument('--topics-file', type=Path, default=Path(__file__).parent / 'topics' / 'topics.json',
+                    help='Path to topics JSON file (default: bundled topics/topics.json)')
     rp.add_argument('--window-hours', type=int, default=24, help='Lookback window in hours (default: 24)')
     rp.add_argument('--per-topic', type=int, default=5, help='Target number of selected posts per topic (default: 5)')
     rp.add_argument('--candidate-limit', type=int, default=100, help='Total candidate budget per topic split between Top and Latest (default: 100)')
