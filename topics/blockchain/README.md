@@ -16,8 +16,6 @@ submodules:
     niềm tin ngành logistics thế nào?'
   pop_up_village.md: Từ Những Bóng Ma Không Quốc Gia Đến Giấc Mơ Dựng Làng
   pop_up_village_fb.md: Sự dịch chuyển của nền kinh tế Digital Nomad
-  vietnam_blockchain_legal_report.md: 'Báo Cáo Phân Tích: Các Thảo Luận Pháp Lý Về
-    Blockchain Tại Việt Nam Trên X (Twitter) Trong 6 Tháng Qua'
 ---
 
 # Real-World Blockchain & Institutional Finance (Blockchain Thực chiến & Tài chính Định chế)
