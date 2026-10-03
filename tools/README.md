@@ -3,6 +3,7 @@ name: tools
 summary: Local automation tools for terminal-operated X workflows and direct approved-input Facebook and LinkedIn personal publishing.
 tags: [tools, automation, social-content]
 submodules:
+  social_agent/: Shared platform-independent browser CDP diagnostics and launcher foundation.
   facebook_agent/: Direct Facebook text and image publishing using the shared Chrome profile.
   twitter_agent/: Terminal-operated X DOM CLI with direct reply submission and approved image posting.
   linkedin_agent/: Direct approved-input doctor/post CLI with JSON exits, local image validation, and uncertainty-safe personal posting.
@@ -10,6 +11,8 @@ submodules:
 
 # Tools
 
+- [`social_agent/`](./social_agent/): Shared platform-independent browser CDP
+  diagnostics and browser startup foundation.
 - [`facebook_agent/`](./facebook_agent/): Direct personal-profile publishing of
   approved text and images, using the existing `chrome-twitter-profile`.
 - [`twitter_agent/`](./twitter_agent/): Terminal-operated X DOM CLI with visible

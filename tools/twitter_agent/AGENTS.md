@@ -38,5 +38,5 @@ JSON configs and is intended for reply opportunity discovery.
    comply with the repository's README-tree validation rule.
 
 Chrome must already be launched with CDP and logged into X manually. If needed,
-ask the human to run `./tools/twitter_agent/launch_browser.sh` and log in;
+ask the human to run `uv run python -m tools.social_agent start-browser` and log in;
 `uv run python -m tools.twitter_agent doctor` verifies the connection.

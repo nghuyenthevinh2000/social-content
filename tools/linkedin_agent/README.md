@@ -10,8 +10,7 @@ submodules:
   browser.py: CDP lifecycle and feed doctor with final readiness revalidation and endpoint-free diagnostics.
   selectors.py: Legacy and native composer/media controls, own-profile and personal picker scoping, semantic previews, and visible challenge detection.
   posts.py: Hydrated empty personal drafts, selected-member evidence, emitted choosers, hashed ordered files, decoded previews, and guarded trusted dispatch.
-  launch_browser.sh: Delegates arguments to the unchanged shared-profile Twitter launcher.
-  tests/: Offline subprocess CLI, mocked dispatch/CDP, local Chromium fixtures, launcher help, and input validation tests.
+  tests/: Offline subprocess CLI, mocked dispatch/CDP, local Chromium fixtures, and input validation tests.
 ---
 
 # LinkedIn agent
@@ -31,10 +30,10 @@ retry. Run commands from the `projects/social-content` project root.
 
 ```bash
 uv sync
-./tools/linkedin_agent/launch_browser.sh
+uv run python -m tools.social_agent start-browser
 ```
 
-The launcher reuses `$HOME/chrome-twitter-profile` and local CDP port `9222`;
+The browser startup reuses `$HOME/chrome-twitter-profile` and local CDP port `9222`;
 it is the same dedicated Chrome profile used by the other social tools, not
 your ordinary Chrome profile. In that Chrome window, visit LinkedIn, **log in
 manually**, complete any checkpoint/2FA yourself, and select English as the
@@ -140,10 +139,8 @@ same uniqueness checks: mixed layouts and hidden duplicates fail closed. Feed
 links outside legacy navigation are not authentication evidence; no dynamic
 hashed classes are used.
 
-The executable `launch_browser.sh` forwards all arguments to the existing
-Twitter launcher, retaining `$HOME/chrome-twitter-profile` and CDP port `9222`.
-Use `./tools/linkedin_agent/launch_browser.sh --help` from the project root to
-inspect options without launching Chrome. The runtime does not import Twitter
+Browser startup uses `uv run python -m tools.social_agent start-browser`, retaining
+`$HOME/chrome-twitter-profile` and CDP port `9222`. The runtime does not import Twitter
 models or selectors.
 
 ## Scoped personal posting

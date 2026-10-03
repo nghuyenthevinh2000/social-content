@@ -2,42 +2,65 @@
 
 from playwright.sync_api import sync_playwright
 
+from tools.social_agent.browser import CDPBrowser
 from .models import AgentError
+from .posting import inspect_profile
 
 
-class Browser:
-    def __init__(self, endpoint: str = 'http://127.0.0.1:9222', timeout_ms: int = 15000):
-        self.endpoint = endpoint
-        self.timeout_ms = timeout_ms
-        self._playwright = None
-        self._page = None
+class Browser(CDPBrowser):
+    """Facebook browser session backed by shared CDP foundation."""
+
+    def __init__(self, endpoint: str = 'http://127.0.0.1:9222', timeout_ms: int = 30000):
+        super().__init__(endpoint=endpoint, timeout_ms=timeout_ms)
         self.keep_page = False
+        self._single_page = None
 
     def __enter__(self):
-        try:
-            self._playwright = sync_playwright().start()
-            browser = self._playwright.chromium.connect_over_cdp(self.endpoint, timeout=self.timeout_ms)
-            if not browser.contexts:
-                raise AgentError('browser_connection_failed', 'Chrome has no existing browser context.', True)
-            self._page = browser.contexts[0].new_page()
-            self._page.set_default_timeout(self.timeout_ms)
-            self._page.bring_to_front()
-            return self
-        except Exception as exc:
-            self.__exit__(None, None, None)
-            if isinstance(exc, AgentError):
-                raise
-            raise AgentError('browser_connection_failed', f'Cannot connect to Chrome CDP at {self.endpoint}: {exc}', True) from exc
+        super().connect()
+        self._single_page = self.new_page()
+        self._single_page.bring_to_front()
+        return self
 
     @property
     def page(self):
-        return self._page
+        return self._single_page
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def check_authenticated(self) -> dict:
+        """Verify that an account is already logged in with a personal profile.
+
+        Navigates through /me, validating that the user is authenticated and has
+        an active, editable personal profile (not a Page, Group, or login screen).
+
+        Returns:
+            dict with profile 'name' and 'url'.
+
+        Raises:
+            AgentError('not_authenticated'): If not logged into Facebook.
+            AgentError('browser_challenge'): If Facebook presents a checkpoint/2FA.
+            AgentError('account_restricted'): If the account is restricted.
+            AgentError('not_personal_profile'): If logged into a Page or Group.
+        """
+        return inspect_profile(self.page, self.timeout_ms)
+
+    def is_authenticated(self) -> bool:
+        """Check if an account is already logged into Facebook without raising on failure."""
         try:
-            if self._page is not None and not self.keep_page:
-                self._page.close()
-        finally:
-            if self._playwright is not None:
-                # Do not close the CDP browser or context: both belong to the user.
-                self._playwright.stop()
+            self.check_authenticated()
+            return True
+        except AgentError:
+            return False
+
+    def doctor(self) -> dict:
+        """Check CDP connectivity, authentication, and personal profile readiness."""
+        profile = self.check_authenticated()
+        return {
+            'connected': True,
+            'authenticated': True,
+            'profile': profile,
+            'endpoint': self.endpoint,
+        }
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.keep_page and self._single_page:
+            self.preserve_page(self._single_page)
+        super().__exit__(exc_type, exc_val, exc_tb)

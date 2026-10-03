@@ -7,11 +7,11 @@ submodules:
   __init__.py: Facebook agent package.
   __main__.py: Module entry point.
   models.py: Content validation and structured errors.
-  selectors.py: English accessibility selectors and account challenge checks.
+  dom.py: Feature-by-feature English DOM identifiers and locator functions.
+  selectors.py: Visibility, uniqueness, and account challenge checks.
   browser.py: Existing Chrome CDP connection and tab lifecycle.
   posting.py: Personal-profile and attachment checks with single-click DOM publishing.
   cli.py: Doctor and direct post commands with JSON output.
-  launch_browser.sh: Reuse the X launcher and chrome-twitter-profile.
 ---
 
 # Facebook personal-profile agent
@@ -29,14 +29,14 @@ From `projects/social-content`:
 
 ```bash
 uv sync
-bash tools/facebook_agent/launch_browser.sh
+uv run python -m tools.social_agent start-browser
 ```
 
-The wrapper reuses `tools/twitter_agent/launch_browser.sh`, including its default
-`$HOME/chrome-twitter-profile` and CDP port `9222`. If that Chrome is already
-running, it is reused. **Manually log into Facebook in that same Chrome window.**
-Your X login is unaffected. Do not launch two Chrome processes with the same
-profile or run X and Facebook write operations concurrently.
+The browser startup uses the shared `$HOME/chrome-twitter-profile` and CDP port
+`9222`. If that Chrome is already running, it is reused. **Manually log into
+Facebook in that same Chrome window.** Your X login is unaffected. Do not launch
+two Chrome processes with the same profile or run X and Facebook write operations
+concurrently.
 
 Use Facebook's English-language interface for this initial version.
 
@@ -105,6 +105,32 @@ ambiguous controls stop the agent rather than guessing. Automated fixtures
 validate the flow, not compatibility with every live Facebook account. No live
 posts were made during development. Platform restrictions still apply; login
 and challenges require manual attention rather than bypassing them.
+
+## DOM identifiers
+
+All Facebook UI identifiers live in [`dom.py`](dom.py), grouped by feature.
+Each named function returns a locator; it does not click or choose the first
+match. Update the relevant function when Facebook changes that feature.
+
+| Feature | Locator function(s) |
+| --- | --- |
+| Login / restrictions | `login_password_input`, `account_restriction_dialog` |
+| Profile name | `profile_name`, `profile_primary_heading`, `profile_heading` |
+| Own-profile / Page controls | `profile_edit_control`, `page_management_control` |
+| Open composer | `composer_trigger` |
+| Create post dialog | `composer_dialog`, `composer_dialog_with_textbox` |
+| Posting author | `posting_identity` |
+| Audience | `audience_button` |
+| Post text | `post_textbox` |
+| Upload | `photo_video_button`, `image_upload_input`, `attachment_inputs` |
+| Attachment / image preview | `remove_attachment_button`, `remove_photo_button`, `uploaded_image` |
+| Next / Post | `next_button`, `post_button`, `submission_dialog` |
+| Sharing confirmation | `post_confirmation` |
+
+Profile locators take a page; composer locators take the composer dialog.
+`post_button` accepts either scope for Facebook's optional Next step.
+`selectors.py` handles visibility, uniqueness, and account safety;
+`posting.py` handles navigation, validation, and publishing.
 
 ## Tests
 

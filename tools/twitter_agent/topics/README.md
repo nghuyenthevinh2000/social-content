@@ -81,7 +81,7 @@ uv run python -m tools.twitter_agent doctor
 ```
 
 If Chrome is unavailable, ask the human to run
-`./tools/twitter_agent/launch_browser.sh` and log into X. Stop for human action
+`uv run python -m tools.social_agent start-browser` and log into X. Stop for human action
 if the doctor reports authentication problems, a challenge, or an account block.
 
 ## 4. Run the report CLI

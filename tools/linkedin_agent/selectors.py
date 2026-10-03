@@ -7,26 +7,29 @@ from .models import AgentError
 # Keep legacy navigation scoped; modern feed navigation uses a current Home button.
 AUTHENTICATED_HOME = (
     '#global-nav a[href="/feed/"], #global-nav a[href="https://www.linkedin.com/feed/"], '
+    'nav button:has(svg[id^="home-active"]), '
     'nav button[aria-current="true"]:is([aria-label="Home"], [aria-label^="Home, "])'
     ':is(:text-is("Home"), :has(:text-is("Home")))'
 )
 # Match the actionable container, not its noninteractive accessible-label child.
 START_POST = (
-    'button:has-text("Start a post"), button.share-box-feed-entry__trigger, '
+    'div[role="button"][tabindex="0"]:has(#draft-text-replaceable-component), '
+    'button.share-box-feed-entry__trigger, '
+    'button:has-text("Start a post"), '
     'div[role="button"][tabindex="0"]:has(div[aria-label="Start a post"])'
 )
 MODERN_COMPOSER = 'dialog[open][data-testid="dialog"]:has([data-sdui-screen="com.linkedin.sdui.flagshipnav.sharing.ShareCompose"])'
 COMPOSER = '[role="dialog"]:has(.share-creation-state__text-editor), [role="dialog"][aria-label="Create a post"], ' + MODERN_COMPOSER
 OWN_PROFILE = '#shareboxProfilePictureComponentRef a[href]'
-AUTHOR_PICKER = '[data-testid="lazy-column"][data-component-type="LazyColumn"]:has(p:text-is("Post as"))'
+AUTHOR_PICKER = '[data-testid="lazy-column"][data-component-type="LazyColumn"]:has(input[type="radio"]), [data-testid="lazy-column"][data-component-type="LazyColumn"]:has(p:text-is("Post as"))'
 MODERN_AUTHOR = 'div[role="button"][tabindex="0"][aria-expanded]:has(svg#caret-small):not(:has(svg#visibility-small)):not(:has(svg#comment-small))'
 AUTHOR = '.share-creation-state__member-info a[href], .share-creation-state__profile-info a[href]'
 EDITOR = '.share-creation-state__text-editor [contenteditable="true"], [contenteditable="true"][role="textbox"]'
-ADD_MEDIA = 'button[aria-label="Add media"], button[aria-label="Add a photo"], button[aria-label="Add photos"], button[aria-label="Add an image"], button[aria-label="Media"][aria-haspopup="dialog"]'
+ADD_MEDIA = 'button[aria-label="Add media"], button[aria-label="Add a photo"], button[aria-label="Add photos"], button[aria-label="Add an image"], button[aria-label="Media"][aria-haspopup="dialog"], button:has(svg#image-medium)'
 MEDIA_DIALOG = (
     '[role="dialog"]:not(:has(.share-creation-state__text-editor)):not([aria-label="Create a post"])'
     ':is(:has(input[type="file"]), [aria-label="Media editor"], [aria-label="Edit your photo"], [aria-label="Edit your images"])'
-    ', dialog[open][data-testid="dialog"]:has(header h2:text-is("Editor"))'
+    ', dialog[open][data-testid="dialog"]:has(header h2:text-is("Editor")), dialog[open][data-testid="dialog"]:has(header h2)'
 )
 FILE_INPUT = 'input[type="file"]'
 MODERN_THUMBNAIL = 'img[alt^="image "]'

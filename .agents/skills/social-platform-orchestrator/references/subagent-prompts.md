@@ -149,7 +149,7 @@ invoke_subagent(
 1. **CDP Port Offline (Exit Code 3)**:
    If a subagent reports `browser_connection_failed` or `not_authenticated`, the orchestrator notifies the user to run:
    ```bash
-   bash tools/twitter_agent/launch_browser.sh
+   uv run python -m tools.social_agent start-browser
    ```
    and complete manual login.
 

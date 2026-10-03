@@ -99,7 +99,7 @@ class BrowserLifecycleTests(unittest.TestCase):
             self.assertNotIn(secret, str(caught.exception))
 
     def test_cli_connection_failure_omits_endpoint_and_underlying_exception(self):
-        from tools.linkedin_agent.cli import main
+        from tools.linkedin_agent.cli import main, get_default_doctor_timeout_ms
         endpoint = 'https://user:password@example.test/path-token?query-token=secret#fragment-token'
         self.runtime.chromium.connect_over_cdp.side_effect = RuntimeError(endpoint)
         stdout, stderr = io.StringIO(), io.StringIO()
@@ -109,7 +109,7 @@ class BrowserLifecycleTests(unittest.TestCase):
         self.assertEqual(json.loads(stdout.getvalue())['error']['code'], 'browser_connection_failed')
         for secret in ('password', 'path-token', 'query-token', 'fragment-token', 'Traceback'):
             self.assertNotIn(secret, stdout.getvalue() + stderr.getvalue())
-        self.runtime.chromium.connect_over_cdp.assert_called_once_with(endpoint, timeout=15000)
+        self.runtime.chromium.connect_over_cdp.assert_called_once_with(endpoint, timeout=get_default_doctor_timeout_ms())
 
     def test_nonpositive_timeouts_are_rejected_before_connection(self):
         for timeout in (0, -1):
@@ -380,16 +380,6 @@ class SyntheticDOMTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, 'browser_challenge')
 
 
-class LauncherTests(unittest.TestCase):
-    def test_help_uses_shared_profile_and_port(self):
-        script = Path(__file__).resolve().parents[1] / 'launch_browser.sh'
-        result = subprocess.run(['bash', str(script), '--port', '9333', '--data-dir',
-                                 '/unused/profile with spaces', '--help'],
-                                capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('chrome-twitter-profile', result.stdout)
-        self.assertIn('9222', result.stdout)
-
-
 if __name__ == '__main__':
     unittest.main()
+

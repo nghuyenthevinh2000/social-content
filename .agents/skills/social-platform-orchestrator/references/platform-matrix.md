@@ -32,7 +32,7 @@ This reference document outlines the exact technical specifications, input valid
 ### Shared Browser Setup
 ```bash
 # Launch Chrome with dedicated social profile and CDP on port 9222
-bash tools/twitter_agent/launch_browser.sh
+uv run python -m tools.social_agent start-browser
 ```
 
 ### Pre-Flight Doctor Checks

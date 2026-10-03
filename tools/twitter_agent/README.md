@@ -19,9 +19,6 @@ submodules:
   browser.py: Playwright CDP browser lifecycle management and paced doctor connectivity
     checks.
   cli.py: CLI parser, JSON output formatting, and command dispatch with a topics-folder report default.
-  launch_browser.sh: launch-browser.sh Detects whether Chrome is running with remote
-    debugging (CDP) enabled. If not detected, launches Chrome with a dedicated user
-    profil
   models.py: Shared values, stable errors, and exact-content approval binding.
   pacing.py: Shared randomized browsing delays and periodic action-budget breaks.
   posts.py: Paced post extraction and bounded read operations for timeline, search, and
@@ -44,7 +41,7 @@ An agent-facing CLI with visible browser operations and direct submission from t
 
 The separate image-post command saves the CDP publishing workflow used for the
 Ha Noi post. It does not publish on import.
-Launch Chrome with `./tools/twitter_agent/launch_browser.sh` and log into X first.
+Start Chrome with `uv run python -m tools.social_agent start-browser` and log into X first.
 
 ```bash
 uv run python -m tools.twitter_agent.publish \
@@ -101,10 +98,10 @@ restrictions. Detected blocks and challenges still stop browser operations.
 
 ### Step 1: Launch Chrome with Remote Debugging
 
-Launch Chrome with a dedicated profile outside the repository using the provided helper script:
+Start Chrome with a dedicated profile outside the repository using the shared social agent launcher:
 
 ```bash
-./tools/twitter_agent/launch_browser.sh
+uv run python -m tools.social_agent start-browser
 ```
 
 Or manually:

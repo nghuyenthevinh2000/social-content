@@ -2,10 +2,27 @@
 
 import argparse
 import json
+import os
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parents[1] / '.env'
+    if _env_path.exists():
+        load_dotenv(_env_path)
+except ImportError:
+    pass
 
 from .browser import Browser
 from .models import AgentError, validate_content
 from .posting import inspect_profile, publish
+
+
+def get_default_doctor_timeout_ms() -> int:
+    try:
+        return int(os.environ.get('DEFAULT_DOCTOR_TIMEOUT_MS', 30000))
+    except (ValueError, TypeError):
+        return 30000
 
 
 class JsonArgumentParser(argparse.ArgumentParser):
@@ -14,31 +31,37 @@ class JsonArgumentParser(argparse.ArgumentParser):
 
 
 def build_parser():
+    doctor_timeout = get_default_doctor_timeout_ms()
     parser = JsonArgumentParser(prog='facebook_agent', description='Publish approved content to your Facebook personal profile through visible Chrome.')
     parser.add_argument('--cdp', default='http://127.0.0.1:9222', help='Existing Chrome CDP endpoint')
-    parser.add_argument('--timeout-ms', type=int, default=15000, help='Timeout per DOM stage (default: 15000)')
+    parser.add_argument('--timeout-ms', type=int, default=None, help=f'Timeout per DOM stage (default: {doctor_timeout} for doctor, 15000 for post)')
     commands = parser.add_subparsers(dest='command', required=True)
-    commands.add_parser('doctor', help='Check connection, login, and personal-profile identity without posting')
+    doctor = commands.add_parser('doctor', help='Check connection, login, and personal-profile identity without posting')
+    doctor.add_argument('--timeout-ms', type=int, default=argparse.SUPPRESS, help=f'Timeout per DOM stage (default: {doctor_timeout})')
     post = commands.add_parser('post', help='Publish supplied approved content directly, without prompting')
     post.add_argument('--text', required=True, help='Exact approved post text')
     post.add_argument('--image', help='Optional local PNG, JPEG, GIF, or WebP image')
+    post.add_argument('--timeout-ms', type=int, default=argparse.SUPPRESS, help='Timeout per DOM stage (default: 15000)')
     return parser
 
 
 def main(argv=None) -> int:
     try:
         args = build_parser().parse_args(argv)
-        if args.timeout_ms <= 0:
+        timeout_ms = args.timeout_ms
+        if timeout_ms is None:
+            timeout_ms = get_default_doctor_timeout_ms() if args.command == 'doctor' else 15000
+        if timeout_ms <= 0:
             raise AgentError('invalid_arguments', 'timeout-ms must be positive.')
         if args.command == 'post':
             text, image = validate_content(args.text, args.image)
-        with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+        with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
             if args.command == 'doctor':
-                data = {'connected': True, 'authenticated': True, 'profile': inspect_profile(browser.page, args.timeout_ms), 'endpoint': args.cdp}
+                data = browser.doctor()
             else:
                 # Keep the visible tab for both successful posts and manual recovery.
                 browser.keep_page = True
-                data = publish(browser.page, text, image=image, timeout_ms=args.timeout_ms)
+                data = publish(browser.page, text, image=image, timeout_ms=timeout_ms)
         uncertain = data.get('status') == 'uncertain'
         print(json.dumps({'ok': not uncertain, 'data': data}, ensure_ascii=False, indent=2))
         return 4 if uncertain else 0

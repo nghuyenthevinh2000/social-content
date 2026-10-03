@@ -4,93 +4,17 @@ import re
 from typing import List, Optional
 from playwright.sync_api import sync_playwright
 
+from tools.social_agent.browser import CDPBrowser
 from .models import AgentError
 from .pacing import get_pacer
 from . import selectors
 
 
-class Browser:
+class Browser(CDPBrowser):
+    """Twitter/X browser session backed by shared CDP foundation."""
+
     def __init__(self, endpoint: str = 'http://127.0.0.1:9222', timeout_ms: int = 15000):
-        self.endpoint = endpoint
-        self.timeout_ms = timeout_ms
-        self._playwright = None
-        self._browser = None
-        self._context = None
-        self._created_pages: List = []
-
-    def __enter__(self):
-        try:
-            self._playwright = sync_playwright().start()
-            self._browser = self._playwright.chromium.connect_over_cdp(
-                self.endpoint, timeout=self.timeout_ms
-            )
-        except Exception as exc:
-            if self._playwright:
-                try:
-                    self._playwright.stop()
-                except Exception:
-                    pass
-            raise AgentError(
-                'browser_connection_failed',
-                f'Failed to connect to browser CDP at {self.endpoint}: {exc}',
-                human_action_required=True,
-            ) from exc
-
-        if not self._browser.contexts:
-            if self._playwright:
-                try:
-                    self._playwright.stop()
-                except Exception:
-                    pass
-            raise AgentError(
-                'no_browser_context',
-                'Chrome has no open browser contexts. Open at least one tab.',
-                human_action_required=True,
-            )
-
-        self._context = self._browser.contexts[0]
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # Close only tool-created temporary tabs, preserving existing user tabs
-        for page in list(self._created_pages):
-            try:
-                page.close()
-            except Exception:
-                pass
-        self._created_pages.clear()
-
-        # Disconnect client without calling browser.close() on user's browser
-        if self._playwright:
-            try:
-                self._playwright.stop()
-            except Exception:
-                pass
-
-    def new_page(self):
-        if not self._context:
-            raise AgentError('browser_not_connected', 'Browser is not connected.')
-        page = self._context.new_page()
-        page.set_default_timeout(self.timeout_ms)
-        self._created_pages.append(page)
-        return page
-
-    @property
-    def page(self):
-        """Current temporary page or create a new page if none exists."""
-        if not self._created_pages:
-            return self.new_page()
-        return self._created_pages[-1]
-
-
-    def close_page(self, page):
-        """Explicitly close a created temporary page."""
-        try:
-            page.close()
-        except Exception:
-            pass
-        if page in self._created_pages:
-            self._created_pages.remove(page)
+        super().__init__(endpoint=endpoint, timeout_ms=timeout_ms)
 
     def doctor(self) -> dict:
         """Check CDP connectivity, browser context, and X authentication."""

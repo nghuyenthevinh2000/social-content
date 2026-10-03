@@ -2,10 +2,27 @@
 
 import argparse
 import json
+import os
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parents[1] / '.env'
+    if _env_path.exists():
+        load_dotenv(_env_path)
+except ImportError:
+    pass
 
 from .browser import Browser
 from .models import AgentError, validate_inputs
 from .posts import publish_post
+
+
+def get_default_doctor_timeout_ms() -> int:
+    try:
+        return int(os.environ.get('DEFAULT_DOCTOR_TIMEOUT_MS', 30000))
+    except (ValueError, TypeError):
+        return 30000
 
 
 class JsonArgumentParser(argparse.ArgumentParser):
@@ -25,7 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument('--cdp', default='http://127.0.0.1:9222',
                         help='Shared Chrome DevTools Protocol endpoint')
-    parser.add_argument('--timeout-ms', type=int, default=15000,
+    parser.add_argument('--timeout-ms', type=int, default=None,
                         help='Positive browser operation timeout in milliseconds')
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('doctor', help='Check Chrome and LinkedIn login without posting',
@@ -41,18 +58,21 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     try:
         args = build_parser().parse_args(argv)
-        if args.timeout_ms <= 0:
+        timeout_ms = args.timeout_ms
+        if timeout_ms is None:
+            timeout_ms = get_default_doctor_timeout_ms() if args.command == 'doctor' else 15000
+        if timeout_ms <= 0:
             raise AgentError('invalid_timeout', 'Browser timeout must be positive.')
         # Snapshot and validate all approved inputs before even constructing Browser.
         if args.command == 'post':
             text, images = validate_inputs(args.text, args.image)
-        with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+        with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
             if args.command == 'doctor':
                 data = browser.doctor()
             else:
                 page = browser.new_page()
                 try:
-                    data = publish_post(page, text, images, timeout_ms=args.timeout_ms)
+                    data = publish_post(page, text, images, timeout_ms=timeout_ms)
                 except AgentError as error:
                     if error.code == 'submission_uncertain':
                         # Must happen inside the context, before owned-tab cleanup.

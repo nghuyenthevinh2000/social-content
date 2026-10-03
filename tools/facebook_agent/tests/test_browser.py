@@ -84,3 +84,29 @@ class BrowserTests(unittest.TestCase):
                 with Browser():
                     self.fail('No contexts should fail')
         self.assertTrue(session.stopped)
+
+    def test_doctor_authenticated(self):
+        session = Session()
+        mock_profile = {'name': 'John Doe', 'url': 'https://www.facebook.com/john.doe'}
+        with patch('tools.facebook_agent.browser.sync_playwright', return_value=session), \
+             patch('tools.facebook_agent.browser.inspect_profile', return_value=mock_profile):
+            with Browser() as browser:
+                result = browser.doctor()
+                self.assertEqual(result, {
+                    'connected': True,
+                    'authenticated': True,
+                    'profile': mock_profile,
+                    'endpoint': 'http://127.0.0.1:9222',
+                })
+                self.assertTrue(browser.is_authenticated())
+                self.assertEqual(browser.check_authenticated(), mock_profile)
+
+    def test_check_authenticated_raises_when_not_logged_in(self):
+        session = Session()
+        with patch('tools.facebook_agent.browser.sync_playwright', return_value=session), \
+             patch('tools.facebook_agent.browser.inspect_profile', side_effect=AgentError('not_authenticated', 'Log in')):
+            with Browser() as browser:
+                self.assertFalse(browser.is_authenticated())
+                with self.assertRaises(AgentError) as ctx:
+                    browser.check_authenticated()
+                self.assertEqual(ctx.exception.code, 'not_authenticated')

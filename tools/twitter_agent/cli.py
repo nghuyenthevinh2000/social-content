@@ -3,10 +3,19 @@
 import argparse
 import csv
 import json
+import os
 from pathlib import Path
 import sys
 import time
 from typing import List, Optional
+
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parents[1] / '.env'
+    if _env_path.exists():
+        load_dotenv(_env_path)
+except ImportError:
+    pass
 
 from .browser import Browser
 from .models import AgentError, normalize_target, validate_text
@@ -15,6 +24,13 @@ from .report import collect_report, write_report
 from .store import Store
 from .submission import submit_draft
 from .topic_config import load_topics
+
+
+def get_default_doctor_timeout_ms() -> int:
+    try:
+        return int(os.environ.get('DEFAULT_DOCTOR_TIMEOUT_MS', 30000))
+    except (ValueError, TypeError):
+        return 30000
 
 
 DEFAULT_TOPICS = (
@@ -71,15 +87,17 @@ def error_exit_code(code: str) -> int:
 
 
 def build_parser() -> JsonArgumentParser:
+    doctor_timeout = get_default_doctor_timeout_ms()
     parser = JsonArgumentParser(prog='twitter_agent', description='Terminal-operated X DOM CLI')
     parser.add_argument('--state-dir', default='.twitter-agent', help='Directory for database and artifacts')
     parser.add_argument('--cdp', default='http://127.0.0.1:9222', help='Chrome DevTools Protocol endpoint')
-    parser.add_argument('--timeout-ms', type=int, default=15000, help='Browser operations timeout in ms')
+    parser.add_argument('--timeout-ms', type=int, default=None, help=f'Browser operations timeout in ms (default: {doctor_timeout} for doctor, 15000 for others)')
 
     subparsers = parser.add_subparsers(dest='subcommand', required=True)
 
     # doctor
-    subparsers.add_parser('doctor', help='Check CDP connectivity and X authentication')
+    doc = subparsers.add_parser('doctor', help='Check CDP connectivity and X authentication')
+    doc.add_argument('--timeout-ms', type=int, default=argparse.SUPPRESS, help=f'Browser operations timeout in ms (default: {doctor_timeout})')
 
     # timeline
     tl = subparsers.add_parser('timeline', help='Read home timeline posts')
@@ -168,15 +186,22 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     store = Store(Path(args.state_dir))
 
+    timeout_ms = args.timeout_ms
+    if timeout_ms is None:
+        timeout_ms = get_default_doctor_timeout_ms() if args.subcommand == 'doctor' else 15000
+    if timeout_ms <= 0:
+        emit_error('invalid_arguments', 'timeout-ms must be positive.')
+        return 2
+
     try:
         if args.subcommand == 'doctor':
-            with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+            with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
                 data = browser.doctor()
                 emit_success(data)
                 return 0
 
         elif args.subcommand == 'timeline':
-            with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+            with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
                 page = browser.new_page()
                 data = read_posts(page, 'timeline', None, limit=args.limit)
                 emit_success(data)
@@ -193,7 +218,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             if args.min_score is not None and (args.min_score < 0.0 or args.min_score > 100.0):
                 raise AgentError('invalid_min_score', 'min-score must be between 0 and 100.')
 
-            with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+            with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
                 page = browser.new_page()
                 data = read_posts(page, 'search', query, limit=args.limit)
                 if args.min_score is not None:
@@ -202,7 +227,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 return 0
 
         elif args.subcommand == 'thread':
-            with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+            with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
                 page = browser.new_page()
                 data = read_posts(page, 'thread', args.target, limit=args.limit)
                 emit_success(data)
@@ -224,7 +249,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 draft = store.get(args.draft_id)
                 if draft['state'] != 'pending':
                     raise AgentError('invalid_state', 'Only pending drafts can be submitted.')
-                with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+                with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
                     draft = submit_draft(store, browser, args.draft_id)
                 emit_success({'draft': draft})
                 return 0 if draft['state'] == 'submitted' else 4
@@ -330,7 +355,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
                 def run_watch_cycle():
                     all_posts = []
-                    with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+                    with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
                         for t in topics:
                             query_topic = f'"{t}"' if ' ' in t and not (t.startswith('"') and t.endswith('"')) else t
                             suffix = 'min_faves:5 lang:en -filter:links'
@@ -357,7 +382,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
                 def run_watch_cycle():
                     all_posts = []
-                    with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+                    with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
                         for item in watchlist:
                             res = read_posts(browser.page, 'search', f"from:{item['handle']}", limit=args.limit)
                             posts = res.get('posts', [])
@@ -393,7 +418,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             end = int(time.time())
             start = end - args.window_hours * 3600
 
-            with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+            with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
                 report = collect_report(
                     browser.page,
                     topics,

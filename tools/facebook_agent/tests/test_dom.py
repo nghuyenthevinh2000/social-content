@@ -145,6 +145,35 @@ class DomTests(unittest.TestCase):
         self.assertEqual(result['name'], 'Alice Example')
         self.assertFalse(self.page.get_by_role('dialog').is_visible())
 
+    def test_profile_name_link_and_alternative_owner_control(self):
+        self.html = FIXTURE.replace(
+            '<h1>Alice Example</h1><button>Edit profile</button>',
+            '<h1>Facebook</h1><h2><a href="/alice.example">Alice Example</a></h2>'
+            '<div role="button" aria-label="Edit cover photo">Edit cover photo</div>')
+        result = inspect_profile(self.page, timeout_ms=500)
+        self.assertEqual(result['name'], 'Alice Example')
+
+    def test_composer_dialog_disambiguated_by_textbox(self):
+        self.html = FIXTURE.replace(
+            '</body>', '<div role="dialog"><h2>Create post</h2></div></body>')
+        result = publish(self.page, 'Hello', timeout_ms=500)
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertEqual(self.page.evaluate('window.clicks'), 1)
+
+    def test_post_button_in_next_step_dialog(self):
+        self.html = FIXTURE.replace(
+            '<button id="post" onclick="submitPost()">Post</button>',
+            '<button onclick="this.parentElement.hidden=true; '
+            'document.getElementById(\'submit-dialog\').hidden=false">Next</button>')
+        self.html = self.html.replace(
+            '<script>', '<div role="dialog" id="submit-dialog" hidden>'
+            '<button onclick="this.parentElement.hidden=true; submitPost()">Post</button>'
+            '</div><script>')
+        result = publish(self.page, 'Hello', timeout_ms=500)
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertEqual(self.page.evaluate('window.clicks'), 1)
+        self.assertEqual(self.page.evaluate('window.submittedText'), 'Hello')
+
     def test_login_required(self):
         self.html = '<input name="email"><input name="pass"><button>Log in</button>'
         with self.assertRaises(AgentError) as error:

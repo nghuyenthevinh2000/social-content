@@ -411,7 +411,7 @@ def wait_for_new_confirmation(page, baseline, timeout_ms) -> dict:
         page.wait_for_timeout(min(50, remaining))
 
 
-def publish_post(page, text: str, images: tuple[ImageInput, ...], timeout_ms: int = 15000) -> dict:
+def publish_post(page, text: str, images: tuple[ImageInput, ...], timeout_ms: int = 30000) -> dict:
     """Upload ordered snapshots, verify a personal draft, and click Post once.
 
     Caller supplies locally validated inputs. No browser operation is retried.
