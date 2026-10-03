@@ -204,11 +204,11 @@ class SyntheticDOMTests(unittest.TestCase):
         page = Mock(wraps=dom_page)
         page.url = feed_url
         if after_start_wait:
-            from tools.linkedin_agent import selectors
+            from tools.linkedin_agent import dom
 
             def locate(selector):
                 locator = dom_page.locator(selector)
-                if selector != selectors.START_POST:
+                if selector != dom.START_POST:
                     return locator
                 wrapped = Mock(wraps=locator)
 
@@ -263,11 +263,11 @@ class SyntheticDOMTests(unittest.TestCase):
                          {'connected': True, 'authenticated': True})
 
     def test_modern_start_post_selector_clicks_container_not_label(self):
-        from tools.linkedin_agent import selectors
+        from tools.linkedin_agent import dom, selectors
         self.page.set_content(self.MODERN_START + '<script>window.clicked=null;'
                               'document.querySelector("#start-post").onclick=event=>'
                               'window.clicked=event.currentTarget.id;</script>')
-        start_post = selectors.wait_for_selector_or_block(self.page, selectors.START_POST, 150)
+        start_post = selectors.wait_for_selector_or_block(self.page, dom.START_POST, 150)
         self.assertEqual(start_post.get_attribute('id'), 'start-post')
         start_post.click()
         self.assertEqual(self.page.evaluate('window.clicked'), 'start-post')
@@ -382,4 +382,3 @@ class SyntheticDOMTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

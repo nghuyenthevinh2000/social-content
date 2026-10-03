@@ -2,7 +2,7 @@
 
 from tools.social_agent.browser import CDPBrowser
 from .models import AgentError
-from . import selectors
+from . import dom, selectors
 
 
 class Browser(CDPBrowser):
@@ -25,11 +25,11 @@ class Browser(CDPBrowser):
                 raise AgentError(
                     'browser_navigation_failed', 'Cannot load the LinkedIn feed. Check connectivity.'
                 ) from exc
-            selectors.wait_for_selector_or_block(page, selectors.AUTHENTICATED_HOME, self.timeout_ms)
-            selectors.wait_for_selector_or_block(page, selectors.START_POST, self.timeout_ms)
+            selectors.wait_for_selector_or_block(page, dom.AUTHENTICATED_HOME, self.timeout_ms)
+            selectors.wait_for_selector_or_block(page, dom.START_POST, self.timeout_ms)
             selectors.detect_block(page)
             # Earlier readiness can become stale while waiting for the other control.
-            for selector in (selectors.AUTHENTICATED_HOME, selectors.START_POST):
+            for selector in (dom.AUTHENTICATED_HOME, dom.START_POST):
                 if not selectors.unique_locator(page, selector).is_visible():
                     raise AgentError('dom_timeout', 'LinkedIn feed controls are no longer visible.')
             return {'connected': True, 'authenticated': True}

@@ -8,7 +8,8 @@ submodules:
   cli.py: Doctor and repeatable-image post commands with pre-browser validation, JSON results, and uncertainty-safe disconnect.
   models.py: Structured errors and immutable validated text and image inputs.
   browser.py: CDP lifecycle and feed doctor with final readiness revalidation and endpoint-free diagnostics.
-  selectors.py: Legacy and native composer/media controls, own-profile and personal picker scoping, semantic previews, and visible challenge detection.
+  dom.py: Feature-grouped legacy and native DOM identifiers for feed, author, composer, media, and confirmation controls.
+  selectors.py: Fail-closed readiness, uniqueness, login, and visible challenge checks using dom.py identifiers.
   posts.py: Hydrated empty personal drafts, selected-member evidence, emitted choosers, hashed ordered files, decoded previews, and guarded trusted dispatch.
   tests/: Offline subprocess CLI, mocked dispatch/CDP, local Chromium fixtures, and input validation tests.
 ---
