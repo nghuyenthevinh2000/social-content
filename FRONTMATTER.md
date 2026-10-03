@@ -2,7 +2,7 @@
 name: social-content
 summary: Central repository root and semantic tree orchestrator for social content,
   AI agent orchestration, innovation research, topic deep-dives, and creative publishing
-  workflows, including supervised X replies and direct Facebook profile publishing.
+  workflows, with budget-first execution guidelines, supervised X replies, and direct Facebook profile publishing.
 tags:
 - social-content
 submodules:
