@@ -1,38 +1,19 @@
-"""Centralized DOM selectors and block/challenge detection for X."""
+"""Block/challenge detection and waiting for X; identifiers live in dom.py."""
 
-import re
 from typing import Optional
+from . import dom
 from .models import AgentError
-
-ARTICLE = 'article[data-testid="tweet"]'
-AUTHOR = '[data-testid="User-Name"]'
-TWEET_TEXT = '[data-testid="tweetText"]'
-TIMESTAMP_LINK = 'a[href*="/status/"]'
-REPLY_BUTTON = '[data-testid="reply"]'
-COMPOSER_DIALOG = '[role="dialog"]'
-COMPOSER_TEXTAREA = '[data-testid="tweetTextarea_0"]'
-SUBMIT_BUTTON = '[data-testid="tweetButton"]'
-SUBMIT_BUTTON_INLINE = '[data-testid="tweetButtonInline"]'
-LOGIN_BUTTON = '[data-testid="loginButton"]'
-LOGIN_LINK = 'a[href="/login"]'
-AUTHENTICATED_HOME = '[data-testid="AppTabBar_Home_Link"]'
-ACCOUNT_SWITCHER = '[data-testid="SideNav_AccountSwitcher_Button"]'
-
-# Challenge / block selectors
-CHALLENGE_CONTAINER = '[data-testid="challenge"]'
-ARKOSE_IFRAME = 'iframe[src*="arkoselabs"], iframe[title*="challenge"]'
-EMPTY_STATE = '[data-testid="emptyState"]'
 
 
 def detect_block(page) -> Optional[AgentError]:
     """Check for visible challenges, login walls, rate limits, or account blocks."""
     try:
         # Check login walls
-        if page.locator(LOGIN_BUTTON).count() > 0 or page.locator(LOGIN_LINK).count() > 0:
+        if page.locator(dom.LOGIN_BUTTON).count() > 0 or page.locator(dom.LOGIN_LINK).count() > 0:
             return AgentError('not_authenticated', 'Not logged in to X.', human_action_required=True)
 
         # Check challenges / captchas
-        if page.locator(CHALLENGE_CONTAINER).count() > 0 or page.locator(ARKOSE_IFRAME).count() > 0:
+        if page.locator(dom.CHALLENGE_CONTAINER).count() > 0 or page.locator(dom.ARKOSE_IFRAME).count() > 0:
             return AgentError('browser_challenge', 'X challenge detected: manual intervention required.', human_action_required=True)
 
         # Check text-based blocks

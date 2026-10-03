@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from playwright.sync_api import sync_playwright
 
+from tools.twitter_agent import dom
 from tools.twitter_agent.browser import Browser
 from tools.twitter_agent.models import AgentError, draft_digest
 from tools.twitter_agent.posts import read_posts
@@ -31,6 +32,28 @@ class DomTests(unittest.TestCase):
 
     def tearDown(self):
         self.context.close()
+
+    def test_extraction_uses_dom_identifiers(self):
+        self.page.set_content('''<article data-testid="customTweet">
+  <div data-testid="User-Name">Alice @alice</div>
+  <a href="/alice/status/123"><time>now</time></a>
+  <div data-testid="tweetText">Outer text</div>
+  <div data-testid="quoteTweet">
+    <div data-testid="tweetText">Quoted text</div>
+    <a href="/bob/status/456"><time>earlier</time></a>
+  </div>
+  <button data-testid="reply">2</button>
+  <button data-testid="retweet">3</button>
+  <button data-testid="like">4</button>
+  <a href="/alice/status/123/analytics">1K</a>
+</article>''')
+        with patch.object(dom, 'ARTICLE', 'article[data-testid="customTweet"]'):
+            post = read_posts(self.page, 'timeline', None, 1)['posts'][0]
+        self.assertEqual(post['id'], '123')
+        self.assertEqual(post['text'], 'Outer text')
+        self.assertEqual(post['metrics'], {
+            'replies': 2, 'retweets': 3, 'likes': 4, 'views': 1000, 'total': 9,
+        })
 
     def test_textless_outer_tweet_with_quoted_tweet(self):
         self.page.set_content('''<article data-testid="tweet">
@@ -391,4 +414,3 @@ class SearchModeTests(unittest.TestCase):
         with self.assertRaises(AgentError) as raised:
             read_posts(page, 'search', 'AI agents', limit=1, search_mode='invalid_mode')
         self.assertEqual(raised.exception.code, 'invalid_search_mode')
-

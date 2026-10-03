@@ -19,6 +19,7 @@ submodules:
   browser.py: Playwright CDP browser lifecycle management and paced doctor connectivity
     checks.
   cli.py: CLI parser, JSON output formatting, and command dispatch with a topics-folder report default.
+  dom.py: X DOM identifiers grouped by posts, composer, attachments, account, and challenges.
   models.py: Shared values, stable errors, and exact-content approval binding.
   pacing.py: Shared randomized browsing delays and periodic action-budget breaks.
   posts.py: Paced post extraction and bounded read operations for timeline, search, and
@@ -26,7 +27,7 @@ submodules:
   publish.py: Standalone approved image-post command with account checks, shared quotas, and single-click confirmation.
   replies.py: Paced target preparation, inspection, and submission interactions for replies.
   report.py: Candidate selection, report orchestration, and artifact generation.
-  selectors.py: Centralized DOM selectors and block/challenge detection for X.
+  selectors.py: Block/challenge detection and selector waiting for X.
   store.py: Transactional draft queue, attempt quotas, audit trail, and submission
     lock.
   submission.py: One-shot caller-selected reply submission with exact-content checks and no automatic retries.

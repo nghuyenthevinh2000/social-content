@@ -11,7 +11,7 @@ import mimetypes
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from . import selectors
+from . import dom, selectors
 from .browser import Browser
 from .models import AgentError, Limits, validate_text
 from .pacing import get_pacer
@@ -77,30 +77,30 @@ def publish(text: str, image: Path, store: Store, endpoint: str,
         page = browser.new_page()
         get_pacer().wait('navigation')
         page.goto('https://x.com/compose/post', wait_until='domcontentloaded')
-        page.locator(selectors.SUBMIT_BUTTON).wait_for(state='visible')
+        page.locator(dom.SUBMIT_BUTTON).wait_for(state='visible')
         block = selectors.detect_block(page)
         if block:
             raise block
-        profile = page.locator('[data-testid="AppTabBar_Profile_Link"]').get_attribute('href') or ''
+        profile = page.locator(dom.PROFILE_LINK).get_attribute('href') or ''
         if urlsplit(profile).path.lower() != '/' + expected_handle.lower():
             raise AgentError('account_mismatch', 'The logged-in account does not match --account.', True)
-        dialog = page.locator(selectors.COMPOSER_DIALOG).filter(
-            has=page.locator(selectors.SUBMIT_BUTTON)).last
-        textarea = dialog.locator(selectors.COMPOSER_TEXTAREA).first
+        dialog = page.locator(dom.COMPOSER_DIALOG).filter(
+            has=page.locator(dom.SUBMIT_BUTTON)).last
+        textarea = dialog.locator(dom.COMPOSER_TEXTAREA).first
         textarea.fill(text)
         # Upload exactly the bytes whose hash is bound to the approval.
-        dialog.locator('input[type="file"]').set_input_files({
+        dialog.locator(dom.FILE_INPUT).set_input_files({
             'name': image.name, 'mimeType': mimetypes.guess_type(image.name)[0] or 'application/octet-stream',
             'buffer': image_bytes,
         })
-        dialog.locator('[data-testid="attachments"]').wait_for(state='visible')
-        button = dialog.locator(selectors.SUBMIT_BUTTON)
-        page.wait_for_function('''() => {
-            const b = document.querySelector('[data-testid="tweetButton"]');
+        dialog.locator(dom.ATTACHMENTS).wait_for(state='visible')
+        button = dialog.locator(dom.SUBMIT_BUTTON)
+        page.wait_for_function('''selector => {
+            const b = document.querySelector(selector);
             return b && !b.disabled && b.getAttribute('aria-disabled') !== 'true';
-        }''')
+        }''', arg=dom.SUBMIT_BUTTON)
         if (textarea.inner_text() != text
-                or dialog.locator('[data-testid="attachments"] img').count() != 1
+                or dialog.locator(dom.ATTACHED_IMAGES).count() != 1
                 or not button.is_enabled()):
             raise AgentError('review_changed', 'Composer text, photo, or submit button changed.')
         block = selectors.detect_block(page)

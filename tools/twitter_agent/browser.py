@@ -7,7 +7,7 @@ from playwright.sync_api import sync_playwright
 from tools.social_agent.browser import CDPBrowser
 from .models import AgentError
 from .pacing import get_pacer
-from . import selectors
+from . import dom, selectors
 
 
 class Browser(CDPBrowser):
@@ -41,9 +41,9 @@ class Browser(CDPBrowser):
             auth_found = False
             user_handle = None
 
-            if page.locator(selectors.AUTHENTICATED_HOME).count() > 0 or page.locator(selectors.ACCOUNT_SWITCHER).count() > 0:
+            if page.locator(dom.AUTHENTICATED_HOME).count() > 0 or page.locator(dom.ACCOUNT_SWITCHER).count() > 0:
                 auth_found = True
-                switcher = page.locator(selectors.ACCOUNT_SWITCHER).first
+                switcher = page.locator(dom.ACCOUNT_SWITCHER).first
                 if switcher.count() > 0:
                     text = switcher.inner_text()
                     match = re.search(r'@[A-Za-z0-9_]+', text)

@@ -9,18 +9,18 @@ from typing import Optional
 
 from .models import AgentError, Target, normalize_target
 from .pacing import get_pacer
-from . import selectors
+from . import dom, selectors
 
 
 EXTRACT_ARTICLES_JS = r"""
-() => {
-    const articles = Array.from(document.querySelectorAll('article[data-testid="tweet"]'));
+selectors => {
+    const articles = Array.from(document.querySelectorAll(selectors.ARTICLE));
     const results = [];
     
     function isInsideQuote(el, article) {
         let parent = el.parentElement;
         while (parent && parent !== article) {
-            if (parent.getAttribute('data-testid') === 'quoteTweet') {
+            if (parent.matches(selectors.QUOTE_TWEET)) {
                 return true;
             }
             if (parent.getAttribute('role') === 'link' && parent.tagName !== 'A') {
@@ -33,12 +33,12 @@ EXTRACT_ARTICLES_JS = r"""
 
     for (const article of articles) {
         // Status link / time / id
-        const timeElements = Array.from(article.querySelectorAll('time'));
+        const timeElements = Array.from(article.querySelectorAll(selectors.TIMESTAMP));
         let topTime = null;
         let topLink = null;
         for (const timeEl of timeElements) {
             if (!isInsideQuote(timeEl, article)) {
-                const link = timeEl.closest('a[href*="/status/"]');
+                const link = timeEl.closest(selectors.TIMESTAMP_LINK);
                 if (link && !isInsideQuote(link, article)) {
                     topTime = timeEl;
                     topLink = link;
@@ -47,7 +47,7 @@ EXTRACT_ARTICLES_JS = r"""
             }
         }
         if (!topLink) {
-            const links = Array.from(article.querySelectorAll('a[href*="/status/"]'));
+            const links = Array.from(article.querySelectorAll(selectors.TIMESTAMP_LINK));
             for (const link of links) {
                 if (!isInsideQuote(link, article)) {
                     topLink = link;
@@ -65,7 +65,7 @@ EXTRACT_ARTICLES_JS = r"""
 
         // Author
         let authorObj = { name: '', handle: '', raw: '' };
-        const userNames = Array.from(article.querySelectorAll('[data-testid="User-Name"]'));
+        const userNames = Array.from(article.querySelectorAll(selectors.AUTHOR));
         for (const un of userNames) {
             if (!isInsideQuote(un, article)) {
                 const raw = un.innerText || '';
@@ -81,7 +81,7 @@ EXTRACT_ARTICLES_JS = r"""
 
         // Text
         let text = '';
-        const tweetTexts = Array.from(article.querySelectorAll('[data-testid="tweetText"]'));
+        const tweetTexts = Array.from(article.querySelectorAll(selectors.TWEET_TEXT));
         for (const tt of tweetTexts) {
             if (!isInsideQuote(tt, article)) {
                 text = tt.innerText || '';
@@ -107,17 +107,17 @@ EXTRACT_ARTICLES_JS = r"""
             return isNaN(num) ? 0 : Math.round(num * multiplier);
         }
 
-        const replyEl = article.querySelector('[data-testid="reply"]');
-        const retweetEl = article.querySelector('[data-testid="retweet"]');
-        const likeEl = article.querySelector('[data-testid="like"]');
-        const analyticsEl = article.querySelector('a[href*="/analytics"]');
+        const replyEl = article.querySelector(selectors.REPLY_BUTTON);
+        const retweetEl = article.querySelector(selectors.RETWEET_BUTTON);
+        const likeEl = article.querySelector(selectors.LIKE_BUTTON);
+        const analyticsEl = article.querySelector(selectors.ANALYTICS_LINK);
 
         const repliesCount = parseMetric(replyEl ? replyEl.innerText : '0');
         const retweetsCount = parseMetric(retweetEl ? retweetEl.innerText : '0');
         const likesCount = parseMetric(likeEl ? likeEl.innerText : '0');
         const viewsCount = parseMetric(analyticsEl ? analyticsEl.innerText : '0');
 
-        const isAd = Array.from(article.querySelectorAll('span')).some(el => el.textContent === 'Ad' || el.textContent === 'Promoted');
+        const isAd = Array.from(article.querySelectorAll(selectors.AD_LABEL)).some(el => el.textContent === 'Ad' || el.textContent === 'Promoted');
 
         const timestamp = topTime ? (topTime.getAttribute('datetime') || topTime.textContent || null) : null;
 
@@ -217,7 +217,7 @@ def read_posts(page, mode: str, value: Optional[str] = None, limit: int = 10, *,
     has_fixture = False
     if current_url == 'about:blank' or current_url.startswith('data:'):
         try:
-            has_fixture = page.locator(selectors.ARTICLE).count() > 0 or page.locator('[data-testid="primaryColumn"]').count() > 0
+            has_fixture = page.locator(dom.ARTICLE).count() > 0 or page.locator(dom.PRIMARY_COLUMN).count() > 0
         except Exception:
             pass
 
@@ -245,7 +245,7 @@ def read_posts(page, mode: str, value: Optional[str] = None, limit: int = 10, *,
             page.goto(target.url, wait_until='domcontentloaded')
 
         try:
-            page.wait_for_selector(selectors.ARTICLE, timeout=5000)
+            page.wait_for_selector(dom.ARTICLE, timeout=5000)
         except Exception:
             pass
         block = selectors.detect_block(page)
@@ -265,7 +265,19 @@ def read_posts(page, mode: str, value: Optional[str] = None, limit: int = 10, *,
             raise block
 
         # Extract articles currently in DOM
-        current_batch = page.evaluate(EXTRACT_ARTICLES_JS)
+        current_batch = page.evaluate(EXTRACT_ARTICLES_JS, {
+            'ARTICLE': dom.ARTICLE,
+            'QUOTE_TWEET': dom.QUOTE_TWEET,
+            'TIMESTAMP': dom.TIMESTAMP,
+            'TIMESTAMP_LINK': dom.TIMESTAMP_LINK,
+            'AUTHOR': dom.AUTHOR,
+            'TWEET_TEXT': dom.TWEET_TEXT,
+            'REPLY_BUTTON': dom.REPLY_BUTTON,
+            'RETWEET_BUTTON': dom.RETWEET_BUTTON,
+            'LIKE_BUTTON': dom.LIKE_BUTTON,
+            'ANALYTICS_LINK': dom.ANALYTICS_LINK,
+            'AD_LABEL': dom.AD_LABEL,
+        })
         new_in_batch = 0
         for post in current_batch:
             if post['id'] not in posts_by_id:
