@@ -10,6 +10,37 @@ Source: [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketi
 
 “Missing” below means **no dedicated equivalent**, not that an agent cannot perform the task. This is a comparison of documented workflows, not a benchmark of output quality. The upstream repository may change after this comparison.
 
+## Different starting points: professional workflows vs. learning by doing
+
+My own starting point matters here: this repository grew from being a beginner learning to do marketing. I added support for the problems I encountered: finding a story worth telling, learning how to write it, making visuals, researching conversations, and publishing safely.
+
+I read `marketingskills` as a toolkit organized around an established marketing discipline. It is easier to navigate when you already recognize the work you need: attribution, conversion-rate optimization (CRO), lifecycle email, pricing research, or revenue operations (RevOps). That is my interpretation of its structure, not a claim that beginners cannot use it.
+
+| Viewpoint | Their repository | This repository |
+|---|---|---|
+| Starting question | Which marketing workflow do I need to execute? | What do I need to learn or build to do this task? |
+| Organization | Broad coverage across marketing functions and the customer journey | Detailed support for tasks encountered while creating and distributing content |
+| Guidance | Marketing frameworks, specialist references, and service integrations | Interviews, previews, explicit review, and local execution workflows |
+| Likely blind spot | A beginner may not know which capability to look for | Problems I have not encountered may have no dedicated workflow yet |
+
+This explains why their repository contains capabilities I did not initially know to look for. My collection reflects the marketing problems I already recognize. Their collection gives me a map of areas I have yet to explore.
+
+The practical response is to choose a current goal, learn which marketing function supports it, and adopt the relevant workflow. Installing every skill would expand the collection without necessarily improving my understanding of when to use it.
+
+### What the follow-up inspection changed
+
+The initial comparison relied heavily on the skill list and selected files. It should remain a preliminary capability map. Their repository also has deeper reference documents, integration guides, and executable CLIs; comparing skill names alone misses some of that coverage.
+
+In particular, their `social` skill already covers X research and reply drafting:
+
+- [`listening.md`](https://github.com/coreyhaines31/marketingskills/blob/main/skills/social/references/listening.md) describes authenticated browser searches, profiles, and lists, followed by post extraction, opportunity scoring, and comment drafting. The user reviews and posts manually.
+- [`reverse-engineering.md`](https://github.com/coreyhaines31/marketingskills/blob/main/skills/social/references/reverse-engineering.md) describes creator discovery, post and engagement-data collection, and analysis of hooks, topics, and formats.
+- [`x-algorithm.md`](https://github.com/coreyhaines31/marketingskills/blob/main/skills/social/references/x-algorithm.md) provides algorithm research and posting guidance with sourcing caveats.
+
+They also ship a [Buffer CLI](https://github.com/coreyhaines31/marketingskills/blob/main/tools/clis/buffer.js) for outbound publishing and scheduled queue management. It does not provide X research or reply operations. Their [Buffer integration guide](https://github.com/coreyhaines31/marketingskills/blob/main/tools/integrations/buffer.md) notes that the CLI's legacy API is unavailable to new developer-app registrations, so the documented workflow is not automatically usable by a new account.
+
+Our X distinction is the dedicated executable CLI, persistent drafts and review, pacing controls, and approved reply submission. Research, opportunity scoring, and drafting are areas of overlap. A documented browser workflow or service integration also needs its external tools and authentication configured; installing the skill alone does not supply those.
+
 ## What They Have That We Lack
 
 | Capability | Their skills | Our coverage |
