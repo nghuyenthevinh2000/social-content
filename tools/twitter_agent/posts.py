@@ -1,12 +1,14 @@
 """Post extraction and bounded read operations for timeline, search, and thread."""
 
 import math
+import re
 import time
 import urllib.parse
 from datetime import datetime
 from typing import Optional
 
 from .models import AgentError, Target, normalize_target
+from .pacing import get_pacer
 from . import selectors
 
 
@@ -225,17 +227,21 @@ def read_posts(page, mode: str, value: Optional[str] = None, limit: int = 10, *,
             raise block
 
         if mode == 'timeline':
+            get_pacer().wait('navigation')
             page.goto('https://x.com/home', wait_until='domcontentloaded')
         elif mode == 'search':
             if not value or not value.strip():
                 raise AgentError('invalid_search_query', 'Search query cannot be empty.')
             encoded = urllib.parse.quote_plus(value.strip())
             feed = 'live' if search_mode == 'latest' else 'top'
+            action = 'profile' if re.fullmatch(r'from:[A-Za-z0-9_]+', value.strip()) else 'search'
+            get_pacer().wait(action)
             page.goto(f'https://x.com/search?q={encoded}&f={feed}', wait_until='domcontentloaded')
         elif mode == 'thread':
             if not value:
                 raise AgentError('invalid_target', 'Thread target is required.')
             target = normalize_target(value)
+            get_pacer().wait('navigation')
             page.goto(target.url, wait_until='domcontentloaded')
 
         try:
@@ -289,6 +295,9 @@ def read_posts(page, mode: str, value: Optional[str] = None, limit: int = 10, *,
             break
 
         # Scroll
+        if not has_fixture:
+            # Intentional pacing does not consume the active collection budget.
+            start_time += get_pacer().wait('scroll')
         page.evaluate('window.scrollBy(0, window.innerHeight * 1.5)')
         scrolls += 1
         page.wait_for_timeout(500)

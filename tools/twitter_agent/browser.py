@@ -5,6 +5,7 @@ from typing import List, Optional
 from playwright.sync_api import sync_playwright
 
 from .models import AgentError
+from .pacing import get_pacer
 from . import selectors
 
 
@@ -99,6 +100,7 @@ class Browser:
         page = self.new_page()
         try:
             try:
+                get_pacer().wait('navigation')
                 page.goto('https://x.com/home', wait_until='domcontentloaded', timeout=self.timeout_ms)
                 page.wait_for_timeout(1000)
             except Exception as e:

@@ -9,11 +9,11 @@ import time
 from typing import List, Optional
 
 from .browser import Browser
-from .models import AgentError, Limits, normalize_target, validate_text
+from .models import AgentError, normalize_target, validate_text
 from .posts import read_posts
 from .report import collect_report, write_report
 from .store import Store
-from .supervisor import supervise
+from .submission import submit_draft
 from .topic_config import load_topics
 
 
@@ -62,7 +62,7 @@ def error_exit_code(code: str) -> int:
     ):
         return 3
     if code in (
-        'supervisor_running', 'supervisor_lock_required', 'draft_not_found',
+        'submission_running', 'submission_lock_required', 'draft_not_found',
         'paused', 'rate_limited', 'digest_mismatch', 'interactive_required',
         'review_changed', 'submit_disabled', 'duplicate_draft', 'invalid_state'
     ):
@@ -71,7 +71,7 @@ def error_exit_code(code: str) -> int:
 
 
 def build_parser() -> JsonArgumentParser:
-    parser = JsonArgumentParser(prog='twitter_agent', description='Supervised X DOM CLI')
+    parser = JsonArgumentParser(prog='twitter_agent', description='Terminal-operated X DOM CLI')
     parser.add_argument('--state-dir', default='.twitter-agent', help='Directory for database and artifacts')
     parser.add_argument('--cdp', default='http://127.0.0.1:9222', help='Chrome DevTools Protocol endpoint')
     parser.add_argument('--timeout-ms', type=int, default=15000, help='Browser operations timeout in ms')
@@ -103,13 +103,15 @@ def build_parser() -> JsonArgumentParser:
     prep = rp_sub.add_parser('prepare', help='Persist pending draft without submitting')
     prep.add_argument('target', help='Target post ID or URL')
     prep.add_argument('--text', required=True, help='Exact reply text')
+    submit = rp_sub.add_parser('submit', help='Submit one selected draft immediately (no supervisor)')
+    submit.add_argument('draft_id', help='Prepared draft ID to submit')
 
     # queue
     qu = subparsers.add_parser('queue', help='Import drafts from JSONL file')
     qu.add_argument('file', help='Path to UTF-8 JSONL file')
 
     # status
-    subparsers.add_parser('status', help='Report supervisor availability, drafts, limits')
+    subparsers.add_parser('status', help='Report submission activity, drafts, limits')
 
     # pause
     subparsers.add_parser('pause', help='Pause submissions')
@@ -142,16 +144,10 @@ def build_parser() -> JsonArgumentParser:
     wc.add_argument('--min-score', type=float, default=None,
                     help='Minimum opportunity score (0-100) to return')
 
-    # supervise
-    sp = subparsers.add_parser('supervise', help='Run interactive human review terminal')
-    sp.add_argument('--hourly-limit', type=int, default=None, help='Max attempts per rolling hour')
-    sp.add_argument('--daily-limit', type=int, default=None, help='Max attempts per rolling 24 hours')
-    sp.add_argument('--min-spacing', type=float, default=None, help='Min seconds between submission attempts')
-
     # report
     rp = subparsers.add_parser('report', help='Report high-engagement posts across configured topics')
-    rp.add_argument('--topics-file', type=Path, default=Path(__file__).with_name('topics.json'),
-                    help='Path to topics JSON file (default: bundled topics.json)')
+    rp.add_argument('--topics-file', type=Path, default=Path(__file__).parent / 'topics' / 'topics.json',
+                    help='Path to topics JSON file (default: bundled topics/topics.json)')
     rp.add_argument('--window-hours', type=int, default=24, help='Lookback window in hours (default: 24)')
     rp.add_argument('--per-topic', type=int, default=5, help='Target number of selected posts per topic (default: 5)')
     rp.add_argument('--candidate-limit', type=int, default=100, help='Total candidate budget per topic split between Top and Latest (default: 100)')
@@ -222,6 +218,16 @@ def main(argv: Optional[List[str]] = None) -> int:
                     'browser_prepared': False,
                 })
                 return 0
+
+            elif args.reply_cmd == 'submit':
+                # Fail locally before opening Chrome for nonexistent or terminal drafts.
+                draft = store.get(args.draft_id)
+                if draft['state'] != 'pending':
+                    raise AgentError('invalid_state', 'Only pending drafts can be submitted.')
+                with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
+                    draft = submit_draft(store, browser, args.draft_id)
+                emit_success({'draft': draft})
+                return 0 if draft['state'] == 'submitted' else 4
 
         elif args.subcommand == 'queue':
             path = Path(args.file)
@@ -374,25 +380,6 @@ def main(argv: Optional[List[str]] = None) -> int:
                         time.sleep(args.poll)
                 except (KeyboardInterrupt, SystemExit):
                     return 0
-
-        elif args.subcommand == 'supervise':
-            if not sys.stdin.isatty():
-                raise AgentError(
-                    'interactive_required',
-                    'Interactive terminal required for supervise command.',
-                    human_action_required=True,
-                )
-
-            if args.hourly_limit is not None or args.daily_limit is not None or args.min_spacing is not None:
-                current_limits = store.status()['limits']
-                hourly = args.hourly_limit if args.hourly_limit is not None else current_limits['hourly']
-                daily = args.daily_limit if args.daily_limit is not None else current_limits['daily']
-                spacing = args.min_spacing if args.min_spacing is not None else current_limits['spacing']
-                store.configure_limits(Limits(hourly=hourly, daily=daily, spacing=spacing))
-
-            with Browser(endpoint=args.cdp, timeout_ms=args.timeout_ms) as browser:
-                supervise(store, browser)
-            return 0
 
         elif args.subcommand == 'report':
             if args.window_hours <= 0:

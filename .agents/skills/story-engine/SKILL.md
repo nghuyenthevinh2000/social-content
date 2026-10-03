@@ -4,7 +4,8 @@ description: >
   Unified storytelling skill. Run before writing any story, post, caption, or narrative.
   Covers two sequential phases: (1) Story Integrity — interrogates whether the story earns
   the right to be told; (2) Story Craft — shapes and writes the story using a platform-specific
-  format file from story-formats/. LinkedIn formats include Jescil-Richard and Jasmin Alić frameworks.
+  format file from story-formats/. Personal reflections also use the researched reflective-writing
+  method. LinkedIn formats include Jescil-Richard and Jasmin Alić frameworks.
 ---
 
 # Story Engine
@@ -29,8 +30,16 @@ Interrogates the story before any writing begins. Tests honesty, recognition, st
 
 Run this **always** before writing. A technically excellent draft on an unearned story feels hollow.
 
+### [reflective-writing](brainstorming/reflective-writing.md)
+For stories about past personal experience, read this alongside the integrity interrogation. It combines sourced author research with a method for recovering facts, clarifying emotional conflict, distinguishing then from now, and surfacing an earned lesson.
+
+Apply its reflective-writing clarifications to the integrity assessment: recognition can be enough, direct insight is allowed, and an internal question need not be a wound. Include its Reflection Brief fields within the existing Story Brief before platform-specific drafting.
+
+### Independent method: [world-interrogation](brainstorming/world-interrogation.md)
+Use directly when the user requests world-based brainstorming or a world-consistency diagnosis. It has its own topic and emotion interview, world selection, eight-symbol gap loop, approval gate, and consistency audit. It does not require the integrity or reflective-writing methods and is not a mandatory step in the workflow below. A request to run this independent method follows its own completion gate rather than the full Story Engine pre-draft gate.
+
 ### Story Craft — via `story-formats/<platform>/`
-After the integrity phase, select the appropriate format file for your platform. Each format file contains the parameter interview, story brief template, platform conventions, and post structures to apply.
+After the integrity phase, select the appropriate format file for your platform. Format files guide structure and writing practices; some also provide platform-specific interviews and brief templates. The long-form [personal essay guide](story-formats/longform/personal-essay.md) focuses on craft and uses the brief developed through reflective-writing brainstorming.
 
 **LinkedIn format files:**
 - [`story-formats/linkedin/jescil-richard-formats.md`](story-formats/linkedin/jescil-richard-formats.md) — 10-principle Jescil-Richard framework: parameter interview, story brief, bang opening, show/don't tell, punch ending
@@ -59,7 +68,9 @@ Platform-specific format files live in `story-formats/`. Each subfolder represen
 │  PHASE 1 — STORY INTEGRITY                                      │
 │  [brainstorming/integrity-interrogation.md]                      │
 │                                                                 │
-│  1. Run interrogation questions (honesty, recognition,          │
+│  1. For personal reflections, also read reflective-writing.md; │
+│     apply its method and integrity clarifications              │
+│     Run interrogation questions (honesty, recognition,          │
 │     stakes, transformation, craft, responsibility)              │
 │  2. Emotional recognition research — search similar stories     │
 │  3. Produce Story Readiness Assessment                          │
@@ -108,7 +119,7 @@ Platform-specific format files live in `story-formats/`. Each subfolder represen
 
 ### Enforcement — applies to all requests, all languages
 
-**No input bypasses the workflow.** A topic, an outline, a 4-part structure, a personal story, a platform name — none of these substitute for Phase 1. They are raw material, not permission to draft.
+**For the full story-writing workflow, no input bypasses the workflow.** A topic, an outline, a 4-part structure, a personal story, a platform name — none of these substitute for Phase 1. They are raw material, not permission to draft. A standalone world-interrogation request uses that method's own interview and approval gate; completing it does not automatically start this workflow.
 
 **No language bypasses the workflow.** Requests in Vietnamese, English, or any other language follow the identical 3-phase sequence.
 

@@ -1,4 +1,4 @@
-"""Transactional draft queue, attempt quotas, audit trail, and supervisor lock."""
+"""Transactional draft queue, attempt quotas, audit trail, and submission lock."""
 
 from contextlib import contextmanager
 from dataclasses import asdict
@@ -20,6 +20,7 @@ class Store:
         self.clock = clock
         self.db_path = self.root / 'state.sqlite3'
         self.artifact_dir = self.root / 'artifacts'
+        # Keep the legacy lock filename so older running clients cannot overlap.
         self.lock_path = self.root / 'supervisor.lock'
         self._lock_fd = None
         self._lock_pid = None
@@ -46,7 +47,7 @@ class Store:
             db.execute('CREATE INDEX IF NOT EXISTS attempt_windows ON events(kind, created_at)')
             db.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
             for key, value in [('paused', False), ('limits', asdict(Limits())),
-                               ('supervisor', {'pid': None, 'session': None, 'heartbeat': None})]:
+                               ('submission', {'pid': None, 'session': None, 'heartbeat': None})]:
                 db.execute('INSERT OR IGNORE INTO settings VALUES (?, ?)', (key, json.dumps(value)))
             db.execute('''CREATE TABLE IF NOT EXISTS watchlist (
                 handle TEXT PRIMARY KEY, notes TEXT NOT NULL, created_at REAL NOT NULL
@@ -147,7 +148,7 @@ class Store:
         with self._connection() as db:
             return self._get(db, draft_id)
 
-    def _supervisor_running(self):
+    def _submission_running(self):
         fd = self._open_private(self.lock_path)
         try:
             try:
@@ -166,12 +167,12 @@ class Store:
             events = [dict(row) for row in db.execute('SELECT * FROM events ORDER BY id DESC LIMIT 20')]
             for ev in events:
                 ev['detail'] = json.loads(ev['detail'])
-            supervisor = self._setting(db, 'supervisor')
-            supervisor['running'] = self._supervisor_running()
+            submission = self._setting(db, 'submission')
+            submission['running'] = self._submission_running()
             return {
                 'paused': self._setting(db, 'paused'),
                 'limits': self._setting(db, 'limits'),
-                'supervisor': supervisor,
+                'submission': submission,
                 'active_draft': next((draft for draft in drafts
                                       if draft['state'] in ('reviewing', 'submitting')), None),
                 'pending_drafts': [d for d in drafts if d['state'] == 'pending'],
@@ -200,16 +201,16 @@ class Store:
             self._event(db, 'limits_configured', None, asdict(limits), self.clock())
 
     @contextmanager
-    def supervisor_lock(self):
+    def submission_lock(self):
         if self._lock_fd is not None:
-            raise AgentError('supervisor_running', 'This store already holds a supervisor lock.')
+            raise AgentError('submission_running', 'This store already holds a submission lock.')
         fd = self._open_private(self.lock_path)
         acquired = False
         try:
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError as error:
-                raise AgentError('supervisor_running', 'Another supervisor is running.') from error
+                raise AgentError('submission_running', 'Another submission process is running.') from error
             acquired = True
             self._lock_fd = fd
             self._lock_pid = os.getpid()
@@ -224,12 +225,12 @@ class Store:
 
     def _require_lock(self):
         if self._lock_fd is None or self._lock_pid != os.getpid():
-            raise AgentError('supervisor_lock_required', 'Hold the supervisor lock for this operation.')
+            raise AgentError('submission_lock_required', 'Hold the submission lock for this operation.')
 
     def heartbeat(self) -> None:
         self._require_lock()
         with self._transaction() as db:
-            self._set_setting(db, 'supervisor', {
+            self._set_setting(db, 'submission', {
                 'pid': os.getpid(), 'session': self._session, 'heartbeat': self.clock(),
             })
 
@@ -241,7 +242,7 @@ class Store:
             for row in rows:
                 state = 'pending' if row['state'] == 'reviewing' else 'uncertain'
                 detail = json.loads(row['detail'])
-                detail.update(reason='interrupted supervisor', previous_state=row['state'])
+                detail.update(reason='interrupted submission', previous_state=row['state'])
                 self._transition(db, row['id'], state, detail, now, kind='recovered')
 
     def claim_next(self) -> dict | None:
@@ -256,6 +257,19 @@ class Store:
             self._transition(db, row['id'], 'reviewing', {}, self.clock())
             return self._get(db, row['id'])
 
+    def claim(self, draft_id: str) -> dict:
+        """Claim only the caller-selected pending draft, never an unrelated queue entry."""
+        self._require_lock()
+        with self._transaction() as db:
+            if self._setting(db, 'paused'):
+                raise AgentError('paused', 'Submissions are paused.')
+            draft = self._get(db, draft_id)
+            self._require_state(draft, ('pending',))
+            if db.execute("SELECT 1 FROM drafts WHERE state IN ('reviewing', 'submitting') LIMIT 1").fetchone():
+                raise AgentError('submission_running', 'Another draft is active.')
+            self._transition(db, draft_id, 'reviewing', {}, self.clock())
+            return self._get(db, draft_id)
+
     def defer(self, draft_id: str, reason: str) -> None:
         with self._transaction() as db:
             self._require_state(self._get(db, draft_id), ('reviewing',))
@@ -267,7 +281,7 @@ class Store:
             self._transition(db, draft_id, 'rejected', {}, self.clock())
 
     def begin_submission(self, draft_id: str, digest: str) -> None:
-        """Persist approval and the attempt atomically, before any browser click."""
+        """Persist the caller's submission authorization and attempt before clicking."""
         with self._transaction() as db:
             draft = self._get(db, draft_id)
             self._require_state(draft, ('reviewing',))

@@ -28,6 +28,20 @@
         "timeout": 15
       }
     ]
+  },
+  "story-engine-gate": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --project .. skills/story-engine/hooks/story_engine_guard_hook.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }
-

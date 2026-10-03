@@ -5,6 +5,9 @@ summary: Meaning & Mindset (Hành trình Ý nghĩa & Đời sống Nội tâm). 
 tags:
 - meaning-and-mindset
 submodules:
+  chin-thang-duoi-day-hu-vo.md: Chín Tháng Dưới Đáy Hư Vô Và Nhát Búa Của Người Thợ
+    Rèn
+  hanh-phuc-la-no-luc-nhom.md: Hạnh phúc cần nhóm bạn hỗ trợ
   meaning-economy-story-vi.md: Nền kinh tế ý nghĩa
   nghich-ly-khat-ket-noi.md: Nghịch Lý Nước Mặn và Cơn Khát Kết Nối
   nguoi-doc-khong-buoc-ra-ngoai.md: Người Đọc Không Bước Ra Ngoài

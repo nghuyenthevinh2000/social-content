@@ -1,12 +1,14 @@
 ---
 name: blockchain
 summary: Real-World Blockchain & Institutional Finance (Blockchain Thực chiến & Tài
-  chính Định chế). Purpose and documentation for topics/blockchain.
+  chính Định chế). Includes a Vietnam legal report with reproducible X topic-config commands.
 tags:
 - blockchain
 submodules:
   blockchain-enterprise-stack/: 'Institutional Digital Asset Stack: The Sovereign
     Financial Architecture. Purpose and documentation for topics/blockchain/blockchain-enterprise-stack.'
+  infographics/: Visual infographics, one-pagers, and data charts for real-world blockchain
+    and institutional digital assets.
   zk-commercialization/: Documentation and resources for topics/blockchain/zk-commercialization.
   blockchain_finance_mindmap.md: Làm kỹ sư blockchain 6 năm, lead tech một protocol
     tỷ đô, nhưng mình đã từng im lặng trong cuộc họp khi đối tác hỏi về "
