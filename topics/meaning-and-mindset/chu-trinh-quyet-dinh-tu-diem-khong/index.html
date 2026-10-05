@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chu Trình Quyết Định Từ Điểm Không</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&family=Lora:ital,wght@0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #F4F4F2;
+      font-family: 'Jost', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    #canvas {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 1280px;
+      height: 720px;
+      background: #FAF9F6;
+      border: 1px solid #E2E0D8;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* SECTION 1: THE DECISION ENGINE (Y: 0 -> 515px) */
+    .section-engine {
+      width: 1280px;
+      height: 515px;
+      position: relative;
+      display: flex;
+      border-bottom: 2px solid #E5E3DC;
+      background: radial-gradient(circle at 410px 255px, #FFFFFF 0%, #FAF9F6 70%);
+    }
+
+    /* Orbit Area */
+    .orbit-area {
+      width: 820px;
+      height: 515px;
+      position: relative;
+    }
+
+    .orbit-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 820px;
+      height: 515px;
+      pointer-events: none;
+    }
+
+    /* Center Hub */
+    .center-hub {
+      position: absolute;
+      top: 255px;
+      left: 410px;
+      transform: translate(-50%, -50%);
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      background: #18181B;
+      color: #FFFFFF;
+      box-shadow: 0 16px 36px rgba(24, 24, 27, 0.18), 0 0 0 10px rgba(24, 24, 27, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 16px;
+      z-index: 10;
+      border: 2px solid #27272A;
+    }
+    .center-pill {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #FCD34D;
+      background: rgba(252, 211, 77, 0.15);
+      border: 1px solid rgba(252, 211, 77, 0.3);
+      padding: 3px 8px;
+      border-radius: 12px;
+      margin-bottom: 6px;
+    }
+    .center-title {
+      font-family: 'Lora', serif;
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: 0.5px;
+      color: #FFFFFF;
+      margin-bottom: 4px;
+    }
+    .center-sub {
+      font-size: 11px;
+      font-weight: 500;
+      color: #A1A1AA;
+      line-height: 1.3;
+    }
+
+    /* Node Cards */
+    .node-card {
+      position: absolute;
+      background: #FFFFFF;
+      border: 1.5px solid #E4E4E7;
+      border-radius: 14px;
+      padding: 12px 18px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.2s ease;
+    }
+    .node-card.node-top {
+      top: 35px;
+      left: 410px;
+      transform: translateX(-50%);
+      width: 320px;
+      border-top: 4px solid #4F46E5;
+    }
+    .node-card.node-right {
+      top: 255px;
+      left: 675px;
+      transform: translate(-50%, -50%);
+      width: 250px;
+      border-left: 4px solid #059669;
+    }
+    .node-card.node-bottom {
+      bottom: 25px;
+      left: 410px;
+      transform: translateX(-50%);
+      width: 330px;
+      border-bottom: 4px solid #D97706;
+    }
+    .node-card.node-left {
+      top: 255px;
+      left: 145px;
+      transform: translate(-50%, -50%);
+      width: 250px;
+      border-right: 4px solid #7C3AED;
+    }
+
+    .node-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .node-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+    .badge-top { background: #4F46E5; }
+    .badge-right { background: #059669; }
+    .badge-bottom { background: #D97706; }
+    .badge-left { background: #7C3AED; }
+
+    .node-title {
+      font-family: 'Lora', serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: #18181B;
+    }
+    .node-desc {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #52525B;
+      line-height: 1.4;
+    }
+
+    /* Right Area: Validation Panel */
+    .validation-panel {
+      width: 460px;
+      height: 515px;
+      padding: 30px 35px 30px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .panel-box {
+      background: #FFFFFF;
+      border: 1.5px solid #E2E0D8;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(24, 24, 27, 0.04);
+    }
+    .panel-header {
+      margin-bottom: 18px;
+    }
+    .panel-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #2563EB;
+      margin-bottom: 4px;
+    }
+    .panel-title {
+      font-family: 'Lora', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #18181B;
+      line-height: 1.25;
+    }
+    .panel-sub {
+      font-size: 12px;
+      color: #71717A;
+      margin-top: 2px;
+    }
+
+    .signals-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .signal-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 10px 14px;
+      background: #FAF9F6;
+      border: 1px solid #ECEAE3;
+      border-radius: 10px;
+    }
+    .signal-icon-box {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-weight: 800;
+      font-size: 12px;
+    }
+    .icon-body { background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; }
+    .icon-heart { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .icon-mind { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+
+    .signal-info {
+      flex: 1;
+    }
+    .signal-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+    .signal-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #18181B;
+    }
+    .signal-tag {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #059669;
+      background: #ECFDF5;
+      padding: 1px 6px;
+      border-radius: 6px;
+    }
+    .signal-text {
+      font-size: 12px;
+      color: #52525B;
+      line-height: 1.35;
+    }
+
+    /* SECTION 2: PROGRESSION / ACCELERATION (Y: 515 -> 720px, Height: 205px) */
+    .section-progression {
+      width: 1280px;
+      height: 205px;
+      background: #FFFFFF;
+      padding: 18px 35px 22px 35px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .progression-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #F0EFEA;
+      padding-bottom: 8px;
+    }
+    .progression-title {
+      font-family: 'Lora', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #18181B;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .progression-title::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 16px;
+      background: #2563EB;
+      border-radius: 2px;
+    }
+    .progression-sub {
+      font-size: 12px;
+      font-weight: 500;
+      color: #71717A;
+    }
+
+    .timeline-cards {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .time-card {
+      flex: 1;
+      height: 110px;
+      background: #FAF9F6;
+      border: 1.5px solid #EAE8E0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+    .time-card.final {
+      background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%);
+      border: 1.5px solid #86EFAC;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.1);
+    }
+    .time-badge {
+      font-size: 14px;
+      font-weight: 800;
+      color: #18181B;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .time-badge-sub {
+      font-size: 9.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .sub-grey { background: #E4E4E7; color: #52525B; }
+    .sub-blue { background: #DBEAFE; color: #1D4ED8; }
+    .sub-green { background: #DCFCE7; color: #15803D; }
+
+    .time-desc {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: #52525B;
+      line-height: 1.35;
+    }
+    .time-card.final .time-desc {
+      color: #166534;
+      font-weight: 600;
+    }
+
+    .arrow-divider {
+      color: #A1A1AA;
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas">
+
+    <!-- SECTION 1: THE 4-STAGE ENGINE & VALIDATION CORE -->
+    <div class="section-engine">
+      
+      <!-- Left Orbit Visualization -->
+      <div class="orbit-area">
+        <svg class="orbit-svg" viewBox="0 0 820 515">
+          <!-- Circular Track with Soft Dashes -->
+          <circle cx="410" cy="255" r="180" fill="none" stroke="#E2E0D8" stroke-width="2.5" stroke-dasharray="6 6" />
+          
+          <!-- Directional Arrows along the Orbit -->
+          <!-- Top to Right Arrow -->
+          <path d="M 535 125 C 555 145, 570 170, 582 195" fill="none" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow)" />
+          <!-- Right to Bottom Arrow -->
+          <path d="M 585 315 C 570 345, 550 370, 525 390" fill="none" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow)" />
+          <!-- Bottom to Left Arrow -->
+          <path d="M 295 390 C 270 370, 250 345, 235 315" fill="none" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow)" />
+          <!-- Left to Top Arrow -->
+          <path d="M 235 195 C 250 168, 270 145, 295 125" fill="none" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow)" />
+
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748B" />
+            </marker>
+          </defs>
+        </svg>
+
+        <!-- Center Hub -->
+        <div class="center-hub">
+          <div class="center-pill">LÕI NĂNG LƯỢNG</div>
+          <div class="center-title">THÂN - TÂM - TRÍ<br>ĐỒNG NHẤT</div>
+          <div class="center-sub">Hành động tự nhiên<br>không nội ma sát</div>
+        </div>
+
+        <!-- Node 1: Thiền về Không (Top) -->
+        <div class="node-card node-top">
+          <div class="node-header">
+            <div class="node-badge badge-top">1</div>
+            <div class="node-title">THIỀN TRỞ VỀ KHÔNG</div>
+          </div>
+          <div class="node-desc">Xả sạch toan tính &amp; định kiến • Đưa toàn bộ cơ thể và tâm trí về trạng thái tĩnh lặng nguyên bản.</div>
+        </div>
+
+        <!-- Node 2: Đón Giấc Mơ (Right) -->
+        <div class="node-card node-right">
+          <div class="node-header">
+            <div class="node-badge badge-right">2</div>
+            <div class="node-title">ĐÓN GIẤC MƠ TỪ KHÔNG</div>
+          </div>
+          <div class="node-desc">Không cưỡng ép suy nghĩ • Chờ tầm nhìn chân thật tự nhiên hiển lộ khi cả 3 nguồn tín hiệu cùng reo vang.</div>
+        </div>
+
+        <!-- Node 3: Hành Động (Bottom) -->
+        <div class="node-card node-bottom">
+          <div class="node-header">
+            <div class="node-badge badge-bottom">3</div>
+            <div class="node-title">HÀNH ĐỘNG ĐẾN KHI HIỆN THỰC KHỚP</div>
+          </div>
+          <div class="node-desc">Khóa chặt cửa phòng đàm phán • Đầu óc làm người thợ xây trung thành, làm miệt mài đến khi đời thực phản chiếu đúng giấc mơ.</div>
+        </div>
+
+        <!-- Node 4: Lặp Lại (Left) -->
+        <div class="node-card node-left">
+          <div class="node-header">
+            <div class="node-badge badge-left">4</div>
+            <div class="node-title">LẶP LẠI LIÊN TỤC</div>
+          </div>
+          <div class="node-desc">Thành tựu chạm đích lập tức xả bỏ • Không ngủ quên trên hào quang • Quay về Không để tái sinh chu kỳ mới.</div>
+        </div>
+
+      </div>
+
+      <!-- Right Validation Panel -->
+      <div class="validation-panel">
+        <div class="panel-box">
+          <div class="panel-header">
+            <div class="panel-tag">ĐỒNG BỘ 3 TÍN HIỆU</div>
+            <div class="panel-title">Tín Hiệu Kiểm Chứng Từ Không</div>
+            <div class="panel-sub">Chỉ hành động khi cả 3 nguồn năng lượng cùng gật đầu</div>
+          </div>
+
+          <div class="signals-list">
+            <!-- Thân -->
+            <div class="signal-item">
+              <div class="signal-icon-box icon-body">THÂN</div>
+              <div class="signal-info">
+                <div class="signal-title-row">
+                  <div class="signal-name">Cơ Thể (Somatic)</div>
+                  <div class="signal-tag">Nhẹ nhõm</div>
+                </div>
+                <div class="signal-text">Lồng ngực mở rộng, thở sâu, cơ thể ấm áp, tràn đầy sinh khí. Không nghẹn ứ, không gồng ép cơ bắp.</div>
+              </div>
+            </div>
+
+            <!-- Tâm -->
+            <div class="signal-item">
+              <div class="signal-icon-box icon-heart">TÂM</div>
+              <div class="signal-info">
+                <div class="signal-title-row">
+                  <div class="signal-name">Nội Tâm (Heart)</div>
+                  <div class="signal-tag">Bình an</div>
+                </div>
+                <div class="signal-text">Tĩnh tại, sáng tỏ sâu sắc. Không có cảm giác sốt ruột, không FOMO, không thèm khát sự tán dương.</div>
+              </div>
+            </div>
+
+            <!-- Trí -->
+            <div class="signal-item">
+              <div class="signal-icon-box icon-mind">TRÍ</div>
+              <div class="signal-info">
+                <div class="signal-title-row">
+                  <div class="signal-name">Lý Trí (Mind)</div>
+                  <div class="signal-tag">Sáng tỏ</div>
+                </div>
+                <div class="signal-text">Thấy rõ con đường tự nhiên, mạch lạc, đơn giản. Không cần viện dẫn hàng chục lý do logic để tự lừa mình.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SECTION 2: TIẾN TRÌNH LUYỆN TẬP THU NGẮN VÒNG LẶP -->
+    <div class="section-progression">
+      <div class="progression-header">
+        <div class="progression-title">TIẾN TRÌNH LUYỆN TẬP: THU NGẮN CHU KỲ QUYẾT ĐỊNH</div>
+        <div class="progression-sub">Luyện tập liên tục để phản hồi từ Điểm Không trở thành nhịp thở tự nhiên của đời sống</div>
+      </div>
+
+      <div class="timeline-cards">
+        
+        <!-- Step 1: 10 Năm -->
+        <div class="time-card">
+          <div class="time-badge">
+            10 NĂM
+            <span class="time-badge-sub sub-grey">Khủng hoảng</span>
+          </div>
+          <div class="time-desc">Chạy theo kỳ vọng xã hội và lý trí; cạn kiệt năng lượng hoàn toàn mới chịu dừng lại về Không.</div>
+        </div>
+
+        <div class="arrow-divider">➔</div>
+
+        <!-- Step 2: 5 Năm -->
+        <div class="time-card">
+          <div class="time-badge">
+            5 NĂM
+            <span class="time-badge-sub sub-grey">Thức tỉnh</span>
+          </div>
+          <div class="time-desc">Nhận diện sự bế tắc của các quyết định duy lý; buông bỏ để lắng nghe lại chính mình.</div>
+        </div>
+
+        <div class="arrow-divider">➔</div>
+
+        <!-- Step 3: 1 Năm -->
+        <div class="time-card">
+          <div class="time-badge">
+            1 NĂM
+            <span class="time-badge-sub sub-blue">Chuyển dịch</span>
+          </div>
+          <div class="time-desc">Sớm nhận biết lệch pha giữa Thân–Tâm–Trí; dũng cảm xả bỏ dự án sai lầm sau vài quý.</div>
+        </div>
+
+        <div class="arrow-divider">➔</div>
+
+        <!-- Step 4: 1 Tháng -->
+        <div class="time-card">
+          <div class="time-badge">
+            1 THÁNG
+            <span class="time-badge-sub sub-blue">Linh hoạt</span>
+          </div>
+          <div class="time-desc">Dành khoảng lặng tĩnh tâm sau mỗi chặng; tái định hình hướng đi mới dứt khoát và nhẹ nhàng.</div>
+        </div>
+
+        <div class="arrow-divider">➔</div>
+
+        <!-- Step 5: Từng Khoảnh Khắc -->
+        <div class="time-card final">
+          <div class="time-badge">
+            MỖI KHOẢNH KHẮC
+            <span class="time-badge-sub sub-green">Nhịp thở</span>
+          </div>
+          <div class="time-desc">Trở về Không trong 15 phút mỗi sáng và 30 giây trước mỗi lựa chọn. Sống trong dòng chảy tự nhiên.</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

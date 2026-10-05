@@ -65,7 +65,7 @@ Our X distinction is the dedicated executable CLI, persistent drafts and review,
 | Our capability | Our skills | Difference |
 |---|---|---|
 | **Complete brand identity system** | `branding` | Naming and availability checks, visual identity, brand architecture, audits, rebranding, and persistent brand packages—not just product positioning |
-| **Story integrity and reflective writing** | `story-engine` | Explicit honesty, stakes, emotional-conflict, and approval gates before drafting |
+| **Story integrity** | `story-engine` | Explicit honesty, stakes, emotional-conflict, and approval gates before drafting |
 | **Detailed creator-style analysis** | `writing-style-analyzer` | Dedicated, evidence-backed “Style DNA” reports; theirs has related viral-content analysis, so this is partial overlap |
 | **Specialized X reply execution** | `twitter-reply-strategy` | Opportunity scoring, discovery commands, draft review, and pacing tied to our local tools |
 | **Repo-native social publishing** | `social-platform-orchestrator` | Concrete browser/CLI workflows for X, Facebook, and LinkedIn; theirs delegates publishing to connected scheduling tools/APIs |

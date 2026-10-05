@@ -10,7 +10,7 @@ Help the writer identify what they want to explore, what emotions they want to e
 
 Use [the worldmaking framework](world/worldmaking-framework.md) for structural questions. Read the selected world's full definition before conducting its symbol interview. Those files are the source of truth; the questions below are interview aids.
 
-**Standalone scope:** This method requires no other brainstorming method, integrity assessment, reflection brief, emotional recognition research, or platform-selection workflow. Its inputs are the writer's topic, intended emotions, and available material; its output is an approved Story World Brief. The world definitions are reference material, not additional interviews. Any later writing process is chosen separately by the user.
+**Standalone scope:** This method requires no other brainstorming method, integrity assessment, emotional recognition research, or platform-selection workflow. Its inputs are the writer's topic, intended emotions, and available material; its output is an approved Story World Brief. The world definitions are reference material, not additional interviews. Any later writing process is chosen separately by the user.
 
 ## Interview Rules
 
