@@ -18,7 +18,7 @@ submodules:
   tech_career_meaning.md: 'The tech executive looked at me, and said: "I don''t need
     you to change the world. I need you to ship the code."'
   y-nghia-khong-tu-den.md: Người Chờ Đợi Ý nghĩa không bao giờ đến
-  ly-tri-luon-dua-ra-quyet-dinh-vo-nghia.md: Lý Trí Luôn Đưa Ra Quyết Định Vô Nghĩa
+  chu-trinh-quyet-dinh-tu-diem-khong/ly-tri-luon-dua-ra-quyet-dinh-vo-nghia.md: Lý Trí Luôn Đưa Ra Quyết Định Vô Nghĩa
 ---
 
 # Meaning & Mindset (Hành trình Ý nghĩa & Đời sống Nội tâm)
@@ -50,7 +50,7 @@ Chuỗi bài viết trong chủ đề này được cấu trúc theo 3 chặng t
 | **Chặng 2: Hành động đẩy lùi trì trệ** | `tam-giay-phep-cam-xuc.md` | - | Bài học người thợ mộc: Hành động không cần giấy phép cảm xúc; vượt bẫy Vedanā–Taṇhā–Upādāna |
 | | `y-nghia-khong-tu-den.md` | `y-nghia-khong-tu-den-canonical.jpg` | Lợp mái nhà trong mưa cùng ông lão thợ mộc: Ý nghĩa không phải danh từ đi tìm mà là động từ tạo ra |
 | | `nguoi-doc-khong-buoc-ra-ngoai.md` | `nguoi-doc-khong-buoc-ra-ngoai-canonical.png` | Cậu bé đọc vạn cuốn sách nhưng chưa từng dám bước ra ngoài sống thực; đối thoại bên bờ sông |
-| | `ly-tri-luon-dua-ra-quyet-dinh-vo-nghia.md` | - | Bài học 5 năm cạn kiệt vì duy lý; chu trình ra quyết định từ Điểm Không và sự đồng thuận Thân–Tâm–Trí |
+| | `chu-trinh-quyet-dinh-tu-diem-khong/ly-tri-luon-dua-ra-quyet-dinh-vo-nghia.md` | `chu-trinh-quyet-dinh-tu-diem-khong/output.png` | Bài học 5 năm cạn kiệt vì duy lý; chu trình ra quyết định từ Điểm Không và sự đồng thuận Thân–Tâm–Trí |
 | **Chặng 3: Kết nối & Trở về** | `nghich-ly-khat-ket-noi.md` | - | Cơn khát nước ngọt của sự gắn kết nhưng chỉ dám ôm bình nước mặn công việc vì sợ bị tổn thương |
 | | `odyssey-return-home.md` | - | 10 năm công phá thành Troy (danh vọng), 8 năm mê muội ở đảo ăn sen (vùng an toàn); hành trình thức tỉnh trở về nhà |
 

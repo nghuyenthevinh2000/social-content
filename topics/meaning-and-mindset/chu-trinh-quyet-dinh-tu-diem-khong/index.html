@@ -6,7 +6,7 @@
   <title>Chu Trình Quyết Định Từ Điểm Không</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&family=Lora:ital,wght@0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700;800;900&family=Lora:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
   <style>
     * {
       box-sizing: border-box;
@@ -32,142 +32,122 @@
       border: 1px solid #E2E0D8;
       overflow: hidden;
       display: flex;
-      flex-direction: column;
     }
 
-    /* SECTION 1: THE DECISION ENGINE (Y: 0 -> 515px) */
-    .section-engine {
-      width: 1280px;
-      height: 515px;
+    /* LEFT AREA: THE ACCELERATING SPIRAL DECISION ENGINE (830px) */
+    .engine-container {
+      width: 830px;
+      height: 720px;
       position: relative;
-      display: flex;
-      border-bottom: 2px solid #E5E3DC;
-      background: radial-gradient(circle at 410px 255px, #FFFFFF 0%, #FAF9F6 70%);
+      background: radial-gradient(circle at 400px 360px, #FFFFFF 0%, #FAF9F6 75%);
+      border-right: 2px solid #E5E3DC;
     }
 
-    /* Orbit Area */
-    .orbit-area {
-      width: 820px;
-      height: 515px;
-      position: relative;
-    }
-
-    .orbit-svg {
+    .spiral-svg {
       position: absolute;
       top: 0;
       left: 0;
-      width: 820px;
-      height: 515px;
+      width: 830px;
+      height: 720px;
       pointer-events: none;
     }
 
     /* Center Hub */
     .center-hub {
       position: absolute;
-      top: 255px;
-      left: 410px;
+      top: 360px;
+      left: 400px;
       transform: translate(-50%, -50%);
-      width: 190px;
-      height: 190px;
+      width: 216px;
+      height: 216px;
       border-radius: 50%;
       background: #18181B;
       color: #FFFFFF;
-      box-shadow: 0 16px 36px rgba(24, 24, 27, 0.18), 0 0 0 10px rgba(24, 24, 27, 0.04);
+      box-shadow: 0 20px 45px rgba(24, 24, 27, 0.25), 0 0 0 10px rgba(24, 24, 27, 0.05);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 16px;
+      padding: 18px;
       z-index: 10;
-      border: 2px solid #27272A;
-    }
-    .center-pill {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: #FCD34D;
-      background: rgba(252, 211, 77, 0.15);
-      border: 1px solid rgba(252, 211, 77, 0.3);
-      padding: 3px 8px;
-      border-radius: 12px;
-      margin-bottom: 6px;
+      border: 3px solid #27272A;
     }
     .center-title {
       font-family: 'Lora', serif;
-      font-size: 19px;
+      font-size: 22px;
       font-weight: 700;
       line-height: 1.25;
-      letter-spacing: 0.5px;
       color: #FFFFFF;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
     }
     .center-sub {
-      font-size: 11px;
-      font-weight: 500;
-      color: #A1A1AA;
-      line-height: 1.3;
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #FCD34D;
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
 
-    /* Node Cards */
+    /* 4 Node Cards on the Core Orbit */
     .node-card {
       position: absolute;
       background: #FFFFFF;
-      border: 1.5px solid #E4E4E7;
-      border-radius: 14px;
+      border: 2px solid #E4E4E7;
+      border-radius: 16px;
       padding: 12px 18px;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
-      z-index: 5;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      z-index: 15;
       display: flex;
       flex-direction: column;
-      transition: all 0.2s ease;
     }
     .node-card.node-top {
-      top: 35px;
-      left: 410px;
+      top: 145px;
+      left: 400px;
       transform: translateX(-50%);
       width: 320px;
-      border-top: 4px solid #4F46E5;
+      border-top: 5px solid #4F46E5;
     }
     .node-card.node-right {
-      top: 255px;
-      left: 675px;
+      top: 360px;
+      left: 645px;
       transform: translate(-50%, -50%);
       width: 250px;
-      border-left: 4px solid #059669;
+      border-left: 5px solid #059669;
     }
     .node-card.node-bottom {
-      bottom: 25px;
-      left: 410px;
+      bottom: 140px;
+      left: 400px;
       transform: translateX(-50%);
       width: 330px;
-      border-bottom: 4px solid #D97706;
+      border-bottom: 5px solid #D97706;
     }
     .node-card.node-left {
-      top: 255px;
-      left: 145px;
+      top: 360px;
+      left: 155px;
       transform: translate(-50%, -50%);
-      width: 250px;
-      border-right: 4px solid #7C3AED;
+      width: 240px;
+      border-right: 5px solid #7C3AED;
     }
 
     .node-header {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
     .node-badge {
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 800;
       color: #FFFFFF;
+      flex-shrink: 0;
     }
     .badge-top { background: #4F46E5; }
     .badge-right { background: #059669; }
@@ -176,86 +156,162 @@
 
     .node-title {
       font-family: 'Lora', serif;
-      font-size: 15px;
+      font-size: 18px;
       font-weight: 700;
       color: #18181B;
     }
     .node-desc {
-      font-size: 12.5px;
-      font-weight: 500;
-      color: #52525B;
-      line-height: 1.4;
+      font-size: 14px;
+      font-weight: 600;
+      color: #4B5563;
+      line-height: 1.35;
     }
 
-    /* Right Area: Validation Panel */
-    .validation-panel {
-      width: 460px;
-      height: 515px;
-      padding: 30px 35px 30px 10px;
+    /* Outer Spiral Time Marker Badges */
+    .spiral-marker {
+      position: absolute;
+      z-index: 5;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+      border: 1.5px solid;
+    }
+    .marker-title {
+      font-size: 14.5px;
+      font-weight: 900;
+    }
+    .marker-sub {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    /* Marker 1: 10 Năm (Top Outer) */
+    .marker-10y {
+      top: 36px;
+      left: 170px;
+      background: #F4F4F5;
+      border-color: #D4D4D8;
+      color: #52525B;
+    }
+    /* Marker 2: 5 Năm (Top-Right Outer) */
+    .marker-5y {
+      top: 42px;
+      right: 120px;
+      background: #F4F4F5;
+      border-color: #D4D4D8;
+      color: #52525B;
+    }
+    /* Marker 3: 1 Năm (Right Mid) */
+    .marker-1y {
+      bottom: 48px;
+      right: 160px;
+      background: #EFF6FF;
+      border-color: #BFDBFE;
+      color: #1E40AF;
+    }
+    /* Marker 4: 1 Tháng (Bottom Mid) */
+    .marker-1m {
+      bottom: 48px;
+      left: 180px;
+      background: #EFF6FF;
+      border-color: #BFDBFE;
+      color: #1E40AF;
+    }
+    /* Marker 5: Nhịp thở (Inner Spiral Landing) */
+    .marker-breath {
+      top: 92px;
+      left: 400px;
+      transform: translateX(-50%);
+      background: #ECFDF5;
+      border-color: #86EFAC;
+      color: #15803D;
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.18);
+      z-index: 20;
+    }
+
+    /* RIGHT AREA: 3 SIGNALS VALIDATION PANEL (450px) */
+    .validation-container {
+      width: 450px;
+      height: 720px;
+      padding: 35px 35px 35px 20px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: space-between;
     }
     .panel-box {
+      height: 100%;
       background: #FFFFFF;
-      border: 1.5px solid #E2E0D8;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 10px 25px rgba(24, 24, 27, 0.04);
+      border: 2px solid #E2E0D8;
+      border-radius: 24px;
+      padding: 30px 24px;
+      box-shadow: 0 16px 36px rgba(24, 24, 27, 0.05);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
+
     .panel-header {
-      margin-bottom: 18px;
+      border-bottom: 2px solid #F4F4F5;
+      padding-bottom: 16px;
     }
     .panel-tag {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 2px;
       text-transform: uppercase;
       color: #2563EB;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
     .panel-title {
       font-family: 'Lora', serif;
-      font-size: 20px;
+      font-size: 28px;
       font-weight: 700;
       color: #18181B;
-      line-height: 1.25;
+      line-height: 1.15;
     }
     .panel-sub {
-      font-size: 12px;
-      color: #71717A;
-      margin-top: 2px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #6B7280;
+      margin-top: 4px;
     }
 
     .signals-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
+      margin: 16px 0;
     }
     .signal-item {
       display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      padding: 10px 14px;
+      align-items: center;
+      gap: 18px;
+      padding: 16px 20px;
       background: #FAF9F6;
-      border: 1px solid #ECEAE3;
-      border-radius: 10px;
+      border: 2px solid #EAE8E0;
+      border-radius: 18px;
     }
     .signal-icon-box {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-weight: 800;
-      font-size: 12px;
+      font-weight: 900;
+      font-size: 19px;
+      letter-spacing: 0.5px;
     }
-    .icon-body { background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; }
-    .icon-heart { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
-    .icon-mind { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+    .icon-body { background: #EEF2FF; color: #4F46E5; border: 2px solid #C7D2FE; }
+    .icon-heart { background: #FEF2F2; color: #DC2626; border: 2px solid #FECACA; }
+    .icon-mind { background: #F0FDF4; color: #16A34A; border: 2px solid #BBF7D0; }
 
     .signal-info {
       flex: 1;
@@ -264,315 +320,205 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 2px;
+      margin-bottom: 4px;
     }
     .signal-name {
-      font-size: 13.5px;
-      font-weight: 700;
+      font-size: 20px;
+      font-weight: 800;
       color: #18181B;
     }
     .signal-tag {
-      font-size: 10.5px;
-      font-weight: 600;
-      color: #059669;
-      background: #ECFDF5;
-      padding: 1px 6px;
-      border-radius: 6px;
-    }
-    .signal-text {
-      font-size: 12px;
-      color: #52525B;
-      line-height: 1.35;
-    }
-
-    /* SECTION 2: PROGRESSION / ACCELERATION (Y: 515 -> 720px, Height: 205px) */
-    .section-progression {
-      width: 1280px;
-      height: 205px;
-      background: #FFFFFF;
-      padding: 18px 35px 22px 35px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .progression-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #F0EFEA;
-      padding-bottom: 8px;
-    }
-    .progression-title {
-      font-family: 'Lora', serif;
-      font-size: 16px;
+      font-size: 13.5px;
       font-weight: 700;
-      color: #18181B;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      padding: 3px 10px;
+      border-radius: 8px;
     }
-    .progression-title::before {
-      content: '';
-      display: inline-block;
-      width: 6px;
-      height: 16px;
-      background: #2563EB;
-      border-radius: 2px;
-    }
-    .progression-sub {
-      font-size: 12px;
-      font-weight: 500;
-      color: #71717A;
-    }
+    .tag-green { color: #059669; background: #ECFDF5; }
 
-    .timeline-cards {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 4px;
-    }
-    .time-card {
-      flex: 1;
-      height: 110px;
-      background: #FAF9F6;
-      border: 1.5px solid #EAE8E0;
-      border-radius: 12px;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      position: relative;
-    }
-    .time-card.final {
-      background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%);
-      border: 1.5px solid #86EFAC;
-      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.1);
-    }
-    .time-badge {
-      font-size: 14px;
-      font-weight: 800;
-      color: #18181B;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .time-badge-sub {
-      font-size: 9.5px;
+    .signal-text {
+      font-size: 15.5px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    .sub-grey { background: #E4E4E7; color: #52525B; }
-    .sub-blue { background: #DBEAFE; color: #1D4ED8; }
-    .sub-green { background: #DCFCE7; color: #15803D; }
-
-    .time-desc {
-      font-size: 11.5px;
-      font-weight: 500;
-      color: #52525B;
+      color: #4B5563;
       line-height: 1.35;
     }
-    .time-card.final .time-desc {
-      color: #166534;
-      font-weight: 600;
-    }
 
-    .arrow-divider {
-      color: #A1A1AA;
+    .panel-footer-quote {
+      background: #FAF9F6;
+      border-top: 2px solid #F0EFEA;
+      padding-top: 14px;
       font-size: 14px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
+      font-weight: 600;
+      color: #6B7280;
+      text-align: center;
+    }
+    .quote-highlight {
+      color: #18181B;
+      font-weight: 700;
     }
   </style>
 </head>
 <body>
   <div id="canvas">
 
-    <!-- SECTION 1: THE 4-STAGE ENGINE & VALIDATION CORE -->
-    <div class="section-engine">
+    <!-- LEFT: THE SPIRAL DECISION ENGINE (INCORPORATING THE SHORTENING CYCLES) -->
+    <div class="engine-container">
       
-      <!-- Left Orbit Visualization -->
-      <div class="orbit-area">
-        <svg class="orbit-svg" viewBox="0 0 820 515">
-          <!-- Circular Track with Soft Dashes -->
-          <circle cx="410" cy="255" r="180" fill="none" stroke="#E2E0D8" stroke-width="2.5" stroke-dasharray="6 6" />
-          
-          <!-- Directional Arrows along the Orbit -->
-          <!-- Top to Right Arrow -->
-          <path d="M 535 125 C 555 145, 570 170, 582 195" fill="none" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow)" />
-          <!-- Right to Bottom Arrow -->
-          <path d="M 585 315 C 570 345, 550 370, 525 390" fill="none" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow)" />
-          <!-- Bottom to Left Arrow -->
-          <path d="M 295 390 C 270 370, 250 345, 235 315" fill="none" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow)" />
-          <!-- Left to Top Arrow -->
-          <path d="M 235 195 C 250 168, 270 145, 295 125" fill="none" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow)" />
+      <svg class="spiral-svg" viewBox="0 0 830 720">
+        <defs>
+          <marker id="arrow-outer" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94A3B8" />
+          </marker>
+          <marker id="arrow-mid" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#3B82F6" />
+          </marker>
+          <marker id="arrow-inner" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10B981" />
+          </marker>
+        </defs>
 
-          <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748B" />
-            </marker>
-          </defs>
-        </svg>
+        <!-- 1. Outer Track (10 Năm -> 5 Năm): R = 315px -->
+        <circle cx="400" cy="360" r="315" fill="none" stroke="#E4E4E7" stroke-width="2" stroke-dasharray="8 8" />
+        <path d="M 280 47 C 350 40, 450 40, 520 48" fill="none" stroke="#94A3B8" stroke-width="2.5" marker-end="url(#arrow-outer)" />
 
-        <!-- Center Hub -->
-        <div class="center-hub">
-          <div class="center-pill">LÕI NĂNG LƯỢNG</div>
-          <div class="center-title">THÂN - TÂM - TRÍ<br>ĐỒNG NHẤT</div>
-          <div class="center-sub">Hành động tự nhiên<br>không nội ma sát</div>
-        </div>
+        <!-- 2. Mid Track (1 Năm -> 1 Tháng): R = 255px -->
+        <circle cx="400" cy="360" r="255" fill="none" stroke="#BFDBFE" stroke-width="2.5" stroke-dasharray="6 6" />
+        <path d="M 640 430 C 600 550, 480 615, 340 615" fill="none" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow-mid)" />
 
-        <!-- Node 1: Thiền về Không (Top) -->
-        <div class="node-card node-top">
-          <div class="node-header">
-            <div class="node-badge badge-top">1</div>
-            <div class="node-title">THIỀN TRỞ VỀ KHÔNG</div>
-          </div>
-          <div class="node-desc">Xả sạch toan tính &amp; định kiến • Đưa toàn bộ cơ thể và tâm trí về trạng thái tĩnh lặng nguyên bản.</div>
-        </div>
+        <!-- Inward Spiral Connecting Path (Arrow leading into inner core) -->
+        <path d="M 200 580 C 110 500, 110 320, 210 210" fill="none" stroke="#10B981" stroke-width="3.5" stroke-dasharray="5 5" marker-end="url(#arrow-inner)" />
 
-        <!-- Node 2: Đón Giấc Mơ (Right) -->
-        <div class="node-card node-right">
-          <div class="node-header">
-            <div class="node-badge badge-right">2</div>
-            <div class="node-title">ĐÓN GIẤC MƠ TỪ KHÔNG</div>
-          </div>
-          <div class="node-desc">Không cưỡng ép suy nghĩ • Chờ tầm nhìn chân thật tự nhiên hiển lộ khi cả 3 nguồn tín hiệu cùng reo vang.</div>
-        </div>
+        <!-- 3. Core Orbit Track: R = 180px -->
+        <circle cx="400" cy="360" r="180" fill="none" stroke="#D1D5DB" stroke-width="3" />
+        
+        <!-- Core Flow Arrows -->
+        <path d="M 515 235 C 545 265, 560 300, 570 330" fill="none" stroke="#6B7280" stroke-width="2.5" />
+        <path d="M 570 390 C 555 425, 535 455, 505 480" fill="none" stroke="#6B7280" stroke-width="2.5" />
+        <path d="M 295 480 C 265 455, 245 425, 230 390" fill="none" stroke="#6B7280" stroke-width="2.5" />
+        <path d="M 230 330 C 245 295, 265 265, 295 235" fill="none" stroke="#6B7280" stroke-width="2.5" />
+      </svg>
 
-        <!-- Node 3: Hành Động (Bottom) -->
-        <div class="node-card node-bottom">
-          <div class="node-header">
-            <div class="node-badge badge-bottom">3</div>
-            <div class="node-title">HÀNH ĐỘNG ĐẾN KHI HIỆN THỰC KHỚP</div>
-          </div>
-          <div class="node-desc">Khóa chặt cửa phòng đàm phán • Đầu óc làm người thợ xây trung thành, làm miệt mài đến khi đời thực phản chiếu đúng giấc mơ.</div>
-        </div>
-
-        <!-- Node 4: Lặp Lại (Left) -->
-        <div class="node-card node-left">
-          <div class="node-header">
-            <div class="node-badge badge-left">4</div>
-            <div class="node-title">LẶP LẠI LIÊN TỤC</div>
-          </div>
-          <div class="node-desc">Thành tựu chạm đích lập tức xả bỏ • Không ngủ quên trên hào quang • Quay về Không để tái sinh chu kỳ mới.</div>
-        </div>
-
+      <!-- Outer Spiral Badges: The Shortening Time -->
+      <div class="spiral-marker marker-10y">
+        <span class="marker-title">10 NĂM</span>
+        <span class="marker-sub">Khủng hoảng</span>
       </div>
 
-      <!-- Right Validation Panel -->
-      <div class="validation-panel">
-        <div class="panel-box">
-          <div class="panel-header">
-            <div class="panel-tag">ĐỒNG BỘ 3 TÍN HIỆU</div>
-            <div class="panel-title">Tín Hiệu Kiểm Chứng Từ Không</div>
-            <div class="panel-sub">Chỉ hành động khi cả 3 nguồn năng lượng cùng gật đầu</div>
-          </div>
+      <div class="spiral-marker marker-5y">
+        <span class="marker-title">5 NĂM</span>
+        <span class="marker-sub">Thức tỉnh</span>
+      </div>
 
-          <div class="signals-list">
-            <!-- Thân -->
-            <div class="signal-item">
-              <div class="signal-icon-box icon-body">THÂN</div>
-              <div class="signal-info">
-                <div class="signal-title-row">
-                  <div class="signal-name">Cơ Thể (Somatic)</div>
-                  <div class="signal-tag">Nhẹ nhõm</div>
-                </div>
-                <div class="signal-text">Lồng ngực mở rộng, thở sâu, cơ thể ấm áp, tràn đầy sinh khí. Không nghẹn ứ, không gồng ép cơ bắp.</div>
-              </div>
-            </div>
+      <div class="spiral-marker marker-1y">
+        <span class="marker-title">1 NĂM</span>
+        <span class="marker-sub">Chuyển dịch</span>
+      </div>
 
-            <!-- Tâm -->
-            <div class="signal-item">
-              <div class="signal-icon-box icon-heart">TÂM</div>
-              <div class="signal-info">
-                <div class="signal-title-row">
-                  <div class="signal-name">Nội Tâm (Heart)</div>
-                  <div class="signal-tag">Bình an</div>
-                </div>
-                <div class="signal-text">Tĩnh tại, sáng tỏ sâu sắc. Không có cảm giác sốt ruột, không FOMO, không thèm khát sự tán dương.</div>
-              </div>
-            </div>
+      <div class="spiral-marker marker-1m">
+        <span class="marker-title">1 THÁNG</span>
+        <span class="marker-sub">Linh hoạt</span>
+      </div>
 
-            <!-- Trí -->
-            <div class="signal-item">
-              <div class="signal-icon-box icon-mind">TRÍ</div>
-              <div class="signal-info">
-                <div class="signal-title-row">
-                  <div class="signal-name">Lý Trí (Mind)</div>
-                  <div class="signal-tag">Sáng tỏ</div>
-                </div>
-                <div class="signal-text">Thấy rõ con đường tự nhiên, mạch lạc, đơn giản. Không cần viện dẫn hàng chục lý do logic để tự lừa mình.</div>
-              </div>
-            </div>
-          </div>
+      <!-- Core Orbit Entry Badge: NHỊP THỞ -->
+      <div class="spiral-marker marker-breath">
+        <span class="marker-title">TỪNG KHOẢNH KHẮC</span>
+        <span class="marker-sub">Nhịp thở tự nhiên</span>
+      </div>
+
+      <!-- Central Core Hub -->
+      <div class="center-hub">
+        <div class="center-title">THÂN - TÂM - TRÍ<br>ĐỒNG NHẤT</div>
+        <div class="center-sub">(NĂNG LƯỢNG VÔ HẠN)</div>
+      </div>
+
+      <!-- 4 Core Nodes -->
+      <!-- Node 1: Thiền về Không -->
+      <div class="node-card node-top">
+        <div class="node-header">
+          <div class="node-badge badge-top">1</div>
+          <div class="node-title">THIỀN VỀ KHÔNG</div>
         </div>
+        <div class="node-desc">Xả sạch toan tính • Thân tâm về tĩnh</div>
+      </div>
+
+      <!-- Node 2: Đón Giấc Mơ -->
+      <div class="node-card node-right">
+        <div class="node-header">
+          <div class="node-badge badge-right">2</div>
+          <div class="node-title">ĐÓN GIẤC MƠ</div>
+        </div>
+        <div class="node-desc">Tầm nhìn tự trỗi dậy từ tĩnh lặng</div>
+      </div>
+
+      <!-- Node 3: Hành Động Khớp -->
+      <div class="node-card node-bottom">
+        <div class="node-header">
+          <div class="node-badge badge-bottom">3</div>
+          <div class="node-title">HÀNH ĐỘNG KHỚP</div>
+        </div>
+        <div class="node-desc">Khóa phòng đàm phán • Làm đến cùng</div>
+      </div>
+
+      <!-- Node 4: Lặp Lại -->
+      <div class="node-card node-left">
+        <div class="node-header">
+          <div class="node-badge badge-left">4</div>
+          <div class="node-title">LẶP LẠI</div>
+        </div>
+        <div class="node-desc">Xả bỏ thành quả • Quay về Không</div>
       </div>
 
     </div>
 
-    <!-- SECTION 2: TIẾN TRÌNH LUYỆN TẬP THU NGẮN VÒNG LẶP -->
-    <div class="section-progression">
-      <div class="progression-header">
-        <div class="progression-title">TIẾN TRÌNH LUYỆN TẬP: THU NGẮN CHU KỲ QUYẾT ĐỊNH</div>
-        <div class="progression-sub">Luyện tập liên tục để phản hồi từ Điểm Không trở thành nhịp thở tự nhiên của đời sống</div>
-      </div>
-
-      <div class="timeline-cards">
+    <!-- RIGHT: 3 SIGNALS VALIDATION PANEL -->
+    <div class="validation-container">
+      <div class="panel-box">
         
-        <!-- Step 1: 10 Năm -->
-        <div class="time-card">
-          <div class="time-badge">
-            10 NĂM
-            <span class="time-badge-sub sub-grey">Khủng hoảng</span>
-          </div>
-          <div class="time-desc">Chạy theo kỳ vọng xã hội và lý trí; cạn kiệt năng lượng hoàn toàn mới chịu dừng lại về Không.</div>
+        <div class="panel-header">
+          <div class="panel-tag">ĐỒNG BỘ 3 NGUỒN TÍN HIỆU</div>
+          <div class="panel-title">Tín Hiệu Kiểm Chứng</div>
+          <div class="panel-sub">Chỉ hành động khi cả 3 cùng gật đầu đồng ý</div>
         </div>
 
-        <div class="arrow-divider">➔</div>
-
-        <!-- Step 2: 5 Năm -->
-        <div class="time-card">
-          <div class="time-badge">
-            5 NĂM
-            <span class="time-badge-sub sub-grey">Thức tỉnh</span>
+        <div class="signals-list">
+          <!-- Thân -->
+          <div class="signal-item">
+            <div class="signal-icon-box icon-body">THÂN</div>
+            <div class="signal-info">
+              <div class="signal-title-row">
+                <div class="signal-name">Cơ Thể</div>
+                <div class="signal-tag tag-green">Nhẹ nhõm</div>
+              </div>
+              <div class="signal-text">Lồng ngực mở, thở sâu, ấm áp, không gồng ép</div>
+            </div>
           </div>
-          <div class="time-desc">Nhận diện sự bế tắc của các quyết định duy lý; buông bỏ để lắng nghe lại chính mình.</div>
+
+          <!-- Tâm -->
+          <div class="signal-item">
+            <div class="signal-icon-box icon-heart">TÂM</div>
+            <div class="signal-info">
+              <div class="signal-title-row">
+                <div class="signal-name">Nội Tâm</div>
+                <div class="signal-tag tag-green">Bình an</div>
+              </div>
+              <div class="signal-text">Tĩnh tại, sáng tỏ sâu sắc, không FOMO</div>
+            </div>
+          </div>
+
+          <!-- Trí -->
+          <div class="signal-item">
+            <div class="signal-icon-box icon-mind">TRÍ</div>
+            <div class="signal-info">
+              <div class="signal-title-row">
+                <div class="signal-name">Lý Trí</div>
+                <div class="signal-tag tag-green">Sáng tỏ</div>
+              </div>
+              <div class="signal-text">Thấy rõ đường đi tự nhiên, không ngụy biện</div>
+            </div>
+          </div>
         </div>
 
-        <div class="arrow-divider">➔</div>
-
-        <!-- Step 3: 1 Năm -->
-        <div class="time-card">
-          <div class="time-badge">
-            1 NĂM
-            <span class="time-badge-sub sub-blue">Chuyển dịch</span>
-          </div>
-          <div class="time-desc">Sớm nhận biết lệch pha giữa Thân–Tâm–Trí; dũng cảm xả bỏ dự án sai lầm sau vài quý.</div>
-        </div>
-
-        <div class="arrow-divider">➔</div>
-
-        <!-- Step 4: 1 Tháng -->
-        <div class="time-card">
-          <div class="time-badge">
-            1 THÁNG
-            <span class="time-badge-sub sub-blue">Linh hoạt</span>
-          </div>
-          <div class="time-desc">Dành khoảng lặng tĩnh tâm sau mỗi chặng; tái định hình hướng đi mới dứt khoát và nhẹ nhàng.</div>
-        </div>
-
-        <div class="arrow-divider">➔</div>
-
-        <!-- Step 5: Từng Khoảnh Khắc -->
-        <div class="time-card final">
-          <div class="time-badge">
-            MỖI KHOẢNH KHẮC
-            <span class="time-badge-sub sub-green">Nhịp thở</span>
-          </div>
-          <div class="time-desc">Trở về Không trong 15 phút mỗi sáng và 30 giây trước mỗi lựa chọn. Sống trong dòng chảy tự nhiên.</div>
+        <div class="panel-footer-quote">
+          Luyện tập liên tục để thu hẹp vòng lặp từ <span class="quote-highlight">10 năm</span> về <span class="quote-highlight">từng khoảnh khắc</span>
         </div>
 
       </div>
