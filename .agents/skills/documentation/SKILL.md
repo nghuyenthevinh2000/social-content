@@ -31,12 +31,14 @@ Use the following decision checklist based on user signals:
 | "How do I…?" / "I need to accomplish X" | **How-to guide** |
 | "What are the parameters/options/syntax for X?" | **Reference** |
 | "Why does X work this way?" / "Help me understand X" | **Explanation** |
+| "What went wrong?" / "Lessons learned" / "post-mortem" / "why did this fail" | **Lesson** (`formats/lesson.md`) |
 
 Quick decision tree:
 - Is the user **learning by doing** for the first time? → Tutorial
 - Do they need to **solve a specific problem** they already understand? → How-to guide
 - Do they need **technical facts** to look up? → Reference
 - Do they want **conceptual background**? → Explanation
+- Do they want to **unlearn mistakes / diagnose failure traps & apply practical solutions**? → **Lesson** (`formats/lesson.md`)
 
 ---
 
@@ -107,3 +109,12 @@ Quick decision tree:
 | How-to guide | Does it solve the stated problem for an experienced user? |
 | Reference | Can the user find a specific fact in under 30 seconds? |
 | Explanation | Does the user understand the *why*, not just the *what*? |
+| Lesson | Can the reader immediately identify the cognitive traps and practical antidotes from the top table? |
+
+---
+
+## Formats & Specialized Templates
+
+When synthesizing retrospective playbooks, post-mortems, or practitioner teardowns:
+- **`formats/lesson.md`**: Specialized lesson format featuring a **Failure Mental Traps vs. Practical Solutions** two-column executive table right at the beginning, followed by deep diagnosis, framework, execution scripts, and action checklists.
+
