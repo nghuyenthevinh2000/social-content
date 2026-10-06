@@ -33,8 +33,16 @@ def build_parser() -> argparse.ArgumentParser:
     # doctor command
     doctor = commands.add_parser(
         'doctor',
-        help='Check browser CDP connectivity and context readiness without platform navigation.',
+        help='Check browser connectivity and context readiness without platform navigation.',
         formatter_class=argparse.RawTextHelpFormatter,
+    )
+    doctor.add_argument(
+        '-b',
+        '--backend',
+        dest='backend',
+        choices=['invisible', 'cdp'],
+        default=None,
+        help='Browser backend (default: invisible or env BROWSER_BACKEND)',
     )
     doctor.add_argument(
         '--cdp',
@@ -49,12 +57,39 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=f'Timeout in milliseconds (default: {DEFAULT_DOCTOR_TIMEOUT_MS} or env DEFAULT_DOCTOR_TIMEOUT_MS)',
     )
+    doctor.add_argument(
+        '--seed',
+        type=int,
+        default=None,
+        help='Deterministic fingerprint seed for invisible browser',
+    )
+    doctor.add_argument(
+        '--binary',
+        dest='binary',
+        default=None,
+        help='Path to browser engine binary (for invisible browser or custom Chrome)',
+    )
+    doctor.add_argument(
+        '--headless',
+        dest='headless',
+        action='store_true',
+        default=None,
+        help='Run browser in headless mode',
+    )
 
     # start-browser command
     start = commands.add_parser(
         'start-browser',
-        help='Detect an existing responsive CDP browser or start one with the configured profile.',
+        help='Detect or start invisible stealth browser or responsive CDP browser.',
         formatter_class=argparse.RawTextHelpFormatter,
+    )
+    start.add_argument(
+        '-b',
+        '--backend',
+        dest='backend',
+        choices=['invisible', 'cdp'],
+        default=None,
+        help='Browser backend (default: invisible or env BROWSER_BACKEND)',
     )
     start.add_argument(
         '-p',
@@ -67,7 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
         '-d',
         '--data-dir',
         default=None,
-        help=f'Chrome user data directory (default: {DEFAULT_PROFILE_DIR})',
+        help=f'Browser profile directory (default: {DEFAULT_PROFILE_DIR})',
     )
     start.add_argument(
         '--timeout',
@@ -80,6 +115,25 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help='Path to Chromium/Chrome executable (default: auto-detected or env CHROME_BIN)',
     )
+    start.add_argument(
+        '--seed',
+        type=int,
+        default=None,
+        help='Deterministic fingerprint seed for invisible browser',
+    )
+    start.add_argument(
+        '--binary',
+        dest='binary',
+        default=None,
+        help='Path to browser engine binary (for invisible browser)',
+    )
+    start.add_argument(
+        '--headless',
+        dest='headless',
+        action='store_true',
+        default=None,
+        help='Run browser in headless mode',
+    )
 
     return parser
 
@@ -89,13 +143,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         args = build_parser().parse_args(argv)
 
         if args.command == 'doctor':
-            data = run_doctor(endpoint=args.endpoint, timeout_ms=args.timeout_ms)
+            data = run_doctor(
+                endpoint=args.endpoint,
+                timeout_ms=args.timeout_ms,
+                backend=args.backend,
+                seed=args.seed,
+                headless=args.headless,
+                binary_path=args.binary,
+            )
         elif args.command == 'start-browser':
             data = start_browser(
                 port=args.port,
                 data_dir=args.data_dir,
                 timeout=args.timeout,
                 chrome_bin=args.chrome_bin,
+                backend=args.backend,
+                seed=args.seed,
+                headless=args.headless,
+                binary_path=args.binary,
             )
         else:
             raise AgentError('invalid_arguments', f'Unknown command: {args.command}')

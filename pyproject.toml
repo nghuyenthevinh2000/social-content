@@ -8,6 +8,8 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "invisible-playwright>=0.27.0",
+    "invisible-playwright-mcp>=0.70.0",
     "opencv-python-headless>=5.0.0.93",
     "playwright>=1.50,<2",
     "python-dotenv>=1.2.3",

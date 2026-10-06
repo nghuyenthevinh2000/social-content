@@ -316,7 +316,8 @@ def _capture_final_dispatch(post_button, composer, approved_text, author, count,
             let text;
             try { selection.removeAllRanges(); selection.addRange(range); text = selection.toString(); }
             finally { selection.removeAllRanges(); saved.forEach(r => selection.addRange(r)); }
-            if (text.replace(/\\r\\n?/g, '\\n') !== expected.text) return 'text_mismatch';
+            const normalized = text.replace(/\\r\\n?/g, '\\n');
+            if (normalized !== expected.text && normalized.replace(/\\n\\n/g, '\\n') !== expected.text) return 'text_mismatch';
             const images = matches(composer, s.images);
             if (images.length !== expected.count || images.length !== previews.length
                 || images.some((img,i) => img !== previews[i].node || img.src !== previews[i].src
@@ -532,7 +533,8 @@ def publish_post(page, text: str, images: tuple[ImageInput, ...], timeout_ms: in
         editor = _unique_visible(composer.locator(dom.EDITOR))
         if editor is None:
             raise AgentError('dom_timeout', 'Composer editor is no longer visible.')
-        if _editor_text(editor).replace('\r\n', '\n').replace('\r', '\n') != approved_text:
+        actual_text = _editor_text(editor).replace('\r\n', '\n').replace('\r', '\n')
+        if actual_text != approved_text and actual_text.replace('\n\n', '\n') != approved_text:
             raise AgentError('text_mismatch', 'Composer text differs from approved text. Inspect manually.')
         post_button = _unique_visible(dom.post_button(composer))
         if post_button is None:

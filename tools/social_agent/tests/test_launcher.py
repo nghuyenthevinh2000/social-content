@@ -162,6 +162,21 @@ class LauncherTests(unittest.TestCase):
                 stderr=mock_popen.call_args.kwargs['stderr'],
             )
 
+    def test_start_browser_invisible(self):
+        with patch.object(Path, 'mkdir') as mock_mkdir:
+            result = start_browser(
+                backend='invisible',
+                data_dir='/tmp/test-stealth-profile',
+                seed=123,
+                headless=True,
+            )
+            self.assertEqual(result['action'], 'ready')
+            self.assertEqual(result['backend'], 'invisible')
+            self.assertEqual(result['seed'], 123)
+            self.assertTrue(result['headless'])
+            self.assertEqual(result['user_data_dir'], str(Path('/tmp/test-stealth-profile').resolve()))
+            mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+
 
 if __name__ == '__main__':
     unittest.main()

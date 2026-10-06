@@ -1,24 +1,26 @@
 ---
 name: social-platform-orchestrator
 description: >
-  Orchestrate social content across Twitter/X, Facebook, and LinkedIn, using tools/social_agent for shared browser
-  startup and CDP diagnostics and platform-specific tools for authentication and publishing. Coordinate drafting,
-  explicit human approval, serialized browser execution, and safe recovery without closing user tabs or Chrome.
+  Orchestrate social content across Twitter/X, Facebook, and LinkedIn, and conduct audience/market research on Reddit.
+  Use tools/social_agent for shared browser startup/CDP diagnostics, tools/reddit-research-mcp for semantic community discovery,
+  tools/reddit_agent for post extraction, and platform-specific tools for authentication and publishing.
 ---
 
 # Social Platform Orchestrator
 
-Use this skill to coordinate multi-platform social media operations across **Twitter/X**, **Facebook**, and **LinkedIn**. Browser lifecycle control is a standalone shared package; publishing remains platform-specific:
+Use this skill to coordinate multi-platform social media operations across **Twitter/X**, **Facebook**, and **LinkedIn**, and conduct target audience research on **Reddit**:
 - `tools/social_agent/`: Shared browser startup, CDP connectivity diagnostics, configuration, safe connection/disconnection, and tool-owned tab management. It does **not** authenticate accounts, navigate social platforms, or publish content.
 - `tools/twitter_agent/`: Terminal-operated X DOM CLI with reply workflows and standalone approved image publishing.
 - `tools/facebook_agent/`: Direct DOM publishing of approved text and an optional single image to personal Facebook profiles.
 - `tools/linkedin_agent/`: Direct approved-input doctor and publishing CLI for personal LinkedIn profiles with repeatable ordered images.
+- `tools/reddit-research-mcp/`: Semantic vector discovery across 20,000+ indexed subreddits to identify niche communities relevant to any topic, audience, or pain point.
+- `tools/reddit_agent/research.py`: Zero-credential standalone research tool to paginate and extract chronological posts and discussions from any subreddit with timeframe filtering (`--months`) into local JSON.
 
 > [!IMPORTANT]
-> **MANDATORY RULE: STRICTLY USE EXISTING CLI TOOLS ONLY**
-> You must strictly use the existing repository CLI tools (`uv run python -m tools.social_agent`, `uv run python -m tools.facebook_agent`, `uv run python -m tools.linkedin_agent`, `uv run python -m tools.twitter_agent`, and `uv run python -m tools.twitter_agent.publish`).
+> **MANDATORY RULE: STRICTLY USE EXISTING REPOSITORY TOOLS ONLY**
+> You must strictly use the existing repository CLI and research tools (`uv run python -m tools.social_agent`, `uv run python -m tools.facebook_agent`, `uv run python -m tools.linkedin_agent`, `uv run python -m tools.twitter_agent`, `uv run python -m tools.twitter_agent.publish`, `tools/reddit-research-mcp`, and `python3 tools/reddit_agent/research.py`).
 > - **DO NOT wander around writing or running ad-hoc Python snippets, one-liners (`python -c ...`), custom scripts, or ad-hoc automation code.**
-> - All browser management, diagnostics, configuration/environment inspection, and publishing must be executed directly through the established CLI tool interfaces.
+> - All browser management, diagnostics, configuration/environment inspection, publishing, and Reddit research must be executed directly through the established tool interfaces.
 
 ### Configuration
 Run all commands from the repository root. Read [`tools/social_agent/README.md`](../../../tools/social_agent/README.md) for shared browser command reference and [`references/platform-matrix.md`](references/platform-matrix.md) for publishing constraints.
@@ -260,6 +262,51 @@ Use when finding high-signal conversations and drafting replies on X.
    ```bash
    uv run python -m tools.twitter_agent reply submit <DRAFT_ID>
    ```
+
+---
+
+### Workflow 3: Reddit Audience Research & Community Discovery
+
+Use when identifying where target personas gather, discovering niche communities, or extracting authentic problem discussions to inform social copy, angles, and hooks.
+
+#### Step 1: Discover Relevant Subreddits (`tools/reddit-research-mcp`)
+Perform semantic vector search across 20,000+ indexed subreddits based on conceptual queries or target audience descriptions.
+
+- **Via Python Runner**:
+  ```bash
+  uv run --directory tools/reddit-research-mcp python3 -c "
+  import asyncio
+  from src.tools.discover import discover_subreddits
+
+  res = asyncio.run(discover_subreddits(query='market research', limit=5))
+  for s in res.get('subreddits', []):
+      print(f\"r/{s['name']} | Subs: {s['subscribers']} | Confidence: {s['confidence']} ({s['match_tier']})\")
+  "
+  ```
+- **Via MCP Client** (when connected to `dialog-mcp` / `reddit-research-mcp`):
+  Call `discover_subreddits(query="<SEARCH_TERM>", limit=5)`.
+
+#### Step 2: Fetch Recent Community Discussions (`tools/reddit_agent`)
+Once target subreddits are identified, extract chronological discussions over a given timeframe (e.g. past 6 months) into local JSON without API keys:
+
+```bash
+python3 tools/reddit_agent/research.py \
+  --subreddit https://www.reddit.com/r/Marketresearch/ \
+  --months 6 \
+  --output local/market-research
+```
+
+**Key Parameters**:
+- `--subreddit`: Subreddit name or full Reddit URL (e.g. `https://www.reddit.com/r/Marketresearch/` or `AskMarketing`).
+- `--months`: Timeframe cutoff in months (e.g. `6` fetches posts from the last 6 months with automated pagination).
+- `--output`: Destination directory or JSON file path (e.g. `local/market-research` writes `<output>/<subreddit>_posts.json`).
+- `--sort`: Listing sort order (`new` [default], `top`, `hot`).
+- `--limit`: Optional maximum number of posts to fetch.
+- `--crawl-replies`: Flag to crawl nested comment replies for each post (default disabled to prevent rate limits).
+- `--delay`: Delay between requests in seconds (default `3.0`).
+
+#### Step 3: Triage Pain Points & Extract Hooks
+Analyze the extracted dataset (e.g. with `local/market-research/scan_stuck_effort.py` or content miners) to discover real phrases, stuck points, and vocabulary to feed into Twitter, Facebook, or LinkedIn copy.
 
 ---
 

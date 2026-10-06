@@ -84,6 +84,70 @@ class BrowserTests(unittest.TestCase):
         self.assertIsNone(cdp.context)
         self.assertEqual(cdp.contexts, [])
 
+    def test_cdp_browser_delegates_to_invisible(self):
+        mock_context = MagicMock(spec=['new_page', 'pages', 'close', 'browser'])
+        mock_ipw_instance = MagicMock()
+        mock_ipw_instance.__enter__.return_value = mock_context
+
+        with patch('invisible_playwright.InvisiblePlaywright', return_value=mock_ipw_instance):
+            browser = CDPBrowser(backend='invisible')
+            browser.connect()
+            self.assertEqual(browser.backend, 'invisible')
+            self.assertEqual(browser.context, mock_context)
+            browser.disconnect()
+
+
+class InvisibleBrowserTests(unittest.TestCase):
+    def test_invisible_connect_success(self):
+        from tools.social_agent.browser import InvisibleBrowser
+        mock_context = MagicMock(spec=['new_page', 'pages', 'close', 'browser'])
+        mock_page = MagicMock()
+        mock_context.new_page.return_value = mock_page
+        mock_ipw_instance = MagicMock()
+        mock_ipw_instance.__enter__.return_value = mock_context
+
+        with patch('invisible_playwright.InvisiblePlaywright', return_value=mock_ipw_instance):
+            with InvisibleBrowser(seed=42, headless=True) as browser:
+                self.assertEqual(browser.backend, 'invisible')
+                self.assertEqual(browser.seed, 42)
+                self.assertTrue(browser.headless)
+                self.assertEqual(browser.context, mock_context)
+
+                # Page creation
+                page = browser.new_page()
+                self.assertEqual(page, mock_page)
+                self.assertEqual(browser.page, mock_page)
+
+            # Cleanup
+            mock_ipw_instance.__exit__.assert_called_once()
+            self.assertIsNone(browser.context)
+
+    def test_invisible_unsupported_raises_error(self):
+        from tools.social_agent.browser import InvisibleBrowser
+
+        with patch('invisible_playwright.InvisiblePlaywright', side_effect=NotImplementedError('macOS not supported')):
+            browser = InvisibleBrowser(fallback_to_cdp=False)
+            with self.assertRaises(AgentError) as ctx:
+                browser.connect()
+            self.assertEqual(ctx.exception.code, 'invisible_browser_unsupported')
+
+    def test_invisible_unsupported_fallback_to_cdp(self):
+        from tools.social_agent.browser import InvisibleBrowser
+        mock_context = MagicMock()
+        mock_browser = MagicMock()
+        mock_browser.contexts = [mock_context]
+        mock_playwright = MagicMock()
+        mock_playwright.chromium.connect_over_cdp.return_value = mock_browser
+
+        with patch('invisible_playwright.InvisiblePlaywright', side_effect=NotImplementedError('macOS not supported')), \
+             patch('playwright.sync_api.sync_playwright') as mock_sp:
+            mock_sp.return_value.start.return_value = mock_playwright
+            browser = InvisibleBrowser(fallback_to_cdp=True, endpoint='http://127.0.0.1:9222')
+            browser.connect()
+            self.assertEqual(browser.backend, 'cdp')
+            self.assertEqual(browser.context, mock_context)
+            browser.disconnect()
+
 
 if __name__ == '__main__':
     unittest.main()

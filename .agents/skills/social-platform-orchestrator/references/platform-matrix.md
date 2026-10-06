@@ -102,6 +102,38 @@ uv run python -m tools.twitter_agent reply draft DRAFT_ID --text "Substantive re
 uv run python -m tools.twitter_agent reply submit DRAFT_ID
 ```
 
+### Reddit Research & Discovery
+
+#### 1. Semantic Community Discovery (`tools/reddit-research-mcp`)
+```bash
+# Vector search across 20,000+ communities to find relevant subreddits
+uv run --directory tools/reddit-research-mcp python3 -c "
+import asyncio
+from src.tools.discover import discover_subreddits
+
+res = asyncio.run(discover_subreddits(query='market research and customer discovery', limit=10))
+for s in res.get('subreddits', []):
+    print(f\"r/{s['name']} (subscribers: {s['subscribers']}, confidence: {s['confidence']})\")
+"
+```
+
+#### 2. Community Post Extraction (`tools/reddit_agent`)
+```bash
+# Fetch recent discussions from the last 6 months into local directory
+python3 tools/reddit_agent/research.py \
+  --subreddit https://www.reddit.com/r/Marketresearch/ \
+  --months 6 \
+  --output local/market-research
+
+# Custom options: sort order, limits, or replies
+python3 tools/reddit_agent/research.py \
+  --subreddit AskMarketing \
+  --sort new \
+  --months 3 \
+  --limit 50 \
+  --output local/market-research/askmarketing_posts.json
+```
+
 ---
 
 ## 3. Exit Codes & JSON Payloads

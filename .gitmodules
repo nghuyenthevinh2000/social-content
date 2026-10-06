@@ -4,3 +4,11 @@
 [submodule "projects/transparency-fun"]
 	path = projects/transparency-fun
 	url = https://github.com/nghuyenthevinh2000/transparency-fun.git
+[submodule "tools/invisible_playwright_mcp"]
+	path = tools/invisible_playwright_mcp
+	url = https://github.com/feder-cr/invisible_playwright_mcp
+	ignore = untracked
+[submodule "tools/reddit-research-mcp"]
+	path = tools/reddit-research-mcp
+	url = https://github.com/dialog-tools/reddit-research-mcp.git
+	ignore = untracked

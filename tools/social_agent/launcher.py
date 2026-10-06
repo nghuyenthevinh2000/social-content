@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 import urllib.request
 
 from .config import AgentError, Config, find_browser_binary, get_config
@@ -63,26 +63,61 @@ def launch_browser_process(
 def start_browser(
     port: Optional[int] = None,
     host: Optional[str] = None,
-    data_dir: Optional[str | Path] = None,
+    data_dir: Optional[Union[str, Path]] = None,
     timeout: Optional[float] = None,
     chrome_bin: Optional[str] = None,
+    backend: Optional[str] = None,
+    seed: Optional[int] = None,
+    headless: Optional[bool] = None,
+    binary_path: Optional[str] = None,
     check_interval: float = 0.5,
     responsive_checker: Optional[Callable[[int, str], bool]] = None,
     process_launcher: Optional[Callable[[str, int, Path, str], None]] = None,
 ) -> Dict[str, Any]:
-    """Detect an existing responsive CDP browser or start one and wait for readiness.
+    """Detect or initialize invisible browser or CDP browser.
 
     Returns:
-        Dict reporting action ('reused' or 'started'), endpoint, port, user_data_dir,
-        and optionally browser_bin.
+        Dict reporting action ('ready', 'reused', or 'started'), backend,
+        user_data_dir, and relevant connection or engine details.
     """
+    resolved_backend = backend
+    if resolved_backend is None and (port is not None or chrome_bin is not None):
+        resolved_backend = 'cdp'
+
     config = get_config(
         port=port,
         host=host,
         data_dir=data_dir,
         readiness_timeout_seconds=timeout,
         chrome_bin=chrome_bin,
+        backend=resolved_backend,
+        seed=seed,
+        headless=headless,
+        binary_path=binary_path,
     )
+
+    if config.backend == 'invisible':
+        config.user_data_dir.mkdir(parents=True, exist_ok=True)
+        engine_desc = 'invisible engine ready'
+        try:
+            from invisible_playwright_mcp.engine import Engine
+            eng = Engine(binary_path=config.binary_path)
+            if not eng.ready():
+                eng.start()
+                eng.settle(timeout=config.readiness_timeout_seconds)
+            engine_desc = eng.describe()
+        except Exception:
+            pass
+
+        return {
+            'action': 'ready',
+            'backend': 'invisible',
+            'user_data_dir': str(config.user_data_dir),
+            'seed': config.seed,
+            'headless': config.headless,
+            'binary_path': config.binary_path,
+            'engine_status': engine_desc,
+        }
     checker = responsive_checker or (lambda p, h: is_browser_responsive(p, h, timeout=1.0))
     launcher = process_launcher or launch_browser_process
 

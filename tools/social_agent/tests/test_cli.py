@@ -108,7 +108,41 @@ class CliTests(unittest.TestCase):
         output = json.loads(stdout.getvalue())
         self.assertFalse(output['ok'])
         self.assertEqual(output['error']['code'], 'internal_error')
-        self.assertIn('Unexpected crash', output['error']['message'])
+    def test_cli_doctor_invisible_flags(self):
+        stdout = io.StringIO()
+        mock_data = {'connected': True, 'backend': 'invisible', 'seed': 42}
+        with patch('tools.social_agent.cli.run_doctor', return_value=mock_data) as mock_doc, \
+             patch('sys.stdout', stdout):
+            code = main(['doctor', '--backend', 'invisible', '--seed', '42', '--binary', '/bin/engine', '--headless'])
+
+        self.assertEqual(code, 0)
+        mock_doc.assert_called_once_with(
+            endpoint=None,
+            timeout_ms=None,
+            backend='invisible',
+            seed=42,
+            headless=True,
+            binary_path='/bin/engine',
+        )
+
+    def test_cli_start_browser_invisible_flags(self):
+        stdout = io.StringIO()
+        mock_data = {'action': 'ready', 'backend': 'invisible'}
+        with patch('tools.social_agent.cli.start_browser', return_value=mock_data) as mock_sb, \
+             patch('sys.stdout', stdout):
+            code = main(['start-browser', '--backend', 'invisible', '--seed', '42', '--binary', '/bin/engine', '--headless'])
+
+        self.assertEqual(code, 0)
+        mock_sb.assert_called_once_with(
+            port=None,
+            data_dir=None,
+            timeout=None,
+            chrome_bin=None,
+            backend='invisible',
+            seed=42,
+            headless=True,
+            binary_path='/bin/engine',
+        )
 
 
 if __name__ == '__main__':

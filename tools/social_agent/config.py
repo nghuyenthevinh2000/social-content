@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import sys
-from typing import List, Optional
+from typing import List, Optional, Union
 
 try:
     from dotenv import load_dotenv
@@ -16,6 +16,7 @@ except ImportError:
     pass
 
 
+DEFAULT_BACKEND: str = 'invisible'
 DEFAULT_PORT: int = 9222
 DEFAULT_HOST: str = '127.0.0.1'
 DEFAULT_ENDPOINT: str = f'http://{DEFAULT_HOST}:{DEFAULT_PORT}'
@@ -23,6 +24,10 @@ DEFAULT_PROFILE_DIR: str = '$HOME/chrome-twitter-profile'
 DEFAULT_DOCTOR_TIMEOUT_MS: int = 30000
 DEFAULT_READINESS_TIMEOUT_SECONDS: float = 15.0
 DEFAULT_CHECK_INTERVAL_SECONDS: float = 0.5
+DEFAULT_SEED: Optional[int] = None
+DEFAULT_HEADLESS: bool = False
+DEFAULT_PROXY: Optional[str] = None
+DEFAULT_BINARY_PATH: Optional[str] = None
 
 DARWIN_CHROME_CANDIDATES: List[str] = [
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -94,21 +99,47 @@ class Config:
     doctor_timeout_ms: int
     readiness_timeout_seconds: float
     chrome_bin: Optional[str] = None
+    backend: str = 'invisible'
+    seed: Optional[int] = None
+    headless: bool = False
+    proxy: Optional[str] = None
+    binary_path: Optional[str] = None
 
 
 def get_config(
     port: Optional[int] = None,
     host: Optional[str] = None,
     endpoint: Optional[str] = None,
-    data_dir: Optional[str | Path] = None,
+    data_dir: Optional[Union[str, Path]] = None,
     timeout_ms: Optional[int] = None,
     readiness_timeout_seconds: Optional[float] = None,
     chrome_bin: Optional[str] = None,
+    backend: Optional[str] = None,
+    seed: Optional[int] = None,
+    headless: Optional[bool] = None,
+    proxy: Optional[str] = None,
+    binary_path: Optional[str] = None,
 ) -> Config:
     """Resolve configuration with documented override precedence:
     Explicit function/CLI arguments > Environment variables > Default fallbacks.
     """
-    # 1. Resolve host and port
+    # 1. Resolve backend
+    raw_backend = (
+        backend
+        or os.environ.get('BROWSER_BACKEND')
+        or os.environ.get('BROWSER_TYPE')
+        or DEFAULT_BACKEND
+    ).lower()
+    if raw_backend in ('stealth', 'invisible_playwright', 'invisible-playwright', 'invisible_playwright_mcp'):
+        resolved_backend = 'invisible'
+    elif raw_backend in ('cdp', 'chrome'):
+        resolved_backend = 'cdp'
+    elif raw_backend == 'invisible':
+        resolved_backend = 'invisible'
+    else:
+        raise AgentError('invalid_arguments', f"Invalid browser backend: {raw_backend}. Must be 'invisible' or 'cdp'.")
+
+    # 2. Resolve host and port
     resolved_host = host or os.environ.get('CDP_HOST') or DEFAULT_HOST
 
     resolved_port: int
@@ -130,7 +161,7 @@ def get_config(
     if resolved_port <= 0 or resolved_port > 65535:
         raise AgentError('invalid_arguments', f'Port out of valid range (1-65535): {resolved_port}')
 
-    # 2. Resolve endpoint
+    # 3. Resolve endpoint
     if endpoint:
         resolved_endpoint = endpoint
     else:
@@ -140,14 +171,19 @@ def get_config(
         else:
             resolved_endpoint = f'http://{resolved_host}:{resolved_port}'
 
-    # 3. Resolve user data directory
+    # 4. Resolve user data directory / profile directory
     if data_dir is not None:
         raw_dir = str(data_dir)
     else:
-        raw_dir = os.environ.get('CHROME_USER_DATA_DIR') or os.environ.get('USER_DATA_DIR') or DEFAULT_PROFILE_DIR
+        raw_dir = (
+            os.environ.get('STEALTHFOX_PROFILE_DIR')
+            or os.environ.get('CHROME_USER_DATA_DIR')
+            or os.environ.get('USER_DATA_DIR')
+            or DEFAULT_PROFILE_DIR
+        )
     resolved_user_data_dir = Path(os.path.expandvars(os.path.expanduser(raw_dir))).resolve()
 
-    # 4. Resolve doctor timeout
+    # 5. Resolve doctor timeout
     resolved_timeout_ms: int
     if timeout_ms is not None:
         try:
@@ -167,7 +203,7 @@ def get_config(
     if resolved_timeout_ms <= 0:
         raise AgentError('invalid_arguments', 'Browser timeout must be positive.')
 
-    # 5. Resolve readiness timeout
+    # 6. Resolve readiness timeout
     resolved_readiness_timeout: float
     if readiness_timeout_seconds is not None:
         try:
@@ -187,8 +223,46 @@ def get_config(
     if resolved_readiness_timeout <= 0:
         raise AgentError('invalid_arguments', 'Readiness timeout must be positive.')
 
-    # 6. Resolve chrome binary
+    # 7. Resolve chrome binary
     resolved_bin = find_browser_binary(chrome_bin)
+
+    # 8. Resolve seed
+    resolved_seed: Optional[int]
+    if seed is not None:
+        try:
+            resolved_seed = int(seed)
+        except (ValueError, TypeError) as exc:
+            raise AgentError('invalid_arguments', f'Invalid seed: {seed}') from exc
+    else:
+        env_seed = os.environ.get('STEALTHFOX_SEED') or os.environ.get('BROWSER_SEED')
+        if env_seed:
+            try:
+                resolved_seed = int(env_seed)
+            except (ValueError, TypeError) as exc:
+                raise AgentError('invalid_arguments', f'Invalid seed in environment: {env_seed}') from exc
+        else:
+            resolved_seed = DEFAULT_SEED
+
+    # 9. Resolve headless
+    resolved_headless: bool
+    if headless is not None:
+        resolved_headless = bool(headless)
+    else:
+        env_headless = os.environ.get('STEALTHFOX_HEADLESS') or os.environ.get('BROWSER_HEADLESS')
+        if env_headless is not None:
+            resolved_headless = env_headless.lower() in ('1', 'true', 'yes')
+        else:
+            resolved_headless = DEFAULT_HEADLESS
+
+    # 10. Resolve proxy
+    resolved_proxy = proxy or os.environ.get('STEALTHFOX_PROXY') or os.environ.get('BROWSER_PROXY') or DEFAULT_PROXY
+
+    # 11. Resolve binary path
+    resolved_binary = (
+        binary_path
+        or os.environ.get('STEALTHFOX_BINARY')
+        or os.environ.get('INVISIBLE_BINARY')
+    )
 
     return Config(
         port=resolved_port,
@@ -198,4 +272,9 @@ def get_config(
         doctor_timeout_ms=resolved_timeout_ms,
         readiness_timeout_seconds=resolved_readiness_timeout,
         chrome_bin=resolved_bin,
+        backend=resolved_backend,
+        seed=resolved_seed,
+        headless=resolved_headless,
+        proxy=resolved_proxy,
+        binary_path=resolved_binary,
     )

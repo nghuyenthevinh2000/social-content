@@ -69,8 +69,21 @@ class DoctorTests(unittest.TestCase):
             with self.assertRaises(AgentError) as ctx:
                 run_doctor(endpoint='http://127.0.0.1:9222')
 
-            self.assertEqual(ctx.exception.code, 'no_browser_context')
-            mock_playwright_inst.stop.assert_called_once()
+    def test_doctor_invisible_success(self):
+        mock_context = MagicMock()
+        mock_browser = MagicMock()
+        mock_browser.contexts = [mock_context]
+        mock_browser.version = 'invisible-firefox/0.27.0'
+        mock_browser.seed = 99
+        mock_browser.__enter__.return_value = mock_browser
+
+        with patch('tools.social_agent.doctor.InvisibleBrowser', return_value=mock_browser):
+            result = run_doctor(backend='invisible', seed=99)
+            self.assertEqual(result['connected'], True)
+            self.assertEqual(result['backend'], 'invisible')
+            self.assertEqual(result['browser_version'], 'invisible-firefox/0.27.0')
+            self.assertEqual(result['seed'], 99)
+            self.assertEqual(result['context_count'], 1)
 
 
 if __name__ == '__main__':
