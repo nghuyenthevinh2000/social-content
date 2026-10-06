@@ -1,16 +1,16 @@
 {
-  "updated_at": "2026-10-06T18:50:37.241747",
-  "dry_run": true,
+  "updated_at": "2026-10-06T20:44:58.641966",
+  "dry_run": false,
   "items": [
     {
-      "lesson": "topics/business/lessons/marketing-agency-client-acquisition-playbook.json",
-      "title": "Agency Client Acquisition: Failure Traps vs. Solutions",
-      "pairs": 6,
-      "image": "topics/business/infographics/marketing-agency-client-acquisition-playbook/output.png",
+      "lesson": "topics/business/lessons/conference-roi-playbook-pre-booking-meetings.json",
+      "title": "Conference ROI: Failure Traps vs. Solutions",
+      "pairs": 7,
+      "image": "topics/business/infographics/conference-roi-playbook-pre-booking-meetings/output.png",
       "linkedin": {
-        "status": "staged_dry_run",
-        "text": "Agency Client Acquisition: Failure Traps vs. Solutions\n\nWhy referral-only agencies hit a ceiling & how top founders scale predictable outbound\n\n❌ The Delivery vs. Sales Fallacy\n✅ Treat the Agency as \"Client #0\"\n\n❌ The Generalist \"Full-Service\" Trap\n✅ Hyper-Specific Vertical/Problem Niche\n\n❌ The Spray-and-Pray Volume Bias\n✅ The 10-Minute Bespoke Diagnosis\n\n❌ The Cosmetic Differentiator Illusion\n✅ Business Acumen & Strategic Diagnosis\n\nFull breakdown in the infographic 👇\n\n#B2BMarketing #GrowthStrategy #SalesPlaybook",
-        "output": null
+        "status": "published",
+        "text": "Conference ROI: Failure Traps vs. Solutions\n\nWhy 90% return empty-handed & how top pipeline teams lock 20–50 qualified meetings\n\n❌ The \"Exposure\" Fallacy\n✅ Pre-booked 1-on-1 Calendar\n\n❌ The Vanity Booth Illusion\n✅ Delegate / Guerilla Sourcing\n\n❌ The Last-Minute Outreach Scramble\n✅ The 3–4 Week \"Golden Window\"\n\n❌ The Cold \"Pitch-Slap\"\n✅ Low-Friction Peer Exchange\n\nFull breakdown in the infographic 👇",
+        "output": "{\n  \"ok\": true,\n  \"data\": {\n    \"status\": \"posted\",\n    \"url\": \"https://www.linkedin.com/feed/update/urn:li:activity:7513232835722346496/\"\n  }\n}"
       }
     }
   ]

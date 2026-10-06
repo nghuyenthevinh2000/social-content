@@ -43,7 +43,11 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--file", help="only this lesson (name or stem)")
     ap.add_argument("--publish", action="store_true", help="post to LinkedIn (default: dry run)")
+    ap.add_argument("--timeout-ms", type=int, default=60000, help="browser timeout in ms (default: 60000)")
     args = ap.parse_args()
+
+    if args.publish:
+        subprocess.run(["uv", "run", "python", "-m", "tools.social_agent", "start-browser"], cwd=REPO_ROOT, check=True)
 
     files = sorted(LESSONS.glob("*.json"))
     if args.file:
@@ -57,12 +61,18 @@ def main() -> None:
         png = INFOGRAPHICS / f.stem / "output.png"
         render(data, png)
         text = linkedin_text(data)
-        cmd = ["uv", "run", "python", "-m", "tools.linkedin_agent", "post", "--text", text, "--image", str(png)]
+        cmd = [
+            "uv", "run", "python", "-m", "tools.linkedin_agent",
+            "--timeout-ms", str(args.timeout_ms),
+            "post", "--text", text, "--image", str(png),
+        ]
         status, output = "staged_dry_run", None
         if args.publish:
             r = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
             status, output = ("published" if r.returncode == 0 else "error"), (r.stdout or r.stderr).strip()
         print(f"{f.name}: {len(data['pairs'])} pairs -> {png.relative_to(REPO_ROOT)} [{status}]")
+        if status == "error" and output:
+            print(f"  -> {output}")
         items.append({
             "lesson": str(f.relative_to(REPO_ROOT)),
             "title": data["title"],

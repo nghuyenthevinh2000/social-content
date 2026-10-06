@@ -1,0 +1,39 @@
+{
+  "source": "topics/business/lessons/solo-founder-market-research-playbook.md",
+  "title": "Solo-Founder Market Research: Failure Traps vs. Solutions",
+  "subtitle": "Lessons from 19 Reddit threads and 152 retrieved comment bodies; incomplete coverage and unverified practitioner accounts",
+  "pairs": [
+    {
+      "trap": { "title": "Research Without a Decision", "description": "Collecting interesting information without knowing which business choice it should change.", "tag": "Open-Ended Research" },
+      "solution": { "title": "Decision-First Brief", "description": "Define the decision, risky assumption, disconfirming evidence, cost of being wrong, and research budget before collecting data.", "tag": "Decision First" }
+    },
+    {
+      "trap": { "title": "The Attractive Market Report", "description": "Treating market growth or a large category estimate as proof that reachable customers will buy your product.", "tag": "Top-Down Demand" },
+      "solution": { "title": "Named Buyers and Buying Signals", "description": "Identify active accounts, relevant workflows, budget owners, ownership groups, and contact routes. Use reports as context, not purchase evidence.", "tag": "Buyer-Level Evidence" }
+    },
+    {
+      "trap": { "title": "Asking for Idea Approval", "description": "Asking whether people like your idea or can name problems, then treating positive reactions as validation.", "tag": "Polite Feedback" },
+      "solution": { "title": "Recent Workflow Walkthroughs", "description": "Investigate actual tasks, exceptions, workarounds, costs, and buying authority. Include people outside your network and those happy with existing solutions.", "tag": "Observed Behavior" }
+    },
+    {
+      "trap": { "title": "Disguised or Generic Recruitment", "description": "Posting AI-written research requests, hiding commercial intent, or ignoring community rules.", "tag": "Trust Failure" },
+      "solution": { "title": "Honest, Specific Outreach", "description": "Explain your affiliation, audience fit, time commitment, and purpose in your own words. Seek permission and offer appropriate compensation for time.", "tag": "Permission and Trust" }
+    },
+    {
+      "trap": { "title": "Pricing Before Audience Fit", "description": "Testing prices on people who like the story but do not buy the category, or have money but no reason to switch.", "tag": "Wrong Respondents" },
+      "solution": { "title": "Buyer Fit, Then a Real Offer", "description": "Identify category buyers and competing uses of budget. Refine a price hypothesis, then test a scoped paid pilot or transparent preorder with qualified prospects.", "tag": "Purchase Commitment" }
+    },
+    {
+      "trap": { "title": "The Magic Sample Size", "description": "Assuming a response count guarantees representativeness or that preference, usefulness, and purchase intent are interchangeable.", "tag": "False Precision" },
+      "solution": { "title": "Match Method to the Question", "description": "Separate workflow discovery, prevalence estimation, and offer testing. Keep wording and context controlled; label directional findings and sampling limits.", "tag": "Fit-for-Purpose Evidence" }
+    },
+    {
+      "trap": { "title": "AI-Generated Validation", "description": "Using synthetic respondents or unchecked summaries as evidence of real demand and willingness to pay.", "tag": "Manufactured Evidence" },
+      "solution": { "title": "AI Assistance with Traceable Sources", "description": "Use AI to rehearse guides, organize real notes, and draft reproducible analysis. Verify claims and calculations; keep generated hypotheses separate from observations.", "tag": "Traceable Evidence" }
+    },
+    {
+      "trap": { "title": "Evergreen Findings", "description": "Reusing old quotes without dates or trusting plausible numbers after unexplained data transformations.", "tag": "Stale Confidence" },
+      "solution": { "title": "Evidence Log and Targeted Refresh", "description": "Record source, date, segment, uncertainty, decision, and refresh trigger. Recheck affected assumptions after changes and reconcile important data handoffs.", "tag": "Targeted Revalidation" }
+    }
+  ]
+}

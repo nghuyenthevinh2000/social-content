@@ -73,3 +73,4 @@ Create `lessons/<slug>.json` and re-run the workflow. Any number of pairs works;
 | [`conference-roi-playbook-pre-booking-meetings`](lessons/conference-roi-playbook-pre-booking-meetings.json) | ✅ |
 | [`b2b-lead-generation-qualification-playbook`](lessons/b2b-lead-generation-qualification-playbook.json) | ✅ |
 | [`marketing-agency-client-acquisition-playbook`](lessons/marketing-agency-client-acquisition-playbook.json) | ✅ |
+| [`solo-founder-market-research-playbook`](lessons/solo-founder-market-research-playbook.json) | ✅ |
