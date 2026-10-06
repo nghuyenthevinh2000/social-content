@@ -1,0 +1,79 @@
+{
+  "source": "lessons/b2b-lead-generation-qualification-playbook.md",
+  "title": "B2B Lead Gen: Failure Traps vs. Solutions",
+  "subtitle": "Why generic volume fails & how modern operators convert high-intent pipeline",
+  "pairs": [
+    {
+      "trap": {
+        "title": "The Volume Trap (\"Spray & Pray\")",
+        "description": "Blasting 2,000 generic emails with merge tags (`Hi {{FirstName}}`) and a Calendly link on email one.",
+        "tag": "Spray & Pray"
+      },
+      "solution": {
+        "title": "Signal-Based Sniper Outbound",
+        "description": "Target high-intent triggers (job transitions, funding rounds, visible competitor tooling via Clay/Apollo) with 3-line plain-text human messages.",
+        "tag": "Intent Triggers"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Polished Brand Illusion",
+        "description": "Investing weeks in high-gloss corporate copy, feature lists, and stock agency imagery.",
+        "tag": "Corporate Gloss"
+      },
+      "solution": {
+        "title": "\"Useful Proof\" & Transparency",
+        "description": "Share operational post-mortems, pricing lessons, failed experiments, and real screenshots. Unfiltered transparency builds instant peer credibility.",
+        "tag": "Useful Proof"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Pitch-First Outreach Bias",
+        "description": "Asking for a 15-minute call before providing any demonstrable value.",
+        "tag": "Pitch-First"
+      },
+      "solution": {
+        "title": "The Pre-Built Asset Protocol",
+        "description": "Build a bespoke teardown, micro-draft, or workflow prototype for the account before outreach. Give them something tangible to react to.",
+        "tag": "Pre-Built Asset"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Top-of-Funnel Vanity Metric",
+        "description": "Celebrating total lead form fills while sales reps complain about unqualified, unresponsive contacts.",
+        "tag": "Tire Kickers"
+      },
+      "solution": {
+        "title": "Upfront Friction & Disqualification",
+        "description": "Embed readiness quizzes, transparent pricing bounds, and process walkthroughs into the capture flow to intentionally filter out non-fits.",
+        "tag": "Intentional Friction"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Single-Channel Dependency",
+        "description": "Relying 100% on cold email or paid ads and blaming copy when deliverability drops or ad costs spike.",
+        "tag": "Single Channel"
+      },
+      "solution": {
+        "title": "Coordinated Multi-Channel Stacks",
+        "description": "Orchestrate email, LinkedIn touches, and warm follow-up calls in synchronized sequences (e.g., via SmartReach) across the buyer's touchpoints.",
+        "tag": "Multi-Touch Sync"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Feature-Heavy Landing Page",
+        "description": "Structuring landing pages around product feature matrices rather than verified proof.",
+        "tag": "Feature Matrices"
+      },
+      "solution": {
+        "title": "Proof-First Landing Architecture",
+        "description": "Show real work, live before-and-after metrics, and verified customer screenshots above the fold; explain features second.",
+        "tag": "Proof Above Fold"
+      }
+    }
+  ]
+}

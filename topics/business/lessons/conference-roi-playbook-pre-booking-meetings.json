@@ -1,0 +1,91 @@
+{
+  "source": "lessons/conference-roi-playbook-pre-booking-meetings.md",
+  "title": "Conference ROI: Failure Traps vs. Solutions",
+  "subtitle": "Why 90% return empty-handed & how top pipeline teams lock 20–50 qualified meetings",
+  "pairs": [
+    {
+      "trap": {
+        "title": "The \"Exposure\" Fallacy",
+        "description": "Showing up to large industry events (e.g., Web Summit) with no pre-booked meetings, banking on serendipity and broad \"brand exposure\".",
+        "tag": "Serendipity"
+      },
+      "solution": {
+        "title": "Pre-booked 1-on-1 Calendar",
+        "description": "Never step onto the plane without 15–30 confirmed meetings. Conferences are offline conversion engines for pre-warmed contacts, not billboard awareness exercises.",
+        "tag": "15–30 Slots"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Vanity Booth Illusion",
+        "description": "Spending $10k–$50k+ on exhibition booths assuming inbound foot traffic will generate qualified deals.",
+        "tag": "$10K–$50K Trap"
+      },
+      "solution": {
+        "title": "Delegate / Guerilla Sourcing",
+        "description": "Skip the expensive booth. Attend as a standard delegate and re-allocate capital toward attendee directories, 15-minute coffee meetings, and private VIP dinners where real deals actually happen.",
+        "tag": "10x ROI"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Last-Minute Outreach Scramble",
+        "description": "Waiting until 24–48 hours before the event (or when wandering the floor) to send cold messages.",
+        "tag": "Too Late"
+      },
+      "solution": {
+        "title": "The 3–4 Week \"Golden Window\"",
+        "description": "Launch outreach the moment attendee/speaker rosters and event apps go live (3–4 weeks prior). Target executives while their travel calendars are still wide open.",
+        "tag": "Early Mover"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Cold \"Pitch-Slap\"",
+        "description": "Sending product brochures, formal sales pitch decks, or demo requests in message #1.",
+        "tag": "Spamming"
+      },
+      "solution": {
+        "title": "Low-Friction Peer Exchange",
+        "description": "Keep messages under 60 words. Pitch a 15-minute coffee chat or \"compare notes\" on a specific challenge or speaker session without any hard sales pressure.",
+        "tag": "< 60 Words"
+      }
+    },
+    {
+      "trap": {
+        "title": "Generic Marketing Email Blasts",
+        "description": "Blasting the opt-in attendee list with template newsletter marketing emails, leading to zero responses.",
+        "tag": "Ignored"
+      },
+      "solution": {
+        "title": "Sales-Led, Humanized Sequencing",
+        "description": "Marketing provides data enrichment; sales reps send personalized 1-to-1 notes through sequence tools (Outreach/Salesloft) so every invite feels organic and personal.",
+        "tag": "Personal 1:1"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Show-Floor Captive Mindset",
+        "description": "Spending 100% of your time inside noisy exhibition halls hoping for high-value conversations.",
+        "tag": "Noisy Hall"
+      },
+      "solution": {
+        "title": "The 9 AM – 9 PM Off-Floor Map",
+        "description": "Use the exhibition floor only to filter prospects; hold deep-dive conversations in quiet hotel lobby corners, and host S-tier prospects for dinners/drinks after 6 PM.",
+        "tag": "Dinners & Bars"
+      }
+    },
+    {
+      "trap": {
+        "title": "Instant Gratification / Day-1 Revenue Bias",
+        "description": "Judging conference success purely on immediate contracts signed during the week of the event, feeling embarrassed when revenue is zero.",
+        "tag": "Short-Sighted"
+      },
+      "solution": {
+        "title": "9–12 Month Payback Pipeline Tracking",
+        "description": "Track leading indicators: pre-booked qualified meetings, executive relationships deepened, and pipeline progression. High-ticket B2B deals from conferences take 6–12 months to convert.",
+        "tag": "Pipeline Nurture"
+      }
+    }
+  ]
+}

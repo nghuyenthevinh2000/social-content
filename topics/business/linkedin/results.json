@@ -1,0 +1,17 @@
+{
+  "updated_at": "2026-10-06T18:50:37.241747",
+  "dry_run": true,
+  "items": [
+    {
+      "lesson": "topics/business/lessons/marketing-agency-client-acquisition-playbook.json",
+      "title": "Agency Client Acquisition: Failure Traps vs. Solutions",
+      "pairs": 6,
+      "image": "topics/business/infographics/marketing-agency-client-acquisition-playbook/output.png",
+      "linkedin": {
+        "status": "staged_dry_run",
+        "text": "Agency Client Acquisition: Failure Traps vs. Solutions\n\nWhy referral-only agencies hit a ceiling & how top founders scale predictable outbound\n\n❌ The Delivery vs. Sales Fallacy\n✅ Treat the Agency as \"Client #0\"\n\n❌ The Generalist \"Full-Service\" Trap\n✅ Hyper-Specific Vertical/Problem Niche\n\n❌ The Spray-and-Pray Volume Bias\n✅ The 10-Minute Bespoke Diagnosis\n\n❌ The Cosmetic Differentiator Illusion\n✅ Business Acumen & Strategic Diagnosis\n\nFull breakdown in the infographic 👇\n\n#B2BMarketing #GrowthStrategy #SalesPlaybook",
+        "output": null
+      }
+    }
+  ]
+}

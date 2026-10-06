@@ -1,0 +1,79 @@
+{
+  "source": "lessons/marketing-agency-client-acquisition-playbook.md",
+  "title": "Agency Client Acquisition: Failure Traps vs. Solutions",
+  "subtitle": "Why referral-only agencies hit a ceiling & how top founders scale predictable outbound",
+  "pairs": [
+    {
+      "trap": {
+        "title": "The Delivery vs. Sales Fallacy",
+        "description": "Assuming that being good at executing marketing for clients means you naturally know how to sell agency services B2B.",
+        "tag": "Fulfillment Trap"
+      },
+      "solution": {
+        "title": "Treat the Agency as \"Client #0\"",
+        "description": "Separate service delivery from business development. Dedicate non-negotiable weekly hours, pipeline reviews, and marketing budget to your own agency funnels.",
+        "tag": "Client #0"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Generalist \"Full-Service\" Trap",
+        "description": "Pitching \"Digital marketing, social media, SEO, and lead generation for startups and SMBs.\"",
+        "tag": "All to Everyone"
+      },
+      "solution": {
+        "title": "Hyper-Specific Vertical/Problem Niche",
+        "description": "Narrow before scaling outbound. Own a distinct problem for a specific vertical (e.g., \"Fixing ad conversion leaks for B2B demo pages\") where you already have at least 1–2 proven wins.",
+        "tag": "Niche Problem"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Spray-and-Pray Volume Bias",
+        "description": "Blasting 400+ automated generic emails with basic merge tokens (`Hi {{FirstName}} at {{Company}}`).",
+        "tag": "400 Blast Spam"
+      },
+      "solution": {
+        "title": "The 10-Minute Bespoke Diagnosis",
+        "description": "Send 10 deeply researched teardowns instead of 400 spam blasts. Identify one specific friction point in their public funnel before ever pitching.",
+        "tag": "10 Deep Audits"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Cosmetic Differentiator Illusion",
+        "description": "Believing a flashy 3D website, polished branding, and buzzwords will win clients.",
+        "tag": "Cosmetic Polish"
+      },
+      "solution": {
+        "title": "Business Acumen & Strategic Diagnosis",
+        "description": "AI has commoditized design, copy, and code. Aesthetic polish is now table stakes; the only real moat is diagnosing business problems better than the client themselves.",
+        "tag": "Business Moat"
+      }
+    },
+    {
+      "trap": {
+        "title": "Passive Referral Dependence",
+        "description": "Waiting passively for happy clients to recommend you whenever they happen to remember.",
+        "tag": "Passive Hope"
+      },
+      "solution": {
+        "title": "Systemized Referral Compounding",
+        "description": "Maintain an active quarterly teardown newsletter exclusively for past and current clients; systematically ask for 1 warm introduction upon hitting milestone deliverables.",
+        "tag": "Referral Engine"
+      }
+    },
+    {
+      "trap": {
+        "title": "The Starving Startup Target Bias",
+        "description": "Targeting early-stage pre-seed startups that are cash-poor, chaotic, and churn quickly.",
+        "tag": "Cash-Poor Leads"
+      },
+      "solution": {
+        "title": "Revenue-Generating ICPs",
+        "description": "Target established SMBs or funded companies with verified revenue ($1M–$10M+) who already spend money on marketing and have proven unit economics to protect.",
+        "tag": "$1M–$10M ICP"
+      }
+    }
+  ]
+}
