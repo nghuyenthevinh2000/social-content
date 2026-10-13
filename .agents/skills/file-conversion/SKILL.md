@@ -1,15 +1,15 @@
 ---
 name: file-conversion
-description: "Convert documents and files between formats, supporting bidirectional conversions including PDF to Markdown (via MarkItDown) and Markdown to PDF (via scripts/md-to-pdf.sh with Mermaid support). The agent must confirm first which file conversion the user wants before proceeding."
+description: "Convert documents and files between formats, supporting bidirectional conversions including PDF to Markdown (via MarkItDown) and Markdown to PDF (via scripts/md-to-pdf.py with Mermaid support). The agent must confirm first which file conversion the user wants before proceeding."
 metadata:
-  tags: file-conversion, pdf-to-markdown, md-to-pdf, markitdown, pandoc, xelatex, mermaid, document-parsing, ocr, markdown
+  tags: file-conversion, pdf-to-markdown, md-to-pdf, markitdown, pandoc, chromium, mermaid, document-parsing, ocr, markdown
 ---
 
 # File Conversion Skill: PDF to Markdown & Markdown to PDF
 
 This skill provides an end-to-end operational playbook for converting documents across formats. It features two primary pipelines:
 1. **PDF to Markdown** (using Microsoft MarkItDown with layout reflow and artifact cleaning)
-2. **Markdown to PDF** (using the bundled `scripts/md-to-pdf.sh` with Pandoc, XeLaTeX, and high-contrast Mermaid diagram compilation)
+2. **Markdown to PDF** (using the bundled `scripts/md-to-pdf.py` with Pandoc, Chrome/Chromium, and high-contrast Mermaid diagram compilation)
 
 ---
 
@@ -42,25 +42,28 @@ Use this skill whenever asked to:
 
 ---
 
-## Pipeline 1: Markdown to PDF (via `md-to-pdf.sh`)
+## Pipeline 1: Markdown to PDF (via `md-to-pdf.py`)
 
 For converting Markdown files into publication-ready PDFs, use the dedicated script included in this skill:
 
-- **Script Path:** `.agents/skills/file-conversion/scripts/md-to-pdf.sh`
+- **Script Path:** `.agents/skills/file-conversion/scripts/md-to-pdf.py`
 
 ### Features
-- **High-Contrast Mermaid Preprocessing:** Automatically extracts embedded ```mermaid``` blocks, renders them via `@mermaid-js/mermaid-cli` (`mmdc`) with a custom crisp corporate stylesheet (`#1E40AF` border, white fill, bold dark text), and injects the compiled figures.
-- **Engine:** Powered by `pandoc` and `xelatex` for clean typography (Arial font, 1-inch margins, colored hyperlinks).
+- **High-Contrast Mermaid Preprocessing:** Automatically extracts embedded ```mermaid``` blocks, renders them to PNG via `@mermaid-js/mermaid-cli` (`mmdc`) with a custom stylesheet (`#1E40AF` border, white fill, dark text), and injects the compiled figures.
+- **Engine:** Python standard library orchestrates `pandoc` HTML and Chrome/Chromium PDF printing (Arial font, 18mm margins, colored hyperlinks, Unicode and emoji font fallback).
+- **Wide Tables:** Documents with tables of seven or more columns use A3 landscape pages; other documents use A4 portrait.
 - **Batch or Single-File:** Converts a single `.md` file or an entire directory of `.md` files.
 
 ### Prerequisites Check
 Before running, verify that the required tools exist on the system:
 ```bash
 which pandoc
-which xelatex || which /Library/TeX/texbin/xelatex
+python3 --version
+# Chrome on macOS is detected automatically; otherwise set CHROME_PATH.
+test -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" || which chromium || which google-chrome
 which mmdc || which /opt/homebrew/bin/mmdc || which /usr/local/bin/mmdc
 ```
-*(Tip: On macOS, install missing tools via `brew install pandoc`, `brew install --cask basictex`, `npm install -g @mermaid-js/mermaid-cli`).*
+*(Tip: On macOS, install missing tools via `brew install pandoc`, `brew install --cask google-chrome`, `npm install -g @mermaid-js/mermaid-cli`. `mmdc` is required only for Mermaid diagrams. No Python packages are needed.)*
 
 ### Usage Commands
 
@@ -68,16 +71,16 @@ Resolve the repository root and invoke the script:
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
-SCRIPT="$REPO_ROOT/.agents/skills/file-conversion/scripts/md-to-pdf.sh"
+SCRIPT="$REPO_ROOT/.agents/skills/file-conversion/scripts/md-to-pdf.py"
 
 # 1. Convert a single Markdown file (generates filename.pdf in the same folder)
-bash "$SCRIPT" "/path/to/document.md"
+python3 "$SCRIPT" "/path/to/document.md"
 
 # 2. Convert all Markdown files in a directory
-bash "$SCRIPT" "/path/to/folder"
+python3 "$SCRIPT" "/path/to/folder"
 
 # 3. Convert all Markdown files in the current working directory
-bash "$SCRIPT"
+python3 "$SCRIPT"
 ```
 
 ---
@@ -159,7 +162,7 @@ When raw extraction flattens section headers or splits words:
 
 | Conversion | Primary Tool / Script | Fallback / Alternative | Notes |
 | :--- | :--- | :--- | :--- |
-| **Markdown $\rightarrow$ PDF** | `scripts/md-to-pdf.sh` | `pandoc input.md -o output.pdf` | Supports high-contrast Mermaid diagrams, Arial font, XeLaTeX. |
+| **Markdown $\rightarrow$ PDF** | `scripts/md-to-pdf.py` | `pandoc input.md -o output.pdf` | Supports high-contrast Mermaid diagrams, emoji, wide tables, Chrome/Chromium. |
 | **PDF $\rightarrow$ Markdown** | `markitdown input.pdf -o output.md` | `pdftotext` / `pandoc` | Reflow wrapped lines and fix page boundaries. |
 | **Word (`.docx`) $\rightarrow$ MD** | `markitdown input.docx -o output.md` | `pandoc -f docx -t markdown` | Preserves headings, bold, tables cleanly. |
 | **HTML $\rightarrow$ MD** | `markitdown input.html -o output.md` | `markdownify` / `readability` | Strip navigation bars and scripts. |
@@ -174,7 +177,7 @@ When raw extraction flattens section headers or splits words:
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # Convert Markdown to PDF
-bash "$REPO_ROOT/.agents/skills/file-conversion/scripts/md-to-pdf.sh" "document.md"
+python3 "$REPO_ROOT/.agents/skills/file-conversion/scripts/md-to-pdf.py" "document.md"
 
 # Convert PDF to Markdown
 markitdown "document.pdf" -o "document.md"

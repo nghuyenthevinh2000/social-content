@@ -7,7 +7,7 @@ description: |
   voice, filler, or chatbot artifacts. Based on Wikipedia's "Signs of AI writing."
 license: MIT
 metadata:
-  version: "2.11.2"
+  version: "2.11.3"
 ---
 
 # Humanizer: remove AI writing patterns
@@ -129,6 +129,20 @@ Add details such as dates or public actions only when they come from the source 
 
 ### 9. Not X but Y and clipped negative endings
 **Problem:** AI writing overuses forms such as "Not only...but..." and "It's not just X, it's Y."
+
+**Prefer direct reasoning in every language.** State the claim, then give its evidence, cause, or consequence. Ask the intended question directly. Do not invent an alternative just to reject it before making the point.
+
+Watch for repeated contrast frames: "not X but Y," "not only X but also Y," "rather than X," and Vietnamese forms such as "không phải X, mà là Y," "không chỉ X, mà còn Y," "chứ không phải," and "thay vì." Rewrite decorative contrasts as direct statements. Keep contrasts that explain real differences in evidence, preserve necessary limits, or correct a likely misunderstanding. Do not change quotations or remove meaningful comparisons.
+
+**Before:**
+> Câu hỏi của bài này không phải là có đủ việc làm hay không, mà là người mất việc có kịp học kỹ năng mới hay không.
+**After:**
+> Người mất việc cần bao lâu để học kỹ năng mới và khôi phục thu nhập?
+
+**Before:**
+> Lời giải không nằm ở việc bắt con người chạy nhanh hơn, mà ở việc thu ngắn quãng đường.
+**After:**
+> Thiết kế công cụ dùng được với kỹ năng sẵn có giúp người lao động chuyển việc nhanh hơn.
 
 It also adds clipped endings such as "no guessing" instead of writing a clear clause.
 **Before:**

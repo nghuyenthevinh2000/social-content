@@ -1,8 +1,9 @@
 ---
 name: world
-summary: Symbol-system definitions for five narrative worlds (Happy, Suffer, Forge, Void, and Zhong) and the framework for building story worlds deliberately from primitive symbols, truth standards, and structural exclusions. Zhong World adds an adaptive system of centrality and proportionate response grounded in distinct philosophical lineages.
+summary: Symbol-system definitions for narrative worlds (Happy, Suffer, Forge, Void, Zhong, and Lost) and the framework for building story worlds deliberately from primitive symbols, truth standards, and structural exclusions.
 tags: [worldmaking, narrative, symbols, story-engine, brainstorming]
 submodules:
+  lost-world.md: Symbol system for a world where human meaning and utility are suddenly severed — 8 primitive symbols (The Severance, The Relic, The Mirror-Ghost, The Ghost-Motion, The Echo-Chamber, The Surplus, The Disenchantment, The Drifting Horizon) forming a downward spiral of structural obsolescence.
   zhong-world.md: Symbol system for centrality and proportionate response — 8 primitives (Attention, The Center, Measure, The Boundary, Timing, Yielding, Return, Reciprocity) forming an adaptive feedback system with philosophical lineage references.
   forge-world.md: Symbol system for a world oriented toward asserting agency against the void — 8 primitive symbols (The Abyss, The Spark, Resistance, The Strike, The Cost, The Form, Sovereignty, Resonance) forming an engine of generation and defiance.
   happy-world.md: Symbol system for a world oriented toward maximizing the capacity of beings to be alive — 8 primitive symbols (Joy, Connection, Meaning, Play, Rest, Gift, Growth, Beauty) with a living-system relationship map.
@@ -13,12 +14,13 @@ submodules:
 
 # World
 
-This folder contains five world-system files used by the story-engine skill, plus the worldmaking framework that operationalizes them.
+This folder contains world-system files used by the story-engine skill, plus the worldmaking framework that operationalizes them.
 
 A **world** in this system is a coherent symbol system — not a setting, not a mood, not a genre. It is the physics beneath the story: the truth standard that governs what is right, the primitive symbols from which all experience is constructed, and the structural exclusions that define what the world cannot contain.
 
 ## Files
 
+- [`lost-world.md`](lost-world.md) — The world oriented toward the sudden loss of meaning and utility in a functioning civilization. 8 primitives. Severed gyre of structural obsolescence.
 - [`zhong-world.md`](zhong-world.md) — The world oriented toward centrality and proportionate response in changing circumstances. 8 primitives. Adaptive feedback system; Zhong (中) as active judgment.
 - [`forge-world.md`](forge-world.md) — The world oriented toward asserting agency against the void. 8 primitives. Generative defiance engine.
 - [`happy-world.md`](happy-world.md) — The world oriented toward maximizing the capacity of beings to be alive. 8 primitives. Living symbol system.

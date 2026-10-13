@@ -53,6 +53,9 @@ Worlds are not points on a mood spectrum. They are **structurally distinct symbo
 ### The Zhong World's Law
 > *A thing is right if it meets the actual circumstance in due measure while preserving the capacity to respond again.*
 
+### The Lost World's Law
+> *A thing is right if it renders the sudden eviction of human purpose from the functioning machinery of reality.*
+
 These are not compatible. A single narrative cannot be simultaneously governed by two laws without hypocrisy. But a writer can **know these worlds** — can have internalized their symbol systems deeply enough to write from inside any one of them without unconsciously contaminating their architectures.
 
 The most common error in narrative: writing a Suffer World story (dark symbols, tragic events) while secretly operating under the Happy World's truth standard (exits exist, suffering produces something). This produces stories that feel dishonest — not because they are too dark, but because they are dark on the surface and safe underneath. Similarly, writing a Forge World story without honoring the absolute zero of the void produces shallow bravado instead of true sovereignty, and writing a Void World story with resentment produces bitter suffering rather than pristine cessation.
@@ -72,6 +75,7 @@ Every world has exactly one law — one criterion by which things inside it are 
 - Forge World: "A thing is right if it asserts agency against the void."
 - Void World: "A thing is right if it dissolves distinction and returns to zero."
 - Zhong World: "A thing is right if it meets the actual circumstance in due measure while preserving the capacity to respond again."
+- Lost World: "A thing is right if it renders the sudden eviction of human purpose from the functioning machinery of reality."
 
 ---
 
@@ -82,7 +86,8 @@ A symbol is an irreducible building block — an atom, not a molecule. You canno
 **Suffer World primitives:** Weight, Futility, Isolation, Silence, Loss, Consciousness, Indifference, Erosion  
 **Forge World primitives:** The Abyss, The Spark, Resistance (The Anvil), The Strike, The Cost, The Form, Sovereignty, Resonance  
 **Void World primitives:** The Zero, The Mirage, Dissolution, Stillness, The Hollow, The Unnamed, The Leveling, Cessation  
-**Zhong World primitives:** Attention, The Center, Measure, The Boundary, Timing, Yielding, Return, Reciprocity
+**Zhong World primitives:** Attention, The Center, Measure, The Boundary, Timing, Yielding, Return, Reciprocity  
+**Lost World primitives:** The Severance, The Relic, The Mirror-Ghost, The Ghost-Motion, The Echo-Chamber, The Surplus, The Disenchantment, The Drifting Horizon
 
 Name your world's primitives. Six to ten is the right range. If you have fewer than six, your world cannot generate sufficient variety of experience. If you have more than ten, some are molecules, not atoms.
 
@@ -140,6 +145,13 @@ A world is defined as much by its exclusions as its inclusions. Exclusions are n
 - Harmony purchased through silencing
 - A compensating moral ledger that offsets harm rather than addressing it
 
+**Lost World exclusions:**
+- The romantic retreat / off-grid Eden restoring primal utility
+- The Luddite triumph / overthrowing the automated grid
+- Scarcity and physical starvation (distracting from existential obsolescence)
+- The effortless rebirth through an afternoon hobby
+- The personalized malevolent oppressor
+
 Your world's exclusions define its ceiling and its floor. The ceiling is the highest thing your world can contain. The floor is the lowest it permits. Know both.
 
 ---
@@ -156,7 +168,9 @@ The Void World's symbols form an **absorptive cascade** — the mirage reveals i
 
 The Zhong World's symbols form an **adaptive feedback system** — attention informs measure, the center orients judgment, boundaries and timing shape response, reciprocity checks its burdens, and return and yielding permit correction.
 
-**The question:** Does your symbol system open, close, forge, absorb, or recalibrate? Does each symbol expand the field of what is possible, reduce what remains available, carve sovereignty through friction, guide disturbances back into baseline silence, or sustain proportionate response to changing circumstances?
+The Lost World's symbols form a **severed gyre** — the severance cuts functional necessity, competence becomes a stranded relic, phantom rituals meet the effortless mirror-ghost, the echo-chamber absorbs all resistance, and the surplus individual drifts across an unanchored horizon under a drained altar.
+
+**The question:** Does your symbol system open, close, forge, absorb, recalibrate, or sever? Does each symbol expand the field of what is possible, reduce what remains available, carve sovereignty through friction, guide disturbances back into baseline silence, sustain proportionate response, or map the downward vertigo of structural obsolescence?
 
 Map it explicitly. If your world's symbols do not relate to each other, you have a list of themes, not a world.
 
@@ -173,6 +187,7 @@ Goodman's insight on ordering: different worlds arrange time differently, and ti
 | Forge World | Time is accumulative/tested — time is the quarry from which deeds carve sovereign permanence |
 | Void World | Time is entropic/dissolving — time is the solvent carrying all distinctions toward thermodynamic and ontological rest |
 | Zhong World | Time is rhythmic/corrective — practice accumulates through feedback, but correction does not reverse loss or eliminate the need for future adjustment |
+| Lost World | Time is unanchored/stagnant — deadlines, stakes, and causality have detached, leaving infinite comfortable afternoons without direction |
 | Tragedy | Time is inevitable — the ending was always coming, and looking back you can see the moment it was sealed |
 | Comedy | Time is correctable — the error can be undone, the mistake reversed, the misunderstanding resolved |
 
@@ -191,6 +206,7 @@ For narrative, this translates to a single question about the reader:
 **Forge World test:** Does the reader leave with the sovereign resolve to strike form from the dark?
 **Void World test:** Does the reader leave with their illusions stripped, feeling the weightless tranquility of the zero?
 **Zhong World test:** Does the reader leave better able to distinguish fitting effort from compulsive excess, necessary restraint from avoidance, and genuine harmony from enforced quiet?
+**Lost World test:** Does the reader leave with the illusion of their professional indispensability fractured, feeling the quiet vertigo of being fully competent and completely unnecessary?
 
 These tests are not about pleasure or about being uplifted or disturbed. They ask whether the reader genuinely entered the world and was changed by the experience of being inside it.
 

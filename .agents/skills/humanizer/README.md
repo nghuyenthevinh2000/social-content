@@ -71,7 +71,7 @@ Humanizer follows the sample's rhythm, word choice, punctuation, and deliberate 
 |---|---------|--------|-------|
 | 7 | **Overused AI words** | "Actually... additionally... gated on... quietly... testament... landscape... showcasing" | "also... needs... remain common" |
 | 8 | **Avoiding is and are** | "serves as... features... boasts" | "is... has" |
-| 9 | **Not X but Y and clipped endings** | "It's not just X, it's Y", "..., no guessing" | State the point directly |
+| 9 | **Not X but Y and clipped endings** | "It's not just X, it's Y", "không phải X, mà là Y", "..., no guessing" | State claims and questions directly; keep meaningful comparisons and necessary limits |
 | 10 | **Forced groups of three** | "innovation, inspiration, and insights" | Use the number of items the meaning needs |
 | 11 | **Changing names and repeated openings** | "protagonist... main character... hero" or "She noted... She noted... She filed..." | Use one name or merge the repeated sentences |
 | 12 | **False from X to Y ranges** | "from the Big Bang to dark matter" | List the topics directly |
@@ -154,6 +154,7 @@ Humanizer follows the sample's rhythm, word choice, punctuation, and deliberate 
 <details>
 <summary>Show release notes</summary>
 
+- **2.11.3** - Expanded pattern #9 to prefer direct reasoning and questions over decorative contrasts in every language, with Vietnamese examples. Kept meaningful comparisons, necessary limits, and quotations. 35 patterns total.
 - **2.11.2** - Removed the plugin symlink and separate Claude Desktop package. Current Claude Code loads the root `SKILL.md` directly, so GitHub's source ZIP now works in Claude Desktop. No change to the 35 patterns.
 - **2.11.1** - Added a Claude Desktop-ready release package with one regular `humanizer/SKILL.md` file. GitHub's source archive still keeps the plugin symlink (fixes #224). No change to the 35 patterns.
 - **2.11.0** - Rewrote all repo guidance, descriptions, checks, and skill instructions in Plain Language. Kept all 35 patterns and their behavior.
