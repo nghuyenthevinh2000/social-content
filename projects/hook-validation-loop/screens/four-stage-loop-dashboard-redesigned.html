@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Không gian làm việc · Lạc Hồng</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;450;500;550;600;650;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="redesigned-ui.css">
+  <script src="redesigned-ui.js" defer></script>
+</head>
+<body data-page="dashboard">
+  <a class="skip-link" href="#dashboard-title">Đi đến dashboard</a>
+  <header class="global-header">
+    <a class="wordmark" href="first-onboarding-screen-redesigned.html">lạc hồng<span class="brand-period">.</span></a>
+    <div class="project-breadcrumb"><span id="project-name">Dự án mẫu</span><span class="slash">/</span><span>Vòng 01</span></div>
+    <div class="header-actions"><span class="prototype-badge">Bản mẫu tương tác</span><a class="text-link" href="first-onboarding-screen-redesigned.html">Về trò chuyện <span aria-hidden="true">↗</span></a></div>
+  </header>
+  <div class="mobile-switch" aria-label="Chuyển không gian"><button type="button" data-view="chat" aria-pressed="false">Trò chuyện</button><button type="button" data-view="dashboard" aria-pressed="true">Dashboard</button></div>
+  <div class="workspace" data-mobile-view="dashboard">
+    <aside class="chat-panel" aria-label="Trò chuyện với Lạc Hồng">
+      <header class="chat-heading"><div><span class="status-dot" aria-hidden="true"></span><h2>Lạc Hồng</h2></div><span class="small muted">Cùng bạn làm nội dung</span></header>
+      <div class="chat-scroll" id="chat-scroll"><p class="conversation-label">Cuộc trò chuyện của bạn</p><div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-label="Cuộc trò chuyện"></div></div>
+      <div class="chat-bottom">
+        <div class="edit-context" id="edit-context" hidden><span id="edit-context-label"></span><button type="button" id="cancel-edit" aria-label="Hủy chỉnh sửa">×</button></div>
+        <form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Nhắn cho Lạc Hồng</label><textarea id="chat-input" maxlength="4000" rows="2" placeholder="Nhắn cho Lạc Hồng…" required></textarea><div class="composer-bottom"><span>Enter để gửi</span><button class="send-button" type="submit">Gửi <span aria-hidden="true">↑</span></button></div></form>
+        <p class="chat-disclaimer">Hội thoại mẫu, chưa kết nối AI.</p>
+      </div>
+    </aside>
+    <main class="dashboard-panel" id="dashboard-main">
+      <div class="dashboard-inner">
+        <div class="dashboard-heading"><div><p class="eyebrow" id="stage-eyebrow">KHÔNG GIAN THỬ NGHIỆM / VÒNG 01</p><h1 id="dashboard-title" tabindex="-1">Hook suggestion</h1><p id="stage-subtitle">Chọn các hook bạn muốn đưa sang Video creation.</p></div><span class="run-label">Vòng <strong>01</strong></span></div>
+        <nav class="stage-tabs" role="tablist" aria-label="Bốn giai đoạn thử nghiệm">
+          <button type="button" role="tab" id="tab-hooks" data-stage="hooks" aria-controls="panel-hooks" aria-selected="true"><span>01</span>Hook suggestion</button>
+          <button type="button" role="tab" id="tab-video" data-stage="video" aria-controls="panel-video" aria-selected="false" tabindex="-1"><span>02</span>Video creation</button>
+          <button type="button" role="tab" id="tab-metrics" data-stage="metrics" aria-controls="panel-metrics" aria-selected="false" tabindex="-1"><span>03</span>Metrics</button>
+          <button type="button" role="tab" id="tab-results" data-stage="results" aria-controls="panel-results" aria-selected="false" tabindex="-1"><span>04</span>Loop results</button>
+        </nav>
+
+        <section id="panel-hooks" class="stage-panel" role="tabpanel" aria-labelledby="tab-hooks">
+          <div class="section-heading"><h2>Hook dành cho sản phẩm của bạn</h2><span class="muted small">4 video mock <span class="separator">·</span> Serum rau má</span></div>
+          <div class="hook-grid" id="hook-grid"></div>
+          <div class="selection-bar"><div><strong id="selection-count">Chưa chọn hook</strong><p id="selection-summary">Chọn ít nhất 1 hook để tiếp tục.</p></div><button class="button primary" id="continue-video" type="button" disabled>Tiếp tục: Video creation <span aria-hidden="true">→</span></button></div>
+        </section>
+
+        <section id="panel-video" class="stage-panel" role="tabpanel" aria-labelledby="tab-video" hidden>
+          <div id="video-empty" class="empty-state"><span class="empty-index">02 / 04</span><h2>Chọn hook trước khi tạo phiên bản.</h2><p>Mỗi hook sẽ có một video riêng để xem và duyệt.</p><button class="button primary" type="button" data-go="hooks">Chọn hook <span aria-hidden="true">→</span></button></div>
+          <div id="video-content" hidden>
+            <div class="section-heading"><h2 id="video-count">Các phiên bản của bạn</h2><span class="muted small" id="approval-count">Đã duyệt 0</span></div>
+            <div class="video-grid" id="video-grid"></div>
+            <div class="media-notice"><span class="notice-dot" aria-hidden="true"></span><p>Khung hình minh họa, chưa phải video được tạo. Nạp bản dựng của từng phiên bản để phát và duyệt. AI tạo video và đăng bài chưa được kết nối.</p></div>
+            <div class="panel-footer"><button class="text-button" type="button" data-go="hooks">← Thay đổi lựa chọn hook</button><button class="button secondary" type="button" data-go="metrics">Tiếp theo: Metrics <span aria-hidden="true">→</span></button></div>
+          </div>
+        </section>
+
+        <section id="panel-metrics" class="stage-panel" role="tabpanel" aria-labelledby="tab-metrics" hidden>
+          <div class="mock-data-banner"><span class="mock-badge">MOCK DATA</span><p>Vòng mẫu · 4 hook · Số liệu giả lập, không lấy từ tài khoản hoặc video của bạn.</p></div>
+          <div class="filter-row"><label>Nền tảng<select id="platform-filter"><option>Tất cả nền tảng</option><option>TikTok</option><option>YouTube Shorts</option><option>Facebook Reels</option></select></label><label>Sau khi đăng<select id="window-filter"><option>24 giờ</option><option>2 giờ</option><option>6 giờ</option><option>48 giờ</option><option>72 giờ</option></select></label><span class="unconnected"><span class="notice-dot" aria-hidden="true"></span>Dữ liệu minh họa</span></div>
+          <div class="metric-grid"><article><h2>Lượt xem</h2><strong id="metric-views">—</strong><p>Trong vòng mẫu</p></article><article><h2>Xem qua 3 giây</h2><strong id="metric-retention">—</strong><p>Trung bình theo lượt xem</p></article><article><h2>Thời gian xem TB</h2><strong id="metric-watch">—</strong><p>Trung bình theo lượt xem</p></article></div>
+          <div class="table-card"><div class="section-heading"><h2>So sánh các phiên bản mẫu</h2><span class="small muted" id="filter-description">Tất cả nền tảng · 24 giờ</span></div><div class="table-scroll"><table><thead><tr><th>Phiên bản</th><th>Lượt xem</th><th>Xem qua 3 giây</th><th>Chi tiết</th></tr></thead><tbody id="metrics-body"></tbody></table></div><p class="table-note">Mock data · Bộ lọc thay đổi số liệu giả lập. Tỷ lệ được tính theo lượt xem, không phải trung bình cộng.</p></div>
+          <div class="panel-footer"><span class="small muted">So sánh trong cùng khoảng thời gian sau khi đăng.</span><button class="button secondary" type="button" data-go="results">Tiếp theo: Loop results <span aria-hidden="true">→</span></button></div>
+        </section>
+
+        <section id="panel-results" class="stage-panel" role="tabpanel" aria-labelledby="tab-results" hidden>
+          <div class="mock-data-banner"><span class="mock-badge">MOCK DATA</span><p>Kết quả vòng mẫu · 72 giờ · Không phải kết quả từ các video bạn vừa chọn hoặc duyệt.</p></div>
+          <div class="outcome-card"><div><p class="eyebrow">TỔNG KẾT VÒNG MẪU 01</p><h2 id="mock-winner">H01 giữ chân tốt nhất trong vòng mẫu.</h2><p id="mock-winner-summary"></p></div><div class="outcome-index">01<span>Vòng mẫu · 72 giờ</span></div></div>
+          <div class="results-stats"><span id="results-variant-count">4 phiên bản mẫu</span><span id="mock-total-views"></span><span>3 nền tảng</span></div>
+          <div class="ranking-card"><div class="section-heading"><h2>Xếp hạng hook trong vòng mẫu</h2><span class="small muted">Xem qua 3 giây · 72 giờ</span></div><div id="mock-ranking"></div></div>
+          <div class="learning-grid"><form class="note-card" id="notes-form"><label for="learning">Bạn học được gì từ vòng này?</label><p>Ghi lại những điều bạn quan sát được.</p><textarea id="learning" maxlength="4000" rows="5" placeholder="Nhận xét của bạn…"></textarea><button class="button secondary" type="submit">Lưu ghi chú</button></form><form class="note-card" id="hypothesis-form"><label for="hypothesis">Vòng tiếp theo, thử điều gì?</label><p>Một thay đổi nhỏ, một điều cần kiểm chứng.</p><textarea id="hypothesis" maxlength="4000" rows="5" placeholder="Ví dụ: Mở đầu bằng câu hỏi thay vì lời giới thiệu…"></textarea><button class="button primary" type="submit">Chuẩn bị vòng tiếp theo <span aria-hidden="true">→</span></button></form></div>
+          <div class="history-card"><p class="eyebrow">LỊCH SỬ VÒNG MẪU</p><div><strong>Vòng mẫu 01</strong><span id="history-count">4 phiên bản · 72 giờ</span><span class="muted">H01 dẫn đầu · Mock data</span><button class="text-button" type="button" data-go="metrics">Xem chỉ số <span aria-hidden="true">↗</span></button></div></div>
+          <p class="mock-session-note">Tách biệt với vòng mẫu: <span id="results-approval-count">0 đã duyệt</span> trong phiên làm việc hiện tại. Duyệt không tự động đăng video.</p>
+          <p class="draft-note" id="draft-note" hidden>Bản nháp vòng tiếp theo đã lưu. Vòng 01 và ghi chú của bạn được giữ nguyên.</p>
+        </section>
+        <footer class="workspace-footer"><span>Lạc Hồng <span class="separator">/</span> Thử, đo lường, học hỏi.</span><span>Chưa kết nối AI & nền tảng đăng video</span></footer>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>
