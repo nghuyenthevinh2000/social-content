@@ -197,12 +197,12 @@ Source: [URL or platform + date if known]
 
 ## Step 4 — Save to Reflections
 
-After producing the Style DNA report, **always** save it as a markdown file under the repo's `reflections/` directory.
+After producing the Style DNA report, **always** save it as a markdown file under the repo's `plans/` directory.
 
 ### File naming convention
 
 ```
-reflections/<creator-slug>.md
+plans/<creator-slug>.md
 ```
 
 - **`creator-slug`** — kebab-case of the creator's name or handle (e.g. `paul-graham`, `alex-hormozi`, `naval-ravikant`)
@@ -218,7 +218,7 @@ mkdir -p "$REPO_ROOT/reflections"
 Write the full Style DNA report (verbatim, exactly as produced in Step 3) to:
 
 ```
-$REPO_ROOT/reflections/<creator-slug>.md
+$REPO_ROOT/plans/<creator-slug>.md
 ```
 
 ### File header format
@@ -238,7 +238,7 @@ If appending to an existing file, add a horizontal rule `---` and a `## Re-analy
 ### Verify
 
 ```bash
-ls -lh "$REPO_ROOT/reflections/<creator-slug>.md"
+ls -lh "$REPO_ROOT/plans/<creator-slug>.md"
 ```
 
 Confirm the file exists with non-zero size, then tell the user the file path.
@@ -278,7 +278,7 @@ Confirm the file exists with non-zero size, then tell the user the file path.
 | Minimum verbatim quotes | 3 in sample bank, at least 1 per dimension |
 | Report format | Style DNA Report template above |
 | Resolve repo root | `REPO_ROOT=$(git rev-parse --show-toplevel)` |
-| Save report | `write_to_file → $REPO_ROOT/reflections/<creator-slug>.md` |
-| Verify saved file | `ls -lh "$REPO_ROOT/reflections/<creator-slug>.md"` |
+| Save report | `write_to_file → $REPO_ROOT/plans/<creator-slug>.md` |
+| Verify saved file | `ls -lh "$REPO_ROOT/plans/<creator-slug>.md"` |
 | When samples are thin | Run more searches; note the gap in the report |
 | Optional extension | Ask user: "Want me to write a sample post in this style?" |

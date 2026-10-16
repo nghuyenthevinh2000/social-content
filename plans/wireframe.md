@@ -5,7 +5,7 @@
     +---------------------------------------------------------------------------------------------------------+
     | [STAGE 1] PREINVOCATION HOOK  -->  [STAGE 2] JEV SKILL ROUTER  -->  [STAGE 3] JEV FILE SELECTOR        |
     | - Intercepts prompt                - Primary skill classification   - Frontmatter tree navigation       |
-    | - Zero LLM reasoning cost          - Sub-resource drilldown:        - Pinned dir: reflections/          |
+    | - Zero LLM reasoning cost          - Sub-resource drilldown:        - Pinned dir: plans/          |
     | - Latency: < 12ms                    [design] neo-grid-bold (0.58)  - Pinned file: ...router-guide.md   |
     |                                      [layout] custom (0.93)         - 0 file-system scans               |
     +---------------------------------------------------------------------------------------------------------+

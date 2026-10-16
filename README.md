@@ -2,15 +2,6 @@
 name: social-content
 summary: Social content skills, research, publishing resources, and local tools for supervised X workflows and direct Facebook publishing.
 tags: [social-content, publishing, tools]
-submodules:
-  FRONTMATTER.md: Master semantic routing manifest.
-  .gitignore: Ignore media, dependencies, and private local X state.
-  projects/: Dedicated innovation and research projects.
-  reflections/: Style analyses and retrospectives.
-  scripts/: Repository automation and skill-hook tools.
-  src/: Python application package.
-  tools/: Supervised X workflows and direct Facebook personal-profile publishing.
-  topics/: Topic research, written posts, and visual assets.
 ---
 
 # Social Content & Skills Overview
@@ -29,17 +20,11 @@ This repository contains specialized agent skills, topic research, draft posts, 
 | [`story-engine`](./.agents/skills/story-engine/SKILL.md) | Unified storytelling skill. Run before writing any story, post, caption, or narrative. Covers two sequential phases: (1) Story Integrity — interrogates whether the story earns the right to be told; (2) Story Craft — shapes and writes the story using a platform-specific format file from story-formats/. LinkedIn formats include Jescil-Richard and Jasmin Alić frameworks. |
 | [`video-editing`](./.agents/skills/video-editing/SKILL.md) | Compose, crop, overlay, and encode composite video clips using ffmpeg on macOS. Covers the full pipeline: probing source videos, face-centered circular overlay (OpenCV 5 YuNet detection), variable-frame-rate sync fixes, background music mixing with volume control, circle fade-out via alpha channel, and Dolby Vision / 10-bit HEVC quirks. Use when combining videos, adding a talking-head circle overlay, mixing background music, or producing social-media composite clips. |
 | [`web-design`](./.agents/skills/web-design/SKILL.md) | Design and build web pages and interfaces using a preview-first workflow. Use for websites, landing pages, dashboards, portfolios, pricing pages, UI redesigns, and layout work. Requires a project-specific browser preview and complete design spec before implementing the full page. |
-| [`writing-style-analyzer`](./.agents/skills/writing-style-analyzer/SKILL.md) | Analyze the writing style of any content creator by name. The agent runs web searches to gather real writing samples, then synthesizes a structured "Style DNA" report covering voice, tone, sentence rhythm, hook patterns, vocabulary, structural conventions, and platform-specific habits. Reports are saved to `reflections/<creator-slug>.md`. Use when you want to study, emulate, or contrast a creator's style. |
+| [`writing-style-analyzer`](./.agents/skills/writing-style-analyzer/SKILL.md) | Analyze the writing style of any content creator by name. The agent runs web searches to gather real writing samples, then synthesizes a structured "Style DNA" report covering voice, tone, sentence rhythm, hook patterns, vocabulary, structural conventions, and platform-specific habits. Reports are saved to `plans/<creator-slug>.md`. Use when you want to study, emulate, or contrast a creator's style. |
 
 ## Repository Structure & Directories
 
-| Directory | Purpose / Contents |
-| --- | --- |
-| [`topics/`](./topics/) | Unified thematic content directories containing written posts, article series, deep-dive research, presentations, and visual assets organized by topic slug for smooth narrative continuation. |
-| [`reflections/`](./reflections/) | Style DNA reports, creator style analyses, and retrospective reviews (e.g., produced by `writing-style-analyzer`). |
-| [`projects/`](./projects/) | Dedicated sub-projects and external repositories managed as submodules (e.g., [`projects/innovation-research`](./projects/innovation-research/)). |
-| [`tools/`](./tools/) | Supervised X automation and direct Facebook personal-profile publishing of approved text and images. |
-| [`.agents/skills/`](./.agents/skills/) | Custom agent skills and workflows powering the content generation, analysis, humanization, presentation design, and refinement pipeline. |
+Read in [`FRONTMATTER.md`](./FRONTMATTER.md)
 
 ## Skill-Selection Router (Jev Hook)
 
@@ -73,6 +58,6 @@ uv run --project . python scripts/skill-selector-demo/server.py
 # open http://127.0.0.1:8765
 ```
 
-See **[reflections/skill-selection-router-hook-guide.md](./reflections/skill-selection-router-hook-guide.md)**
+See **[plans/skill-selection-router-hook-guide.md](./plans/skill-selection-router-hook-guide.md)**
 for the full guide: how it works, all relevant files, install steps for
 this repo vs. other workspaces, testing, and the optional visual demo.

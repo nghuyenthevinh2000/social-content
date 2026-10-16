@@ -12,3 +12,7 @@
 	path = tools/reddit-research-mcp
 	url = https://github.com/dialog-tools/reddit-research-mcp.git
 	ignore = untracked
+[submodule "projects/hook-validation-loop/lac-hong-app"]
+	path = projects/hook-validation-loop/lac-hong-app
+	url = https://github.com/lac-hong-viral/lac-hong-app.git
+	ignore = untracked

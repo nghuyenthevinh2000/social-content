@@ -1,0 +1,28 @@
+schema_version: 1
+slug: zen-labs
+name: Zen Labs
+one_liner: Emergence-as-a-service: helping organizations identify signals and harness emergent events
+tagline: ""
+archetype: ""
+status: draft
+stage: ""
+industry: ""
+languages: [en]
+links:
+  domain: ""
+  repo: ""
+created: 2026-10-07
+updated: 2026-10-07
+version: 1
+artifacts:
+  context: false
+  naming: false
+  strategy: false
+  architecture: false
+  identity: false
+  voice: false
+  messaging: false
+  positioning: false
+  story: false
+  guidelines: false
+  audit: false

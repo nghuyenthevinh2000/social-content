@@ -5,8 +5,8 @@ summary: Meaning & Mindset (Hành trình Ý nghĩa & Đời sống Nội tâm). 
 tags:
 - meaning-and-mindset
 submodules:
-  chin-thang-duoi-day-hu-vo.md: Chín Tháng Dưới Đáy Hư Vô Và Nhát Búa Của Người Thợ
-    Rèn
+  chu-trinh-quyet-dinh-tu-diem-khong/: Documentation and resources for topics/meaning-and-mindset/chu-trinh-quyet-dinh-tu-diem-khong.
+  chin-thang-duoi-day-hu-vo.md: Vượt qua chín tháng dưới đáy Hư Vô
   hanh-phuc-la-no-luc-nhom.md: Hạnh phúc cần nhóm bạn hỗ trợ
   meaning-economy-story-vi.md: Nền kinh tế ý nghĩa
   nghich-ly-khat-ket-noi.md: Nghịch Lý Nước Mặn và Cơn Khát Kết Nối
@@ -18,7 +18,6 @@ submodules:
   tech_career_meaning.md: 'The tech executive looked at me, and said: "I don''t need
     you to change the world. I need you to ship the code."'
   y-nghia-khong-tu-den.md: Người Chờ Đợi Ý nghĩa không bao giờ đến
-  chu-trinh-quyet-dinh-tu-diem-khong/ly-tri-luon-dua-ra-quyet-dinh-vo-nghia.md: Lý Trí Luôn Đưa Ra Quyết Định Vô Nghĩa
 ---
 
 # Meaning & Mindset (Hành trình Ý nghĩa & Đời sống Nội tâm)

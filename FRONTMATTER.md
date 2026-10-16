@@ -2,17 +2,19 @@
 name: social-content
 summary: Central repository root and semantic tree orchestrator for social content,
   AI agent orchestration, innovation research, topic deep-dives, and creative publishing
-  workflows, including terminal-operated X replies and approved image posting,
-  direct Facebook publishing, and direct LinkedIn text and image publishing.
+  workflows, including terminal-operated X replies and approved image posting, direct
+  Facebook publishing, and direct LinkedIn text and image publishing.
 tags:
 - social-content
 submodules:
   local/: Documentation and resources for local.
-  projects/: Innovation research and Transparency Fun project submodules.
-  reflections/: Documentation and resources for reflections.
+  plans/: Documentation and resources for plans.
+  projects/: Project submodules for innovation research and the Transparency Fun interactive
+    report directory.
   scripts/: Documentation and resources for scripts.
   src/: Documentation and resources for src.
-  tools/: Local X draft persistence and direct submission tools, plus Facebook and LinkedIn personal-profile publishing.
+  tools/: Local automation tools for terminal-operated X workflows and direct approved-input
+    Facebook and LinkedIn personal publishing.
   topics/: Documentation and resources for topics.
 ---
 

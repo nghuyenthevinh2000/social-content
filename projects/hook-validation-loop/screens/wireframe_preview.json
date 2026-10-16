@@ -275,8 +275,8 @@
     },
     {
       "id": "ai-loop-analysis",
-      "name": "01. Phân tích · So sánh hiệu quả video",
-      "notes": "Bước 01: Phân tích theo từng vòng thử nghiệm. Màn hình là danh sách các vòng có thể mở rộng hoặc thu gọn. Đầu mỗi vòng luôn hiển thị bảng so sánh kết quả giữa video tham khảo và video của bạn, kể cả khi thu gọn. Khi mở một vòng, bên dưới bảng số liệu xuất hiện danh sách video có hai thẻ chuyển đổi 'Video tham khảo' và 'Video của bạn', cùng phân tích AI và đề xuất thử nghiệm riêng của vòng đó. Chỉ một danh sách video hiển thị tại một thời điểm. Vòng 01 mở sẵn, các vòng khác thu gọn; vòng chưa có dữ liệu hiển thị trạng thái chờ, không sao chép số liệu vòng trước.",
+      "name": "01. Phân tích · Tài liệu Chiến lược & Vòng học hỏi",
+      "notes": "Bước 01 chia làm 2 phần dọc rõ rệt: (1) Phần trên là 'Tài liệu Nghiên cứu Thị trường & Chiến lược Mở đầu' (bộ não của toàn bộ quy trình, tự động nâng cấp phiên bản v1.0 → v1.1 → v1.n sau mỗi vòng), gồm 6 mục chuẩn nghiên cứu thị trường: §1 Hồ sơ khách hàng & 4 lực chuyển đổi JTBD, §2 Phân khúc & Ngôn ngữ nguyên văn của khách hàng (VOC), §3 Hồ sơ đối thủ & Kênh nổi bật (tách biệt Quan sát - Suy luận - Hàm ý), §4 Chiến lược tiếp cận (Exploration vs. Scaling & Xếp hạng ý tưởng theo bằng chứng), §5 Giả thuyết kiểm chứng (công thức 5 vế) & Ma trận mở đầu 3 thành phần (Hình ảnh 0–3s + Lời thoại VO + Chữ trên màn hình), §6 Nhật ký bài học tích lũy. (2) Phần dưới là 'Kết quả & Bài học qua các vòng thử nghiệm' gồm thanh xu hướng giữ chân 3 giây qua các vòng và danh sách Vòng 01, Vòng 02... Mỗi vòng sau khi có số liệu sẽ đúc kết bài học để cập nhật ngược lên Tài liệu Chiến lược ở phần trên.",
       "design": {
         "layout": "split",
         "visual": "interface",
@@ -293,7 +293,7 @@
         "cornerRadius": "10px"
       },
       "hero": {
-        "eyebrow": "01. PHÂN TÍCH / SO SÁNH HIỆU QUẢ VIDEO",
+        "eyebrow": "01. PHÂN TÍCH AI / TÀI LIỆU CHIẾN LƯỢC & VÒNG HỌC HỎI",
         "topLabel": "lạc hồng.",
         "navigation": [
           "Dự án: Sắc Ngọc Khang",
@@ -302,29 +302,36 @@
           "Về trò chuyện"
         ],
         "footerLeft": "Dự án và tệp / Trò chuyện 30% / Không gian làm việc 70%",
-        "footerRight": "Giai đoạn 01 / 04"
+        "footerRight": "Giai đoạn 01 / 04 · Tài liệu v1.1"
       },
       "visual": {
         "imageUrl": "",
         "imageAlt": "",
-        "caption": "So sánh kết quả từng vòng; mở rộng để xem video và phân tích AI",
+        "caption": "Tài liệu chiến lược sống (trên) được cập nhật liên tục từ bài học của từng vòng thử nghiệm (dưới)",
         "index": "02 / 06",
         "interface": {
-          "label": "01. PHÂN TÍCH · SO SÁNH SỐ LIỆU",
-          "title": "Xem qua 3 giây: 82,3% so với 58,5%",
-          "description": "Mỗi vòng hiển thị kết quả video tham khảo và video của bạn ở đầu. Mở rộng vòng để chuyển giữa hai danh sách video và đọc phân tích AI.",
-          "metric": "+23.8%",
-          "metricLabel": "Chênh lệch tỷ lệ xem qua 3 giây"
+          "label": "01. BỘ NÃO NGHIÊN CỨU & VÒNG HỌC HỎI",
+          "title": "Tài liệu Chiến lược v1.1 · Chuẩn 82,3% vs. 58,5%",
+          "description": "Phần trên tổng hợp Hồ sơ khách hàng, Đối thủ nổi bật, Chiến lược tiếp cận và Giả thuyết mở đầu. Phần dưới là các vòng thử nghiệm thực tế bổ sung bài học ngược lại cho tài liệu.",
+          "metric": "v1.1",
+          "metricLabel": "Đã cập nhật bài học từ Vòng 01"
         }
       },
       "wireframe": {
-        "title": "01. Phân tích / Danh sách vòng thử nghiệm và so sánh kết quả",
+        "title": "01. Phân tích / Phần trên: Tài liệu Nghiên cứu & Chiến lược (v1.1) · Phần dưới: Các vòng thử nghiệm & Bài học",
         "interaction": {
-          "pattern": "expandable-loop-list",
+          "pattern": "strategy-document-plus-expandable-loops",
+          "strategyDocument": {
+            "collapsible": true,
+            "defaultExpanded": true,
+            "version": "v1.1",
+            "sectionTabs": ["all", "profiles-competitors", "strategy-hypothesis", "learnings-log"],
+            "updatedByRounds": true
+          },
           "defaultExpandedLoopIds": ["loop-01"],
           "summaryAlwaysVisible": true,
           "summaryRows": ["loop-header", "outcome-comparison"],
-          "expandedContentOrder": ["market-scan", "video-tabs", "video-list", "ai-analysis", "retention-details", "ai-summary", "next-action"],
+          "expandedContentOrder": ["round-hypothesis", "video-tabs", "video-list", "ai-analysis", "retention-details", "ai-summary", "round-learning-handoff", "next-action"],
           "videoTabs": {
             "scope": "per-loop",
             "defaultValue": "winning",
@@ -332,8 +339,8 @@
             "exclusive": true,
             "preserveSelectionOnCollapse": true
           },
-          "dataScope": "Số liệu, video và phân tích AI thuộc riêng từng vòng. Mở hoặc chuyển thẻ chỉ thay đổi nội dung của vòng tương ứng.",
-          "accessibility": "Nút mở rộng có aria-expanded và aria-controls. Hai thẻ video dùng tablist, tab và tabpanel, hỗ trợ chuyển bằng bàn phím."
+          "dataScope": "Tài liệu Chiến lược ở trên giữ bối cảnh toàn dự án và lịch sử phiên bản (v1.0 -> v1.n). Mỗi vòng ở dưới giữ riêng số liệu, video, phân tích AI và bài học rút ra của vòng đó; khi đóng vòng, bài học sẽ cập nhật lên Tài liệu Chiến lược.",
+          "accessibility": "Tài liệu Chiến lược và từng vòng đều hỗ trợ thu gọn/mở rộng có aria-expanded. Hai thẻ video dùng tablist, tab và tabpanel, hỗ trợ chuyển bằng bàn phím."
         },
         "rows": [
           {
@@ -352,7 +359,7 @@
               },
               {
                 "type": "text",
-                "text": "Sắc Ngọc Khang / Vòng 01 · Phân tích quảng cáo TikTok và Meta",
+                "text": "Sắc Ngọc Khang / 01. Phân tích · Tài liệu Chiến lược (v1.1) & Vòng thử nghiệm",
                 "pixels": 600
               },
               {
@@ -374,17 +381,17 @@
             "cells": [
               {
                 "type": "visual",
-                "text": "Dự án và tệp\n\nSắc Ngọc Khang (Đang mở)\n  Tệp thương hiệu\n    broll-rau-ma.mp4\n    chai-serum.png\n    brand-voice.pdf\n    [Thêm tệp]\n  Các mẫu mở đầu\n  Dữ liệu thị trường\n    winning-hooks-gallery.json\n    our-performance-ads.json\nMỹ phẩm Cocoon\n\n[Tạo dự án mới]",
+                "text": "Dự án và tệp\n\nSắc Ngọc Khang (Đang mở)\n  Tài liệu chiến lược (Brain)\n    tai-lieu-chien-luoc-v1.1.md [Đang mở]\n  Tệp thương hiệu\n    broll-rau-ma.mp4\n    chai-serum.png\n    brand-voice.pdf\n    [Thêm tệp]\n  Các mẫu mở đầu (W01–W04, H01–H08)\n  Dữ liệu thị trường & Vòng học hỏi\n    vong-01-telemetry.json\n    vong-02-planned.json\nMỹ phẩm Cocoon\n\n[Tạo dự án mới]",
                 "pixels": 260
               },
               {
                 "type": "text",
-                "text": "Lạc Hồng\nPhân tích video cùng bạn\nMình đã phân tích 1.280 video và chọn được 4 mẫu mở đầu để tham khảo (tỷ lệ xem qua 3 giây từ 80,8% đến 84,1%).\nĐầu mỗi vòng bên phải là kết quả video tham khảo so với video của bạn.\nMở rộng vòng để xem video, chuyển giữa hai danh sách và đọc phân tích AI của vòng đó.\nNhắn cho Lạc Hồng…\n[Đính kèm] [Gửi]",
+                "text": "Lạc Hồng\nBộ não nghiên cứu & phân tích cùng bạn\nMình đã tổng hợp Tài liệu Chiến lược v1.1 từ thông tin sản phẩm, 4 mẫu thắng trên thị trường (W01–W04) và bài học thực tế của Vòng 01.\n• Phần trên: Hồ sơ khách hàng, Hồ sơ đối thủ/kênh nổi bật, Chiến lược tiếp cận và Giả thuyết mở đầu.\n• Phần dưới: Kết quả & bài học từng vòng. Mỗi khi kết thúc một vòng, bài học mới sẽ tự động cập nhật lên Tài liệu Chiến lược ở trên.\nNhắn cho Lạc Hồng để chỉnh sửa tài liệu hoặc giả thuyết…\n[Đính kèm] [Gửi]",
                 "pixels": 350
               },
               {
                 "type": "text",
-                "text": "01. Phân tích\nCác vòng thử nghiệm\nSo sánh kết quả ngay ở đầu mỗi vòng. Mở rộng để xem danh sách video và phân tích AI; chuyển thẻ để xem video tham khảo hoặc video của bạn.",
+                "text": "01. Phân tích · Nghiên cứu thị trường & Vòng học hỏi\nBộ não chiến lược của dự án nằm ở tài liệu phía trên (v1.1). Bên dưới là tiến độ giữ chân 3 giây và chi tiết từng vòng thử nghiệm đã cung cấp bài học để cập nhật tài liệu.",
                 "pixels": 830
               }
             ]
@@ -427,7 +434,121 @@
             ]
           },
           {
-            "label": "Vòng 01 / Tiêu đề luôn hiển thị",
+            "label": "PHẦN 1 (TRÊN) · Thanh tiêu đề Tài liệu Nghiên cứu & Chiến lược Mở đầu",
+            "id": "strategy-brain-doc-header",
+            "role": "strategy-doc-header",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "BỘ NÃO QUY TRÌNH · TÀI LIỆU NGHIÊN CỨU THỊ TRƯỜNG & CHIẾN LƯỢC MỞ ĐẦU\nPhiên bản: v1.1 (Đã cập nhật từ bài học Vòng 01) · [Bản nháp AI — Xem lại trước khi tiếp tục]\nThẻ lọc mục: [ Tất cả (§1–§6) ] · [ §1–§2 Hồ sơ & Khách hàng ] · [ §3 Đối thủ & Kênh nổi bật ] · [ §4–§5 Chiến lược & Giả thuyết ] · [ §6 Nhật ký học hỏi (1) ]",
+                "pixels": 580
+              },
+              {
+                "type": "link",
+                "text": "Chỉnh sửa trong Chat ✨ / Thu gọn tài liệu",
+                "href": "#strategy-brain-doc-body",
+                "pixels": 250
+              }
+            ]
+          },
+          {
+            "label": "Tài liệu Chiến lược · §1 Hồ sơ khách hàng (product-marketing) & §2 Tiếng nói khách hàng VOC (customer-research)",
+            "id": "strategy-doc-sec-1-2",
+            "role": "strategy-doc-profiles",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "§1. Hồ sơ sản phẩm & 4 lực chuyển đổi (product-marketing)\n• Sản phẩm & Kệ hàng: Serum rau má Sắc Ngọc Khang · Phục hồi màng bảo vệ cho da dầu mụn, nhạy cảm.\n• Khác biệt cốt lõi: Kết cấu lỏng thấm trong 3 giây, làm dịu vết đỏ tức thì mà không gây bít tắc như kem dưỡng đặc.\n• 4 lực chuyển đổi (JTBD Switching Dynamics):\n  – Lực đẩy (Push): Da kích ứng, đỏ rát vì chu trình 5–7 bước nhiều hoạt chất.\n  – Lực kéo (Pull): Tối giản còn 1 bước làm dịu nhanh, lành tính.\n  – Thói quen (Habit): Quen dùng nhiều lớp đặc hoặc ngại đổi sản phẩm mới.\n  – Lo ngại (Anxiety): Sợ thử serum mới lại lên mụn ẩn hoặc xót da.\n• Giọng điệu (Brand Voice): Khoa học gần gũi, trực diện · Tránh từ phóng đại ('thần dược', 'khỏi 100%').",
+                "pixels": 415
+              },
+              {
+                "type": "text",
+                "text": "§2. Phân khúc mục tiêu & Ngôn ngữ khách hàng VOC (customer-research)\n• Phân khúc trọng tâm (Segment Slice): Người có da dầu nhạy cảm bị quá tải chu trình skincare (Skincare Fatigue) hoặc vừa kích ứng sau peel/retinol.\n• Công việc cần hoàn thành (JTBD):\n  – Chức năng: Hạ nhanh vết mẩn đỏ, rát da trước khi đi làm/ra ngoài.\n  – Cảm xúc: Lấy lại cảm giác an tâm, không còn xót hay tự ti vì mặt đỏ.\n• Sự kiện kích hoạt (Trigger Event): Sáng ngủ dậy thấy hai bên má ửng đỏ, bong tróc sau khi thử đồ mới.\n• Câu nói nguyên văn ('Money Quotes' kèm độ tin cậy):\n  1. \"Da đang kích ứng thì sợ nhất là bôi thêm đủ thứ đặc bí lên mặt\" — [Độ tin cậy: Cao · 38 bình luận TikTok/Shopee]\n  2. \"Cần loại nào thấm nhanh như nước, vỗ lên thấy dịu mát ngay\" — [Độ tin cậy: Cao · 24 đánh giá thực tế]",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Tài liệu Chiến lược · §3 Hồ sơ đối thủ & Kênh nổi bật (competitor-profiling + social reverse-engineering)",
+            "id": "strategy-doc-sec-3",
+            "role": "strategy-doc-notable-profiles",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "§3. Hồ sơ đối thủ & Kênh nổi bật trong ngách (Tách biệt: Quan sát thực tế · Suy luận cơ chế · Hàm ý cho thương hiệu)\n\n1. [Đối thủ trực tiếp] Skin1004 / K-Beauty Centella Ads (Liên kết mẫu W01 · TikTok Ad)\n   • Quan sát thực tế: Quảng cáo chạy > 60 ngày, 1,8 triệu lượt xem, tỷ lệ xem qua 3 giây đạt 83,4%, CTR 7,1%.\n   • Suy luận cơ chế: Mở đầu 0–0,8s bằng cận cảnh bẻ lá rau má tươi + nước và đá bắn lên kèm âm thanh ASMR giòn trước khi chiếu tới da.\n   • Hàm ý cho chúng ta: Thay khung hình cầm chai tĩnh (V01) bằng chuyển động vật lý/cận cảnh kết cấu ngay trong 0,8 giây đầu.\n\n2. [Kênh Creator nổi bật] Nhóm Beauty Reviewer Da Nhạy Cảm (Liên kết mẫu W02, W04 · Reels & TikTok Spark)\n   • Quan sát thực tế: 1,2–1,5 triệu lượt xem, giữ chân 3 giây đạt 81,2%–83,9%.\n   • Suy luận cơ chế: Đánh thẳng vào tâm lý sợ sai lầm bằng bảng đỏ ('Đừng vội mua serum nếu...') hoặc chia đôi màn hình Trước/Sau 1 đêm ngay khung hình đầu tiên.\n   • Hàm ý cho chúng ta: Dùng câu cảnh báo ngắn dưới 6 từ về sai lầm dưỡng da 5 bước để giữ chân nhóm đang bị kích ứng.\n\n• Quy tắc Playbook đúc kết từ W01–W04: Nhịp cắt 2,4 lần/3s đầu (0,8s/cảnh) · Âm thanh ASMR hoặc câu hỏi trực diện ở 0,5s đầu · Chuẩn giữ chân 3 giây của ngách: 82,3%.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Tài liệu Chiến lược · §4 Chiến lược tiếp cận (ad-creative / creative-roadmap)",
+            "id": "strategy-doc-sec-4",
+            "role": "strategy-doc-approach-strategy",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "§4A. Chẩn đoán trạng thái & Chiến lược tiếp cận\n• Trạng thái tài khoản: [ EXPLORATION · KHÁM PHÁ RỘNG ]\n  Lý do: Vòng 01 đạt trung bình 58,5% qua 3 giây (còn cách chuẩn 82,3% là 23,8 điểm %). Chưa chuyển sang Scaling toàn phần; ưu tiên nâng cấp góc thắng H01 (68,5%) kết hợp thử nghiệm nhịp dựng 0,8s.\n• Mức độ nhận thức (Eugene Schwartz): Problem-Aware (Nhận biết vấn đề)\n  Khách hàng biết rõ da đang mẩn đỏ/kích ứng nhưng hoài nghi sản phẩm mới → Tuyệt đối không mở đầu bằng tên thương hiệu hay liệt kê tên khoa học của hoạt chất.",
+                "pixels": 415
+              },
+              {
+                "type": "text",
+                "text": "§4B. Danh mục hướng tiếp cận xếp hạng theo bằng chứng (Evidence Slate)\n• Bậc 1 (Dữ liệu tài khoản thực tế — Mạnh nhất): Góc gọi thẳng nỗi đau kích ứng của H01 đạt 68,5% ở Vòng 01 → Ghép với cảnh ASMR lá rau má 0,8s của W01 (Biến thể H05).\n• Bậc 2 (Ngôn ngữ nguyên văn khách hàng): Câu hỏi ngắn dưới 6 từ từ bình luận thực tế về nỗi sợ bôi nhiều bước (Biến thể H06).\n• Bậc 3 (Mẫu thắng thị trường > 60 ngày): Chia đôi màn hình Trước/Sau 1 đêm theo cấu trúc W04 (Biến thể H07).\n• Đã loại bỏ (Invalidated từ bài học Vòng 01): Mở đầu bằng bảng thuật ngữ thành phần (V03 chỉ đạt 45,8%) và cảnh mở nắp chậm trong phòng ngủ (V04).",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Tài liệu Chiến lược · §5 Giả thuyết kiểm chứng & Ma trận mở đầu 3 thành phần (ab-testing + hook-system)",
+            "id": "strategy-doc-sec-5",
+            "role": "strategy-doc-hypothesis-matrix",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "§5. Giả thuyết kiểm chứng hiện hành (Áp dụng cho Vòng 02 · Chuẩn ab-testing)\n• BỞI VÌ (Quan sát từ Vòng 01): 72% khoảng cách giữ chân (58,5% vs 82,3%) xuất hiện ngay ở giây thứ 1 (36,0% người xem rời đi khi thấy khung hình cầm chai tĩnh), nhưng góc nội dung gọi đúng nỗi đau da kích ứng (H01) vẫn đạt 68,5%.\n• CHÚNG TÔI TIN RẰNG (Thay đổi 1 biến số): Đưa cảnh chuyển động cận cảnh (nước bắn trên lá rau má / giọt serum thấm) lên 0,8 giây đầu và rút gọn câu mở đầu xuống dưới 6 từ.\n• SẼ TẠO RA (Kết quả kỳ vọng): Hạ tỷ lệ rời video ở giây thứ 1 từ 36,0% xuống dưới 15,0% và nâng tỷ lệ xem qua 3 giây trung bình lên ≥ 72,0%.\n• CHO (Phân khúc): Người có da dầu nhạy cảm đang bị kích ứng, mẩn đỏ do chu trình dưỡng da phức tạp.\n• ĐO LƯỜNG BẰNG: Chỉ số chính: Giữ chân 3s sau 72h · Chỉ số phụ: CTR ≥ 5,5% & Xem TB ≥ 12s · Chỉ số bảo vệ (Guardrail): Tỷ lệ xem hết video ≥ 14,1%.\n\nMa trận mở đầu 3 thành phần (Quy tắc không trùng lặp: Hình ảnh 0–3s ≠ Lời thoại VO ≠ Chữ trên màn hình)\n1. H05 (Kế thừa H01 + W01 · ASMR + Nỗi đau) — Hình ảnh 0–3s: Bẻ lá rau má tươi, nước bắn cận cảnh (cắt ở 0,8s) | Lời thoại VO: \"Da đang kích ứng thì khoan thêm 5 bước mới…\" | Chữ trên màn hình: [Dịu vết đỏ chỉ với 1 bước]\n2. H06 (Kế thừa H02 + W02 · Câu hỏi ngắn) — Hình ảnh 0–3s: Cận cảnh vùng má ửng đỏ, giọt serum chạm da | Lời thoại VO: \"Sao bôi đủ thứ mà da vẫn rát?\" | Chữ trên màn hình: [Dừng ngay 3 thói quen làm mỏng da]\n3. H07 (Từ W04 · Trước & Sau 1 đêm) — Hình ảnh 0–3s: Chia đôi màn hình: Tối qua đỏ rát vs Sáng nay dịu hẳn | Lời thoại VO: \"Đừng đổi cả chu trình khi màng bảo vệ da đang yếu.\" | Chữ trên màn hình: [Sau 1 đêm phục hồi]\n4. H08 (Từ W03 · Quy trình 2 bước) — Hình ảnh 0–3s: Giơ 2 ngón tay trước mặt mộc, vỗ serum thấm nhanh | Lời thoại VO: \"Chỉ giữ lại đúng 2 bước này khi da đang nổi loạn.\" | Chữ trên màn hình: [Thấm trong 3s · Không bít tắc]",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Tài liệu Chiến lược · §6 Nhật ký học hỏi tích lũy qua các vòng (Được cập nhật tự động từ phần dưới)",
+            "id": "strategy-doc-sec-6",
+            "role": "strategy-doc-learnings-ledger",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "§6. Nhật ký học hỏi & Lịch sử cập nhật tài liệu (Learnings Ledger)\n• [Phiên bản v1.1 · Cập nhật từ kết quả Vòng 01 · Đúng một phần (Partially Validated)]\n  – Kết quả đo: Giữ chân 3s trung bình đạt 58,5% (thấp hơn chuẩn 23,8 điểm %), nhưng H01 (gọi thẳng nỗi đau da kích ứng) dẫn đầu với 68,5% sau 72h (219.420 lượt xem).\n  – Bài học cốt lõi: Thông điệp đánh vào nỗi sợ bôi nhiều bước gây kích ứng đã chạm đúng nhu cầu; điểm nghẽn nằm ở giây đầu tiên (nhịp cắt 0,8 lần/3s quá chậm so với 2,4 lần/3s của nhóm tham khảo).\n  – Thay đổi áp dụng lên §4 & §5: Loại bỏ hoàn toàn mở đầu giải thích hoạt chất (V03) và khung hình cầm sản phẩm tĩnh; bắt buộc ghép cảnh cận cảnh 0,8s vào đầu H05–H08 ở Vòng 02.\n• [Phiên bản v1.0 · Khởi tạo dự án]\n  – Thiết lập hồ sơ sản phẩm Sắc Ngọc Khang, phân tích 4 mẫu thắng thị trường (W01–W04, chuẩn 82,3%) và đề xuất giả thuyết khám phá ban đầu cho Vòng 01 (H01–H04).",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "PHẦN 2 (DƯỚI) · Tiêu đề khu vực Kết quả & Bài học từ các Vòng thử nghiệm + Thanh xu hướng giữ chân qua các vòng",
+            "id": "rounds-learnings-section-header",
+            "role": "rounds-trend-summary",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "KẾT QUẢ & BÀI HỌC TỪ CÁC VÒNG THỬ NGHIỆM (CUNG CẤP DỮ LIỆU CẬP NHẬT TÀI LIỆU CHIẾN LƯỢC)\nTiến độ giữ chân qua 3 giây giữa các vòng so với Chuẩn tham khảo (82,3%):\n• Chuẩn thị trường (W01–W04): ████████████████████ 82,3%\n• Vòng 01 (Đã đóng · Đã cập nhật lên Tài liệu v1.1): ██████████████░░░░░░ TB 58,5% · Mẫu tốt nhất: H01 (68,5%)\n• Vòng 02 (Đang thử nghiệm · Áp dụng Tài liệu v1.1): ░░░░░░░░░░░░░░░░░░░░ Đang chờ số liệu 72h (Mục tiêu ≥ 72,0% với H05–H08)",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Tiêu đề luôn hiển thị (Đã đóng · Đã ghi bài học lên Tài liệu v1.1)",
             "id": "loop-01",
             "loopId": "loop-01",
             "role": "loop-header",
@@ -436,7 +557,7 @@
               { "type": "space", "pixels": 350 },
               {
                 "type": "link",
-                "text": "Vòng 01 · Đang mở · Thu gọn chi tiết",
+                "text": "Vòng 01 · Đã phân tích & Cập nhật vào Tài liệu v1.1 · Mẫu thắng: H01 (68,5%) · Thu gọn chi tiết",
                 "href": "#loop-01-details",
                 "pixels": 830
               }
@@ -452,13 +573,29 @@
               { "type": "space", "pixels": 350 },
               {
                 "type": "text",
-                "text": "Video tham khảo\nTrung bình 4 quảng cáo được chọn\n\nTỷ lệ xem qua 3 giây: 82,3%\nTỷ lệ rời video trong giây đầu: 10,8%\nThời gian xem trung bình: 14,2 / 25 giây (56,8%)\nTỷ lệ nhấp (CTR): 7,1%\nTỷ lệ xem hết video: 28,4%",
+                "text": "Video tham khảo (W01–W04)\nTrung bình 4 quảng cáo được chọn\n\nTỷ lệ xem qua 3 giây: 82,3%\nTỷ lệ rời video trong giây đầu: 10,8%\nThời gian xem trung bình: 14,2 / 25 giây (56,8%)\nTỷ lệ nhấp (CTR): 7,1%\nTỷ lệ xem hết video: 28,4%",
                 "pixels": 415
               },
               {
                 "type": "text",
-                "text": "Video của bạn\nTrung bình 4 quảng cáo của vòng trước\n\nTỷ lệ xem qua 3 giây: 58,5% (thấp hơn 23,8 điểm phần trăm)\nTỷ lệ rời video trong giây đầu: 36,0%\nThời gian xem trung bình: 9,8 / 25 giây (39,2%)\nTỷ lệ nhấp (CTR): 3,2%\nTỷ lệ xem hết video: 14,1%",
+                "text": "Video của bạn ở Vòng 01 (V01–V04 / H01–H04)\nTrung bình 4 quảng cáo của Vòng 01\n\nTỷ lệ xem qua 3 giây: 58,5% (thấp hơn 23,8 điểm phần trăm)\nTỷ lệ rời video trong giây đầu: 36,0%\nThời gian xem trung bình: 9,8 / 25 giây (39,2%)\nTỷ lệ nhấp (CTR): 3,2%\nTỷ lệ xem hết video: 14,1%",
                 "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Giả thuyết đã kiểm chứng trong Vòng 01 (Từ Tài liệu v1.0)",
+            "id": "loop-01-hypothesis",
+            "loopId": "loop-01",
+            "role": "round-hypothesis",
+            "visibleWhen": { "loopExpanded": true },
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "GIẢ THUYẾT ĐÃ KIỂM CHỨNG Ở VÒNG 01 (Từ Tài liệu v1.0 · Kết luận: Đúng một phần)\nThử nghiệm 4 hướng tiếp cận khác nhau (H01 Gọi nỗi đau kích ứng, H02 Câu hỏi, H03 Giải thích hoạt chất, H04 Chăm sóc buổi tối) để xác định góc thông điệp nào giữ chân nhóm khách hàng da dầu nhạy cảm tốt nhất qua mốc 3 giây.",
+                "pixels": 830
               }
             ]
           },
@@ -596,9 +733,9 @@
             ]
           },
           {
-            "label": "Vòng 01 / Nhận xét AI và đề xuất thử nghiệm",
+            "label": "Vòng 01 / Bài học đúc kết từ Vòng 01 (Đã tự động cập nhật lên mục §4, §5, §6 của Tài liệu Chiến lược v1.1)",
             "loopId": "loop-01",
-            "role": "ai-summary",
+            "role": "round-learning-handoff",
             "visibleWhen": { "loopExpanded": true },
             "cells": [
               {
@@ -611,12 +748,12 @@
               },
               {
                 "type": "text",
-                "text": "Nhận xét từ số liệu\n1. Chênh lệch 23,8 điểm phần trăm về tỷ lệ xem qua 3 giây chủ yếu đến từ giây đầu: tỷ lệ rời video là 36,0% so với 10,8%.\n2. Video thương hiệu có trung bình 0,8 lần cắt cảnh trong 3 giây đầu, so với 2,4 lần ở nhóm tham khảo.\n3. Cả 4 mẫu tham khảo đều dùng hình ảnh, âm thanh gây chú ý hoặc nhắc đến tình trạng da ngứa rát.",
+                "text": "Kết quả xếp hạng 72h & Bài học Vòng 01 (Đã ghi vào §6 Tài liệu v1.1)\n• Hạng 1: H01 · Gọi thẳng nỗi đau kích ứng (68,5% qua 3s · 219.420 tổng lượt xem)\n• Bài học rút ra: Góc thông điệp gọi đúng nỗi sợ 'da đang kích ứng mà bôi thêm 5 bước' giữ chân tốt nhất, nhưng nhịp hình ảnh đầu (cắt ở 1,8s) vẫn quá chậm so với chuẩn 0,8s của W01.",
                 "pixels": 415
               },
               {
                 "type": "text",
-                "text": "Đề xuất thử nghiệm\nÁp dụng 4 cách mở đầu vào tệp thương hiệu. Thử cảnh nước bắn trên lá rau má, cắt cảnh sau 0,8 giây, với mục tiêu đưa tỷ lệ rời video trong giây đầu xuống dưới 15%.\n[Đồng ý và chọn mẫu mở đầu]",
+                "text": "Cập nhật lên Tài liệu Chiến lược (v1.0 → v1.1)\n• Đã loại bỏ hướng liệt kê hoạt chất (V03) khỏi §4 Chiến lược tiếp cận.\n• Đã cập nhật §5 Giả thuyết & Ma trận mở đầu (H05–H08): ghép cảnh ASMR nước bắn trên lá rau má ở 0,8s đầu với câu mở đầu ngắn dưới 6 từ.\n[Xem trong §5 & §6 Tài liệu Chiến lược ở trên ↑]",
                 "pixels": 415
               }
             ]
@@ -637,7 +774,7 @@
               },
               {
                 "type": "text",
-                "text": "Đã so sánh số liệu và phân loại các mẫu tham khảo. Bạn có thể tạo các đoạn mở đầu cho sản phẩm.",
+                "text": "Tài liệu Chiến lược v1.1 và Ma trận mở đầu đã sẵn sàng. Bạn có thể chuyển sang bước Chọn mở đầu để chọn mẫu thử nghiệm.",
                 "pixels": 430
               },
               {
@@ -649,7 +786,7 @@
             ]
           },
           {
-            "label": "Vòng 02 / Tiêu đề luôn hiển thị",
+            "label": "Vòng 02 / Tiêu đề luôn hiển thị (Đang áp dụng Tài liệu v1.1 · Sẽ nâng cấp Tài liệu lên v1.2 khi có số liệu)",
             "id": "loop-02",
             "loopId": "loop-02",
             "role": "loop-header",
@@ -658,7 +795,7 @@
               { "type": "space", "pixels": 350 },
               {
                 "type": "link",
-                "text": "Vòng 02 · Tổng kết vòng trước và chuẩn bị thử nghiệm · Mở chi tiết",
+                "text": "Vòng 02 · Đang kiểm chứng Giả thuyết v1.1 (H05–H08) · Chờ số liệu để nâng cấp Tài liệu lên v1.2 · Mở chi tiết",
                 "href": "#loop-02-details",
                 "pixels": 830
               }
@@ -674,18 +811,18 @@
               { "type": "space", "pixels": 350 },
               {
                 "type": "text",
-                "text": "Video tham khảo\nChưa có số liệu cho Vòng 02.",
+                "text": "Video tham khảo (W01–W04)\nChuẩn giữ chân qua 3 giây: 82,3% · Rời giây đầu: 10,8%.",
                 "pixels": 415
               },
               {
                 "type": "text",
-                "text": "Video của bạn\nChưa có số liệu cho Vòng 02.",
+                "text": "Video của bạn ở Vòng 02 (H05–H08)\nChưa có số liệu cho Vòng 02. Đang kiểm chứng giả thuyết từ Tài liệu v1.1 (Mục tiêu: Giữ chân 3s ≥ 72,0%, rời giây đầu < 15%).",
                 "pixels": 415
               }
             ]
           },
           {
-            "label": "Vòng 02 / Tổng kết vòng trước, thay cho bước 04B",
+            "label": "Vòng 02 / Đúc kết bài học mới để cập nhật lên Tài liệu Chiến lược v1.2",
             "id": "loop-02-details",
             "loopId": "loop-02",
             "role": "previous-loop-summary",
@@ -695,7 +832,7 @@
               { "type": "space", "pixels": 350 },
               {
                 "type": "text",
-                "text": "Chuẩn bị Vòng 02 từ kết quả Vòng 01\nTổng kết sau 72 giờ và xếp hạng các mẫu mở đầu của vòng trước. H01 có kết quả tốt nhất trong dữ liệu mẫu.\n[Ghi chú: Bạn học được gì từ vòng này?]\n[Giả thuyết: Vòng tiếp theo, thử điều gì?]\n[Lưu ghi chú] [Chuẩn bị vòng tiếp theo]\nKết quả Vòng 01 được giữ riêng; Vòng 02 chưa có số liệu mới. Khi có dữ liệu mới, hiển thị hai thẻ video tham khảo và video của bạn cùng phân tích AI tại đây.",
+                "text": "Vòng 02 · Kiểm chứng Giả thuyết v1.1 & Chuẩn bị cập nhật Tài liệu Chiến lược lên v1.2\n• Giả thuyết đang chạy (từ §5 Tài liệu v1.1): Đưa cảnh nước bắn trên lá rau má lên 0,8 giây đầu và đặt câu hỏi ngắn dưới 6 từ (biến thể H05–H08) để hạ tỷ lệ rời video giây đầu xuống dưới 15%.\n• Khi có số liệu 72h của Vòng 02, đúc kết bài học tại đây để tự động cập nhật ngược lên Tài liệu Chiến lược ở phần trên:\n  [Đánh giá giả thuyết: Đã chứng minh / Đúng một phần / Bác bỏ]\n  [Bài học rút ra từ Vòng 02 (Sẽ ghi vào §6 Nhật ký học hỏi của Tài liệu v1.2)]\n  [Giả thuyết & điều chỉnh chiến lược cho Vòng 03 (Sẽ cập nhật §4 & §5 của Tài liệu v1.2)]\n  [Lưu bài học nháp] [Mô phỏng số liệu 72h Vòng 02] [Cập nhật Tài liệu (lên v1.2) & Tạo Vòng 03 → (Yêu cầu có số liệu Vòng 02)]",
                 "pixels": 830
               }
             ]
@@ -713,7 +850,7 @@
               },
               {
                 "type": "text",
-                "text": "Lạc Hồng / Mỗi vòng giữ riêng kết quả so sánh, danh sách video và phân tích AI. Thu gọn vòng vẫn xem được kết quả ở đầu.",
+                "text": "Lạc Hồng / Tài liệu Chiến lược ở phần trên là bộ não xuyên suốt dự án; mỗi vòng thử nghiệm ở phần dưới cung cấp bằng chứng thực tế để cập nhật tài liệu từ v1.0 → v1.1 → v1.n.",
                 "pixels": 830
               }
             ]
@@ -722,41 +859,37 @@
       },
       "spec": {
         "goal": {
-          "what": "Hiển thị danh sách vòng thử nghiệm. Đầu mỗi vòng luôn so sánh kết quả video tham khảo và video của bạn trong hai cột. Mở rộng vòng để xem danh sách video có hai thẻ chuyển đổi và phân tích AI riêng của vòng đó.",
-          "audience": "Người sáng tạo nội dung và nhà tiếp thị muốn nắm bắt khoảng cách số liệu chuẩn xác và duyệt qua nhiều mẫu video thực tế.",
-          "successCriteria": "Kết quả hai nhóm video luôn nằm ở đầu từng vòng và vẫn hiển thị khi thu gọn. Mở Vòng 01 để xem video và phân tích AI. Chuyển thẻ chỉ hiển thị một danh sách video tại một thời điểm, không thay đổi kết quả hoặc nội dung vòng khác. Vòng chưa có dữ liệu có trạng thái chờ rõ ràng."
+          "what": "Chia Bước 01 (Phân tích) thành 2 khu vực gắn kết chặt chẽ: (1) Khu vực trên cùng là 'Tài liệu Nghiên cứu Thị trường & Chiến lược Mở đầu' (bộ não của quy trình, có đánh số phiên bản v1.0 → v1.n), trình bày đầy đủ Hồ sơ khách hàng, Tiếng nói khách hàng (VOC), Hồ sơ đối thủ/kênh nổi bật, Chiến lược tiếp cận và Giả thuyết mở đầu 3 thành phần; (2) Khu vực bên dưới là Tiến độ giữ chân và Danh sách các vòng thử nghiệm (Vòng 01, Vòng 02...), nơi mỗi vòng sau khi có số liệu sẽ đúc kết bài học để cập nhật ngược lên Tài liệu Chiến lược.",
+          "audience": "Người sáng tạo nội dung, chủ thương hiệu và nhà tiếp thị cần một quy trình thử nghiệm mở đầu video có nền tảng nghiên cứu thị trường bài bản thay vì đoán mò.",
+          "successCriteria": "Người dùng nhìn thấy ngay Tài liệu Chiến lược (v1.1) ở đầu trang với đầy đủ 6 mục (§1–§6), hiểu rõ vì sao các mẫu mở đầu được đề xuất, và thấy rõ luồng khép kín: kết quả & bài học của từng vòng bên dưới cập nhật trực tiếp lên phiên bản tiếp theo của Tài liệu Chiến lược."
         },
         "format": {
           "canvas": "Độ rộng 1440px: File Tree (260px) + Chat 30% (350px) + Dashboard 70% (830px).",
-          "safeMargins": "Đệm 20–24px mỗi cột; bảng metrics phân bổ 415px mỗi cột cân xứng tuyệt đối."
+          "safeMargins": "Đệm 20–24px mỗi cột; các thẻ đôi trong Tài liệu Chiến lược và bảng so sánh số liệu chia 2 cột 415px cân xứng."
         },
         "layout": {
-          "grid": "Thanh dự án và tệp bên trái, cột trò chuyện hỗ trợ và danh sách vòng thử nghiệm trong khu vực chính. Mỗi vòng có tiêu đề, bảng so sánh kết quả hai cột và phần chi tiết mở rộng.",
-          "placement": "Trong mỗi vòng: tiêu đề và nút mở rộng, bảng so sánh kết quả luôn hiển thị, rồi phần chi tiết chỉ hiện khi mở vòng. Phần chi tiết gồm nguồn dữ liệu, hai thẻ video, một danh sách video đang chọn, phân tích AI, tỷ lệ xem theo từng giây và đề xuất thử nghiệm.",
-          "hierarchy": "Danh sách vòng thử nghiệm; trong từng vòng, ưu tiên kết quả video tham khảo so với video của bạn, tiếp theo là video và phân tích AI khi mở rộng."
+          "grid": "Cột trái là Cây thư mục (hiển thị cả tệp tai-lieu-chien-luoc-v1.1.md), cột giữa là Trò chuyện AI (30%), cột phải là Không gian làm việc Bước 01 (70%) chia làm Khu vực Tài liệu Chiến lược (trên) và Khu vực Các vòng thử nghiệm & Bài học (dưới).",
+          "placement": "Khu vực trên: Thanh tiêu đề Tài liệu Chiến lược (kèm nhãn phiên bản v1.1 và bộ lọc mục §1–§6) → Lưới §1 Hồ sơ khách hàng & §2 VOC → Bảng §3 Hồ sơ đối thủ & Kênh nổi bật → Lưới §4 Chiến lược tiếp cận (Exploration vs. Scaling) → Khối §5 Giả thuyết kiểm chứng & Ma trận mở đầu 3 thành phần → Khối §6 Nhật ký học hỏi tích lũy. Khu vực dưới: Thanh xu hướng giữ chân 3 giây qua các vòng → Danh sách Vòng 01, Vòng 02... có thể mở rộng độc lập.",
+          "hierarchy": "Tài liệu Nghiên cứu & Chiến lược (Bộ não dự án) ở trên cùng → Tiến độ giữ chân xuyên vòng → Chi tiết số liệu, video và bài học của từng vòng ở bên dưới."
         },
         "typeSystem": {
-          "display": "Be Vietnam Pro 32px tiêu đề, 22px chỉ số nổi bật.",
-          "metadata": "10–12px nhãn chỉ số (3s retention, 1s drop-off, CTR, pacing cuts) và ID video.",
-          "contrast": "Chữ và số liệu tương phản cao, định dạng rõ ràng giữa benchmark (xanh lá #346149) và chỉ số nội bộ (than chì/hổ phách)."
+          "display": "Be Vietnam Pro 32px tiêu đề trang, 20–22px tiêu đề khối Tài liệu Chiến lược và chỉ số nổi bật.",
+          "metadata": "10–12px nhãn phiên bản (v1.0, v1.1), nhãn độ tin cậy VOC (Cao/Trung bình/Thấp), nhãn trạng thái chiến lược (Exploration/Scaling) và mã mẫu mở đầu (W01–W04, H01–H08).",
+          "contrast": "Chữ và số liệu tương phản cao chuẩn WCAG AA; phân biệt rõ ràng giữa Quan sát thực tế (Observed), Suy luận (Inferred) và Hàm ý chiến lược (Implication)."
         },
         "colorMaterial": {
           "foundation": "Nền ấm #f5f4f0 và chữ than chì #242823.",
-          "surfaces": "Thẻ bảng metrics trắng tinh #ffffff viền 1px #dedfd7; nút clickable trên cùng có màu xanh sage dịu viền đậm nổi bật.",
+          "surfaces": "Khung Tài liệu Chiến lược nền trắng ngà/trắng tinh #ffffff có viền nhấn #346149 ở đầu thẻ; các thẻ vòng thử nghiệm bên dưới nền #ffffff viền 1px #dedfd7.",
           "borders": "1px #dedfd7; bo góc 10px.",
-          "signal": "Xanh lá #346149 cho nút kích hoạt và chỉ số benchmark; hổ phách cho tỷ lệ thoát cần cải thiện."
+          "signal": "Xanh lá #346149 cho nhãn phiên bản tài liệu, giả thuyết đã kiểm chứng và chuẩn tham khảo; hổ phách cho điểm nghẽn rời video giây đầu và trạng thái chờ số liệu."
         },
         "copy": {
-          "headline": "01. Phân tích · So sánh hiệu quả video",
-          "subtitle": "So sánh kết quả ở đầu mỗi vòng. Mở rộng vòng để chuyển giữa video tham khảo và video của bạn, rồi xem phân tích AI.",
+          "headline": "01. Phân tích · Tài liệu Chiến lược & Vòng học hỏi",
+          "subtitle": "AI tổng hợp hồ sơ khách hàng, đối thủ nổi bật, chiến lược tiếp cận và giả thuyết mở đầu thành tài liệu sống ở phần trên. Mỗi vòng thử nghiệm bên dưới sẽ cung cấp bài học thực tế để cập nhật tài liệu.",
           "actions": [
             {
-              "label": "Video tham khảo",
-              "href": "#winning-hooks-list"
-            },
-            {
-              "label": "Video của bạn",
-              "href": "#our-ads-list"
+              "label": "Xem Tài liệu Chiến lược (v1.1)",
+              "href": "#strategy-brain-doc-header"
             },
             {
               "label": "Tiếp tục: Chọn mở đầu",
@@ -766,15 +899,15 @@
         },
         "constraints": {
           "font": "Be Vietnam Pro tiếng Việt chuẩn.",
-          "accent": "Một màu xanh lá chủ đạo.",
-          "container": "Danh sách vòng có thể mở rộng độc lập. Bảng so sánh kết quả hai nhóm luôn ở đầu từng vòng, ngoài phần thu gọn. Video và phân tích AI nằm trong phần mở rộng của chính vòng đó. Hai thẻ dùng chung một vùng danh sách video; không hiển thị cả hai danh sách cùng lúc. Giữ nguyên dữ liệu và lựa chọn thẻ khi thu gọn. Không dùng số liệu vòng trước thay cho vòng chưa có dữ liệu."
+          "accent": "Một màu xanh lá chủ đạo #346149.",
+          "container": "Tài liệu Chiến lược nằm ở phần trên của Bước 01, có thể thu gọn hoặc lọc theo mục (§1–§6) để không chiếm chỗ khi người dùng chỉ muốn duyệt nhanh các vòng bên dưới. Mỗi vòng bên dưới giữ nguyên bảng so sánh kết quả ở đầu vòng và hai thẻ chuyển đổi video. Chỉ cho phép đóng vòng và nâng cấp phiên bản Tài liệu Chiến lược (v1.n -> v1.n+1) khi vòng đó đã có số liệu thực tế."
         },
         "negativePrompt": [
-          "Không đặt video hoặc phân tích AI trước bảng so sánh kết quả của vòng.",
-          "Không ẩn bảng so sánh kết quả khi thu gọn vòng.",
-          "Không hiển thị hai danh sách video cùng lúc; dùng hai thẻ chuyển đổi trong mỗi vòng.",
-          "Không trộn video, số liệu hoặc phân tích AI giữa các vòng.",
-          "Không chỉ hiển thị một video tham khảo; giữ danh sách nhiều mẫu."
+          "Không nhảy thẳng vào bảng số liệu rời rạc mà thiếu Tài liệu Nghiên cứu & Chiến lược ở phần trên.",
+          "Không trộn lẫn Quan sát thực tế (Observed) với Suy luận chủ quan (Inferred) trong bảng Hồ sơ đối thủ & Kênh nổi bật.",
+          "Không viết giả thuyết mơ hồ thiếu biến số thay đổi, phân khúc mục tiêu hoặc chỉ số đo lường.",
+          "Không để 3 thành phần của mở đầu (Hình ảnh 0–3s, Lời thoại VO, Chữ trên màn hình) lặp lại cùng một câu chữ.",
+          "Không đặt các vòng thử nghiệm lên trước Tài liệu Chiến lược hoặc cho phép cập nhật phiên bản tài liệu khi vòng thử nghiệm chưa có số liệu."
         ]
       }
     },

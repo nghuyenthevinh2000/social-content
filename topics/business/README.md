@@ -1,16 +1,15 @@
 ---
 name: business
-summary: B2B playbook lessons (JSON), a reusable trap/solution infographic template, and a workflow that renders infographics and stages LinkedIn posts.
+summary: Business (`topics/business`). Purpose and documentation for topics/business.
 tags:
 - business
-- b2b-marketing
-- infographics
-- linkedin-workflow
 submodules:
-  lessons/: Source lessons (*.json) read by the workflow.
-  infographics/: `template.html` plus one rendered output folder per lesson.
-  linkedin/: `results.json` audit trail of staged/published posts.
-  workflow.py: Reads lessons/*.json, renders infographics, stages (or publishes) LinkedIn posts.
+  infographics/: Documentation and resources for topics/business/infographics.
+  lessons/: Documentation and resources for topics/business/lessons.
+  linkedin/: Documentation and resources for topics/business/linkedin.
+  workflow.py: 'Business workflow: lessons/*.json -> infographic (template.html) ->
+    LinkedIn post -> linkedin/results.json. Dry run by default; pass --publish to
+    actu'
 ---
 
 # Business (`topics/business`)

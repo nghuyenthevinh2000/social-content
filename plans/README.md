@@ -1,6 +1,6 @@
 ---
 name: reflections
-summary: Documentation and resources for reflections.
+summary: Documentation and resources for plans.
 tags:
 - reflections
 submodules:

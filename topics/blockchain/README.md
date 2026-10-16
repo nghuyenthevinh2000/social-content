@@ -1,7 +1,8 @@
 ---
 name: blockchain
 summary: Real-World Blockchain & Institutional Finance (Blockchain Thực chiến & Tài
-  chính Định chế). Includes a Vietnam legal report with reproducible X topic-config commands.
+  chính Định chế). Includes a Vietnam legal report with reproducible X topic-config
+  commands.
 tags:
 - blockchain
 submodules:

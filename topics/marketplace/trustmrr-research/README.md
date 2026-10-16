@@ -1,3 +1,19 @@
+---
+name: trustmrr-research
+summary: TrustMRR product and customer research. Purpose and documentation for topics/marketplace/trustmrr-research.
+tags:
+- trustmrr-research
+submodules:
+  local/: TrustMRR top-100 research — October 7, 2026. Purpose and documentation for
+    topics/marketplace/trustmrr-research/local.
+  build_report.py: Render reviewed notes and dated source evidence into private research
+    artifacts.
+  collect.py: Private TrustMRR snapshot and bounded official-site research; no paid
+    services.
+  pilot-2026-10-07.csv: File pilot-2026-10-07.csv
+  pilot-2026-10-07.md: TrustMRR five-company research pilot
+---
+
 # TrustMRR product and customer research
 
 The five-company pilot is in `pilot-2026-10-07.md` and its companion CSV.
