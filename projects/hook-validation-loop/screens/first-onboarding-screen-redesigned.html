@@ -14,33 +14,425 @@
 <body data-page="onboarding">
   <a class="skip-link" href="#chat-input">Đi đến tin nhắn</a>
   <header class="global-header">
-    <a class="wordmark" href="first-onboarding-screen-redesigned.html">lạc hồng<span class="brand-period">.</span></a>
-    <span class="header-center">Không gian sáng tạo video</span>
-    <a class="text-link" href="four-stage-loop-dashboard-redesigned.html">Không gian làm việc <span aria-hidden="true">↗</span></a>
+    <div class="header-left">
+      <button type="button" class="project-nav-toggle" id="project-nav-toggle" aria-expanded="false" aria-controls="project-sidebar" aria-label="Mở danh sách dự án">
+        <span class="nav-toggle-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </span>
+        <span class="project-nav-label">Dự án và tệp</span>
+      </button>
+      <a class="wordmark" href="first-onboarding-screen-redesigned.html">lạc hồng<span class="brand-period">.</span></a>
+    </div>
+    <span class="header-center">Tạo video và quản lý tệp thương hiệu</span>
+    <a class="text-link" href="four-stage-loop-dashboard-redesigned.html">Mở không gian làm việc <span aria-hidden="true">↗</span></a>
   </header>
+
+  <!-- Left rear floating project tab for quick access -->
+  <button type="button" class="left-rear-project-tab" id="left-rear-project-tab" aria-label="Mở danh mục dự án" title="Chuyển đổi dự án">
+    <span class="tab-glyph" aria-hidden="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    </span>
+    <span class="tab-title">DỰ ÁN</span>
+  </button>
+  <div class="project-sidebar-backdrop" id="project-sidebar-backdrop" aria-hidden="true" hidden></div>
+  <aside class="project-sidebar" id="project-sidebar" aria-label="Cây thư mục dự án và tài nguyên" data-collapsed="true">
+    <div class="project-sidebar-inner">
+      <div class="project-sidebar-header">
+        <div>
+          <span class="eyebrow">ĐIỀU HƯỚNG &amp; TÀI NGUYÊN</span>
+          <h3 class="sidebar-heading">Dự án và tệp</h3>
+        </div>
+        <button type="button" class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Đóng cây thư mục">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- Project switcher selector -->
+      <div class="sidebar-project-selector">
+        <div class="project-selector-current">
+          <span class="project-dot">●</span>
+          <div class="selector-text">
+            <strong id="sidebar-current-project-name">Sắc Ngọc Khang</strong>
+            <small>Serum rau má · Vòng 01</small>
+          </div>
+          <button type="button" class="btn-toggle-projects" id="btn-toggle-projects" aria-expanded="false" title="Đổi dự án">▾</button>
+        </div>
+        <div class="project-dropdown-list" id="project-dropdown-list" hidden>
+          <button type="button" class="project-item active" data-project-id="snk" data-project-name="Sắc Ngọc Khang">
+            <span class="project-dot">●</span>
+            <div class="project-info">
+              <strong>Sắc Ngọc Khang</strong>
+              <small>Serum rau má · Vòng 01</small>
+            </div>
+            <span class="project-active-badge">Đang mở</span>
+          </button>
+          <button type="button" class="project-item" data-project-id="cocoon" data-project-name="Mỹ phẩm Cocoon">
+            <span class="project-dot inactive">○</span>
+            <div class="project-info">
+              <strong>Mỹ phẩm Cocoon</strong>
+              <small>Bí đao trị mụn · Vòng 02</small>
+            </div>
+          </button>
+          <button type="button" class="project-item" data-project-id="yame" data-project-name="Thời trang Yame">
+            <span class="project-dot inactive">○</span>
+            <div class="project-info">
+              <strong>Thời trang Yame</strong>
+              <small>Polo thoáng khí · Vòng 01</small>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- File Tree structure -->
+      <div class="file-tree-container" id="file-tree-container" role="tree" aria-label="Cây tệp dự án">
+        <div class="tree-node tree-folder expanded" data-folder="root">
+          <div class="tree-node-row folder-row">
+            <span class="tree-chevron">▾</span>
+            <span class="tree-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </span>
+            <span class="tree-label"><strong>Sắc Ngọc Khang</strong></span>
+          </div>
+
+          <div class="tree-children">
+            <!-- Brand Assets Folder -->
+            <div class="tree-node tree-folder expanded" data-folder="brand-assets">
+              <div class="tree-node-row folder-row">
+                <span class="tree-chevron">▾</span>
+                <span class="tree-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <span class="tree-label">Tệp thương hiệu</span>
+                <span class="tree-badge" id="brand-asset-count">3 tệp</span>
+              </div>
+              <div class="tree-children" id="brand-asset-file-list">
+                <div class="tree-node tree-file" data-asset-id="asset-1" role="treeitem" tabindex="0">
+                  <div class="tree-node-row file-row">
+                    <span class="tree-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                    </span>
+                    <span class="tree-label" title="raw-footage-serum-01.mp4">raw-footage-serum-01.mp4</span>
+                    <button type="button" class="tree-file-action-btn" title="Xem và chỉnh sửa" aria-label="Xem raw-footage-serum-01.mp4">Xem</button>
+                  </div>
+                </div>
+                <div class="tree-node tree-file" data-asset-id="asset-2" role="treeitem" tabindex="0">
+                  <div class="tree-node-row file-row">
+                    <span class="tree-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    </span>
+                    <span class="tree-label" title="chai-serum-rau-ma.png">chai-serum-rau-ma.png</span>
+                    <button type="button" class="tree-file-action-btn" title="Xem và chỉnh sửa" aria-label="Xem chai-serum-rau-ma.png">Xem</button>
+                  </div>
+                </div>
+                <div class="tree-node tree-file" data-asset-id="asset-3" role="treeitem" tabindex="0">
+                  <div class="tree-node-row file-row">
+                    <span class="tree-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </span>
+                    <span class="tree-label" title="huong-dan-giong-dieu-brand.pdf">huong-dan-giong-dieu-brand.pdf</span>
+                    <button type="button" class="tree-file-action-btn" title="Xem và chỉnh sửa" aria-label="Xem huong-dan-giong-dieu-brand.pdf">Xem</button>
+                  </div>
+                </div>
+              </div>
+              <!-- Upload / Add Brand Asset Button -->
+              <div class="tree-add-asset-wrapper">
+                <label class="btn-add-brand-asset" id="label-add-brand-asset">
+                  <span>Thêm tệp thương hiệu</span>
+                  <input type="file" id="input-add-brand-asset" class="sr-only" accept="video/*,image/*,.pdf,.doc,.docx,.txt">
+                </label>
+              </div>
+            </div>
+
+            <!-- Hook Variants Folder -->
+            <div class="tree-node tree-folder expanded" data-folder="hooks">
+              <div class="tree-node-row folder-row">
+                <span class="tree-chevron">▾</span>
+                <span class="tree-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <span class="tree-label">Các mẫu mở đầu (Vòng 01)</span>
+                <span class="tree-badge">4 mẫu</span>
+              </div>
+              <div class="tree-children">
+                <div class="tree-node tree-file" data-hook-file="H01" role="treeitem" tabindex="0">
+                  <div class="tree-node-row file-row">
+                    <span class="tree-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </span>
+                    <span class="tree-label">H01-nhu-cau.txt</span>
+                    <button type="button" class="tree-file-action-btn" data-hook-view="H01">Xem</button>
+                  </div>
+                </div>
+                <div class="tree-node tree-file" data-hook-file="H02" role="treeitem" tabindex="0">
+                  <div class="tree-node-row file-row">
+                    <span class="tree-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </span>
+                    <span class="tree-label">H02-cau-hoi.txt</span>
+                    <button type="button" class="tree-file-action-btn" data-hook-view="H02">Xem</button>
+                  </div>
+                </div>
+                <div class="tree-node tree-file" data-hook-file="H03" role="treeitem" tabindex="0">
+                  <div class="tree-node-row file-row">
+                    <span class="tree-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </span>
+                    <span class="tree-label">H03-goc-nhin.txt</span>
+                    <button type="button" class="tree-file-action-btn" data-hook-view="H03">Xem</button>
+                  </div>
+                </div>
+                <div class="tree-node tree-file" data-hook-file="H04" role="treeitem" tabindex="0">
+                  <div class="tree-node-row file-row">
+                    <span class="tree-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </span>
+                    <span class="tree-label">H04-trai-nghiem.txt</span>
+                    <button type="button" class="tree-file-action-btn" data-hook-view="H04">Xem</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Analytics Folder -->
+            <div class="tree-node tree-folder" data-folder="telemetry">
+              <div class="tree-node-row folder-row">
+                <span class="tree-chevron">▸</span>
+                <span class="tree-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <span class="tree-label">Dữ liệu hiệu quả video</span>
+                <span class="tree-badge">2 tệp</span>
+              </div>
+              <div class="tree-children" hidden>
+                <div class="tree-node tree-file" role="treeitem">
+                  <div class="tree-node-row file-row">
+                    <span class="tree-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </span>
+                    <span class="tree-label">telemetry-24h.json</span>
+                  </div>
+                </div>
+                <div class="tree-node tree-file" role="treeitem">
+                  <div class="tree-node-row file-row">
+                    <span class="tree-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </span>
+                    <span class="tree-label">retention-matrix.csv</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="project-sidebar-footer">
+        <button type="button" class="button-new-project" id="btn-new-project">+ Tạo dự án mới</button>
+      </div>
+    </div>
+  </aside>
   <main class="onboarding-shell">
-    <div class="onboarding-scroll" id="chat-scroll">
+    <!-- HERO SECTION: Completely OUTSIDE chat-scroll -->
+    <section class="onboarding-hero">
       <div class="onboarding-intro">
-        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Bắt đầu một ý tưởng mới</p>
-        <h1>Bắt đầu với<br>3 giây đầu tiên<span class="green">.</span></h1>
-        <p>Giới thiệu sản phẩm. Sau đó, thử những cách mở đầu<br class="desktop-break"> khác nhau trên cùng một video.</p>
+        <p class="eyebrow"><span class="status-dot pulsing" aria-hidden="true"></span> BẮT ĐẦU MỘT Ý TƯỞNG MỚI</p>
+        <h1>Tìm cách mở đầu<br>phù hợp cho video của bạn<span class="green">.</span></h1>
+        <p>Giới thiệu sản phẩm hoặc đính kèm tệp thương hiệu. AI sẽ tìm các mẫu mở đầu có hiệu quả trên mạng xã hội để bạn tham khảo và thử nghiệm.</p>
+        <div class="loop-animation-card" aria-label="Mô phỏng vòng lặp tự động thử nghiệm video">
+          <div class="loop-card-top">
+            <span class="loop-badge">
+              <svg class="loop-spin-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+              </svg>
+              <span>Vòng lặp thử nghiệm liên tục</span>
+            </span>
+            <span class="loop-status-pill"><span class="pulse-beacon"></span> Đang chạy liên tục</span>
+          </div>
+          <div class="loop-pipeline">
+            <div class="pipeline-track-wrapper">
+              <div class="loop-stage stage-1" data-stage="1">
+                <span class="stage-num">01</span>
+                <span class="stage-title">Phân tích</span>
+                <span class="stage-sub">So sánh hiệu quả</span>
+              </div>
+              <div class="pipeline-connector conn-1-2" aria-hidden="true">
+                <div class="flow-line"><span class="flow-dot"></span></div>
+              </div>
+              <div class="loop-stage stage-2" data-stage="2">
+                <span class="stage-num">02</span>
+                <span class="stage-title">Chọn mở đầu</span>
+                <span class="stage-sub">Mẫu tham khảo &amp; sản phẩm</span>
+              </div>
+              <div class="pipeline-connector conn-2-3" aria-hidden="true">
+                <div class="flow-line"><span class="flow-dot"></span></div>
+              </div>
+              <div class="loop-stage stage-3" data-stage="3">
+                <span class="stage-num">03</span>
+                <span class="stage-title">Dựng video</span>
+                <span class="stage-sub">Xem và duyệt</span>
+              </div>
+              <div class="pipeline-connector conn-3-4" aria-hidden="true">
+                <div class="flow-line"><span class="flow-dot"></span></div>
+              </div>
+              <div class="loop-stage stage-4" data-stage="4">
+                <span class="stage-num">04</span>
+                <span class="stage-title">Theo dõi kết quả</span>
+                <span class="stage-sub">Cập nhật tự động</span>
+              </div>
+            </div>
+            <div class="loop-return-track" aria-hidden="true">
+              <div class="return-track-line">
+                <span class="return-traveler"></span>
+              </div>
+              <span class="return-label">Tự động đưa bài học vào vòng tiếp theo</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="chat-log" id="chat-log" role="log" aria-label="Cuộc trò chuyện" aria-live="polite"></div>
-      <div class="starter-prompts" id="starter-prompts">
-        <span class="muted small">Hoặc thử một ví dụ</span>
-        <button class="sample-prompt" type="button" id="sample-product"><span>Serum rau má</span><span class="muted">Sản phẩm chăm sóc da <span aria-hidden="true">↗</span></span></button>
+    </section>
+
+    <!-- Clear Division between H1 Hero and Chat Screen -->
+    <div class="chat-divider" role="separator" aria-label="Khu vực trò chuyện">
+      <span class="divider-line"></span>
+      <span class="divider-pill">
+        <span class="status-dot" aria-hidden="true"></span>
+        Khu vực trò chuyện
+      </span>
+      <span class="divider-line"></span>
+    </div>
+
+    <!-- Dedicated Chat Screen Container -->
+    <section class="chat-screen-frame" aria-label="Khung trò chuyện với Lạc Hồng">
+      <header class="chat-frame-header">
+        <div class="chat-frame-profile">
+          <span class="status-dot pulsing" aria-hidden="true"></span>
+          <div>
+            <span class="chat-frame-title">Lạc Hồng</span>
+            <span class="chat-frame-desc">· Cùng bạn xây dựng nội dung</span>
+          </div>
+        </div>
+        <span class="chat-frame-badge">Trực tuyến</span>
+      </header>
+
+      <!-- CHAT SCROLL: pure conversation messages only -->
+      <div class="chat-scroll-viewport" id="chat-scroll" role="region" aria-label="Tin nhắn cuộc trò chuyện">
+        <div class="chat-log" id="chat-log" role="log" aria-label="Cuộc trò chuyện" aria-live="polite"></div>
+        <div class="starter-prompts" id="starter-prompts">
+          <span class="muted small">Thử với sản phẩm mẫu</span>
+          <button class="sample-prompt" type="button" id="sample-product"><span>Serum rau má</span><span class="muted">Sản phẩm chăm sóc da <span aria-hidden="true">↗</span></span></button>
+        </div>
+        <a class="button primary workspace-entry" id="workspace-entry" href="four-stage-loop-dashboard-redesigned.html" hidden>Mở không gian làm việc <span aria-hidden="true">→</span></a>
       </div>
-      <a class="button primary workspace-entry" id="workspace-entry" href="four-stage-loop-dashboard-redesigned.html" hidden>Mở không gian làm việc <span aria-hidden="true">→</span></a>
-    </div>
-    <div class="onboarding-composer">
-      <form class="composer" id="chat-form">
-        <label class="sr-only" for="chat-input">Nhắn cho Lạc Hồng</label>
-        <textarea id="chat-input" rows="2" maxlength="4000" placeholder="Kể cho mình nghe về sản phẩm của bạn…" required></textarea>
-        <div class="composer-bottom"><span>Enter để gửi <span class="separator">·</span> Shift + Enter để xuống dòng</span><button class="send-button" type="submit">Gửi <span aria-hidden="true">↑</span></button></div>
-      </form>
-      <p class="prototype-note">Bản mẫu tương tác · Chưa kết nối AI hoặc nền tảng đăng video.</p>
-    </div>
+
+      <!-- Integrated Chat Composer -->
+      <div class="chat-frame-composer">
+        <form class="composer" id="chat-form">
+          <label class="sr-only" for="chat-input">Nhắn cho Lạc Hồng</label>
+          <div class="chat-attachments-staging" id="chat-attachments-staging" hidden></div>
+          <textarea id="chat-input" rows="2" maxlength="4000" placeholder="Giới thiệu sản phẩm hoặc đính kèm tệp thương hiệu…"></textarea>
+          <div class="composer-bottom">
+            <div class="composer-actions">
+              <label class="chat-attach-btn" id="chat-attach-label" title="Đính kèm tệp thương hiệu (video, ảnh, tài liệu)" aria-label="Đính kèm tệp">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+                <span class="attach-text">Đính kèm tệp</span>
+                <input type="file" id="chat-file-input" class="sr-only" multiple accept="video/*,image/*,.pdf,.doc,.docx,.txt">
+              </label>
+              <span class="composer-hint">Enter để gửi <span class="separator">·</span> Shift + Enter để xuống dòng</span>
+            </div>
+            <button class="send-button" type="submit">Gửi <span aria-hidden="true">↑</span></button>
+          </div>
+        </form>
+        <p class="prototype-note">Bản mẫu tương tác · Cây thư mục và tài nguyên thương hiệu được đồng bộ xuyên suốt các màn hình.</p>
+      </div>
+    </section>
   </main>
+  <!-- Right Hover / Asset Inspector Flyout -->
+  <div class="asset-inspector-backdrop" id="asset-inspector-backdrop" aria-hidden="true" hidden></div>
+  <aside class="asset-inspector-flyout" id="asset-inspector-flyout" aria-label="Xem và chỉnh sửa tài sản thương hiệu" data-open="false">
+    <div class="inspector-inner">
+      <header class="inspector-header">
+        <div>
+          <span class="eyebrow" id="inspector-asset-type">TỆP THƯƠNG HIỆU · VIDEO</span>
+          <h3 class="inspector-title" id="inspector-asset-title">raw-footage-serum-01.mp4</h3>
+        </div>
+        <button type="button" class="inspector-close-btn" id="inspector-close-btn" aria-label="Đóng bảng xem tài nguyên">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </header>
+
+      <div class="inspector-body">
+        <!-- Media Stage -->
+        <div class="inspector-preview-stage" id="inspector-preview-stage"></div>
+
+        <!-- File Adjustment Toolbar -->
+        <div class="inspector-adjust-card">
+          <span class="inspector-section-label">CHỈNH SỬA TỆP</span>
+          <div class="adjust-actions-grid">
+            <button type="button" class="adjust-action-btn" id="btn-rename-asset" title="Đổi tên tệp">
+              <span class="action-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+              </span>
+              <span>Đổi tên</span>
+            </button>
+            <label class="adjust-action-btn" id="label-replace-asset" title="Thay thế tệp mới">
+              <span class="action-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </span>
+              <span>Thay thế</span>
+              <input type="file" id="input-replace-asset" class="sr-only" accept="video/*,image/*,.pdf,.doc,.docx,.txt">
+            </label>
+            <button type="button" class="adjust-action-btn" id="btn-assign-asset" title="Gắn vào kịch bản Hook">
+              <span class="action-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              </span>
+              <span>Gắn mẫu</span>
+            </button>
+            <button type="button" class="adjust-action-btn danger" id="btn-delete-asset" title="Xóa khỏi thư mục">
+              <span class="action-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </span>
+              <span>Xóa tệp</span>
+            </button>
+          </div>
+
+          <!-- Inline Rename Form -->
+          <form class="inline-rename-form" id="inline-rename-form" hidden>
+            <label class="sr-only" for="rename-input">Tên tệp mới</label>
+            <input type="text" id="rename-input" class="rename-input" maxlength="80" required>
+            <div class="rename-btns">
+              <button type="submit" class="button primary small">Lưu tên</button>
+              <button type="button" class="button secondary small" id="btn-cancel-rename">Hủy</button>
+            </div>
+          </form>
+
+          <!-- Hook Assignment Selector -->
+          <div class="hook-assign-box" id="hook-assign-box" hidden>
+            <span class="small muted">Gắn tài nguyên này vào mẫu:</span>
+            <div class="hook-chips-grid">
+              <button type="button" class="hook-chip" data-hook-id="H01">H01 · Nhu cầu</button>
+              <button type="button" class="hook-chip" data-hook-id="H02">H02 · Câu hỏi</button>
+              <button type="button" class="hook-chip" data-hook-id="H03">H03 · Góc nhìn</button>
+              <button type="button" class="hook-chip" data-hook-id="H04">H04 · Trải nghiệm</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Metadata Card -->
+        <div class="inspector-metadata-card">
+          <span class="inspector-section-label">THÔNG SỐ TỆP</span>
+          <dl class="inspector-meta-list">
+            <div><dt>Định dạng:</dt><dd id="meta-format">video/mp4</dd></div>
+            <div><dt>Dung lượng:</dt><dd id="meta-size">18.4 MB</dd></div>
+            <div><dt>Kích thước:</dt><dd id="meta-resolution">1080 × 1920 (9:16)</dd></div>
+            <div><dt>Sử dụng:</dt><dd id="meta-usage">Đang gắn vào Hook 01 · Vòng 01</dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </aside>
+
   <div class="toast" id="toast" role="status" hidden></div>
 </body>
 </html>

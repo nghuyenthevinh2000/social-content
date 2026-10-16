@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Hook Validation Loop — Proposal Deck | AI Builder Cup 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="deck-stage.js"></script>
+<style>
+  :root {
+    --bg: #F7F8F5;            /* warm-canvas */
+    --paper: #FFFFFF;         /* paper-white */
+    --ink: #17241F;           /* ink-charcoal */
+    --forest: #176346;        /* forest-action */
+    --sage: #E9F2EC;          /* quiet-sage */
+    --slate: #4A5851;         /* slate-secondary */
+    --border: #D7DFD9;        /* mist-border */
+    --blue: #245DB0;          /* evidence-blue */
+    --stop: #B42332;          /* stop-crimson */
+    --caution: #875500;       /* caution-ochre */
+    --caution-bg: #FFF3DA;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0E1714; }
+  body {
+    font-family: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  deck-stage { background: #0E1714; }
+
+  /* Base Slide Container (1920 x 1080) */
+  section.slide {
+    background: var(--bg);
+    color: var(--ink);
+    overflow: hidden;
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+  }
+
+  .frame {
+    position: absolute;
+    inset: 56px;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 24px;
+  }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    padding: 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .card.dark {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: #273832;
+  }
+
+  .card.forest {
+    background: var(--forest);
+    color: #FFFFFF;
+    border-color: #124e37;
+  }
+
+  .card.sage {
+    background: var(--sage);
+    border-color: #c9dbd0;
+  }
+
+  h1, h2, h3, h4, p { margin: 0; }
+
+  .slide-header {
+    margin-bottom: 32px;
+  }
+  .slide-title-group h2 {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .card.dark .slide-title-group h2,
+  .card.forest .slide-title-group h2 { color: #FFFFFF; }
+
+  .slide-title-group p.sub {
+    font-size: 21px;
+    color: var(--slate);
+    margin-top: 10px;
+    line-height: 1.45;
+  }
+  .card.dark .slide-title-group p.sub { color: #A4B8AF; }
+  .card.forest .slide-title-group p.sub { color: #D5EDE1; }
+
+  .mono { font-family: "JetBrains Mono", monospace; }
+
+  /* Slide 1 Cover */
+  .s1-full {
+    grid-column: 1 / span 12;
+    grid-row: 1 / span 8;
+    background: var(--ink);
+    color: #FFFFFF;
+    padding: 88px 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .s1-title {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 96px;
+    font-weight: 700;
+    line-height: 0.98;
+    letter-spacing: -0.03em;
+    margin: 28px 0 24px 0;
+  }
+  .s1-highlight { color: #38C68C; }
+
+  /* Problem Stat */
+  .prob-stat {
+    font-size: 76px;
+    font-weight: 800;
+    font-family: "Space Grotesk", sans-serif;
+    line-height: 0.95;
+    color: var(--stop);
+    margin-bottom: 14px;
+  }
+
+  /* Table styling */
+  table.clean-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 16px;
+  }
+  table.clean-table th {
+    text-align: left;
+    padding: 16px 20px;
+    background: #EEF3F0;
+    color: var(--slate);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--border);
+  }
+  table.clean-table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid #E5EBE7;
+    vertical-align: middle;
+  }
+  table.clean-table tr:last-child td { border-bottom: none; }
+
+  .pill {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 600;
+  }
+  .pill.win { background: #E3F8ED; color: var(--forest); }
+  .pill.lean { background: var(--caution-bg); color: var(--caution); }
+  .pill.inc { background: #EDF1F5; color: var(--slate); }
+</style>
+</head>
+<body>
+
+<deck-stage>
+
+  <!-- ===================================================================
+       SLIDE 1: COVER
+       =================================================================== -->
+  <section class="slide" id="slide-1">
+    <div class="frame">
+      <div class="card dark s1-full">
+        <div>
+          <div class="mono" style="font-size:16px; color:#4ECCA3; letter-spacing:0.08em; text-transform:uppercase;">
+            AI Builder Cup 2026 · Challenge Theme: Media, Content & Digital Experiences
+          </div>
+          
+          <h1 class="s1-title">
+            HOOK VALIDATION<br/><span class="s1-highlight">LOOP</span>
+          </h1>
+          
+          <p style="font-size:30px; line-height:1.45; color:#D2DFD8; max-width:1050px; font-weight:400;">
+            The autopilot that finds winning video hooks. It generates hook variants, posts them, reads retention data, and writes the next round on its own.
+          </p>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; border-top:1px solid #273832; padding-top:36px;">
+          <div>
+            <div style="font-size:20px; color:#FFFFFF; font-weight:600;">
+              AI video tools make it easy to generate clips. We make sure they actually perform.
+            </div>
+            <div style="font-size:16px; color:#8EA198; margin-top:8px;">
+              Built for Southeast Asian creators, e-commerce sellers, and solo software builders.
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div class="mono" style="font-size:16px; color:#FFFFFF; font-weight:600;">Google Cloud AI Builder Cup</div>
+            <div class="mono" style="font-size:15px; color:#4ECCA3; margin-top:6px;">October 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 2: THE PROBLEM
+       =================================================================== -->
+  <section class="slide" id="slide-2">
+    <div class="frame">
+      <div class="card" style="grid-column: 1 / span 12; grid-row: 1 / span 8;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>The Video Testing Bottleneck</h2>
+            <p class="sub">Creators and small brands spend days making videos, only to get buried by platform algorithms in the first three seconds.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:28px; flex:1;">
+          
+          <div class="card" style="background:var(--bg); border:1px solid var(--border); padding:40px 36px;">
+            <div class="prob-stat">90%</div>
+            <h3 style="font-size:26px; font-weight:700; line-height:1.2;">Drop-off in 3 Seconds</h3>
+            <p style="font-size:17px; color:var(--slate); line-height:1.6; margin-top:16px;">
+              On TikTok, Reels, and YouTube Shorts, if the opening fails to grab viewers right away, platforms kill the reach—no matter how good the rest of the video is.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); border:1px solid var(--border); padding:40px 36px;">
+            <div class="prob-stat" style="color:var(--caution);">8–10h</div>
+            <h3 style="font-size:26px; font-weight:700; line-height:1.2;">Lost to Manual Testing</h3>
+            <p style="font-size:17px; color:var(--slate); line-height:1.6; margin-top:16px;">
+              Testing hooks by hand means generating scripts, editing overlays, uploading across three platforms, waiting three days, copying numbers into spreadsheets, and guessing why one won.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); border:1px solid var(--border); padding:40px 36px;">
+            <div class="prob-stat" style="color:var(--forest);">0 / 4</div>
+            <h3 style="font-size:26px; font-weight:700; line-height:1.2;">Broken Tool Chains</h3>
+            <p style="font-size:17px; color:var(--slate); line-height:1.6; margin-top:16px;">
+              Generators stop once the MP4 is rendered. Schedulers only post. Analytics tools only show past graphs. Even tools like Creatify don't close the loop—they stop at dashboards with suggestions, leaving humans to manually trigger every batch.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 3: COMPETITOR COMPARISON & OUR UNIQUE VALUE
+       =================================================================== -->
+  <section class="slide" id="slide-3">
+    <div class="frame">
+      <div class="card" style="grid-column: 1 / span 12; grid-row: 1 / span 8;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>Where Competitors Stop vs. Our Unique Value</h2>
+            <p class="sub">Others generate files, schedule posts, or display dashboards. Hook Validation Loop is the only system that connects all stages into an automated cycle.</p>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; flex:1; justify-content:space-between;">
+          
+          <div style="background:var(--paper); border:1px solid var(--border); border-radius:10px; overflow:hidden;">
+            <table class="clean-table" style="font-size:16px; width:100%;">
+              <thead>
+                <tr>
+                  <th style="padding:16px 22px;">Platform</th>
+                  <th style="padding:16px 22px;">1. Write Hooks</th>
+                  <th style="padding:16px 22px;">2. Render Variants</th>
+                  <th style="padding:16px 22px;">3. Auto-Post</th>
+                  <th style="padding:16px 22px;">4. Ingest Metrics</th>
+                  <th style="padding:16px 22px;">5. Diagnose Why</th>
+                  <th style="padding:16px 22px;">6. Autonomous Next Round</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding:16px 22px;"><strong>Higgsfield AI</strong></td>
+                  <td style="padding:16px 22px;">Yes</td>
+                  <td style="padding:16px 22px;">Yes</td>
+                  <td style="padding:16px 22px;">No</td>
+                  <td style="padding:16px 22px;">No</td>
+                  <td style="padding:16px 22px;">No</td>
+                  <td style="padding:16px 22px;">No</td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 22px;"><strong>Arcads.ai</strong></td>
+                  <td style="padding:16px 22px;">Partial</td>
+                  <td style="padding:16px 22px;">Yes</td>
+                  <td style="padding:16px 22px;">No</td>
+                  <td style="padding:16px 22px;">No</td>
+                  <td style="padding:16px 22px;">No</td>
+                  <td style="padding:16px 22px;">No</td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 22px;"><strong>Creatify.ai</strong></td>
+                  <td style="padding:16px 22px;">Yes</td>
+                  <td style="padding:16px 22px;">Yes</td>
+                  <td style="padding:16px 22px;">Paid Ads Only</td>
+                  <td style="padding:16px 22px;">Yes</td>
+                  <td style="padding:16px 22px;">Partial (Suggestions)</td>
+                  <td style="padding:16px 22px;">No (Human Triggered)</td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 22px;"><strong>Motion / Schedulers</strong></td>
+                  <td style="padding:16px 22px;">No</td>
+                  <td style="padding:16px 22px;">No</td>
+                  <td style="padding:16px 22px;">Scheduling Only</td>
+                  <td style="padding:16px 22px;">Yes</td>
+                  <td style="padding:16px 22px;">Partial (Graphs)</td>
+                  <td style="padding:16px 22px;">No</td>
+                </tr>
+                <tr style="background:#EBF5F0;">
+                  <td style="padding:16px 22px; color:var(--forest); font-weight:700;"><strong>Hook Validation Loop</strong></td>
+                  <td style="padding:16px 22px; color:var(--forest); font-weight:700;">Yes</td>
+                  <td style="padding:16px 22px; color:var(--forest); font-weight:700;">Yes</td>
+                  <td style="padding:16px 22px; color:var(--forest); font-weight:700;">Yes (Organic)</td>
+                  <td style="padding:16px 22px; color:var(--forest); font-weight:700;">Yes (72h Retention)</td>
+                  <td style="padding:16px 22px; color:var(--forest); font-weight:700;">Yes (Causal AI)</td>
+                  <td style="padding:16px 22px; color:var(--forest); font-weight:700;">Yes (Autonomous)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:36px; padding-top:24px;">
+            <div>
+              <h4 style="font-size:22px; font-weight:700; color:var(--ink); margin-bottom:10px;">Why Competitors Don't Close the Loop</h4>
+              <p style="font-size:17px; color:var(--slate); line-height:1.6;">
+                Video generators monetize rendering credits and stop at the MP4 file. Even ad tools like Creatify only offer suggestion dashboards—a person still has to manually review the numbers and trigger each new batch. None of them run an automated, self-driving experiment cycle.
+              </p>
+            </div>
+
+            <div>
+              <h4 style="font-size:22px; font-weight:700; color:var(--forest); margin-bottom:10px;">Our Unique Value: Zero-Touch Closed Loop</h4>
+              <p style="font-size:17px; color:var(--slate); line-height:1.6;">
+                Hook Validation Loop connects the entire chain from start to finish: write hooks, swap video openings, publish to social platforms, measure 3-second retention at 72 hours, diagnose why the winning hook worked, and autonomously start Round N+1 without human intervention.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 4: THE 4-STAGE AUTONOMOUS LOOP
+       =================================================================== -->
+  <section class="slide" id="slide-4">
+    <div class="frame">
+      <div class="card" style="grid-column: 1 / span 12; grid-row: 1 / span 8;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>The 4-Stage Autonomous Loop</h2>
+            <p class="sub">How our closed loop tests video openings against real audiences and gets smarter every round.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:24px; flex:1;">
+          
+          <div class="card" style="background:var(--bg); padding:36px 30px;">
+            <div class="mono" style="font-size:14px; color:var(--forest); font-weight:700; margin-bottom:12px;">STAGE 01 // WRITE</div>
+            <h3 style="font-size:24px; font-weight:700; color:var(--forest); line-height:1.2;">Draft Variations</h3>
+            <p style="font-size:16px; color:var(--slate); line-height:1.6; margin-top:16px;">
+              Reads the product URL and video transcript, then drafts 3–5 hooks across proven angles like curiosity gaps, contrarian takes, and direct questions.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:36px 30px;">
+            <div class="mono" style="font-size:14px; color:var(--slate); font-weight:700; margin-bottom:12px;">STAGE 02 // ASSEMBLE</div>
+            <h3 style="font-size:24px; font-weight:700; line-height:1.2;">Swap the Opening</h3>
+            <p style="font-size:16px; color:var(--slate); line-height:1.6; margin-top:16px;">
+              Swaps only the first 3 seconds while keeping the rest of the video identical. Renders clean text overlays with full support for Vietnamese and Thai diacritics.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:36px 30px;">
+            <div class="mono" style="font-size:14px; color:var(--slate); font-weight:700; margin-bottom:12px;">STAGE 03 // POST</div>
+            <h3 style="font-size:24px; font-weight:700; line-height:1.2;">Controlled Distribution</h3>
+            <p style="font-size:16px; color:var(--slate); line-height:1.6; margin-top:16px;">
+              Publishes variants to TikTok, YouTube Shorts, and Facebook Reels in matched time windows and with spacing controls to keep the test fair.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:36px 30px;">
+            <div class="mono" style="font-size:14px; color:var(--forest); font-weight:700; margin-bottom:12px;">STAGE 04 // LEARN</div>
+            <h3 style="font-size:24px; font-weight:700; color:var(--forest); line-height:1.2;">Score & Refine</h3>
+            <p style="font-size:16px; color:var(--slate); line-height:1.6; margin-top:16px;">
+              Pulls retention data at 24h and 72h, scores winners against the account's baseline, updates the brand playbook, and starts the next round automatically.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 5: THEME ALIGNMENT
+       =================================================================== -->
+  <section class="slide" id="slide-5">
+    <div class="frame">
+      <div class="card forest" style="grid-column: 1 / span 5; grid-row: 1 / span 8; justify-content:space-between; padding:56px 48px;">
+        <div>
+          <div class="mono" style="font-size:15px; color:#9FDBC0; text-transform:uppercase; letter-spacing:0.08em;">Challenge Objective</div>
+          <h2 style="font-size:50px; font-family:'Space Grotesk',sans-serif; margin-top:24px; line-height:1.1;">
+            Media, Content & Digital Experiences
+          </h2>
+          <p style="font-size:20px; line-height:1.55; color:#D5EDE1; margin-top:24px;">
+            "Build an AI-powered solution that transforms how content is created, discovered, personalized, understood, or experienced."
+          </p>
+        </div>
+
+        <div style="font-size:18px; color:#FFFFFF; line-height:1.55; border-top:1px solid rgba(255,255,255,0.2); padding-top:28px;">
+          Most AI tools stop once an MP4 is rendered. We connect video creation directly to real audience retention data.
+        </div>
+      </div>
+
+      <div class="card" style="grid-column: 6 / span 7; grid-row: 1 / span 8; padding:52px;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>Closing the Loop on Content Creation</h2>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:24px; flex:1; justify-content:center;">
+          <div style="padding:28px 32px; background:var(--bg); border-radius:10px; border:1px solid var(--border);">
+            <h4 style="font-size:22px; font-weight:700;">Replaces Opinions with Audience Retention Data</h4>
+            <p style="font-size:16px; color:var(--slate); margin-top:8px; line-height:1.55;">
+              Instead of debating which hook sounds catchy, creators get a clear statistical winner based on who actually stayed past the 3-second mark.
+            </p>
+          </div>
+
+          <div style="padding:28px 32px; background:var(--bg); border-radius:10px; border:1px solid var(--border);">
+            <h4 style="font-size:22px; font-weight:700;">Built for Southeast Asian Speech and Code-Mixing</h4>
+            <p style="font-size:16px; color:var(--slate); margin-top:8px; line-height:1.55;">
+              People in Vietnam, the Philippines, and Malaysia naturally mix local slang with English loanwords. Our prompts are written for how people actually speak, not translated from US copy.
+            </p>
+          </div>
+
+          <div style="padding:28px 32px; background:var(--bg); border-radius:10px; border:1px solid var(--border);">
+            <h4 style="font-size:22px; font-weight:700;">Testing Infrastructure at Small-Business Prices</h4>
+            <p style="font-size:16px; color:var(--slate); margin-top:8px; line-height:1.55;">
+              Large agencies spend thousands running multivariate ad tests. We give solo creators and TikTok Shop merchants the same testing cadence for under $50 a month.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 6: SYSTEM ARCHITECTURE
+       =================================================================== -->
+  <section class="slide" id="slide-6">
+    <div class="frame">
+      <div class="card dark" style="grid-column: 1 / span 12; grid-row: 1 / span 8; padding:48px 52px;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>Google Cloud Architecture</h2>
+            <p class="sub" style="color:#A4B8AF;">Orchestrated via Antigravity, deployed on Cloud Run, and powered by Gemini 1.5.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:24px; flex:1;">
+          
+          <div class="card" style="background:#0E1714; border:1px solid #273832; padding:36px 32px;">
+            <div class="mono" style="font-size:14px; color:#4ECCA3; margin-bottom:12px;">01 // REASONING</div>
+            <h3 style="font-size:24px; color:#FFFFFF; font-weight:700; line-height:1.2;">Google Gemini 1.5</h3>
+            <p style="font-size:16px; color:#A4B8AF; margin-top:16px; line-height:1.6;">
+              • <strong>Gemini 1.5 Pro:</strong> Scrapes the user's store link to extract brand voice and drafts localized hooks.<br/><br/>
+              • <strong>Gemini 1.5 Flash:</strong> Reads 72-hour retention curves in milliseconds to explain why the winning hook outperformed the others.
+            </p>
+          </div>
+
+          <div class="card" style="background:#0E1714; border:1px solid #273832; padding:36px 32px;">
+            <div class="mono" style="font-size:14px; color:#4ECCA3; margin-bottom:12px;">02 // COMPUTE</div>
+            <h3 style="font-size:24px; color:#FFFFFF; font-weight:700; line-height:1.2;">Google Cloud Run</h3>
+            <p style="font-size:16px; color:#A4B8AF; margin-top:16px; line-height:1.6;">
+              • <strong>Video Assembly:</strong> Lightweight containerized FFmpeg workers render hook overlays and scale to zero when idle.<br/><br/>
+              • <strong>Dispatch & Metrics:</strong> Cron-triggered workers post across social APIs and poll retention statistics on schedule.
+            </p>
+          </div>
+
+          <div class="card" style="background:#0E1714; border:1px solid #273832; padding:36px 32px;">
+            <div class="mono" style="font-size:14px; color:#4ECCA3; margin-bottom:12px;">03 // STORAGE & STATE</div>
+            <h3 style="font-size:24px; color:#FFFFFF; font-weight:700; line-height:1.2;">Firebase Firestore</h3>
+            <p style="font-size:16px; color:#A4B8AF; margin-top:16px; line-height:1.6;">
+              • <strong>Real-time State:</strong> Stores experiment telemetry, variant IDs, and the accumulated brand playbook.<br/><br/>
+              • <strong>Kill Switch:</strong> Real-time Firestore listeners allow users to pause all scheduled posts with one tap.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 7: MATHEMATICAL RIGOR & NOISE CONTROL
+       =================================================================== -->
+  <section class="slide" id="slide-7">
+    <div class="frame">
+      <div class="card" style="grid-column: 1 / span 12; grid-row: 1 / span 8;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>Controlling Noise in Organic Reach</h2>
+            <p class="sub">Organic social distribution is noisy. Without scientific controls, AI loops learn from pure luck. We enforce five rules.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:20px; flex:1;">
+          
+          <div class="card" style="background:var(--bg); padding:32px 24px;">
+            <div class="mono" style="font-size:14px; color:var(--forest); font-weight:700; margin-bottom:12px;">RULE 01</div>
+            <h4 style="font-size:20px; font-weight:700; line-height:1.2;">Isolate the Opening</h4>
+            <p style="font-size:15px; color:var(--slate); margin-top:14px; line-height:1.55;">
+              Only the first 3 seconds change. The video body, audio, caption, and hashtags remain identical so we know what moved the needle.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:32px 24px;">
+            <div class="mono" style="font-size:14px; color:var(--forest); font-weight:700; margin-bottom:12px;">RULE 02</div>
+            <h4 style="font-size:20px; font-weight:700; line-height:1.2;">Match Time Slots</h4>
+            <p style="font-size:15px; color:var(--slate); margin-top:14px; line-height:1.55;">
+              Variants go live in equivalent daily time slots to avoid comparing a morning post with an off-peak midnight upload.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:32px 24px;">
+            <div class="mono" style="font-size:14px; color:var(--forest); font-weight:700; margin-bottom:12px;">RULE 03</div>
+            <h4 style="font-size:20px; font-weight:700; line-height:1.2;">Normalize to Baseline</h4>
+            <p style="font-size:15px; color:var(--slate); margin-top:14px; line-height:1.55;">
+              Raw view counts are misleading. Hook Score measures 3-second retention relative to the account's rolling 30-day median.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:32px 24px;">
+            <div class="mono" style="font-size:14px; color:var(--forest); font-weight:700; margin-bottom:12px;">RULE 04</div>
+            <h4 style="font-size:20px; font-weight:700; line-height:1.2;">Honest Confidence</h4>
+            <p style="font-size:15px; color:var(--slate); margin-top:14px; line-height:1.55;">
+              Every test is labeled Clear Winner, Leaning, or Inconclusive. If results are inconclusive, we rotate the video instead of guessing.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:32px 24px;">
+            <div class="mono" style="font-size:14px; color:var(--forest); font-weight:700; margin-bottom:12px;">RULE 05</div>
+            <h4 style="font-size:20px; font-weight:700; line-height:1.2;">Require Replication</h4>
+            <p style="font-size:15px; color:var(--slate); margin-top:14px; line-height:1.55;">
+              A hook angle must win across at least two separate rounds before it graduates into the brand's validated playbook.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 8: PRODUCT EXPERIENCE & CONTROL ROOM UI
+       =================================================================== -->
+  <section class="slide" id="slide-8">
+    <div class="frame">
+      <div class="card" style="grid-column: 1 / span 12; grid-row: 1 / span 8;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>The Experiment Control Room</h2>
+            <p class="sub">A clean, functional dashboard built for founders and marketers who want clear numbers, not AI hype.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 5fr 7fr; gap:28px; flex:1;">
+          
+          <div style="display:flex; flex-direction:column; gap:20px; justify-content:space-between;">
+            <div class="card" style="background:var(--bg); padding:28px;">
+              <h4 style="font-size:20px; font-weight:700;">60-Second URL Setup</h4>
+              <p style="font-size:15px; color:var(--slate); margin-top:8px; line-height:1.55;">
+                Paste a Shopee, TikTok Shop, or product landing page. The system drafts target audience tags, brand tone, and banned claims automatically for your review.
+              </p>
+            </div>
+
+            <div class="card" style="background:var(--bg); padding:28px;">
+              <h4 style="font-size:20px; font-weight:700;">Live Experiment Timeline</h4>
+              <p style="font-size:15px; color:var(--slate); margin-top:8px; line-height:1.55;">
+                Track every variant as it moves from rendering to scheduled posting to the 72-hour retention readout in real time.
+              </p>
+            </div>
+
+            <div class="card" style="background:var(--bg); padding:28px;">
+              <h4 style="font-size:20px; font-weight:700; color:var(--stop);">Emergency Kill Switch</h4>
+              <p style="font-size:15px; color:var(--slate); margin-top:8px; line-height:1.55;">
+                One tap immediately pauses all scheduled posts and queued tasks. Automatic policy checks stop unapproved claims before they go live.
+              </p>
+            </div>
+          </div>
+
+          <div class="card" style="background:var(--paper); padding:32px; border:1px solid var(--border); display:flex; flex-direction:column; justify-content:center;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+              <div>
+                <span class="mono" style="font-size:13px; color:var(--forest); font-weight:700;">ROUND #03 EXPERIMENT RESULTS</span>
+                <h4 style="font-size:20px; font-weight:700; margin-top:4px;">Product: Organic Skincare (Vietnam Market)</h4>
+              </div>
+              <span class="pill win" style="font-size:13px;">98% CONFIDENCE</span>
+            </div>
+
+            <table class="clean-table">
+              <thead>
+                <tr>
+                  <th>Variant</th>
+                  <th>Opening Angle</th>
+                  <th>Hook Text</th>
+                  <th>3s Ret.</th>
+                  <th>Score</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="mono" style="font-weight:700;">H-01</td>
+                  <td>Contrarian</td>
+                  <td>"Đừng bao giờ bôi serum nếu chưa biết điều này"</td>
+                  <td><strong>68.4%</strong></td>
+                  <td><span class="mono" style="color:var(--forest); font-weight:700;">88.2</span></td>
+                  <td><span class="pill win">WINNER</span></td>
+                </tr>
+                <tr>
+                  <td class="mono" style="font-weight:700;">H-02</td>
+                  <td>Curiosity Gap</td>
+                  <td>"Lý do da bạn cứ mãi xỉn màu mỗi sáng"</td>
+                  <td>51.2%</td>
+                  <td><span class="mono">64.0</span></td>
+                  <td><span class="pill lean">LEANING</span></td>
+                </tr>
+                <tr>
+                  <td class="mono" style="font-weight:700;">H-03</td>
+                  <td>Direct Question</td>
+                  <td>"Bạn đã chăm sóc da đúng cách chưa?"</td>
+                  <td>38.9%</td>
+                  <td><span class="mono">42.5</span></td>
+                  <td><span class="pill inc">LOSER</span></td>
+                </tr>
+                <tr>
+                  <td class="mono" style="font-weight:700;">H-04</td>
+                  <td>Social Proof</td>
+                  <td>"Hơn 10,000 phụ nữ đã đổi sang thói quen này"</td>
+                  <td>45.7%</td>
+                  <td><span class="mono">58.1</span></td>
+                  <td><span class="pill inc">LOSER</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 9: THE 3 DEFENSIBLE MOATS
+       =================================================================== -->
+  <section class="slide" id="slide-9">
+    <div class="frame">
+      <div class="card" style="grid-column: 1 / span 12; grid-row: 1 / span 8;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>The 3 Defensible Moats</h2>
+            <p class="sub">Why foundation video advances make our intelligence layer more valuable over time.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:28px; flex:1;">
+          
+          <div class="card sage" style="padding:40px 36px;">
+            <div class="mono" style="font-size:14px; color:var(--forest); font-weight:700; margin-bottom:12px;">MOAT 01 // SWITCHING COST</div>
+            <h3 style="font-size:26px; font-weight:700; color:var(--forest); line-height:1.2;">The Brand Playbook</h3>
+            <p style="font-size:17px; color:#2A4437; line-height:1.6; margin-top:16px;">
+              Every round teaches the system what hooks resonate with your specific audience. Leaving our platform means forfeiting months of empirical audience retention data.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); border:1px solid var(--border); padding:40px 36px;">
+            <div class="mono" style="font-size:14px; color:var(--slate); font-weight:700; margin-bottom:12px;">MOAT 02 // COST EFFICIENCY</div>
+            <h3 style="font-size:26px; font-weight:700; line-height:1.2;">Model Neutrality</h3>
+            <p style="font-size:17px; color:var(--slate); line-height:1.6; margin-top:16px;">
+              As video foundation models (Veo, Sora, Kling) become cheaper and faster, our rendering costs drop while our loop intelligence becomes more valuable.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); border:1px solid var(--border); padding:40px 36px;">
+            <div class="mono" style="font-size:14px; color:var(--blue); font-weight:700; margin-bottom:12px;">MOAT 03 // CULTURAL DATASET</div>
+            <h3 style="font-size:26px; font-weight:700; color:var(--blue); line-height:1.2;">Regional Language Flywheel</h3>
+            <p style="font-size:17px; color:var(--slate); line-height:1.6; margin-top:16px;">
+              Prompt structures and hook libraries tuned for local slang and code-switching across Vietnam, Indonesia, and the Philippines create an unmatched regional dataset.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 10: TARGET PERSONAS
+       =================================================================== -->
+  <section class="slide" id="slide-10">
+    <div class="frame">
+      <div class="card" style="grid-column: 1 / span 12; grid-row: 1 / span 8;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>Who This Is Built For</h2>
+            <p class="sub">Four user groups who share the exact same need: finding what hooks their audience without manual spreadsheet work.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:24px; flex:1;">
+          
+          <div class="card" style="background:var(--bg); padding:36px 30px;">
+            <h3 style="font-size:24px; font-weight:700; line-height:1.2;">TikTok Shop & E-Com</h3>
+            <p style="font-size:16px; color:var(--slate); margin-top:16px; line-height:1.6;">
+              Sellers in Vietnam, Indonesia, and Thailand testing product angles to increase link clicks and TikTok Shop orders without burning ad spend.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:36px 30px;">
+            <h3 style="font-size:24px; font-weight:700; line-height:1.2;">Content Creators</h3>
+            <p style="font-size:16px; color:var(--slate); margin-top:16px; line-height:1.6;">
+              Lifestyle, tech, and educational creators on TikTok, Reels, and YouTube Shorts testing hooks to build consistent follower growth.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:36px 30px;">
+            <h3 style="font-size:24px; font-weight:700; line-height:1.2;">Indie SaaS Founders</h3>
+            <p style="font-size:16px; color:var(--slate); margin-top:16px; line-height:1.6;">
+              Solo software developers using short-form video to generate organic signups and build in public without hiring a marketing agency.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:36px 30px;">
+            <h3 style="font-size:24px; font-weight:700; line-height:1.2;">Growth Agencies</h3>
+            <p style="font-size:16px; color:var(--slate); margin-top:16px; line-height:1.6;">
+              Boutique agencies managing multiple client brands, delivering documented hook playbooks and empirical proof of creative lift.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 11: FEASIBILITY, ECONOMICS & SAFETY
+       =================================================================== -->
+  <section class="slide" id="slide-11">
+    <div class="frame">
+      <div class="card" style="grid-column: 1 / span 12; grid-row: 1 / span 8;">
+        <div class="slide-header">
+          <div class="slide-title-group">
+            <h2>Economics & Safety Guardrails</h2>
+            <p class="sub">Low running costs make autonomous testing practical for small brands, backed by strict guardrails.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:28px; flex:1;">
+          
+          <div class="card" style="background:var(--bg); padding:40px 36px;">
+            <div class="mono" style="font-size:14px; color:var(--forest); font-weight:700;">UNIT ECONOMICS</div>
+            <div style="font-size:64px; font-weight:800; font-family:'Space Grotesk',sans-serif; color:var(--forest); margin:12px 0;">
+              &lt;$0.05
+            </div>
+            <h4 style="font-size:22px; font-weight:700;">Cost per Tested Variant</h4>
+            <p style="font-size:16px; color:var(--slate); margin-top:14px; line-height:1.6;">
+              • Gemini 1.5 Flash tokens cost ~$0.003 per run.<br/>
+              • Cloud Run assembly costs ~$0.025 per render.<br/>
+              • Firestore state costs ~$0.005 per round.<br/><br/>
+              <strong>Compare:</strong> Arcads charges ~$11 per video, and freelance editors charge $50+ per clip.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:40px 36px;">
+            <div class="mono" style="font-size:14px; color:var(--stop); font-weight:700;">SAFETY GUARDRAILS</div>
+            <div style="font-size:64px; font-weight:800; font-family:'Space Grotesk',sans-serif; color:var(--stop); margin:12px 0;">
+              100%
+            </div>
+            <h4 style="font-size:22px; font-weight:700;">Safe by Default</h4>
+            <p style="font-size:16px; color:var(--slate); margin-top:14px; line-height:1.6;">
+              • <strong>Pre-flight Safety Check:</strong> Catches banned cosmetic or health claims before publishing.<br/>
+              • <strong>Daily Posting Caps:</strong> Caps accounts at 2–3 posts per day to avoid platform spam penalties.<br/>
+              • <strong>Emergency Kill Switch:</strong> Instantly pauses all active experiments with one click.
+            </p>
+          </div>
+
+          <div class="card" style="background:var(--bg); padding:40px 36px;">
+            <div class="mono" style="font-size:14px; color:var(--blue); font-weight:700;">INFRASTRUCTURE</div>
+            <div style="font-size:64px; font-weight:800; font-family:'Space Grotesk',sans-serif; color:var(--blue); margin:12px 0;">
+              10k+
+            </div>
+            <h4 style="font-size:22px; font-weight:700;">Concurrent Runs on GCP</h4>
+            <p style="font-size:16px; color:var(--slate); margin-top:14px; line-height:1.6;">
+              • Stateless Cloud Run workers handle rendering bursts and spin down immediately when idle.<br/>
+              • Cloud Pub/Sub handles rate-limited social posting queues smoothly.<br/>
+              • Multi-tenant Firestore partitions workspace security and token storage.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SLIDE 12: ROADMAP & CONCLUSION
+       =================================================================== -->
+  <section class="slide" id="slide-12">
+    <div class="frame">
+      <div class="card dark" style="grid-column: 1 / span 12; grid-row: 1 / span 8; padding:80px 88px; display:flex; flex-direction:column; justify-content:space-between;">
+        
+        <div>
+          <div class="mono" style="font-size:16px; color:#4ECCA3; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:24px;">
+            Google Cloud AI Builder Cup 2026
+          </div>
+          
+          <h2 style="font-family:'Space Grotesk',sans-serif; font-size:72px; font-weight:700; line-height:1.05; letter-spacing:-0.02em; color:#FFFFFF; max-width:1300px;">
+            "We don't build another video generator.<br/>
+            We build the <span style="color:#38C68C;">autopilot that finds your winning hook</span>."
+          </h2>
+
+          <p style="font-size:26px; color:#A4B8AF; margin-top:32px; max-width:1100px; line-height:1.5;">
+            Generating video is commoditizing. Validating hooks through an automated, closed feedback loop is the real competitive advantage.
+          </p>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:40px; padding:36px 0; border-top:1px solid #273832; border-bottom:1px solid #273832;">
+          <div>
+            <div style="font-size:22px; color:#FFFFFF; font-weight:700;">A True Closed Loop</div>
+            <p style="font-size:16px; color:#8EA198; margin-top:8px; line-height:1.55;">It tests against real viewers, learns from retention data, and starts the next round automatically.</p>
+          </div>
+          <div>
+            <div style="font-size:22px; color:#FFFFFF; font-weight:700;">Built on Google Cloud</div>
+            <p style="font-size:16px; color:#8EA198; margin-top:8px; line-height:1.55;">Powered by Gemini 1.5 Pro and Flash, Cloud Run containers, and Firestore real-time storage.</p>
+          </div>
+          <div>
+            <div style="font-size:22px; color:#FFFFFF; font-weight:700;">Accessible to Everyone</div>
+            <p style="font-size:16px; color:#8EA198; margin-top:8px; line-height:1.55;">Brings high-volume creative testing to creators and small brands who cannot afford enterprise ad suites.</p>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="mono" style="font-size:15px; color:#8EA198;">
+            AI Builder Cup 2026 · Challenge Submission
+          </div>
+          <div class="mono" style="font-size:15px; color:#4ECCA3; font-weight:600;">
+            Prototype Ready for Evaluation
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</deck-stage>
+
+</body>
+</html>
