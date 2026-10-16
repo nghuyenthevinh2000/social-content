@@ -26,10 +26,10 @@ def check_no_overflow(page):
 
 
 def main():
-    OUTPUT.mkdir(exist_ok=True)
+    OUTPUT.mkdir(parents=True, exist_ok=True)
     originals = {name: (ROOT / name).read_bytes() for name in [
         'first-onboarding-screen.html', 'four-stage-loop-dashboard.html', 'screen-ui.css'
-    ]}
+    ] if (ROOT / name).exists()}
     server = ThreadingHTTPServer(('127.0.0.1', 0), partial(QuietHandler, directory=str(ROOT)))
     Thread(target=server.serve_forever, daemon=True).start()
     base = f'http://127.0.0.1:{server.server_port}'
@@ -54,6 +54,50 @@ def main():
             dashboard = page.locator('.dashboard-panel').bounding_box()
             assert abs(chat['width'] / (chat['width'] + dashboard['width']) - .3) < .001
             expect(page.locator('#continue-video')).to_be_disabled()
+            expect(page.locator('.stage-tabs [role=tab]')).to_have_count(4)
+            expect(page.locator('.stage-panel')).to_have_count(4)
+            expect(page.locator('#tab-results')).to_have_count(0)
+            expect(page.locator('#ref-hooks-grid video')).to_have_count(4)
+            ref_video = page.locator('#ref-hooks-grid video').first
+            ref_video.evaluate('(video) => video.play()')
+            page.wait_for_function('document.querySelector("#ref-hooks-grid video").currentTime > 0.2')
+            expect(page.locator('[data-ref-toggle=W01]')).to_have_attribute('aria-pressed', 'true')
+            expect(page.locator('#continue-video')).to_be_disabled()
+            page.locator('[data-ref-toggle=W01]').click()
+            expect(page.locator('[data-ref-toggle=W01]')).to_have_attribute('aria-pressed', 'false')
+
+            page.locator('#tab-analysis').click()
+            assert ref_video.evaluate('(video) => video.paused')
+            expect(page.locator('#winning-hooks-list')).to_be_visible()
+            expect(page.locator('#winning-hooks-list video')).to_have_count(4)
+            expect(page.locator('#our-ads-list')).to_be_hidden()
+            sample = page.locator('#winning-hooks-list video').first
+            sample.evaluate('(video) => video.play()')
+            page.wait_for_function('document.querySelector("#winning-hooks-list video").currentTime > 0.2')
+            page.locator('#btn-tab-ours').click()
+            assert sample.evaluate('(video) => video.paused')
+            expect(page.locator('#winning-hooks-list')).to_be_hidden()
+            expect(page.locator('#our-ads-list')).to_be_visible()
+            expect(page.locator('#our-ads-list video')).to_have_count(4)
+            page.locator('#btn-tab-ours').focus()
+            page.keyboard.press('ArrowLeft')
+            expect(page.locator('#btn-tab-winning')).to_be_focused()
+            expect(page.locator('#winning-hooks-list')).to_be_visible()
+            page.locator('#btn-tab-ours').click()
+            page.locator('#tab-hooks').click()
+            expect(page.locator('[data-ref-toggle=W01]')).to_have_attribute('aria-pressed', 'false')
+            page.locator('[data-ref-toggle=W01]').click()
+            page.locator('#tab-analysis').click()
+            expect(page.locator('#our-ads-list')).to_be_visible()
+            expect(page.locator('#btn-tab-ours')).to_have_attribute('aria-selected', 'true')
+            page.locator('#loop-01-header').focus()
+            page.keyboard.press('Enter')
+            expect(page.locator('#loop-01-expanded')).to_be_hidden()
+            expect(page.locator('#loop-01 .outcome-comparison-grid')).to_be_visible()
+            page.keyboard.press('Space')
+            expect(page.locator('#our-ads-list')).to_be_visible()
+            page.screenshot(path=str(OUTPUT / 'analysis-samples-desktop.png'))
+            page.locator('#tab-hooks').click()
             expect(page.locator('.hook-mock-video')).to_have_count(4)
             # Mock clip controls must not toggle hook selection.
             page.locator('.hook-mock-video').first.evaluate('(video) => video.play()')
@@ -74,11 +118,14 @@ def main():
             expect(page.locator('#selection-count')).to_have_text('Đã chọn 3 hook')
             page.screenshot(path=str(OUTPUT / 'hooks-desktop.png'))
             page.locator('#continue-video').click()
-            expect(page.locator('.video-card')).to_have_count(3)
-            assert page.locator('.video-card').evaluate_all('(cards) => cards.map(c => c.dataset.hook)') == ['H01', 'H02', 'H04']
+            expect(page.locator('#video-samples')).to_have_count(0)
+            expect(page.locator('#approval-count')).to_have_text('Đã duyệt 0/4')
+            expect(page.locator('.video-card')).to_have_count(4)
+            assert page.locator('.video-card').evaluate_all('(cards) => cards.map(c => c.dataset.hook)') == ['H01', 'H02', 'H03', 'H04']
             for card in page.locator('.video-card').all():
                 expect(card.get_by_role('button', name='Edit in chat')).to_be_visible()
                 expect(card.get_by_role('button', name='Approve for posting')).to_be_disabled()
+                expect(card.locator('input[type=file]')).to_have_count(1)
             page.screenshot(path=str(OUTPUT / 'videos-desktop.png'))
 
             # A real, synthetic test asset exercises native playback and reversible approval.
@@ -93,16 +140,16 @@ def main():
                     first = page.locator('.video-card').first
                     expect(first.get_by_role('button', name='Approve for posting')).to_be_enabled()
                     first.get_by_role('button', name='Approve for posting').click()
-                    expect(page.locator('#approval-count')).to_have_text('Đã duyệt 1/3')
+                    expect(page.locator('#approval-count')).to_have_text('Đã duyệt 1/4')
                     first.get_by_role('button', name='Undo approval').click()
-                    expect(page.locator('#approval-count')).to_have_text('Đã duyệt 0/3')
+                    expect(page.locator('#approval-count')).to_have_text('Đã duyệt 0/4')
                     first.get_by_role('button', name='Approve for posting').click()
                     first.get_by_role('button', name='Edit in chat').click()
                     page.locator('#chat-input').fill('Một câu mở đầu mới do người dùng viết.')
                     page.locator('#chat-input').press('Enter')
                     expect(page.locator('.video-card').first.locator('.video-hook-caption')).to_have_text('Một câu mở đầu mới do người dùng viết.')
                     expect(page.locator('.video-card').first.get_by_role('button', name='Approve for posting')).to_be_disabled()
-                    expect(page.locator('#approval-count')).to_have_text('Đã duyệt 0/3')
+                    expect(page.locator('#approval-count')).to_have_text('Đã duyệt 0/4')
 
             page.locator('#tab-metrics').click()
             expect(page.locator('#metrics-body > tr:not(.detail-row)')).to_have_count(4)
@@ -121,7 +168,11 @@ def main():
             expect(page.locator('#detail-H01')).to_be_visible()
             expect(page.locator('#detail-H01 .platform-detail')).to_have_count(3)
             page.screenshot(path=str(OUTPUT / 'metrics-desktop.png'))
-            page.locator('#tab-results').click()
+            page.locator('[data-go=analysis-loop-02]').click()
+            expect(page.locator('#panel-analysis')).to_be_visible()
+            expect(page.locator('#loop-02-header')).to_have_attribute('aria-expanded', 'true')
+            expect(page.locator('#loop-02-expanded')).to_be_visible()
+            expect(page.locator('#loop-02 #mock-ranking')).to_be_visible()
             expect(page.locator('#mock-winner')).to_have_text('H01 giữ chân tốt nhất trong vòng mẫu.')
             expect(page.locator('#mock-total-views')).to_have_text('219.420 lượt xem mẫu')
             expect(page.locator('#mock-ranking .ranking-row')).to_have_count(4)
@@ -138,12 +189,12 @@ def main():
             expect(page.locator('#results-approval-count')).to_have_text('0 đã duyệt')
 
             # Keyboard-accessible tabs and every responsive state.
-            page.locator('#tab-results').focus()
+            page.locator('#tab-metrics').focus()
             page.keyboard.press('Home')
-            expect(page.locator('#tab-hooks')).to_be_focused()
+            expect(page.locator('#tab-analysis')).to_be_focused()
             for width in [1440, 1024, 768, 390, 320]:
                 page.set_viewport_size({'width': width, 'height': 900})
-                for stage in ['hooks', 'video', 'metrics', 'results']:
+                for stage in ['analysis', 'hooks', 'video', 'metrics']:
                     page.locator(f'#tab-{stage}').click()
                     check_no_overflow(page)
                 if width == 390:
@@ -166,18 +217,28 @@ def main():
             expect(fresh.locator('#metric-views')).to_have_text('121.900')
             check_no_overflow(fresh)
             fresh.screenshot(path=str(OUTPUT / 'metrics-mobile.png'))
-            fresh.locator('#tab-results').click()
+            fresh.locator('[data-go=analysis-loop-02]').click()
             expect(fresh.locator('#mock-ranking .ranking-row')).to_have_count(4)
             check_no_overflow(fresh)
             fresh.screenshot(path=str(OUTPUT / 'results-mobile.png'))
+            # Old bookmarks reach the merged summary, not a fifth stage.
+            fresh.goto(f'{base}/four-stage-loop-dashboard-redesigned.html#results')
+            expect(fresh.locator('#loop-02-expanded')).to_be_visible()
+            expect(fresh.locator('#tab-analysis')).to_have_attribute('aria-selected', 'true')
+            assert fresh.url.endswith('#analysis-loop-02')
+            fresh.locator('#tab-video').click()
+            expect(fresh.locator('#video-empty')).to_be_hidden()
+            expect(fresh.locator('.video-card')).to_have_count(4)
+            expect(fresh.locator('#video-samples')).to_have_count(0)
             fresh.close()
             assert not errors, errors
             browser.close()
         for name, content in originals.items():
             assert (ROOT / name).read_bytes() == content, f'Original changed: {name}'
-        print('PASS: onboarding, interview, 30/70 split, selections, three video cards, playback,')
+        print('PASS: onboarding, interview, 30/70 split, selections, four full video cards, playback,')
         print('approval/undo/edit invalidation, four playable mock hooks, filtered mock metrics,')
-        print('consistent loop ranking, notes persistence, keyboard tabs and five viewport sizes.')
+        print('four-stage flow, 12 playable sample placements, nested video tabs, loop keyboard controls,')
+        print('merged loop-02 ranking, notes persistence, keyboard tabs and five viewport sizes.')
         print(f'Screenshots: {OUTPUT}')
     finally:
         server.shutdown()

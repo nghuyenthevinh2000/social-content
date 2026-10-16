@@ -1,148 +1,2029 @@
 {
-  "project": "Lạc Hồng / Approved screen redesign · Chat 30% / Dashboard 70%",
+  "project": "Lạc Hồng / Thử nghiệm video: 01. Phân tích, 02. Chọn mở đầu, 03. Dựng video, 04. Theo dõi kết quả",
+  "dashboardFlow": {
+    "stages": ["analysis", "hooks", "video", "metrics"],
+    "stageLabels": ["01. Phân tích", "02. Chọn mở đầu", "03. Dựng video", "04. Số liệu"],
+    "nextLoopSummary": "Chuyển tổng kết 72 giờ, xếp hạng, ghi chú và giả thuyết từ 04B vào phần mở rộng Vòng 02 trong 01. Phân tích. Không có giai đoạn thứ năm.",
+    "metricsHandoff": "Nút cuối bước 04 mở 01. Phân tích và mở rộng Vòng 02.",
+    "sampleMediaNotice": "Clip cục bộ là video minh họa, không phải quảng cáo gốc của số liệu tham khảo. Không trình bày số liệu mẫu như kết quả đo của clip minh họa."
+  },
   "directions": [
     {
       "id": "onboarding",
-      "name": "Onboarding · Full-screen chat",
-      "notes": "Full-screen conversational onboarding. The same conversation continues in the left 30% of the workspace. The two new HTML files preserve all original files.",
-      "design": {"layout": "centered", "visual": "interface", "font": "modern", "colors": {"background": "#f5f4f0", "surface": "#ffffff", "ink": "#242823", "muted": "#6b7168", "accent": "#346149", "line": "#dedfd7"}, "containerWidth": "1120px", "cornerRadius": "10px"},
-      "hero": {"eyebrow": "Bắt đầu một ý tưởng mới", "topLabel": "lạc hồng.", "navigation": ["Không gian làm việc"], "footerLeft": "Bản mẫu tương tác", "footerRight": "Full-screen chat"},
-      "visual": {"imageUrl": "", "imageAlt": "", "caption": "Cuộc trò chuyện của bạn", "index": "01 / 02", "interface": {"label": "Lạc Hồng", "title": "Bạn đang làm video cho sản phẩm nào?", "description": "Gửi liên kết hoặc kể ngắn cho mình nghe nhé.", "metric": "", "metricLabel": "Gửi"}},
-      "wireframe": {"title": "Screen 1 / first-onboarding-screen-redesigned.html", "rows": [
-        {"label": "Header", "cells": [{"type": "brand", "text": "lạc hồng.", "pixels": 200}, {"type": "text", "text": "Không gian sáng tạo video", "pixels": 700}, {"type": "link", "text": "Không gian làm việc", "href": "four-stage-loop-dashboard-redesigned.html", "pixels": 220}]},
-        {"label": "Welcome inside scrollable chat", "cells": [{"type": "space", "pixels": 240}, {"type": "text", "text": "Bắt đầu một ý tưởng mới\nBắt đầu với 3 giây đầu tiên.\nGiới thiệu sản phẩm. Sau đó, thử những cách mở đầu khác nhau trên cùng một video.", "pixels": 640}, {"type": "space", "pixels": 240}]},
-        {"label": "Assistant opening", "id": "conversation", "cells": [{"type": "space", "pixels": 240}, {"type": "text", "text": "Lạc Hồng\nBạn đang làm video cho sản phẩm nào? Gửi liên kết hoặc kể ngắn cho mình nghe nhé.", "pixels": 640}, {"type": "space", "pixels": 240}]},
-        {"label": "Optional sample prompt", "cells": [{"type": "space", "pixels": 240}, {"type": "text", "text": "Hoặc thử một ví dụ\nSerum rau má\nSản phẩm chăm sóc da", "pixels": 640}, {"type": "space", "pixels": 240}]},
-        {"label": "Conversation after sending sample", "cells": [{"type": "space", "pixels": 240}, {"type": "text", "text": "Bạn\nMình bán serum rau má Sắc Ngọc Khang cho người có da nhạy cảm.\nLạc Hồng\nMình đã ghi lại thông tin bạn gửi. Sang không gian làm việc để chọn hook nhé. Cuộc trò chuyện vẫn ở bên cạnh bạn.", "pixels": 640}, {"type": "space", "pixels": 240}]},
-        {"label": "Inline workspace transition after reply", "cells": [{"type": "space", "pixels": 240}, {"type": "link", "text": "Mở không gian làm việc", "href": "four-stage-loop-dashboard-redesigned.html", "pixels": 640}, {"type": "space", "pixels": 240}]},
-        {"label": "Persistent bottom composer", "id": "composer", "cells": [{"type": "space", "pixels": 240}, {"type": "text", "text": "Kể cho mình nghe về sản phẩm của bạn…\nEnter để gửi · Shift + Enter để xuống dòng\nGửi", "pixels": 640}, {"type": "space", "pixels": 240}]},
-        {"label": "Footer", "cells": [{"type": "text", "text": "Bản mẫu tương tác · Chưa kết nối AI hoặc nền tảng đăng video.", "pixels": 1120}]}
-      ]},
+      "name": "Bắt đầu · Trò chuyện và quản lý dự án",
+      "notes": "Bắt đầu bằng cuộc trò chuyện toàn màn hình. Thanh bên trái mở danh sách dự án và tệp thương hiệu. Người dùng kéo thả tệp vào cuộc trò chuyện hoặc chọn 'Thêm tệp thương hiệu'. Khi mở không gian làm việc, khung trò chuyện thu gọn về cột 30%.",
+      "design": {
+        "layout": "centered",
+        "visual": "interface",
+        "font": "modern",
+        "colors": {
+          "background": "#f5f4f0",
+          "surface": "#ffffff",
+          "ink": "#242823",
+          "muted": "#6b7168",
+          "accent": "#346149",
+          "line": "#dedfd7"
+        },
+        "containerWidth": "1120px",
+        "cornerRadius": "10px"
+      },
+      "hero": {
+        "eyebrow": "BẮT ĐẦU MỘT Ý TƯỞNG MỚI",
+        "topLabel": "lạc hồng.",
+        "navigation": [
+          "Dự án: Sắc Ngọc Khang",
+          "01 Phân tích",
+          "02 Chọn mở đầu",
+          "03 Dựng video",
+          "04 Theo dõi kết quả"
+        ],
+        "footerLeft": "Bản mẫu tương tác",
+        "footerRight": "Trò chuyện toàn màn hình"
+      },
+      "visual": {
+        "imageUrl": "",
+        "imageAlt": "",
+        "caption": "Giới thiệu sản phẩm và thêm tệp thương hiệu",
+        "index": "01 / 06",
+        "interface": {
+          "label": "Lạc Hồng",
+          "title": "Bạn đang làm video cho sản phẩm nào?",
+          "description": "Gửi liên kết, ảnh sản phẩm hoặc tài liệu thương hiệu nhé.",
+          "metric": "",
+          "metricLabel": "Gửi"
+        }
+      },
+      "wireframe": {
+        "title": "Screen 1 / Onboarding Chat & Cây tài nguyên (first-onboarding-screen-redesigned.html)",
+        "rows": [
+          {
+            "label": "Header with file tree toggle",
+            "cells": [
+              {
+                "type": "link",
+                "text": "Dự án và tệp",
+                "href": "#file-tree",
+                "pixels": 120
+              },
+              {
+                "type": "brand",
+                "text": "lạc hồng.",
+                "pixels": 160
+              },
+              {
+                "type": "text",
+                "text": "Tạo video và quản lý tệp thương hiệu",
+                "pixels": 580
+              },
+              {
+                "type": "link",
+                "text": "Mở không gian làm việc",
+                "href": "four-stage-loop-dashboard-redesigned.html",
+                "pixels": 260
+              }
+            ]
+          },
+          {
+            "label": "Collapsible file tree drawer preview",
+            "id": "file-tree",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 200
+              },
+              {
+                "type": "text",
+                "text": "Dự án và tệp\nSắc Ngọc Khang (Serum rau má · Đang mở)\n  Tệp thương hiệu\n    raw-footage-serum-01.mp4 [Xem và chỉnh sửa]\n    chai-serum-rau-ma.png [Xem và chỉnh sửa]\n    huong-dan-giong-dieu-brand.pdf [Xem và chỉnh sửa]\n    [Thêm tệp thương hiệu]\n  Các mẫu mở đầu (Vòng 01)\n  Dữ liệu hiệu quả video\nMỹ phẩm Cocoon\nThời trang Yame\nTạo dự án mới",
+                "pixels": 720
+              },
+              {
+                "type": "space",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Welcome inside scrollable chat",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 200
+              },
+              {
+                "type": "text",
+                "text": "Bắt đầu một ý tưởng mới\nTìm cách mở đầu phù hợp cho video của bạn.\nGiới thiệu sản phẩm hoặc đính kèm tệp thương hiệu. AI sẽ tìm các mẫu mở đầu có hiệu quả trên mạng xã hội để bạn tham khảo và thử nghiệm.",
+                "pixels": 720
+              },
+              {
+                "type": "space",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Assistant opening",
+            "id": "conversation",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 200
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng\nBạn đang làm video cho sản phẩm nào? Gửi liên kết, mô tả hoặc kéo thả tài liệu thương hiệu vào đây nhé.",
+                "pixels": 720
+              },
+              {
+                "type": "space",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Optional sample prompt & asset upload",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 200
+              },
+              {
+                "type": "text",
+                "text": "Thử với sản phẩm mẫu\nSerum rau má Sắc Ngọc Khang (Đã có 2 video quay sản phẩm và 1 ảnh trong thư mục tệp thương hiệu)",
+                "pixels": 720
+              },
+              {
+                "type": "space",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Conversation after sending sample",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 200
+              },
+              {
+                "type": "text",
+                "text": "Bạn\nMình bán serum rau má Sắc Ngọc Khang cho người có da nhạy cảm.\nLạc Hồng\nMình đã lưu thông tin sản phẩm và liên kết các tệp thương hiệu. Bạn có thể sang bước 01. Phân tích để so sánh hiệu quả video.",
+                "pixels": 720
+              },
+              {
+                "type": "space",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Inline transition to workspace",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 200
+              },
+              {
+                "type": "link",
+                "text": "Bắt đầu phân tích video",
+                "href": "four-stage-loop-dashboard-redesigned.html",
+                "pixels": 720
+              },
+              {
+                "type": "space",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Persistent bottom composer",
+            "id": "composer",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 200
+              },
+              {
+                "type": "text",
+                "text": "Giới thiệu sản phẩm hoặc đính kèm tệp thương hiệu…\nEnter để gửi · Shift + Enter để xuống dòng\n[Đính kèm tệp] [Gửi]",
+                "pixels": 720
+              },
+              {
+                "type": "space",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Footer",
+            "cells": [
+              {
+                "type": "text",
+                "text": "Bản mẫu tương tác · Cây thư mục và tài nguyên thương hiệu được đồng bộ xuyên suốt các màn hình.",
+                "pixels": 1120
+              }
+            ]
+          }
+        ]
+      },
       "spec": {
-        "goal": {"what": "Full-screen conversational onboarding, never a product form.", "audience": "Vietnamese shop owners and video creators.", "successCriteria": "Chat about the product, then retain the conversation in screen 2."},
-        "format": {"canvas": "Full viewport with a 740px centered chat shell; mobile stacks naturally.", "safeMargins": "22–28px inside chat; composer above bottom safe area."},
-        "layout": {"grid": "Header, scrolling conversation, bottom composer.", "placement": "Welcome and assistant opening above sample prompt; user reply and workspace action appear after sending.", "hierarchy": "Conversation first, composer always visible."},
-        "typeSystem": {"display": "Be Vietnam Pro 50px desktop / 37px mobile, medium weight.", "metadata": "10–12px quiet labels.", "contrast": "14px messages, generous line height."},
-        "colorMaterial": {"foundation": "Warm #f5f4f0 and charcoal #242823.", "surfaces": "White composer, pale sage user messages.", "borders": "1px #dedfd7; 10px corners.", "signal": "Forest #346149 for primary actions."},
-        "copy": {"headline": "Bắt đầu với 3 giây đầu tiên.", "subtitle": "Giới thiệu sản phẩm. Sau đó, thử những cách mở đầu khác nhau trên cùng một video.", "actions": [{"label": "Gửi", "href": "#composer"}]},
-        "constraints": {"font": "Vietnamese-safe sans-serif.", "accent": "One green; no decorative emoji.", "container": "sessionStorage retains the transcript across the two new HTML pages. Clearly label the demo as unconnected AI."},
-        "negativePrompt": ["No onboarding form replacing chat.", "No security promises or fake AI analysis.", "Do not modify originals."]
+        "goal": {
+          "what": "Conversational onboarding tích hợp Cây thư mục dự án (File Tree) và nạp tài sản thương hiệu (Brand Assets).",
+          "audience": "Nhà bán hàng và người sáng tạo nội dung quản lý tài nguyên video/hình ảnh.",
+          "successCriteria": "Người dùng nắm rõ các tệp tài nguyên sẵn có, thêm được tài sản mới và chuyển sang Dashboard liền mạch."
+        },
+        "format": {
+          "canvas": "Toàn màn hình 1120px; cây thư mục có thể mở dạng drawer bên trái; khung chat thoáng ở giữa.",
+          "safeMargins": "Đệm 24px bên trong chat; thanh composer ghim đáy hỗ trợ nút đính kèm tài sản."
+        },
+        "layout": {
+          "grid": "Thanh điều hướng cây thư mục trái, khung đối thoại giữa, composer đáy.",
+          "placement": "Nút mở Cây thư mục ở góc trái; luồng chat ở trung tâm.",
+          "hierarchy": "Trò chuyện và nạp tài nguyên thương hiệu được tích hợp tự nhiên."
+        },
+        "typeSystem": {
+          "display": "Be Vietnam Pro 50px desktop / 37px mobile.",
+          "metadata": "10–12px nhãn tệp và định dạng MIME.",
+          "contrast": "Tương phản đạt chuẩn WCAG AA."
+        },
+        "colorMaterial": {
+          "foundation": "Nền ấm #f5f4f0 và chữ than chì #242823.",
+          "surfaces": "Thẻ thư mục màu trắng, icon tệp tinh giản.",
+          "borders": "1px #dedfd7; bo góc 10px.",
+          "signal": "Xanh lá #346149 cho hành động đính kèm và gửi."
+        },
+        "copy": {
+          "headline": "Thử các cách mở đầu cho video của bạn.",
+          "subtitle": "Giới thiệu sản phẩm hoặc đính kèm tài nguyên thương hiệu. Sau đó, thử các cách mở đầu khác nhau trên cùng một video.",
+          "actions": [
+            {
+              "label": "Gửi",
+              "href": "#composer"
+            }
+          ]
+        },
+        "constraints": {
+          "font": "Be Vietnam Pro tiếng Việt chuẩn.",
+          "accent": "Một màu xanh lá chủ đạo.",
+          "container": "Hỗ trợ duyệt cây thư mục và nạp tệp tài sản thương hiệu (video, ảnh, pdf)."
+        },
+        "negativePrompt": [
+          "Không biến chat thành trang tải tệp phức tạp.",
+          "Không làm đứt gãy luồng trao đổi khi xem cây thư mục.",
+          "Không ẩn nút thêm tài sản thương hiệu."
+        ]
       }
     },
     {
-      "id": "hook-suggestion",
-      "name": "01 · Hook suggestion",
-      "notes": "Chat asks interview questions and explains. Dashboard shows four distinct hook cards, each with a playable, labeled 3-second local mock video and selection controls. Approved ratio is 30% chat / 70% dashboard. Three selected hooks in this example continue to three video versions.",
-      "design": {"layout": "split", "visual": "interface", "font": "modern", "colors": {"background": "#f5f4f0", "surface": "#ffffff", "ink": "#242823", "muted": "#6b7168", "accent": "#346149", "line": "#dedfd7"}, "containerWidth": "1280px", "cornerRadius": "10px"},
-      "hero": {"eyebrow": "KHÔNG GIAN THỬ NGHIỆM / VÒNG 01", "topLabel": "lạc hồng.", "navigation": ["Về trò chuyện"], "footerLeft": "Chat 30% / Dashboard 70%", "footerRight": "01 / 04"},
-      "visual": {"imageUrl": "", "imageAlt": "", "caption": "Hook dành cho sản phẩm của bạn", "index": "01 / 04", "interface": {"label": "H01 · Nhu cầu", "title": "Da nhạy cảm? Bắt đầu với một bước chăm sóc đơn giản.", "description": "Chọn hook", "metric": "", "metricLabel": "Tiếp tục: Video creation"}},
-      "wireframe": {"title": "Dashboard wireframe 01 / Hook suggestion · 30% chat / 70% dashboard", "rows": [
-        {"label": "Shared header", "cells": [{"type": "brand", "text": "lạc hồng.", "pixels": 200}, {"type": "text", "text": "Sắc Ngọc Khang / Vòng 01", "pixels": 680}, {"type": "text", "text": "Bản mẫu tương tác", "pixels": 200}, {"type": "link", "text": "Về trò chuyện", "href": "first-onboarding-screen-redesigned.html", "pixels": 200}]},
-        {"label": "Persistent split / chat 30%, dashboard 70%", "cells": [{"type": "text", "text": "Lạc Hồng\nCuộc trò chuyện của bạn\nMình tiếp tục ở đây nhé. Khách hàng chính của bạn là ai?\nHọ thường băn khoăn điều gì khi chọn sản phẩm?\nBạn muốn giọng kể gần gũi hay tư vấn trực tiếp?\nCác câu hỏi được hỏi lần lượt khi bạn trả lời.\nNhắn cho Lạc Hồng…\nGửi\nHội thoại mẫu, chưa kết nối AI.", "pixels": 384}, {"type": "text", "text": "KHÔNG GIAN THỬ NGHIỆM / VÒNG 01\nHook suggestion\nChọn các hook bạn muốn đưa sang Video creation.", "pixels": 896}]},
-        {"label": "Workflow / Hook suggestion active", "cells": [{"type": "space", "pixels": 384}, {"type": "link", "text": "01 · Hook suggestion", "href": "#hooks", "pixels": 224}, {"type": "link", "text": "02 · Video creation", "href": "#video", "pixels": 224}, {"type": "link", "text": "03 · Metrics", "href": "#metrics", "pixels": 224}, {"type": "link", "text": "04 · Loop results", "href": "#results", "pixels": 224}]},
-        {"label": "Hook grid / row 1", "id": "hooks", "cells": [{"type": "space", "pixels": 384}, {"type": "visual", "text": "H01 · Nhu cầu\nDa nhạy cảm? Bắt đầu với một bước chăm sóc đơn giản.\nVideo: assets/mock-hook-H01.mp4\nMock video · 03 giây\nChọn hook", "pixels": 448}, {"type": "visual", "text": "H02 · Câu hỏi\nBạn chọn serum rau má dựa trên điều gì?\nVideo: assets/mock-hook-H02.mp4\nMock video · 03 giây\nChọn hook", "pixels": 448}]},
-        {"label": "Hook grid / row 2", "cells": [{"type": "space", "pixels": 384}, {"type": "visual", "text": "H03 · Góc nhìn khác\nThêm sản phẩm chưa chắc là điều làn da bạn cần.\nVideo: assets/mock-hook-H03.mp4\nMock video · 03 giây\nChọn hook", "pixels": 448}, {"type": "visual", "text": "H04 · Trải nghiệm\nĐây là cách mình đưa serum rau má vào thói quen hằng ngày.\nVideo: assets/mock-hook-H04.mp4\nMock video · 03 giây\nChọn hook", "pixels": 448}]},
-        {"label": "Selection bar / example after user selects 3 hooks", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Đã chọn 3 hook\nH01 · H02 · H04 — Mỗi hook là một phiên bản video.", "pixels": 520}, {"type": "link", "text": "Tiếp tục: Video creation", "href": "#video", "pixels": 376}]},
-        {"label": "Footer", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Lạc Hồng / Thử, đo lường, học hỏi.\nChưa kết nối AI & nền tảng đăng video", "pixels": 896}]}
-      ]},
+      "id": "ai-loop-analysis",
+      "name": "01. Phân tích · So sánh hiệu quả video",
+      "notes": "Bước 01: Phân tích theo từng vòng thử nghiệm. Màn hình là danh sách các vòng có thể mở rộng hoặc thu gọn. Đầu mỗi vòng luôn hiển thị bảng so sánh kết quả giữa video tham khảo và video của bạn, kể cả khi thu gọn. Khi mở một vòng, bên dưới bảng số liệu xuất hiện danh sách video có hai thẻ chuyển đổi 'Video tham khảo' và 'Video của bạn', cùng phân tích AI và đề xuất thử nghiệm riêng của vòng đó. Chỉ một danh sách video hiển thị tại một thời điểm. Vòng 01 mở sẵn, các vòng khác thu gọn; vòng chưa có dữ liệu hiển thị trạng thái chờ, không sao chép số liệu vòng trước.",
+      "design": {
+        "layout": "split",
+        "visual": "interface",
+        "font": "modern",
+        "colors": {
+          "background": "#f5f4f0",
+          "surface": "#ffffff",
+          "ink": "#242823",
+          "muted": "#6b7168",
+          "accent": "#346149",
+          "line": "#dedfd7"
+        },
+        "containerWidth": "1440px",
+        "cornerRadius": "10px"
+      },
+      "hero": {
+        "eyebrow": "01. PHÂN TÍCH / SO SÁNH HIỆU QUẢ VIDEO",
+        "topLabel": "lạc hồng.",
+        "navigation": [
+          "Dự án: Sắc Ngọc Khang",
+          "01 Phân tích (Đang mở)",
+          "02 Chọn mở đầu",
+          "Về trò chuyện"
+        ],
+        "footerLeft": "Dự án và tệp / Trò chuyện 30% / Không gian làm việc 70%",
+        "footerRight": "Giai đoạn 01 / 04"
+      },
+      "visual": {
+        "imageUrl": "",
+        "imageAlt": "",
+        "caption": "So sánh kết quả từng vòng; mở rộng để xem video và phân tích AI",
+        "index": "02 / 06",
+        "interface": {
+          "label": "01. PHÂN TÍCH · SO SÁNH SỐ LIỆU",
+          "title": "Xem qua 3 giây: 82,3% so với 58,5%",
+          "description": "Mỗi vòng hiển thị kết quả video tham khảo và video của bạn ở đầu. Mở rộng vòng để chuyển giữa hai danh sách video và đọc phân tích AI.",
+          "metric": "+23.8%",
+          "metricLabel": "Chênh lệch tỷ lệ xem qua 3 giây"
+        }
+      },
+      "wireframe": {
+        "title": "01. Phân tích / Danh sách vòng thử nghiệm và so sánh kết quả",
+        "interaction": {
+          "pattern": "expandable-loop-list",
+          "defaultExpandedLoopIds": ["loop-01"],
+          "summaryAlwaysVisible": true,
+          "summaryRows": ["loop-header", "outcome-comparison"],
+          "expandedContentOrder": ["market-scan", "video-tabs", "video-list", "ai-analysis", "retention-details", "ai-summary", "next-action"],
+          "videoTabs": {
+            "scope": "per-loop",
+            "defaultValue": "winning",
+            "values": ["winning", "ours"],
+            "exclusive": true,
+            "preserveSelectionOnCollapse": true
+          },
+          "dataScope": "Số liệu, video và phân tích AI thuộc riêng từng vòng. Mở hoặc chuyển thẻ chỉ thay đổi nội dung của vòng tương ứng.",
+          "accessibility": "Nút mở rộng có aria-expanded và aria-controls. Hai thẻ video dùng tablist, tab và tabpanel, hỗ trợ chuyển bằng bàn phím."
+        },
+        "rows": [
+          {
+            "label": "Header with file tree status",
+            "cells": [
+              {
+                "type": "link",
+                "text": "Dự án và tệp (Thu gọn)",
+                "href": "#file-tree",
+                "pixels": 260
+              },
+              {
+                "type": "brand",
+                "text": "lạc hồng.",
+                "pixels": 180
+              },
+              {
+                "type": "text",
+                "text": "Sắc Ngọc Khang / Vòng 01 · Phân tích quảng cáo TikTok và Meta",
+                "pixels": 600
+              },
+              {
+                "type": "link",
+                "text": "Về trò chuyện",
+                "href": "first-onboarding-screen-redesigned.html",
+                "pixels": 200
+              },
+              {
+                "type": "link",
+                "text": "02 Chọn mở đầu",
+                "href": "#hooks",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Workspace layout / File Tree 260px + Chat 350px + Dashboard 830px",
+            "cells": [
+              {
+                "type": "visual",
+                "text": "Dự án và tệp\n\nSắc Ngọc Khang (Đang mở)\n  Tệp thương hiệu\n    broll-rau-ma.mp4\n    chai-serum.png\n    brand-voice.pdf\n    [Thêm tệp]\n  Các mẫu mở đầu\n  Dữ liệu thị trường\n    winning-hooks-gallery.json\n    our-performance-ads.json\nMỹ phẩm Cocoon\n\n[Tạo dự án mới]",
+                "pixels": 260
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng\nPhân tích video cùng bạn\nMình đã phân tích 1.280 video và chọn được 4 mẫu mở đầu để tham khảo (tỷ lệ xem qua 3 giây từ 80,8% đến 84,1%).\nĐầu mỗi vòng bên phải là kết quả video tham khảo so với video của bạn.\nMở rộng vòng để xem video, chuyển giữa hai danh sách và đọc phân tích AI của vòng đó.\nNhắn cho Lạc Hồng…\n[Đính kèm] [Gửi]",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "01. Phân tích\nCác vòng thử nghiệm\nSo sánh kết quả ngay ở đầu mỗi vòng. Mở rộng để xem danh sách video và phân tích AI; chuyển thẻ để xem video tham khảo hoặc video của bạn.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Four stage progress tabs (01 -> 02 -> 03 -> 04)",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "link",
+                "text": "01 · Phân tích (Đang mở)",
+                "href": "#analysis",
+                "pixels": 207
+              },
+              {
+                "type": "link",
+                "text": "02 · Chọn mở đầu",
+                "href": "#hooks",
+                "pixels": 207
+              },
+              {
+                "type": "link",
+                "text": "03 · Dựng video",
+                "href": "#video",
+                "pixels": 208
+              },
+              {
+                "type": "link",
+                "text": "04 · Theo dõi kết quả",
+                "href": "#metrics",
+                "pixels": 208
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Tiêu đề luôn hiển thị",
+            "id": "loop-01",
+            "loopId": "loop-01",
+            "role": "loop-header",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "link",
+                "text": "Vòng 01 · Đang mở · Thu gọn chi tiết",
+                "href": "#loop-01-details",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / So sánh kết quả luôn hiển thị ở đầu vòng",
+            "id": "pure-metrics",
+            "loopId": "loop-01",
+            "role": "outcome-comparison",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "Video tham khảo\nTrung bình 4 quảng cáo được chọn\n\nTỷ lệ xem qua 3 giây: 82,3%\nTỷ lệ rời video trong giây đầu: 10,8%\nThời gian xem trung bình: 14,2 / 25 giây (56,8%)\nTỷ lệ nhấp (CTR): 7,1%\nTỷ lệ xem hết video: 28,4%",
+                "pixels": 415
+              },
+              {
+                "type": "text",
+                "text": "Video của bạn\nTrung bình 4 quảng cáo của vòng trước\n\nTỷ lệ xem qua 3 giây: 58,5% (thấp hơn 23,8 điểm phần trăm)\nTỷ lệ rời video trong giây đầu: 36,0%\nThời gian xem trung bình: 9,8 / 25 giây (39,2%)\nTỷ lệ nhấp (CTR): 3,2%\nTỷ lệ xem hết video: 14,1%",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Chuyển giữa hai danh sách video",
+            "id": "triggers",
+            "loopId": "loop-01",
+            "role": "video-tabs",
+            "visibleWhen": { "loopExpanded": true },
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "link",
+                "text": "Video tham khảo (4)",
+                "href": "#winning-hooks-list",
+                "pixels": 415
+              },
+              {
+                "type": "link",
+                "text": "Video của bạn (4)",
+                "href": "#our-ads-list",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Danh sách video tham khảo",
+            "videoSamples": [
+              { "label": "W01 · Video minh họa", "src": "assets/mock-hook-H01.mp4", "poster": "assets/mock-hook-H01.jpg" },
+              { "label": "W02 · Video minh họa", "src": "assets/mock-hook-H02.mp4", "poster": "assets/mock-hook-H02.jpg" },
+              { "label": "W03 · Video minh họa", "src": "assets/mock-hook-H03.mp4", "poster": "assets/mock-hook-H03.jpg" },
+              { "label": "W04 · Video minh họa", "src": "assets/mock-hook-H04.mp4", "poster": "assets/mock-hook-H04.jpg" }
+            ],
+            "id": "winning-hooks-list",
+            "loopId": "loop-01",
+            "role": "video-list",
+            "visibleWhen": { "loopExpanded": true, "videoTab": "winning" },
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "visual",
+                "text": "Video tham khảo\nChọn video để xem cách mở đầu.\n\n1. [Phát video] W01 · Hình ảnh và âm thanh gây chú ý\n   TikTok Ad · 1,8 triệu lượt xem · Xem qua 3 giây: 83,4% · Tỷ lệ nhấp: 7,1%\n   Trong 0 đến 0,8 giây đầu: cận cảnh bẻ lá rau má, nước và đá bắn lên. Tiếp theo là cảnh da mẩn đỏ và serum thấm vào da.\n\n2. [Phát video] W02 · Nêu vấn đề của người xem\n   Reels · 1,2 triệu lượt xem · Xem qua 3 giây: 81,2% · Tỷ lệ nhấp: 6,5%\n   Trong 0 đến 0,8 giây đầu: giơ bảng đỏ với câu 'Đừng vội mua serum nếu da chưa gặp 3 điều này', rồi quay cận cảnh lỗ chân lông.\n\n3. [Phát video] W03 · Quy trình chăm sóc 2 bước\n   Shorts · 960 nghìn lượt xem · Xem qua 3 giây: 80,8% · Tỷ lệ nhấp: 6,9%\n   Trong 0 đến 0,8 giây đầu: đếm hai bước bằng ngón tay trước mặt mộc, kèm lời giới thiệu quy trình chăm sóc da nhạy cảm, mẩn đỏ.\n\n4. [Phát video] W04 · So sánh trước và sau\n   TikTok Spark · 1,5 triệu lượt xem · Xem qua 3 giây: 83,9% · Tỷ lệ nhấp: 7,8%\n   Trong 0 đến 0,8 giây đầu: chia đôi màn hình để so sánh da kích ứng trước và sau một đêm, rồi nhỏ 3 giọt serum lên da.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Danh sách video của bạn",
+            "videoSamples": [
+              { "label": "V01 · Video minh họa", "src": "assets/mock-hook-H01.mp4", "poster": "assets/mock-hook-H01.jpg" },
+              { "label": "V02 · Video minh họa", "src": "assets/mock-hook-H02.mp4", "poster": "assets/mock-hook-H02.jpg" },
+              { "label": "V03 · Video minh họa", "src": "assets/mock-hook-H03.mp4", "poster": "assets/mock-hook-H03.jpg" },
+              { "label": "V04 · Video minh họa", "src": "assets/mock-hook-H04.mp4", "poster": "assets/mock-hook-H04.jpg" }
+            ],
+            "id": "our-ads-list",
+            "loopId": "loop-01",
+            "role": "video-list",
+            "visibleWhen": { "loopExpanded": true, "videoTab": "ours" },
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "visual",
+                "text": "Video của bạn\n\n1. [Xem video] V01 · Giới thiệu trước máy quay\n   40.000 lượt xem · Xem qua 3 giây: 58,5%\n   Người giới thiệu đứng cầm chai serum. Tỷ lệ rời video là 36% tại giây 1,1.\n\n2. [Xem video] V02 · Mở đầu bằng câu hỏi\n   27.500 lượt xem · Xem qua 3 giây: 53,1%\n   Hiển thị câu 'Bạn chọn serum rau má vì điều gì?'. Người xem rời đi tại giây 0,9; phần chữ xuất hiện chậm.\n\n3. [Xem video] V03 · Giải thích thành phần\n   22.400 lượt xem · Xem qua 3 giây: 45,8%\n   Hình minh họa liệt kê hoạt chất trong chiết xuất rau má. Người xem rời đi tại giây 0,7; phần giải thích dùng nhiều thuật ngữ.\n\n4. [Xem video] V04 · Chăm sóc da buổi tối\n   32.000 lượt xem · Xem qua 3 giây: 60,4%\n   Cảnh mở nắp chai và thoa serum trong phòng ngủ. Người xem rời đi tại giây 1,8; phần mở đầu chưa tạo được chú ý.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Phân tích AI về hình ảnh và nhịp dựng",
+            "id": "loop-01-ai-analysis",
+            "loopId": "loop-01",
+            "role": "ai-analysis",
+            "visibleWhen": { "loopExpanded": true },
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Phân tích AI · Video tham khảo\nSố lần cắt cảnh trong 3 giây đầu: 2,4 (0,7 đến 1,2 giây/cảnh).\nĐiểm hình ảnh và âm thanh do AI đánh giá: 9,2 / 10.\nCác mẫu dùng cảnh nước, lá hoặc quay cận cảnh, kèm âm thanh rõ trong 0,5 giây đầu. Tỷ lệ xem qua 3 giây thuộc nhóm 1% cao nhất trong ngách.",
+                "pixels": 415
+              },
+              {
+                "type": "text",
+                "text": "Phân tích AI · Video của bạn\nSố lần cắt cảnh trong 3 giây đầu: 0,8, chủ yếu là khung hình tĩnh.\nĐiểm hình ảnh và âm thanh do AI đánh giá: 4,1 / 10.\n36% người xem rời đi tại giây 1,1. Phần mở đầu dùng khung hình tĩnh và giới thiệu sản phẩm sớm.",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Chi tiết tỷ lệ xem theo từng giây",
+            "loopId": "loop-01",
+            "role": "retention-details",
+            "visibleWhen": { "loopExpanded": true },
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Tỷ lệ người xem còn lại theo từng giây\nGiây 0: video tham khảo 100%; video của bạn 100%.\nGiây 1: video tham khảo 89,2%; video của bạn 64,0%. Chênh lệch: 25,2 điểm phần trăm, lớn nhất trong các mốc này.\nGiây 2: video tham khảo 85,1%; video của bạn 60,2%. Chênh lệch: 24,9 điểm phần trăm.\nGiây 3: video tham khảo 82,3%; video của bạn 58,5%. Chênh lệch: 23,8 điểm phần trăm.\nPhân tích cho thấy 72% khoảng cách hình thành trong 1,2 giây đầu, khi hình ảnh và âm thanh chưa đủ thu hút.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Nhận xét AI và đề xuất thử nghiệm",
+            "loopId": "loop-01",
+            "role": "ai-summary",
+            "visibleWhen": { "loopExpanded": true },
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Nhận xét từ số liệu\n1. Chênh lệch 23,8 điểm phần trăm về tỷ lệ xem qua 3 giây chủ yếu đến từ giây đầu: tỷ lệ rời video là 36,0% so với 10,8%.\n2. Video thương hiệu có trung bình 0,8 lần cắt cảnh trong 3 giây đầu, so với 2,4 lần ở nhóm tham khảo.\n3. Cả 4 mẫu tham khảo đều dùng hình ảnh, âm thanh gây chú ý hoặc nhắc đến tình trạng da ngứa rát.",
+                "pixels": 415
+              },
+              {
+                "type": "text",
+                "text": "Đề xuất thử nghiệm\nÁp dụng 4 cách mở đầu vào tệp thương hiệu. Thử cảnh nước bắn trên lá rau má, cắt cảnh sau 0,8 giây, với mục tiêu đưa tỷ lệ rời video trong giây đầu xuống dưới 15%.\n[Đồng ý và chọn mẫu mở đầu]",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Vòng 01 / Tiếp tục chọn mở đầu",
+            "loopId": "loop-01",
+            "role": "next-action",
+            "visibleWhen": { "loopExpanded": true },
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Đã so sánh số liệu và phân loại các mẫu tham khảo. Bạn có thể tạo các đoạn mở đầu cho sản phẩm.",
+                "pixels": 430
+              },
+              {
+                "type": "link",
+                "text": "Tiếp tục: Chọn mở đầu",
+                "href": "#hooks",
+                "pixels": 400
+              }
+            ]
+          },
+          {
+            "label": "Vòng 02 / Tiêu đề luôn hiển thị",
+            "id": "loop-02",
+            "loopId": "loop-02",
+            "role": "loop-header",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "link",
+                "text": "Vòng 02 · Tổng kết vòng trước và chuẩn bị thử nghiệm · Mở chi tiết",
+                "href": "#loop-02-details",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Vòng 02 / So sánh kết quả luôn hiển thị ở đầu vòng",
+            "id": "loop-02-outcomes",
+            "loopId": "loop-02",
+            "role": "outcome-comparison",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "Video tham khảo\nChưa có số liệu cho Vòng 02.",
+                "pixels": 415
+              },
+              {
+                "type": "text",
+                "text": "Video của bạn\nChưa có số liệu cho Vòng 02.",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Vòng 02 / Tổng kết vòng trước, thay cho bước 04B",
+            "id": "loop-02-details",
+            "loopId": "loop-02",
+            "role": "previous-loop-summary",
+            "visibleWhen": { "loopExpanded": true },
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "Chuẩn bị Vòng 02 từ kết quả Vòng 01\nTổng kết sau 72 giờ và xếp hạng các mẫu mở đầu của vòng trước. H01 có kết quả tốt nhất trong dữ liệu mẫu.\n[Ghi chú: Bạn học được gì từ vòng này?]\n[Giả thuyết: Vòng tiếp theo, thử điều gì?]\n[Lưu ghi chú] [Chuẩn bị vòng tiếp theo]\nKết quả Vòng 01 được giữ riêng; Vòng 02 chưa có số liệu mới. Khi có dữ liệu mới, hiển thị hai thẻ video tham khảo và video của bạn cùng phân tích AI tại đây.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Footer",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng / Mỗi vòng giữ riêng kết quả so sánh, danh sách video và phân tích AI. Thu gọn vòng vẫn xem được kết quả ở đầu.",
+                "pixels": 830
+              }
+            ]
+          }
+        ]
+      },
       "spec": {
-        "goal": {"what": "Chat interviews; dashboard shows suitable hook options for selection.", "audience": "Vietnamese creators.", "successCriteria": "Select hooks and carry only those IDs and texts into Video creation."},
-        "format": {"canvas": "Full-height 30% chat / 70% dashboard; 384px / 896px at 1280px.", "safeMargins": "24–35px panels; mobile Chat / Dashboard switch."},
-        "layout": {"grid": "minmax(0,3fr) minmax(0,7fr); independent scrolling.", "placement": "Chat left with persistent composer; four tabs, 2-by-2 hook grid, selection bar right. Blank left cells reserve ongoing chat.", "hierarchy": "Chat asks and explains; dashboard shows and selects."},
-        "typeSystem": {"display": "Be Vietnam Pro, 32px title, 18px hook text.", "metadata": "10–12px subdued labels.", "contrast": "13px messages, generous line height."},
-        "colorMaterial": {"foundation": "Warm #f5f4f0 and charcoal #242823.", "surfaces": "White cards, pale sage selected cards.", "borders": "1px #dedfd7; 10px corners.", "signal": "Green #346149 for selection, tabs and actions."},
-        "copy": {"headline": "Hook suggestion", "subtitle": "Chọn các hook bạn muốn đưa sang Video creation.", "actions": [{"label": "Chọn hook", "href": "#hooks"}, {"label": "Tiếp tục: Video creation", "href": "#video"}]},
-        "constraints": {"font": "Vietnamese-safe sans-serif; exact stage label Hook suggestion.", "accent": "One green; no decorative icons.", "container": "No default selection; accessible checkboxes separate from video controls. Four local H264 360x640 clips are 3-second silent animations, clearly marked mock video. Playing a clip must not select its hook. Only one clip plays at a time. Edited hooks keep a Hook gốc label on their original mock clip. Ask interview questions one at a time in chat."},
-        "negativePrompt": ["No analysis paragraphs or editor on dashboard.", "No invented fit scores.", "Do not change originals."]
+        "goal": {
+          "what": "Hiển thị danh sách vòng thử nghiệm. Đầu mỗi vòng luôn so sánh kết quả video tham khảo và video của bạn trong hai cột. Mở rộng vòng để xem danh sách video có hai thẻ chuyển đổi và phân tích AI riêng của vòng đó.",
+          "audience": "Người sáng tạo nội dung và nhà tiếp thị muốn nắm bắt khoảng cách số liệu chuẩn xác và duyệt qua nhiều mẫu video thực tế.",
+          "successCriteria": "Kết quả hai nhóm video luôn nằm ở đầu từng vòng và vẫn hiển thị khi thu gọn. Mở Vòng 01 để xem video và phân tích AI. Chuyển thẻ chỉ hiển thị một danh sách video tại một thời điểm, không thay đổi kết quả hoặc nội dung vòng khác. Vòng chưa có dữ liệu có trạng thái chờ rõ ràng."
+        },
+        "format": {
+          "canvas": "Độ rộng 1440px: File Tree (260px) + Chat 30% (350px) + Dashboard 70% (830px).",
+          "safeMargins": "Đệm 20–24px mỗi cột; bảng metrics phân bổ 415px mỗi cột cân xứng tuyệt đối."
+        },
+        "layout": {
+          "grid": "Thanh dự án và tệp bên trái, cột trò chuyện hỗ trợ và danh sách vòng thử nghiệm trong khu vực chính. Mỗi vòng có tiêu đề, bảng so sánh kết quả hai cột và phần chi tiết mở rộng.",
+          "placement": "Trong mỗi vòng: tiêu đề và nút mở rộng, bảng so sánh kết quả luôn hiển thị, rồi phần chi tiết chỉ hiện khi mở vòng. Phần chi tiết gồm nguồn dữ liệu, hai thẻ video, một danh sách video đang chọn, phân tích AI, tỷ lệ xem theo từng giây và đề xuất thử nghiệm.",
+          "hierarchy": "Danh sách vòng thử nghiệm; trong từng vòng, ưu tiên kết quả video tham khảo so với video của bạn, tiếp theo là video và phân tích AI khi mở rộng."
+        },
+        "typeSystem": {
+          "display": "Be Vietnam Pro 32px tiêu đề, 22px chỉ số nổi bật.",
+          "metadata": "10–12px nhãn chỉ số (3s retention, 1s drop-off, CTR, pacing cuts) và ID video.",
+          "contrast": "Chữ và số liệu tương phản cao, định dạng rõ ràng giữa benchmark (xanh lá #346149) và chỉ số nội bộ (than chì/hổ phách)."
+        },
+        "colorMaterial": {
+          "foundation": "Nền ấm #f5f4f0 và chữ than chì #242823.",
+          "surfaces": "Thẻ bảng metrics trắng tinh #ffffff viền 1px #dedfd7; nút clickable trên cùng có màu xanh sage dịu viền đậm nổi bật.",
+          "borders": "1px #dedfd7; bo góc 10px.",
+          "signal": "Xanh lá #346149 cho nút kích hoạt và chỉ số benchmark; hổ phách cho tỷ lệ thoát cần cải thiện."
+        },
+        "copy": {
+          "headline": "01. Phân tích · So sánh hiệu quả video",
+          "subtitle": "So sánh kết quả ở đầu mỗi vòng. Mở rộng vòng để chuyển giữa video tham khảo và video của bạn, rồi xem phân tích AI.",
+          "actions": [
+            {
+              "label": "Video tham khảo",
+              "href": "#winning-hooks-list"
+            },
+            {
+              "label": "Video của bạn",
+              "href": "#our-ads-list"
+            },
+            {
+              "label": "Tiếp tục: Chọn mở đầu",
+              "href": "#hooks"
+            }
+          ]
+        },
+        "constraints": {
+          "font": "Be Vietnam Pro tiếng Việt chuẩn.",
+          "accent": "Một màu xanh lá chủ đạo.",
+          "container": "Danh sách vòng có thể mở rộng độc lập. Bảng so sánh kết quả hai nhóm luôn ở đầu từng vòng, ngoài phần thu gọn. Video và phân tích AI nằm trong phần mở rộng của chính vòng đó. Hai thẻ dùng chung một vùng danh sách video; không hiển thị cả hai danh sách cùng lúc. Giữ nguyên dữ liệu và lựa chọn thẻ khi thu gọn. Không dùng số liệu vòng trước thay cho vòng chưa có dữ liệu."
+        },
+        "negativePrompt": [
+          "Không đặt video hoặc phân tích AI trước bảng so sánh kết quả của vòng.",
+          "Không ẩn bảng so sánh kết quả khi thu gọn vòng.",
+          "Không hiển thị hai danh sách video cùng lúc; dùng hai thẻ chuyển đổi trong mỗi vòng.",
+          "Không trộn video, số liệu hoặc phân tích AI giữa các vòng.",
+          "Không chỉ hiển thị một video tham khảo; giữ danh sách nhiều mẫu."
+        ]
       }
     },
     {
-      "id": "video-creation",
-      "name": "02 · Video creation",
-      "notes": "Three selected hooks become three full-video review cards. Each has Edit in chat and Approve for posting underneath. 30% chat / 70% dashboard. The front end uses labeled storyboard frames until a real rendered video is loaded; it never claims generated assets exist.",
-      "design": {"layout": "split", "visual": "interface", "font": "modern", "colors": {"background": "#f5f4f0", "surface": "#ffffff", "ink": "#242823", "muted": "#6b7168", "accent": "#346149", "line": "#dedfd7"}, "containerWidth": "1280px", "cornerRadius": "10px"},
-      "hero": {"eyebrow": "KHÔNG GIAN THỬ NGHIỆM / VÒNG 01", "topLabel": "lạc hồng.", "navigation": ["Về trò chuyện"], "footerLeft": "Chat 30% / Dashboard 70%", "footerRight": "02 / 04"},
-      "visual": {"imageUrl": "", "imageAlt": "", "caption": "3 hooks · 3 video versions", "index": "02 / 04", "interface": {"label": "V01 · H01", "title": "Da nhạy cảm? Bắt đầu với một bước chăm sóc đơn giản.", "description": "Edit in chat · Approve for posting", "metric": "", "metricLabel": "Khung hình minh họa"}},
-      "wireframe": {"title": "Dashboard wireframe 02 / Video creation · 30% chat / 70% dashboard", "rows": [
-        {"label": "Shared header", "cells": [{"type": "brand", "text": "lạc hồng.", "pixels": 200}, {"type": "text", "text": "Sắc Ngọc Khang / Vòng 01", "pixels": 680}, {"type": "text", "text": "Bản mẫu tương tác", "pixels": 200}, {"type": "link", "text": "Về trò chuyện", "href": "first-onboarding-screen-redesigned.html", "pixels": 200}]},
-        {"label": "Persistent split / chat 30%, dashboard 70%", "cells": [{"type": "text", "text": "Lạc Hồng\nCuộc trò chuyện của bạn\nĐang chỉnh V02 · H02\nGửi chính xác câu mở đầu mới bạn muốn dùng. Thay đổi sẽ bỏ bản dựng và trạng thái duyệt cũ của phiên bản này.\nNhắn cho Lạc Hồng…\nGửi\nHội thoại mẫu, chưa kết nối AI.", "pixels": 384}, {"type": "text", "text": "KHÔNG GIAN THỬ NGHIỆM / VÒNG 01\nMột video. Ba cách mở đầu.\nXem từng phiên bản, chỉnh trong chat hoặc duyệt để đăng.", "pixels": 896}]},
-        {"label": "Workflow / Video creation active", "cells": [{"type": "space", "pixels": 384}, {"type": "link", "text": "01 · Hook suggestion", "href": "#hooks", "pixels": 224}, {"type": "link", "text": "02 · Video creation", "href": "#video", "pixels": 224}, {"type": "link", "text": "03 · Metrics", "href": "#metrics", "pixels": 224}, {"type": "link", "text": "04 · Loop results", "href": "#results", "pixels": 224}]},
-        {"label": "Version summary", "id": "video", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "3 phiên bản của bạn\nĐã duyệt 0/3", "pixels": 896}]},
-        {"label": "Three hook + video cards", "cells": [{"type": "space", "pixels": 384}, {"type": "visual", "text": "V01 · H01 · Nhu cầu\nDa nhạy cảm? Bắt đầu với một bước chăm sóc đơn giản.\nKhung hình minh họa / video 9:16\nChưa có bản dựng", "pixels": 298}, {"type": "visual", "text": "V02 · H02 · Câu hỏi\nBạn chọn serum rau má dựa trên điều gì?\nKhung hình minh họa / video 9:16\nChưa có bản dựng", "pixels": 299}, {"type": "visual", "text": "V04 · H04 · Trải nghiệm\nĐây là cách mình đưa serum rau má vào thói quen hằng ngày.\nKhung hình minh họa / video 9:16\nChưa có bản dựng", "pixels": 299}]},
-        {"label": "Actions inside each card, below its hook + video", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Edit in chat\nApprove for posting\nNạp video bản dựng", "pixels": 298}, {"type": "text", "text": "Edit in chat\nApprove for posting\nNạp video bản dựng", "pixels": 299}, {"type": "text", "text": "Edit in chat\nApprove for posting\nNạp video bản dựng", "pixels": 299}]},
-        {"label": "Media connection notice", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Khung hình minh họa, chưa phải video được tạo. Nạp bản dựng của từng phiên bản để phát và duyệt. AI tạo video và đăng bài chưa được kết nối.", "pixels": 896}]},
-        {"label": "Navigation", "cells": [{"type": "space", "pixels": 384}, {"type": "link", "text": "Thay đổi lựa chọn hook", "href": "#hooks", "pixels": 448}, {"type": "link", "text": "Tiếp theo: Metrics", "href": "#metrics", "pixels": 448}]},
-        {"label": "Footer", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Lạc Hồng / Thử, đo lường, học hỏi.\nChưa kết nối AI & nền tảng đăng video", "pixels": 896}]}
-      ]},
+      "id": "human-curation-hooks",
+      "name": "02. Chọn mở đầu · Xem và chọn mẫu",
+      "notes": "Bước 02: Chọn mở đầu. Hai phần 2A và 2B dùng cùng bố cục thẻ video dạng lưới 2x2, mỗi thẻ có xem trước và nút chọn hoặc bỏ chọn. Phần 2A hiển thị các video tham khảo cùng số liệu hiệu quả của từng video: lượt xem, tỷ lệ xem qua 3 giây và tỷ lệ nhấp. Người dùng chọn mẫu tham khảo để AI điều chỉnh cho sản phẩm. Phần 2B hiển thị 4 đoạn mở đầu dài 3 giây từ tệp thương hiệu; người dùng chọn các đoạn này để dựng video. Lựa chọn tham khảo và lựa chọn dựng video được quản lý riêng.",
+      "design": {
+        "layout": "split",
+        "visual": "interface",
+        "font": "modern",
+        "colors": {
+          "background": "#f5f4f0",
+          "surface": "#ffffff",
+          "ink": "#242823",
+          "muted": "#6b7168",
+          "accent": "#346149",
+          "line": "#dedfd7"
+        },
+        "containerWidth": "1440px",
+        "cornerRadius": "10px"
+      },
+      "hero": {
+        "eyebrow": "02. CHỌN MỞ ĐẦU / XEM VÀ CHỌN MẪU",
+        "topLabel": "lạc hồng.",
+        "navigation": [
+          "Dự án: Sắc Ngọc Khang",
+          "01 Phân tích",
+          "02 Chọn mở đầu (Đang mở)",
+          "03 Dựng video"
+        ],
+        "footerLeft": "Dự án và tệp / Trò chuyện 30% / Không gian làm việc 70%",
+        "footerRight": "Giai đoạn 02 / 04"
+      },
+      "visual": {
+        "imageUrl": "",
+        "imageAlt": "",
+        "caption": "Chọn mẫu mở đầu từ tệp thương hiệu và kết quả phân tích",
+        "index": "03 / 06",
+        "interface": {
+          "label": "02. CHỌN MỞ ĐẦU",
+          "title": "Chọn cách mở đầu cho sản phẩm",
+          "description": "Chọn video tham khảo dựa trên số liệu từng video ở phần 2A, rồi chọn đoạn mở đầu để dựng video ở phần 2B.",
+          "metric": "4",
+          "metricLabel": "Mẫu mở đầu đề xuất"
+        }
+      },
+      "wireframe": {
+        "title": "02. Chọn mở đầu / Hai lưới thẻ video có thể chọn",
+        "interaction": {
+          "referenceHooks": {
+            "sectionId": "relevant-winning-hooks",
+            "layout": "2x2-video-card-grid",
+            "selectionMode": "multiple",
+            "defaultSelectedIds": ["W01", "W02", "W04"],
+            "previewIndependentOfSelection": true,
+            "selectionAction": "Chọn hoặc bỏ chọn mẫu tham khảo để AI điều chỉnh cho sản phẩm. Không tự động thay đổi các mẫu 2B đã chọn để dựng video.",
+            "metricsSource": "Dùng số liệu từng video cùng ID trong bước 01. Phân tích của vòng đang chọn. Các giá trị hiện có trong bản mẫu chưa được xác minh với dữ liệu trực tiếp.",
+            "missingMetrics": "Hiển thị 'Chưa có dữ liệu' nếu thiếu chỉ số; không dùng điểm AI hoặc số dự đoán thay cho kết quả đã đo."
+          },
+          "selectionScopes": "2A chọn mẫu tham khảo; 2B chọn đoạn mở đầu để dựng video. Hai danh sách lựa chọn độc lập.",
+          "accessibility": "Mỗi thẻ có nút phát xem trước và ô chọn có nhãn riêng. Hỗ trợ bàn phím và thể hiện trạng thái chọn bằng chữ, không chỉ bằng màu."
+        },
+        "rows": [
+          {
+            "label": "Header with file tree status",
+            "cells": [
+              {
+                "type": "link",
+                "text": "Dự án và tệp (Thu gọn)",
+                "href": "#file-tree",
+                "pixels": 260
+              },
+              {
+                "type": "brand",
+                "text": "lạc hồng.",
+                "pixels": 180
+              },
+              {
+                "type": "text",
+                "text": "Sắc Ngọc Khang / Vòng 01 · Dựa trên kết quả phân tích",
+                "pixels": 600
+              },
+              {
+                "type": "link",
+                "text": "01 Phân tích",
+                "href": "#analysis",
+                "pixels": 200
+              },
+              {
+                "type": "link",
+                "text": "03 Dựng video",
+                "href": "#video",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Workspace layout / File Tree 260px + Chat 350px + Dashboard 830px",
+            "cells": [
+              {
+                "type": "visual",
+                "text": "Dự án và tệp\n\nSắc Ngọc Khang (Đang mở)\n  Tệp thương hiệu\n    broll-rau-ma.mp4 [Xem tệp]\n    chai-serum.png [Xem tệp]\n    brand-voice.pdf [Xem tệp]\n    [Thêm tệp thương hiệu]\n  Các mẫu mở đầu\n    hook-H01.mp4\n    hook-H02.mp4\n    hook-H04.mp4\n  Dữ liệu thị trường\nMỹ phẩm Cocoon\n\n[Tạo dự án mới]",
+                "pixels": 260
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng\nCùng bạn làm nội dung\nỞ bước phân tích, các video tham khảo dùng cảnh nước, đá và trung bình 2,4 lần cắt cảnh trong 3 giây đầu. Mình đã chọn broll-rau-ma.mp4 và ảnh chai serum để tạo mẫu.\nBên phải có các video tham khảo và 4 mẫu mở đầu dành cho sản phẩm của bạn.\nNhắn cho Lạc Hồng hoặc đính kèm tệp…\n[Đính kèm] [Gửi]",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "02. Chọn mở đầu\nChọn cách mở đầu cho video\nAI dùng tệp thương hiệu và kết quả phân tích để tạo 4 đoạn mở đầu dài 3 giây. Chọn các mẫu bạn muốn dùng ở bước dựng video.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Four stage progress tabs (01 -> 02 -> 03 -> 04)",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "link",
+                "text": "01 · Phân tích",
+                "href": "#analysis",
+                "pixels": 207
+              },
+              {
+                "type": "link",
+                "text": "02 · Chọn mở đầu (Đang mở)",
+                "href": "#hooks",
+                "pixels": 207
+              },
+              {
+                "type": "link",
+                "text": "03 · Dựng video",
+                "href": "#video",
+                "pixels": 208
+              },
+              {
+                "type": "link",
+                "text": "04 · Theo dõi kết quả",
+                "href": "#metrics",
+                "pixels": 208
+              }
+            ]
+          },
+          {
+            "label": "Phần 2A: Relevant winning hooks / Tiêu đề",
+            "id": "relevant-winning-hooks",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "2A. Mẫu mở đầu tham khảo\nXem video và số liệu từng mẫu, rồi chọn các cách mở đầu bạn muốn áp dụng cho sản phẩm.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Phần 2A / Lưới thẻ video, hàng 1",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "visual",
+                "hookId": "W01",
+                "videoSamples": [{ "label": "W01 · Video minh họa", "src": "assets/mock-hook-H01.mp4", "poster": "assets/mock-hook-H01.jpg" }],
+                "selectable": true,
+                "selected": true,
+                "text": "W01 · Hình ảnh và âm thanh gây chú ý\nCận cảnh bẻ lá rau má, nước và đá bắn lên.\nTikTok Ad · Video tham khảo\nLượt xem: 1.800.000\nXem qua 3 giây: 83,4%\nTỷ lệ nhấp (CTR): 7,1%\n[Phát video]\nĐã chọn · [Bỏ chọn]",
+                "pixels": 415
+              },
+              {
+                "type": "visual",
+                "hookId": "W02",
+                "videoSamples": [{ "label": "W02 · Video minh họa", "src": "assets/mock-hook-H02.mp4", "poster": "assets/mock-hook-H02.jpg" }],
+                "selectable": true,
+                "selected": true,
+                "text": "W02 · Nêu vấn đề của người xem\nĐừng vội mua serum nếu da chưa gặp 3 điều này.\nReels · Video tham khảo\nLượt xem: 1.200.000\nXem qua 3 giây: 81,2%\nTỷ lệ nhấp (CTR): 6,5%\n[Phát video]\nĐã chọn · [Bỏ chọn]",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Phần 2A / Lưới thẻ video, hàng 2",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "visual",
+                "hookId": "W03",
+                "videoSamples": [{ "label": "W03 · Video minh họa", "src": "assets/mock-hook-H03.mp4", "poster": "assets/mock-hook-H03.jpg" }],
+                "selectable": true,
+                "selected": false,
+                "text": "W03 · Quy trình chăm sóc 2 bước\nGiới thiệu hai bước chăm sóc da nhạy cảm, mẩn đỏ.\nShorts · Video tham khảo\nLượt xem: 960.000\nXem qua 3 giây: 80,8%\nTỷ lệ nhấp (CTR): 6,9%\n[Phát video]\nChưa chọn · [Chọn mẫu]",
+                "pixels": 415
+              },
+              {
+                "type": "visual",
+                "hookId": "W04",
+                "videoSamples": [{ "label": "W04 · Video minh họa", "src": "assets/mock-hook-H04.mp4", "poster": "assets/mock-hook-H04.jpg" }],
+                "selectable": true,
+                "selected": true,
+                "text": "W04 · So sánh trước và sau\nChia đôi màn hình để so sánh da trước và sau một đêm.\nTikTok Spark · Video tham khảo\nLượt xem: 1.500.000\nXem qua 3 giây: 83,9%\nTỷ lệ nhấp (CTR): 7,8%\n[Phát video]\nĐã chọn · [Bỏ chọn]",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Phần 2A / Mẫu tham khảo đã chọn",
+            "cells": [
+              { "type": "space", "pixels": 260 },
+              { "type": "space", "pixels": 350 },
+              {
+                "type": "text",
+                "text": "Đã chọn 3 mẫu tham khảo: W01, W02 và W04.\nCác mẫu này dùng để gợi ý nội dung cho sản phẩm, chưa phải lựa chọn để dựng video.",
+                "pixels": 490
+              },
+              {
+                "type": "link",
+                "text": "Tạo mở đầu từ mẫu đã chọn",
+                "href": "#hooks",
+                "pixels": 340
+              }
+            ]
+          },
+          {
+            "label": "AI Adaptation Bridge",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Từ các mẫu tham khảo và tệp thương hiệu, AI đã tạo 4 đoạn mở đầu cho sản phẩm của bạn.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Phần 2B: Hook for your product (Lưới 4 video mock 3s)",
+            "id": "hooks",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "visual",
+                "text": "H01 · Vấn đề của người xem (Dựa trên W01)\nDa nhạy cảm bôi gì cũng rát? Xem cách lá rau má làm dịu da ngay sau khi dùng.\nNguồn: broll-rau-ma.mp4 (Cảnh nước bắn)\nVideo mẫu · 3 giây\nĐã chọn",
+                "pixels": 415
+              },
+              {
+                "type": "visual",
+                "text": "H02 · Đặt câu hỏi (Dựa trên W02)\nBạn chọn serum rau má vì quảng cáo hay vì thành phần làm dịu da?\nNguồn: broll-rau-ma.mp4\nVideo mẫu · 3 giây\nĐã chọn",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Hook grid / row 2",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "visual",
+                "text": "H03 · Xem lại cách chăm sóc da (Dựa trên W03)\nDa đang kích ứng có cần thêm kem dưỡng?\nNguồn: broll-rau-ma.mp4\nVideo mẫu · 3 giây\nChưa chọn",
+                "pixels": 415
+              },
+              {
+                "type": "visual",
+                "text": "H04 · Trải nghiệm sử dụng (Dựa trên W04)\nMình đã dùng 3 giọt serum này để hết mẩn đỏ sau một đêm như thế nào.\nNguồn: chai-serum.png\nVideo mẫu · 3 giây\nĐã chọn",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Selection bar & Transition to stage 03",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Đã chọn 3 mẫu mở đầu: H01, H02 và H04. Hệ thống sẽ ghép với tệp thương hiệu để dựng video.",
+                "pixels": 490
+              },
+              {
+                "type": "link",
+                "text": "Tiếp tục: Dựng video",
+                "href": "#video",
+                "pixels": 340
+              }
+            ]
+          },
+          {
+            "label": "Footer",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng / Chọn tệp trong thư mục để xem trước hoặc chỉnh sửa.",
+                "pixels": 830
+              }
+            ]
+          }
+        ]
+      },
       "spec": {
-        "goal": {"what": "Review separate full-video versions with different selected hooks.", "audience": "Creators reviewing videos before posting.", "successCriteria": "Inspect each version, edit its hook through chat, approve individually without publishing."},
-        "format": {"canvas": "30% chat / 70% dashboard; 384px / 896px at 1280px.", "safeMargins": "24–35px panels, 14px card gaps; mobile stacks videos."},
-        "layout": {"grid": "3fr / 7fr split; three equal video cards across when space permits.", "placement": "Chat left; stage tabs, video summary and video cards right. Each card has hook, player, status and its own two actions.", "hierarchy": "Video versions first; per-card edit and approval below. No global-only actions."},
-        "typeSystem": {"display": "Be Vietnam Pro 32px title.", "metadata": "10–12px IDs and actions.", "contrast": "13px chat; legible native video controls."},
-        "colorMaterial": {"foundation": "Warm #f5f4f0 and charcoal #242823.", "surfaces": "White cards, subdued sage and clay storyboard art.", "borders": "1px #dedfd7; 10px corners.", "signal": "Green #346149 for approval and active tab."},
-        "copy": {"headline": "Một video. Ba cách mở đầu.", "subtitle": "Xem từng phiên bản, chỉnh trong chat hoặc duyệt để đăng.", "actions": [{"label": "Edit in chat", "href": "#video"}, {"label": "Approve for posting", "href": "#video"}]},
-        "constraints": {"font": "Keep exact English per-card action labels.", "accent": "One green accent.", "container": "Only selected hooks appear; 3 is the example, not a forced count. Stable version IDs match hook IDs. Edit in chat targets that version and accepts a direct text replacement. Editing invalidates its asset and approval. Only playable real video assets can be approved. Approval is reversible and does not publish; browser-loaded videos and approvals reset on reload."},
-        "negativePrompt": ["No fake generated videos or pretending the same source is three renders.", "No approval for missing media.", "No hidden chat or auto-publishing."]
+        "goal": {
+          "what": "Chọn mẫu tham khảo có số liệu từng video ở phần 2A, rồi chọn đoạn mở đầu dành cho sản phẩm ở phần 2B. Cả hai phần dùng cùng bố cục thẻ video có thể chọn, dạng lưới 2x2.",
+          "audience": "Creators và chủ shop muốn kiểm soát nội dung mở đầu trước khi xuất bản.",
+          "successCriteria": "2A có 4 thẻ video với số lượt xem, tỷ lệ xem qua 3 giây và CTR của từng mẫu từ bước phân tích. Người dùng xem trước, chọn hoặc bỏ chọn nhiều mẫu. 2A và 2B có cùng bố cục nhưng giữ riêng lựa chọn tham khảo và lựa chọn dựng video."
+        },
+        "format": {
+          "canvas": "Độ rộng 1440px: File Tree (260px) + Chat 30% (350px) + Dashboard 70% (830px).",
+          "safeMargins": "Đệm 20–24px mỗi cột; cây thư mục có thể thu gọn linh hoạt."
+        },
+        "layout": {
+          "grid": "Thanh dự án và tệp bên trái, cột trò chuyện, khu vực chính gồm hai lưới thẻ video 2x2 cho phần 2A và 2B. Mỗi thẻ rộng 415px trong khu vực 830px; trên điện thoại xếp thành một cột.",
+          "placement": "Phần 2A ở trên: tiêu đề, lưới 4 thẻ video tham khảo, thanh lựa chọn và nút tạo mở đầu. Phần 2B ở dưới: lưới 4 thẻ mở đầu dành cho sản phẩm và thanh tiếp tục dựng video. Hai phần dùng cùng khung xem trước, kiểu thẻ và vị trí nút chọn; 2A bổ sung số liệu thực hiện của từng video.",
+          "hierarchy": "Bài học từ AI analysis -> Mẫu tham khảo xã hội -> Hook sản phẩm tùy biến."
+        },
+        "typeSystem": {
+          "display": "Be Vietnam Pro 32px tiêu đề, 18px nội dung hook.",
+          "metadata": "10–12px cho nền tảng, ID video, lượt xem, tỷ lệ xem qua 3 giây và CTR ở 2A; tên tệp nguồn và độ dài 3 giây ở 2B.",
+          "contrast": "Chữ rõ nét, tương phản WCAG AA."
+        },
+        "colorMaterial": {
+          "foundation": "Nền ấm #f5f4f0 và chữ than chì #242823.",
+          "surfaces": "Thẻ hook trắng, cây thư mục phân cách bởi đường kẻ #dedfd7.",
+          "borders": "1px #dedfd7; bo góc 10px.",
+          "signal": "Xanh lá #346149 cho hook đã chọn và nút chuyển tiếp."
+        },
+        "copy": {
+          "headline": "02. Chọn cách mở đầu",
+          "subtitle": "Chọn video tham khảo cùng số liệu ở 2A để tạo gợi ý. Chọn đoạn mở đầu dành cho sản phẩm ở 2B để dựng video.",
+          "actions": [
+            {
+              "label": "Thêm tệp thương hiệu",
+              "href": "#file-tree"
+            },
+            {
+              "label": "Tiếp tục: Dựng video",
+              "href": "#video"
+            }
+          ]
+        },
+        "constraints": {
+          "font": "Be Vietnam Pro tiếng Việt chuẩn.",
+          "accent": "Một màu xanh lá chủ đạo.",
+          "container": "Giữ hai phần riêng biệt: 2A là video tham khảo có số liệu từng video; 2B là đoạn mở đầu cho sản phẩm. Cả hai dùng lưới thẻ video 2x2 cùng kiểu chọn nhiều mẫu. Số liệu 2A phải khớp video cùng ID và vòng ở bước 01; bản mẫu hiện dùng các giá trị có sẵn, chưa xác minh trực tiếp. Không gán số liệu video tham khảo cho video sản phẩm chưa đăng."
+        },
+        "negativePrompt": [
+          "Không trình bày 2A thành danh sách văn bản; dùng thẻ video cùng bố cục với 2B.",
+          "Không gộp lựa chọn mẫu tham khảo 2A với lựa chọn dựng video 2B.",
+          "Không dùng số liệu tổng hợp, dự đoán hoặc điểm AI thay cho số liệu từng video tham khảo.",
+          "Không làm đứt liên kết từ 01. AI analysis.",
+          "Không ẩn khung chat và thanh cây thư mục."
+        ]
       }
     },
     {
-      "id": "metrics",
-      "name": "03 · Metrics",
-      "notes": "Explicit mock dataset for a separate four-hook sample loop, available even before the user selects hooks. Platform and measurement-window filters update values. All summaries are view-weighted; no account data is connected. 30% chat / 70% dashboard.",
-      "design": {"layout": "split", "visual": "interface", "font": "modern", "colors": {"background": "#f5f4f0", "surface": "#ffffff", "ink": "#242823", "muted": "#6b7168", "accent": "#346149", "line": "#dedfd7"}, "containerWidth": "1280px", "cornerRadius": "10px"},
-      "hero": {"eyebrow": "KHÔNG GIAN THỬ NGHIỆM / VÒNG 01", "topLabel": "lạc hồng.", "navigation": ["Về trò chuyện"], "footerLeft": "Chat 30% / Dashboard 70%", "footerRight": "03 / 04"},
-      "visual": {"imageUrl": "", "imageAlt": "", "caption": "So sánh các phiên bản mẫu", "index": "03 / 04", "interface": {"label": "MOCK DATA · Tất cả nền tảng · 24 giờ", "title": "Vòng mẫu · 4 hook", "description": "58,5% xem qua 3 giây · 11,7 giây xem TB", "metric": "121.900", "metricLabel": "Lượt xem minh họa"}},
-      "wireframe": {"title": "Dashboard wireframe 03 / Metrics · 30% chat / 70% dashboard", "rows": [
-        {"label": "Shared header", "cells": [{"type": "brand", "text": "lạc hồng.", "pixels": 200}, {"type": "text", "text": "Sắc Ngọc Khang / Vòng 01", "pixels": 680}, {"type": "text", "text": "Bản mẫu tương tác", "pixels": 200}, {"type": "link", "text": "Về trò chuyện", "href": "first-onboarding-screen-redesigned.html", "pixels": 200}]},
-        {"label": "Persistent split / chat 30%, dashboard 70%", "cells": [{"type": "text", "text": "Lạc Hồng\nCuộc trò chuyện của bạn\nLịch sử trò chuyện và câu trả lời của bạn được giữ nguyên.\nNhắn cho Lạc Hồng…\nGửi\nHội thoại mẫu, chưa kết nối AI.", "pixels": 384}, {"type": "text", "text": "KHÔNG GIAN THỬ NGHIỆM / VÒNG 01\nĐọc kết quả từng phiên bản.\nSo sánh lượt xem và tỷ lệ xem qua 3 giây trong cùng khoảng thời gian.", "pixels": 896}]},
-        {"label": "Workflow / Metrics active", "cells": [{"type": "space", "pixels": 384}, {"type": "link", "text": "01 · Hook suggestion", "href": "#hooks", "pixels": 224}, {"type": "link", "text": "02 · Video creation", "href": "#video", "pixels": 224}, {"type": "link", "text": "03 · Metrics", "href": "#metrics", "pixels": 224}, {"type": "link", "text": "04 · Loop results", "href": "#results", "pixels": 224}]},
-        {"label": "Mock dataset notice", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "MOCK DATA\nVòng mẫu · 4 hook · Số liệu giả lập, không lấy từ tài khoản hoặc video của bạn.", "pixels": 896}]},
-        {"label": "Measurement filters", "id": "metrics", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Nền tảng\nTất cả nền tảng / TikTok / YouTube Shorts / Facebook Reels", "pixels": 448}, {"type": "text", "text": "Sau khi đăng\n2 giờ / 6 giờ / 24 giờ / 48 giờ / 72 giờ\nDữ liệu minh họa", "pixels": 448}]},
-        {"label": "Metric summary / all platforms at 24 hours", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Lượt xem\n121.900\nTrong vòng mẫu", "pixels": 298}, {"type": "text", "text": "Xem qua 3 giây\n58,5%\nTrung bình theo lượt xem", "pixels": 299}, {"type": "text", "text": "Thời gian xem TB\n11,7 giây\nTrung bình theo lượt xem", "pixels": 299}]},
-        {"label": "Comparison of sample versions / all platforms at 24 hours", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "So sánh các phiên bản mẫu\nPhiên bản · Lượt xem · Xem qua 3 giây · Chi tiết\nV01 · H01 · 40.000 · 67,8% · Xem chi tiết\nV02 · H02 · 27.500 · 53,1% · Xem chi tiết\nV03 · H03 · 22.400 · 45,8% · Xem chi tiết\nV04 · H04 · 32.000 · 60,4% · Xem chi tiết\nMock data · Bộ lọc thay đổi số liệu giả lập. Tỷ lệ được tính theo lượt xem, không phải trung bình cộng.", "pixels": 896}]},
-        {"label": "Expandable detail / H01 at 24 hours", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "TikTok · 18.200 lượt xem · 72,0% · 14,8 giây\nYouTube Shorts · 12.400 lượt xem · 66,0% · 13,2 giây\nFacebook Reels · 9.400 lượt xem · 62,0% · 12,1 giây\nDữ liệu mock · Không lấy từ tài khoản hoặc video của bạn.", "pixels": 896}]},
-        {"label": "Next action", "cells": [{"type": "space", "pixels": 384}, {"type": "link", "text": "Tiếp theo: Loop results", "href": "#results", "pixels": 896}]},
-        {"label": "Footer", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Lạc Hồng / Thử, đo lường, học hỏi.\nChưa kết nối AI & nền tảng đăng video", "pixels": 896}]}
-      ]},
+      "id": "asset-inspector",
+      "name": "Chi tiết tệp · Xem trước và chỉnh sửa",
+      "notes": "Khi người dùng chọn một tệp trong thư mục, chẳng hạn chai-serum.png hoặc broll-rau-ma.mp4, bảng chi tiết trượt ra từ bên phải và phủ lên không gian làm việc. Bảng cho phép xem ảnh, phát video, đổi tên, thay tệp và chỉnh nhãn. Đóng bảng để tiếp tục công việc.",
+      "design": {
+        "layout": "split",
+        "visual": "interface",
+        "font": "modern",
+        "colors": {
+          "background": "#f5f4f0",
+          "surface": "#ffffff",
+          "ink": "#242823",
+          "muted": "#6b7168",
+          "accent": "#346149",
+          "line": "#dedfd7"
+        },
+        "containerWidth": "1440px",
+        "cornerRadius": "10px"
+      },
+      "hero": {
+        "eyebrow": "CHI TIẾT TỆP / XEM TRƯỚC VÀ CHỈNH SỬA",
+        "topLabel": "lạc hồng.",
+        "navigation": [
+          "Đang xem: chai-serum.png",
+          "Đóng chi tiết tệp",
+          "Về trò chuyện"
+        ],
+        "footerLeft": "Dự án và tệp / Trò chuyện / Không gian làm việc / Chi tiết tệp",
+        "footerRight": "Đang xem chi tiết tệp"
+      },
+      "visual": {
+        "imageUrl": "",
+        "imageAlt": "",
+        "caption": "Bảng chi tiết tệp mở ở bên phải không gian làm việc",
+        "index": "04 / 06",
+        "interface": {
+          "label": "TỆP THƯƠNG HIỆU · XEM ẢNH",
+          "title": "chai-serum.png · 1080x1920 PNG",
+          "description": "Ảnh sản phẩm có nền trong suốt, đang dùng làm hình ảnh chính trong mẫu H01 và H04.",
+          "metric": "2.4 MB",
+          "metricLabel": "Dung lượng tệp"
+        }
+      },
+      "wireframe": {
+        "title": "Interactive Wireframe / Right Hover Asset Inspector on top of Dashboard",
+        "rows": [
+          {
+            "label": "Header with active asset context",
+            "cells": [
+              {
+                "type": "link",
+                "text": "Dự án và tệp",
+                "href": "#file-tree",
+                "pixels": 260
+              },
+              {
+                "type": "brand",
+                "text": "lạc hồng.",
+                "pixels": 180
+              },
+              {
+                "type": "text",
+                "text": "Sắc Ngọc Khang / Tệp thương hiệu / chai-serum.png",
+                "pixels": 560
+              },
+              {
+                "type": "link",
+                "text": "Đóng chi tiết tệp",
+                "href": "#close-inspector",
+                "pixels": 220
+              },
+              {
+                "type": "link",
+                "text": "Về trò chuyện",
+                "href": "first-onboarding-screen-redesigned.html",
+                "pixels": 220
+              }
+            ]
+          },
+          {
+            "label": "Workspace with File Tree, Chat, Dashboard & Right Asset Flyout Overlay",
+            "id": "file-tree",
+            "cells": [
+              {
+                "type": "visual",
+                "text": "Dự án và tệp\n\nSắc Ngọc Khang\n  Tệp thương hiệu\n    broll-rau-ma.mp4\n    chai-serum.png [Đang chọn]\n    brand-voice.pdf\n    [Thêm tệp]\n  Các mẫu mở đầu\n  Dữ liệu thị trường",
+                "pixels": 260
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng\nCùng bạn làm nội dung\nBạn đang xem tệp 'chai-serum.png'.\nẢnh có độ phân giải cao, phù hợp để phóng to trong 3 giây đầu.\nBạn có thể đổi tên hoặc thay bằng ảnh mới trong bảng bên phải.",
+                "pixels": 340
+              },
+              {
+                "type": "text",
+                "text": "02. Chọn mở đầu\nCác mẫu H01, H02, H03 và H04 vẫn ở phía sau bảng chi tiết tệp. Đóng bảng để tiếp tục chọn.",
+                "pixels": 500
+              },
+              {
+                "type": "visual",
+                "text": "Chi tiết tệp [Đóng]\n\nXem trước\n[Ảnh chai serum rau má · Tỷ lệ 9:16]\nĐộ phân giải: 1080 x 1920 px (PNG)\nDung lượng: 2.4 MB · Nền trong suốt\n\nChỉnh sửa tệp\n[Đổi tên: chai-serum-v2.png]\n[Thay bằng tệp mới]\n[Dùng trong kịch bản: H01, H04]\n[Xóa tệp khỏi dự án]\n\nĐang dùng trong 2 video mẫu.",
+                "pixels": 340
+              }
+            ]
+          },
+          {
+            "label": "Asset management action row",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 340
+              },
+              {
+                "type": "text",
+                "text": "Các mẫu mở đầu bạn đã chọn vẫn được giữ nguyên.",
+                "pixels": 500
+              },
+              {
+                "type": "link",
+                "text": "Lưu và đóng",
+                "href": "#close-inspector",
+                "pixels": 340
+              }
+            ]
+          },
+          {
+            "label": "Footer",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 340
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng / Xem và chỉnh sửa tệp ngay trong không gian làm việc.",
+                "pixels": 840
+              }
+            ]
+          }
+        ]
+      },
       "spec": {
-        "goal": {"what": "Metrics stage, not a scheduling screen.", "audience": "Creators comparing video performance.", "successCriteria": "Review comparable metrics, filter platform and window, expand details."},
-        "format": {"canvas": "30% chat / 70% dashboard; 384px / 896px at 1280px.", "safeMargins": "24–35px panels; table can scroll internally on mobile."},
-        "layout": {"grid": "3fr / 7fr split; three summary cells in the dashboard.", "placement": "Chat left; tabs, filters, metrics, comparison table and next action right.", "hierarchy": "Measurement window, summary, variant details."},
-        "typeSystem": {"display": "Be Vietnam Pro 32px title.", "metadata": "10–12px filters and table headers.", "contrast": "Clear labels and tabular missing values."},
-        "colorMaterial": {"foundation": "Warm #f5f4f0 and charcoal #242823.", "surfaces": "White summaries and table.", "borders": "1px #dedfd7; 10px corners.", "signal": "Green #346149 for active controls."},
-        "copy": {"headline": "Đọc kết quả từng phiên bản.", "subtitle": "So sánh lượt xem và tỷ lệ xem qua 3 giây trong cùng khoảng thời gian.", "actions": [{"label": "Xem chi tiết", "href": "#metrics"}, {"label": "Tiếp theo: Loop results", "href": "#results"}]},
-        "constraints": {"font": "Vietnamese-safe sans-serif.", "accent": "One green signal; text-only platform names.", "container": "User-requested mock fixture is explicitly labeled and independent of current hook selections and approvals. Platform and window controls recompute totals, weighted retention and weighted watch time; details use the same source rows. Baseline 24-hour all-platform views: 121900."},
-        "negativePrompt": ["No presenting mock data as live or connected account metrics.", "No inconsistent summary and table totals.", "Do not hide chat."]
+        "goal": {
+          "what": "Panel trượt từ bên phải (Right Hover Flyout) để render xem trước và cho phép điều chỉnh tệp khi nhấp vào cây thư mục.",
+          "audience": "Người dùng muốn xem chi tiết video footage, ảnh sản phẩm hoặc tài liệu và điều chỉnh tệp.",
+          "successCriteria": "Render trực quan tệp trên dashboard, cung cấp đủ công cụ chỉnh sửa (đổi tên, thay thế, xóa) và đóng mở mượt mà."
+        },
+        "format": {
+          "canvas": "Độ rộng 1440px: File Tree (260px) + Chat 30% (340px) + Dashboard nền (500px) + Asset Flyout (340px).",
+          "safeMargins": "Đệm 16 đến 20px trong bảng chi tiết; nút đóng đặt rõ ràng ở góc trên bên phải."
+        },
+        "layout": {
+          "grid": "Thanh cây thư mục trái, cột chat, khu vực dashboard phía dưới và Asset Flyout overlay bên phải.",
+          "placement": "Asset Flyout ghim cạnh phải, trượt ra khi bấm vào tệp trong cây thư mục.",
+          "hierarchy": "Tệp được chọn nổi bật -> Xem trước trực quan -> Công cụ điều chỉnh tệp."
+        },
+        "typeSystem": {
+          "display": "Be Vietnam Pro 20px tiêu đề flyout, 14px tên tệp.",
+          "metadata": "10–12px dung lượng, kích thước pixel, codec định dạng.",
+          "contrast": "Chữ rõ ràng, nút điều chỉnh phân biệt giữa hành động chỉnh sửa và xóa."
+        },
+        "colorMaterial": {
+          "foundation": "Nền ấm #f5f4f0 và than chì #242823.",
+          "surfaces": "Thanh Asset Flyout trắng tinh #ffffff, viền bóng đổ box-shadow 4px 0 24px rgba(0,0,0,0.12).",
+          "borders": "1px #dedfd7; bo góc 10px.",
+          "signal": "Xanh lá #346149 cho lưu thay đổi; đỏ trầm cho xóa tệp."
+        },
+        "copy": {
+          "headline": "Chi tiết tệp · Xem trước và chỉnh sửa",
+          "subtitle": "Chọn tệp trong thư mục để xem ảnh, phát video hoặc chỉnh sửa thông tin.",
+          "actions": [
+            {
+              "label": "Thay bằng tệp mới",
+              "href": "#file-tree"
+            },
+            {
+              "label": "Đóng chi tiết tệp",
+              "href": "#close-inspector"
+            }
+          ]
+        },
+        "constraints": {
+          "font": "Be Vietnam Pro tiếng Việt chuẩn.",
+          "accent": "Một màu xanh lá chủ đạo.",
+          "container": "Hỗ trợ phát video/audio hoặc xem ảnh trong flyout; không gây giật lag cho dashboard nền."
+        },
+        "negativePrompt": [
+          "Không điều hướng người dùng sang trang mới chỉ để xem một bức ảnh hay clip ngắn.",
+          "Không làm mất ngữ cảnh công việc đang dở trên Dashboard.",
+          "Không khóa cứng giao diện khi flyout đang mở."
+        ]
       }
     },
     {
-      "id": "loop-results",
-      "name": "04 · Loop results",
-      "notes": "Explicit mock 72-hour loop results share the same dataset as Metrics. Show H01 as the sample leader, ranked retention bars and example views. Keep actual current-session approvals separate from the mock loop. Notes remain user-authored. 30% chat / 70% dashboard.",
-      "design": {"layout": "split", "visual": "interface", "font": "modern", "colors": {"background": "#f5f4f0", "surface": "#ffffff", "ink": "#242823", "muted": "#6b7168", "accent": "#346149", "line": "#dedfd7"}, "containerWidth": "1280px", "cornerRadius": "10px"},
-      "hero": {"eyebrow": "KHÔNG GIAN THỬ NGHIỆM / VÒNG 01", "topLabel": "lạc hồng.", "navigation": ["Về trò chuyện"], "footerLeft": "Chat 30% / Dashboard 70%", "footerRight": "04 / 04"},
-      "visual": {"imageUrl": "", "imageAlt": "", "caption": "Tổng kết vòng mẫu 01", "index": "04 / 04", "interface": {"label": "MOCK DATA · 72 giờ", "title": "H01 giữ chân tốt nhất trong vòng mẫu.", "description": "67,8% xem qua 3 giây · 72.000 lượt xem", "metric": "01", "metricLabel": "Vòng mẫu · 72 giờ"}},
-      "wireframe": {"title": "Dashboard wireframe 04 / Loop results · 30% chat / 70% dashboard", "rows": [
-        {"label": "Shared header", "cells": [{"type": "brand", "text": "lạc hồng.", "pixels": 200}, {"type": "text", "text": "Sắc Ngọc Khang / Vòng 01", "pixels": 680}, {"type": "text", "text": "Bản mẫu tương tác", "pixels": 200}, {"type": "link", "text": "Về trò chuyện", "href": "first-onboarding-screen-redesigned.html", "pixels": 200}]},
-        {"label": "Persistent split / chat 30%, dashboard 70%", "cells": [{"type": "text", "text": "Lạc Hồng\nCuộc trò chuyện của bạn\nLịch sử trò chuyện và câu trả lời của bạn được giữ nguyên.\nNhắn cho Lạc Hồng…\nGửi\nHội thoại mẫu, chưa kết nối AI.", "pixels": 384}, {"type": "text", "text": "KHÔNG GIAN THỬ NGHIỆM / VÒNG 01\nMột vòng thử. Một điều học được.\nTổng kết các hook và ghi lại hướng thử tiếp theo.", "pixels": 896}]},
-        {"label": "Workflow / Loop results active", "cells": [{"type": "space", "pixels": 384}, {"type": "link", "text": "01 · Hook suggestion", "href": "#hooks", "pixels": 224}, {"type": "link", "text": "02 · Video creation", "href": "#video", "pixels": 224}, {"type": "link", "text": "03 · Metrics", "href": "#metrics", "pixels": 224}, {"type": "link", "text": "04 · Loop results", "href": "#results", "pixels": 224}]},
-        {"label": "Mock dataset notice", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "MOCK DATA\nKết quả vòng mẫu · 72 giờ · Không phải kết quả từ các video bạn vừa chọn hoặc duyệt.", "pixels": 896}]},
-        {"label": "Outcome summary", "id": "results", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "TỔNG KẾT VÒNG MẪU 01\nH01 giữ chân tốt nhất trong vòng mẫu.\n67,8% xem qua 3 giây · 72.000 lượt xem · Tổng hợp 3 nền tảng sau 72 giờ.\n4 phiên bản mẫu · 219.420 lượt xem mẫu · 3 nền tảng", "pixels": 896}]},
-        {"label": "Ranked retention bars", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Xếp hạng hook trong vòng mẫu\nXem qua 3 giây · 72 giờ\n01 · H01 · Nhu cầu · 67,8% · 72.000 lượt xem · 13,7 giây xem TB\n02 · H04 · Trải nghiệm · 60,4% · 57.600 lượt xem · 12,0 giây xem TB\n03 · H02 · Câu hỏi · 53,1% · 49.500 lượt xem · 10,6 giây xem TB\n04 · H03 · Góc nhìn khác · 45,8% · 40.320 lượt xem · 9,2 giây xem TB", "pixels": 896}]},
-        {"label": "Learning and next hypothesis", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Bạn học được gì từ vòng này?\nGhi lại những điều bạn quan sát được.\nNhận xét của bạn…\nLưu ghi chú", "pixels": 448}, {"type": "text", "text": "Vòng tiếp theo, thử điều gì?\nMột thay đổi nhỏ, một điều cần kiểm chứng.\nVí dụ: Mở đầu bằng câu hỏi thay vì lời giới thiệu…\nChuẩn bị vòng tiếp theo", "pixels": 448}]},
-        {"label": "Loop history and separate live-session status", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "LỊCH SỬ VÒNG MẪU\nVòng mẫu 01 · 4 phiên bản · 72 giờ · H01 dẫn đầu · Mock data\nXem chỉ số\nTách biệt với vòng mẫu: 0 đã duyệt trong phiên làm việc hiện tại. Duyệt không tự động đăng video.", "pixels": 896}]},
-        {"label": "After preparing the next draft", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Bản nháp vòng tiếp theo đã lưu. Vòng 01 và ghi chú của bạn được giữ nguyên.", "pixels": 896}]},
-        {"label": "Footer", "cells": [{"type": "space", "pixels": 384}, {"type": "text", "text": "Lạc Hồng / Thử, đo lường, học hỏi.\nChưa kết nối AI & nền tảng đăng video", "pixels": 896}]}
-      ]},
+      "id": "human-curation-video",
+      "name": "03. Dựng video · Xem và duyệt",
+      "notes": "Bước 03: Dựng video. Hiển thị đủ 4 thẻ phiên bản mẫu H01, H02, H03 và H04, kể cả khi phần 2B mới chọn một mẫu. Mỗi thẻ có khung hình minh họa, lời mở đầu, trạng thái bản dựng, chỉnh sửa qua trò chuyện, tải bản dựng và duyệt. Chỉ cho phép duyệt khi bản dựng đã tải và phát được. Không có khu vực video mẫu tách riêng, không tự động đăng video.",
+      "design": {
+        "layout": "split",
+        "visual": "interface",
+        "font": "modern",
+        "colors": {
+          "background": "#f5f4f0",
+          "surface": "#ffffff",
+          "ink": "#242823",
+          "muted": "#6b7168",
+          "accent": "#346149",
+          "line": "#dedfd7"
+        },
+        "containerWidth": "1440px",
+        "cornerRadius": "10px"
+      },
+      "hero": {
+        "eyebrow": "03. DỰNG VIDEO / XEM VÀ DUYỆT",
+        "topLabel": "lạc hồng.",
+        "navigation": [
+          "Dự án: Sắc Ngọc Khang",
+          "02 Chọn mở đầu",
+          "03 Dựng video (Đang mở)",
+          "04 Theo dõi kết quả"
+        ],
+        "footerLeft": "Dự án và tệp / Trò chuyện 30% / Không gian làm việc 70%",
+        "footerRight": "Giai đoạn 03 / 04"
+      },
+      "visual": {
+        "imageUrl": "",
+        "imageAlt": "",
+        "caption": "Xem kịch bản, chỉnh sửa và duyệt đăng",
+        "index": "05 / 06",
+        "interface": {
+          "label": "03. DỰNG VIDEO",
+          "title": "Xem và chỉnh sửa 4 phiên bản mẫu",
+          "description": "Mỗi thẻ hỗ trợ chỉnh sửa, tải bản dựng và duyệt độc lập. Chưa có bản dựng thì chưa thể duyệt.",
+          "metric": "0/4",
+          "metricLabel": "Đã duyệt"
+        }
+      },
+      "wireframe": {
+        "title": "Dashboard Wireframe / Human Curation · 03 Video creation & Duyệt đăng",
+        "rows": [
+          {
+            "label": "Header with file tree status",
+            "cells": [
+              {
+                "type": "link",
+                "text": "Dự án và tệp",
+                "href": "#file-tree",
+                "pixels": 260
+              },
+              {
+                "type": "brand",
+                "text": "lạc hồng.",
+                "pixels": 180
+              },
+              {
+                "type": "text",
+                "text": "Sắc Ngọc Khang / Vòng 01 · 4 phiên bản mẫu",
+                "pixels": 600
+              },
+              {
+                "type": "link",
+                "text": "02 Chọn mở đầu",
+                "href": "#hooks",
+                "pixels": 200
+              },
+              {
+                "type": "link",
+                "text": "04 Theo dõi kết quả",
+                "href": "#metrics",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Workspace layout / File Tree 260px + Chat 350px + Dashboard 830px",
+            "cells": [
+              {
+                "type": "visual",
+                "text": "Dự án và tệp\n\nSắc Ngọc Khang\n  Tệp thương hiệu (3 tệp)\n  Các phiên bản video\n    V01-H01.mp4 [Đã duyệt]\n    V02-H02.mp4 [Đã duyệt]\n    V04-H04.mp4 [Đã duyệt]\n  Dữ liệu hiệu quả video",
+                "pixels": 260
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng\nChỉnh sửa video cùng bạn\nĐang chỉnh V02 · H02\nGửi câu mở đầu mới nếu bạn muốn thay đổi lời thoại.\nNhắn cho Lạc Hồng…\n[Đính kèm] [Gửi]",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "03. Dựng video\nXem và duyệt video\nXem các phiên bản đã dựng từ tệp thương hiệu. Yêu cầu chỉnh sửa trong cuộc trò chuyện hoặc duyệt để đăng lên kênh.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Four stage progress tabs (01 -> 02 -> 03 -> 04)",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "link",
+                "text": "01 · Phân tích",
+                "href": "#analysis",
+                "pixels": 207
+              },
+              {
+                "type": "link",
+                "text": "02 · Chọn mở đầu",
+                "href": "#hooks",
+                "pixels": 207
+              },
+              {
+                "type": "link",
+                "text": "03 · Dựng video (Đang mở)",
+                "href": "#video",
+                "pixels": 208
+              },
+              {
+                "type": "link",
+                "text": "04 · Theo dõi kết quả",
+                "href": "#metrics",
+                "pixels": 208
+              }
+            ]
+          },
+          {
+            "label": "03. Dựng video / Thẻ bản dựng, hàng 1",
+            "id": "video",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "visual",
+                "text": "V01 · H01 · Nhu cầu\nDa nhạy cảm? Bắt đầu với một bước chăm sóc đơn giản.\nKhung hình minh họa · Chưa có bản dựng\n[Edit in chat] [Approve for posting: chưa khả dụng]\n[Nạp video bản dựng]",
+                "pixels": 276
+              },
+              {
+                "type": "visual",
+                "text": "V02 · H02 · Câu hỏi\nBạn chọn serum rau má dựa trên điều gì?\nKhung hình minh họa · Chưa có bản dựng\n[Edit in chat] [Approve for posting: chưa khả dụng]\n[Nạp video bản dựng]",
+                "pixels": 277
+              },
+              {
+                "type": "visual",
+                "text": "V03 · H03 · Góc nhìn khác\nThêm sản phẩm chưa chắc là điều làn da bạn cần.\nKhung hình minh họa · Chưa có bản dựng\n[Edit in chat] [Approve for posting: chưa khả dụng]\n[Nạp video bản dựng]",
+                "pixels": 277
+              }
+            ]
+          },
+          {
+            "label": "03. Dựng video / Thẻ bản dựng, hàng 2",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "visual",
+                "text": "V04 · H04 · Trải nghiệm\nĐây là cách mình đưa serum rau má vào thói quen hằng ngày.\nKhung hình minh họa · Chưa có bản dựng\n[Edit in chat] [Approve for posting: chưa khả dụng]\n[Nạp video bản dựng]",
+                "pixels": 276
+              },
+              {
+                "type": "space",
+                "pixels": 277
+              },
+              {
+                "type": "space",
+                "pixels": 277
+              }
+            ]
+          },
+          {
+            "label": "Handoff to Stage 04 Metrics notice",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Nạp bản dựng để xem và duyệt từng phiên bản\nBốn thẻ mẫu hỗ trợ chỉnh sửa, tải bản dựng và duyệt video. Duyệt không tự động đăng bài. Sau khi đăng và kết nối dữ liệu, xem số liệu ở bước 04. Theo dõi kết quả.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Navigation to Metrics",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "link",
+                "text": "Quay lại chọn mở đầu",
+                "href": "#hooks",
+                "pixels": 415
+              },
+              {
+                "type": "link",
+                "text": "Tiếp tục: Theo dõi kết quả",
+                "href": "#metrics",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Footer",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng / Đã duyệt xong video. Số liệu sẽ được cập nhật tự động sau khi đăng.",
+                "pixels": 830
+              }
+            ]
+          }
+        ]
+      },
       "spec": {
-        "goal": {"what": "Loop summary, learning and next hypothesis.", "audience": "Creators deciding what to test next.", "successCriteria": "Separate actual data, user-authored learning and next hypothesis."},
-        "format": {"canvas": "30% chat / 70% dashboard; 384px / 896px at 1280px.", "safeMargins": "24–35px panels; note cards stack on mobile."},
-        "layout": {"grid": "3fr / 7fr split; outcome banner and two note cards right.", "placement": "Chat left; tabs, outcome, counts, notes and history right.", "hierarchy": "Outcome, learning, next test; never a winner without data."},
-        "typeSystem": {"display": "Be Vietnam Pro 32px title, 25px outcome.", "metadata": "10–12px counts and history.", "contrast": "Readable textareas and restrained section labels."},
-        "colorMaterial": {"foundation": "Warm #f5f4f0 and charcoal #242823.", "surfaces": "Pale sage outcome, white note cards.", "borders": "1px #dedfd7; 10px corners.", "signal": "Green #346149 for actions."},
-        "copy": {"headline": "Một vòng thử. Một điều học được.", "subtitle": "Tổng kết các hook và ghi lại hướng thử tiếp theo.", "actions": [{"label": "Lưu ghi chú", "href": "#results"}, {"label": "Chuẩn bị vòng tiếp theo", "href": "#results"}]},
-        "constraints": {"font": "Vietnamese-safe sans-serif.", "accent": "One green; no trophies.", "container": "User-requested mock results derive from the same dataset as Metrics at 72 hours. H01 leads by view-weighted 3-second retention, not a fabricated confidence score. Current-session approvals are separate. Preserve user notes and next hypothesis in sessionStorage; never seed over their text."},
-        "negativePrompt": ["No presenting mock results as actual posting outcomes.", "No automatic AI diagnosis or confidence claims.", "Do not discard current notes or hide chat."]
+        "goal": {
+          "what": "Xem kịch bản ghép với Brand Assets, chỉnh sửa qua chat và duyệt đăng tải.",
+          "audience": "Người sáng tạo nội dung kiểm duyệt chất lượng trước khi phân phối.",
+          "successCriteria": "Duyệt từng phiên bản độc lập và chuyển giao sang giai đoạn 04. Metrics."
+        },
+        "format": {
+          "canvas": "Độ rộng 1440px: File Tree (260px) + Chat 30% (350px) + Dashboard 70% (830px).",
+          "safeMargins": "Đệm 20–24px mỗi cột; trên mobile các thẻ video xếp chồng dọc."
+        },
+        "layout": {
+          "grid": "Thanh cây thư mục trái ngoài cùng, cột trò chuyện hỗ trợ, bảng làm việc với 4 thẻ video đầy đủ chức năng và thông báo theo dõi kết quả.",
+          "placement": "Header chứa link chuyển chế độ; nút chuyển chế độ ở cuối trang.",
+          "hierarchy": "Xem video -> Duyệt -> Thông báo bàn giao sang 04. Metrics."
+        },
+        "typeSystem": {
+          "display": "Be Vietnam Pro 32px tiêu đề.",
+          "metadata": "10–12px ID video và trạng thái duyệt.",
+          "contrast": "Chữ rõ ràng, dễ phân biệt giữa video đã duyệt và chưa duyệt."
+        },
+        "colorMaterial": {
+          "foundation": "Nền ấm #f5f4f0 và than chì #242823.",
+          "surfaces": "Thẻ video trắng, hộp thông báo chuyển đổi màu be dịu viền hổ phách.",
+          "borders": "1px #dedfd7; bo góc 10px.",
+          "signal": "Xanh lá #346149 cho trạng thái đã duyệt thành công."
+        },
+        "copy": {
+          "headline": "03. Dựng video · Xem và duyệt",
+          "subtitle": "Xem từng video, yêu cầu chỉnh sửa trong cuộc trò chuyện hoặc duyệt để đăng lên kênh.",
+          "actions": [
+            {
+              "label": "Chỉnh sửa qua trò chuyện",
+              "href": "#video"
+            },
+            {
+              "label": "Tiếp tục: Theo dõi kết quả",
+              "href": "#metrics"
+            }
+          ]
+        },
+        "constraints": {
+          "font": "Be Vietnam Pro tiếng Việt.",
+          "accent": "Một màu xanh lá chủ đạo.",
+          "container": "Hiển thị rõ ràng thông báo số liệu không có ngay lập tức; chuyển sang 04. Metrics khi có dữ liệu."
+        },
+        "negativePrompt": [
+          "Không tự động xuất bản khi chưa có sự xác nhận của người dùng.",
+          "Không làm mất liên kết chuyển đổi giữa các giai đoạn.",
+          "Không ẩn khung chat khi duyệt video."
+        ]
+      }
+    },
+    {
+      "id": "ai-loop-metrics",
+      "name": "04. Theo dõi kết quả · Cập nhật số liệu tự động",
+      "notes": "Bước 04: Theo dõi kết quả. Số liệu được cập nhật sau 2, 6, 24, 48 và 72 giờ kể từ khi đăng. Thư mục 'Dữ liệu hiệu quả video' tự động lưu các tệp JSON. Khung trò chuyện 30% hỗ trợ đọc số liệu. Khu vực chính có bộ lọc thời gian và bảng so sánh các đoạn mở đầu. Sau 72 giờ, hệ thống tổng kết số liệu và video để dùng ở bước 01. Phân tích của Vòng 02.",
+      "design": {
+        "layout": "split",
+        "visual": "interface",
+        "font": "modern",
+        "colors": {
+          "background": "#f5f4f0",
+          "surface": "#ffffff",
+          "ink": "#242823",
+          "muted": "#6b7168",
+          "accent": "#346149",
+          "line": "#dedfd7"
+        },
+        "containerWidth": "1440px",
+        "cornerRadius": "10px"
+      },
+      "hero": {
+        "eyebrow": "04. THEO DÕI KẾT QUẢ / CẬP NHẬT TỰ ĐỘNG",
+        "topLabel": "lạc hồng.",
+        "navigation": [
+          "Dự án: Sắc Ngọc Khang",
+          "03 Dựng video",
+          "04 Theo dõi kết quả (Đang mở)",
+          "01 Phân tích (Vòng 02)"
+        ],
+        "footerLeft": "Dự án và tệp / Trò chuyện 30% / Không gian làm việc 70%",
+        "footerRight": "Giai đoạn 04 / 04"
+      },
+      "visual": {
+        "imageUrl": "",
+        "imageAlt": "",
+        "caption": "AI thu thập chỉ số giữ chân & chuẩn bị dữ liệu cho vòng tiếp theo",
+        "index": "06 / 06",
+        "interface": {
+          "label": "04. THEO DÕI KẾT QUẢ",
+          "title": "H01 dẫn đầu với 67,8% xem qua 3 giây",
+          "description": "Đã có đủ số liệu sau 72 giờ để bắt đầu phân tích cho Vòng 02.",
+          "metric": "121.900",
+          "metricLabel": "Tổng lượt xem"
+        }
+      },
+      "wireframe": {
+        "title": "Dashboard Wireframe / 04. Metrics & Telemetry (Đo lường tự động & Chuyển giao vòng mới)",
+        "rows": [
+          {
+            "label": "Header with file tree status",
+            "cells": [
+              {
+                "type": "link",
+                "text": "Dự án và tệp",
+                "href": "#file-tree",
+                "pixels": 260
+              },
+              {
+                "type": "brand",
+                "text": "lạc hồng.",
+                "pixels": 180
+              },
+              {
+                "type": "text",
+                "text": "Sắc Ngọc Khang / Vòng 01 · Dữ liệu mốc 24h/72h đã đồng bộ tự động",
+                "pixels": 600
+              },
+              {
+                "type": "link",
+                "text": "Về trò chuyện",
+                "href": "first-onboarding-screen-redesigned.html",
+                "pixels": 200
+              },
+              {
+                "type": "link",
+                "text": "Phân tích cho Vòng 02",
+                "href": "#analysis",
+                "pixels": 200
+              }
+            ]
+          },
+          {
+            "label": "Workspace layout / File Tree 260px + Chat 350px + Dashboard 830px",
+            "cells": [
+              {
+                "type": "visual",
+                "text": "Dự án và tệp\n\nSắc Ngọc Khang\n  Tệp thương hiệu (3 tệp)\n  Các mẫu mở đầu (3 tệp)\n  Dữ liệu hiệu quả video\n    round-01-24h.json [Xem tệp]\n    round-01-72h-final.json\n    round-01-learning.md\nMỹ phẩm Cocoon",
+                "pixels": 260
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng\nCùng bạn đọc số liệu\nĐang xem kết quả sau 24 giờ đăng.\nH01 có tỷ lệ xem qua 3 giây cao nhất: 67,8%, so với trung bình 58,5%.\nH03 mất nhiều người xem ở giây thứ 2, khi nhịp chuyển cảnh còn chậm.\nSau 72 giờ, hệ thống sẽ dùng số liệu và video H01 để so sánh với các quảng cáo mới ở bước 01. Phân tích của Vòng 02.\nNhắn cho Lạc Hồng…\n[Đính kèm] [Gửi]",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "04. Theo dõi kết quả\nXem hiệu quả sau khi đăng\nHệ thống tự động cập nhật số liệu từ TikTok, Reels và Shorts theo lịch. Sau 72 giờ, kết quả được chuyển sang bước phân tích của vòng tiếp theo.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Four stage progress tabs (01 -> 02 -> 03 -> 04)",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "link",
+                "text": "01 · Phân tích",
+                "href": "#analysis",
+                "pixels": 207
+              },
+              {
+                "type": "link",
+                "text": "02 · Chọn mở đầu",
+                "href": "#hooks",
+                "pixels": 207
+              },
+              {
+                "type": "link",
+                "text": "03 · Dựng video",
+                "href": "#video",
+                "pixels": 208
+              },
+              {
+                "type": "link",
+                "text": "04 · Theo dõi kết quả (Đang mở)",
+                "href": "#metrics",
+                "pixels": 208
+              }
+            ]
+          },
+          {
+            "label": "AI loop automated telemetry banner",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Lịch cập nhật số liệu\nSau 2 giờ: hoàn tất. Sau 6 giờ: hoàn tất. Sau 24 giờ: đang hiển thị.\nSau 48 giờ: còn 23 giờ 40 phút. Sau 72 giờ: tổng kết và chuyển dữ liệu sang bước 01. Phân tích của Vòng 02.\nDữ liệu được đồng bộ tự động qua API.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Measurement filters",
+            "id": "metrics",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Nền tảng đăng tải:\nTất cả nền tảng / TikTok / YouTube Shorts / Facebook Reels",
+                "pixels": 415
+              },
+              {
+                "type": "text",
+                "text": "Mốc thời gian phân phối:\n2 giờ / 6 giờ / [24 giờ - Đang chọn] / 48 giờ / 72 giờ",
+                "pixels": 415
+              }
+            ]
+          },
+          {
+            "label": "Metric summary cards at 24 hours",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Tổng lượt xem\n121.900\nTổng 3 nền tảng",
+                "pixels": 276
+              },
+              {
+                "type": "text",
+                "text": "Xem qua 3 giây\n58,5%\nTrọng số lượt xem",
+                "pixels": 277
+              },
+              {
+                "type": "text",
+                "text": "Thời gian xem trung bình\n11,7 giây\nTính theo lượt xem",
+                "pixels": 277
+              }
+            ]
+          },
+          {
+            "label": "Comparison table across variants at 24 hours",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "So sánh các phiên bản sau 24 giờ\nPhiên bản · Mở đầu · Lượt xem · Xem qua 3 giây · Chi tiết nền tảng\nV01 · H01 Vấn đề của người xem · 40.000 · 67,8% (Cao nhất) · Xem chi tiết\nV02 · H02 Đặt câu hỏi · 27.500 · 53,1% · Xem chi tiết\nV03 · H03 Xem lại cách chăm sóc da · 22.400 · 45,8% · Xem chi tiết\nV04 · H04 Trải nghiệm sử dụng · 32.000 · 60,4% · Xem chi tiết\nTỷ lệ xem qua 3 giây được chuẩn hóa theo số lượt phân phối trên từng nền tảng.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Continuous loop closure banner",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Tổng kết sau 72 giờ\nV01 (H01) có kết quả tốt nhất: 67,8% người xem qua 3 giây, với 72.000 lượt xem.\nHệ thống sẽ lưu số liệu và video vào hồ sơ 'round-01-performance', rồi chuyển sang bước 01. Phân tích của Vòng 02 để so sánh với các quảng cáo mới có hiệu quả cao.",
+                "pixels": 830
+              }
+            ]
+          },
+          {
+            "label": "Next action: loop back to stage 01 for round 2",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Đã thu thập đủ số liệu Vòng 01. Bạn có thể bắt đầu Vòng 02.",
+                "pixels": 430
+              },
+              {
+                "type": "link",
+                "text": "Bắt đầu phân tích cho Vòng 02",
+                "href": "#analysis",
+                "pixels": 400
+              }
+            ]
+          },
+          {
+            "label": "Footer",
+            "cells": [
+              {
+                "type": "space",
+                "pixels": 260
+              },
+              {
+                "type": "space",
+                "pixels": 350
+              },
+              {
+                "type": "text",
+                "text": "Lạc Hồng / Kết quả của vòng này được dùng để chọn cách mở đầu cho vòng tiếp theo.",
+                "pixels": 830
+              }
+            ]
+          }
+        ]
+      },
+      "spec": {
+        "goal": {
+          "what": "Hệ thống tự động thu thập và chuẩn hóa dữ liệu giữ chân người xem theo mốc thời gian, sau đó khép vòng lặp đưa dữ liệu sang 01. AI analysis của vòng tiếp theo.",
+          "audience": "Người làm nội dung theo dõi tiến trình thử nghiệm sau khi video đã xuất bản và chuẩn bị vòng mới.",
+          "successCriteria": "Xem được tiến trình thu thập số liệu tự động, lọc theo nền tảng/thời gian, đối chiếu tỷ lệ giữ chân 3s và kích hoạt vòng 2 dễ dàng."
+        },
+        "format": {
+          "canvas": "Độ rộng 1440px: File Tree (260px) + Chat 30% (350px) + Dashboard 70% (830px).",
+          "safeMargins": "Đệm 20–24px mỗi cột; bảng số liệu cuộn ngang mượt mà."
+        },
+        "layout": {
+          "grid": "Thanh cây thư mục trái ngoài cùng, cột chat phân tích số liệu, bảng điều khiển số liệu tự động.",
+          "placement": "Bộ lọc thời gian và 3 thẻ tóm tắt đặt trước bảng so sánh; banner bàn giao vòng lặp ở cuối bảng.",
+          "hierarchy": "Mốc thời gian -> Tổng quan số liệu -> Bảng so sánh hook chi tiết -> Khép vòng lặp chuyển sang 01. AI analysis."
+        },
+        "typeSystem": {
+          "display": "Be Vietnam Pro 32px tiêu đề.",
+          "metadata": "10–12px nhãn bộ lọc và bảng dữ liệu.",
+          "contrast": "Chữ rõ nét, số liệu nổi bật theo chuẩn hiển thị bảng biểu."
+        },
+        "colorMaterial": {
+          "foundation": "Nền ấm #f5f4f0 và than chì #242823.",
+          "surfaces": "Thẻ số liệu trắng, thanh trạng thái vòng lặp tự động màu sage dịu.",
+          "borders": "1px #dedfd7; bo góc 10px.",
+          "signal": "Xanh lá #346149 cho hook chiến thắng và nút khởi động vòng mới."
+        },
+        "copy": {
+          "headline": "04. Theo dõi kết quả",
+          "subtitle": "Hệ thống cập nhật số liệu theo lịch và chuẩn bị kết quả cho Vòng 02.",
+          "actions": [
+            {
+              "label": "Xem chi tiết",
+              "href": "#metrics"
+            },
+            {
+              "label": "Bắt đầu phân tích cho Vòng 02",
+              "href": "#analysis"
+            }
+          ]
+        },
+        "constraints": {
+          "font": "Be Vietnam Pro chuẩn tiếng Việt.",
+          "accent": "Một màu xanh lá chủ đạo.",
+          "container": "Hiển thị rõ các mốc lịch trình (2h, 6h, 24h, 48h, 72h) và chuyển giao vòng lặp trơn tru."
+        },
+        "negativePrompt": [
+          "Không trình bày dữ liệu như thể có ngay sau khi duyệt video.",
+          "Không làm đứt liên kết khép vòng lặp quay về 01. AI analysis.",
+          "Không che mất cây thư mục dự án."
+        ]
       }
     }
   ]

@@ -341,6 +341,25 @@
           } else {
             block.textContent = cell?.text || (kind === 'image' ? cell?.alt || 'Image' : '');
           }
+          const samples = cell.videoSamples || (kind === 'visual' ? row.videoSamples : []) || [];
+          if (samples.length) {
+            const mediaGrid = addText(block, '', '', 'div');
+            mediaGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px';
+            for (const sample of samples) {
+              const figure = addText(mediaGrid, '', '', 'figure');
+              figure.style.margin = '0';
+              const video = document.createElement('video');
+              video.src = sample.src;
+              video.poster = sample.poster || '';
+              video.controls = true;
+              video.playsInline = true;
+              video.preload = 'none';
+              video.setAttribute('aria-label', sample.label);
+              video.style.cssText = 'width:100%;aspect-ratio:9/16;object-fit:contain;background:#19221b;border-radius:8px';
+              figure.append(video);
+              addText(figure, '', sample.label, 'figcaption');
+            }
+          }
         }
       }
     }
