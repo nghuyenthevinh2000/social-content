@@ -122,6 +122,11 @@ def image_upload_input(dialog):
     return dialog.locator('input[type="file"][accept*="image"]')
 
 
+def video_upload_input(dialog):
+    """Video-accepting file input; normally hidden, so do not filter visibility."""
+    return dialog.locator('input[type="file"][accept*="video"]')
+
+
 def photo_video_button(dialog):
     """Button that exposes the image upload input."""
     return dialog.get_by_role('button', name=re.compile(r'^Photo/video$', re.I))
@@ -142,8 +147,13 @@ def uploaded_image(dialog, filename):
     return dialog.locator(f'img[alt="{filename}"]')
 
 
+def uploaded_video(dialog):
+    """Video preview element the composer renders once a video is attached."""
+    return dialog.locator('video')
+
+
 # Submission / confirmation
-SUCCESS = re.compile(r'^(?:Your post (?:has been shared|was shared|has been published|is now live|is being processed)|Post (?:shared|published))(?:.*)?$', re.I)
+SUCCESS = re.compile(r'^(?:Your (?:post|reel|video) (?:has been shared|was shared|has been published|is now live|is being processed|has been posted)|(?:Post|Reel|Video) (?:shared|published|posted))(?:.*)?$', re.I)
 
 
 def next_button(dialog):
@@ -164,3 +174,68 @@ def submission_dialog(page, submit):
 def post_confirmation(page):
     """Success status/alert candidates; callers check visibility and freshness."""
     return page.get_by_role('status').or_(page.get_by_role('alert')).filter(has_text=SUCCESS)
+
+
+# Multi-group sharing (composer "Post settings"/"Reel settings" step)
+SHARE_TO_GROUPS = re.compile(r'^Share to groups', re.I)
+GROUPS_PICKER_TEXT = re.compile(r'Post in up to\s+(\d+)\s+groups', re.I)
+
+
+def share_to_groups_button(scope):
+    """Control that opens the group picker on the composer's Post settings step."""
+    return scope.get_by_role('button', name=SHARE_TO_GROUPS)
+
+
+def post_settings_dialog(page):
+    """Final composer step (Post settings or Reel settings) hosting group sharing."""
+    return page.get_by_role('dialog').filter(has=share_to_groups_button(page))
+
+
+def groups_picker_dialog(page):
+    """Dialog listing the groups a post can also be shared to."""
+    return page.get_by_role('dialog').filter(has_text=GROUPS_PICKER_TEXT)
+
+
+def groups_done_button(dialog):
+    """Confirms the group selection and returns to Post settings."""
+    return dialog.get_by_role('button', name='Done', exact=True)
+
+
+# Direct messages
+MESSAGE_BUTTON = re.compile(r'^(?:Message|Send message)$', re.I)
+MESSAGE_TEXTBOX = '[role="textbox"][contenteditable="true"]'
+SEND_BUTTON = re.compile(r'^(?:Send|Press Enter to send)$', re.I)
+CANNOT_MESSAGE = re.compile(
+    r"(?:can't|cannot|isn't able to|unable to) (?:be )?(?:message|messaged)|"
+    r"this person isn't available|messaging (?:isn't|is not) available", re.I)
+
+
+def message_button(page):
+    """Profile control that opens the direct-message composer."""
+    return page.get_by_role('button', name=MESSAGE_BUTTON).or_(
+        page.get_by_role('link', name=MESSAGE_BUTTON))
+
+
+def message_dialog(page):
+    """Direct-message dialog, identified by containing a message input."""
+    return page.get_by_role('dialog').filter(has=page.locator(MESSAGE_TEXTBOX))
+
+
+def message_textbox(dialog):
+    """Editable message input inside the direct-message dialog."""
+    return dialog.locator(MESSAGE_TEXTBOX)
+
+
+def send_button(dialog):
+    """Send control for the direct-message dialog."""
+    return dialog.get_by_role('button', name=SEND_BUTTON)
+
+
+def sent_bubble(dialog, text):
+    """Sent message bubble with the exact text, excluding the editable composer."""
+    return dialog.get_by_text(text, exact=True).and_(dialog.locator(NON_EDITABLE))
+
+
+def cannot_message_notice(page):
+    """Notice that this recipient cannot receive a direct message."""
+    return page.get_by_text(CANNOT_MESSAGE)

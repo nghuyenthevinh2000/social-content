@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
-from .models import AgentError, validate_content
+from .models import AgentError, validate_content, validate_video
 from . import dom, selectors
 
 
@@ -110,19 +110,24 @@ def _check_composer(dialog, profile, text, audience):
         raise AgentError('audience_changed', 'Audience changed while preparing the post. Nothing submitted.', True)
 
 
-def _check_attachments(dialog, image=None):
+def _check_attachments(dialog, media=None, kind: str = 'image'):
     """Reject restored or added media not explicitly supplied by this request."""
-    media = selectors.visible(dom.remove_attachment_button(dialog))
+    controls = selectors.visible(dom.remove_attachment_button(dialog))
     files = dom.attachment_inputs(dialog).evaluate_all(
         '(inputs) => inputs.flatMap(el => Array.from(el.files, f => ({name:f.name, size:f.size})))')
-    if image is None:
-        if media.count() or files:
+    if media is None:
+        if controls.count() or files:
             raise AgentError('unexpected_attachment', 'Composer contains an attachment not supplied by this request. Clear it manually.', True)
         return
+    matching_files = (files == [{'name': media.name, 'size': media.stat().st_size}])
+    if kind == 'video':
+        # Facebook reads then clears the file input, so verify via the preview.
+        if controls.count() != 1 or dom.uploaded_video(dialog).count() < 1:
+            raise AgentError('unexpected_attachment', 'Final composer attachments differ from the supplied video. Nothing submitted.', True)
+        return
     photos = selectors.visible(dom.remove_photo_button(dialog))
-    matching_files = (files == [{'name': image.name, 'size': image.stat().st_size}])
-    matching_alt = (dom.uploaded_image(dialog, image.name).count() >= 1)
-    if media.count() != 1 or photos.count() != 1 or not (matching_files or matching_alt):
+    matching_alt = (dom.uploaded_image(dialog, media.name).count() >= 1)
+    if controls.count() != 1 or photos.count() != 1 or not (matching_files or matching_alt):
         raise AgentError('unexpected_attachment', 'Final composer attachments differ from the supplied image. Nothing submitted.', True)
 
 
@@ -130,10 +135,97 @@ def _confirmation(page):
     return selectors.visible(dom.post_confirmation(page))
 
 
-def publish(page, text: str, image: Path | None = None, timeout_ms: int = 15000,
-            page_name: str | None = None, page_id: str | None = None) -> dict:
-    """Publish approved content directly. Never retry a dispatched click."""
+def _groups_limit(picker) -> int:
+    match = dom.GROUPS_PICKER_TEXT.search(picker.inner_text() or '')
+    if not match:
+        raise AgentError('ambiguous_dom', 'Could not read the group-sharing limit.', True)
+    return int(match.group(1))
+
+
+# Facebook re-renders the picker while it loads, so a single atomic pass over
+# the rows avoids per-element waits on rows that vanish between calls.
+_GROUP_ROWS_JS = """(picker) => {
+  const rows = Array.from(picker.querySelectorAll('div[role="button"]'))
+    .filter((row) => row.querySelector('input[aria-checked]'));
+  return rows.map((row) => (((row.innerText || '').trim().split('\\n')[0]) || '').trim());
+}"""
+
+_READ_GROUP_JS = """(picker, name) => {
+  const row = Array.from(picker.querySelectorAll('div[role="button"]'))
+    .filter((r) => r.querySelector('input[aria-checked]'))
+    .find((r) => ((((r.innerText || '').trim().split('\\n')[0]) || '').trim()) === name);
+  return row ? row.querySelector('input[aria-checked]').getAttribute('aria-checked') : null;
+}"""
+
+_CLICK_GROUP_JS = """(picker, name) => {
+  const row = Array.from(picker.querySelectorAll('div[role="button"]'))
+    .filter((r) => r.querySelector('input[aria-checked]'))
+    .find((r) => ((((r.innerText || '').trim().split('\\n')[0]) || '').trim()) === name);
+  if (!row) return null;
+  const box = row.querySelector('input[aria-checked]');
+  if (box.getAttribute('aria-checked') !== 'true') {
+    const fire = (type, pointer) => row.dispatchEvent(
+      pointer ? new PointerEvent(type, {bubbles: true, cancelable: true, view: window, pointerId: 1})
+              : new MouseEvent(type, {bubbles: true, cancelable: true, view: window}));
+    fire('pointerdown', true); fire('mousedown', false);
+    fire('pointerup', true); fire('mouseup', false); fire('click', false);
+  }
+  return box.getAttribute('aria-checked');
+}"""
+
+
+def _share_to_groups(page, groups, timeout_ms: int = 15000):
+    """Select the named groups on the composer's final step, then confirm.
+
+    Group rows are matched by their exact first line, so a duplicated display
+    name stops the post rather than selecting the wrong group.
+    """
+    settings = selectors.visible(dom.post_settings_dialog(page))
+    try:
+        settings.first.wait_for(state='visible', timeout=timeout_ms)
+    except PlaywrightTimeout:
+        raise AgentError('groups_unsupported',
+                         'This composer exposed no group-sharing step. Nothing submitted.', True)
+    dialog = selectors.unique(settings, 'Post settings dialog')
+    share = selectors.unique(selectors.visible(dom.share_to_groups_button(dialog)), 'Share to groups button')
+    share.click(timeout=timeout_ms)
+    picker = selectors.unique(selectors.visible(dom.groups_picker_dialog(page)), 'Share to groups picker')
+    limit = _groups_limit(picker)
+    if len(groups) > limit:
+        raise AgentError('too_many_groups',
+                         f'Facebook allows up to {limit} groups for this post; {len(groups)} requested. Nothing submitted.', True)
+    available = picker.evaluate(_GROUP_ROWS_JS)
+    for name in groups:
+        matches = sum(1 for line in available if line == name)
+        if matches == 0:
+            raise AgentError('group_not_found', f'Group not found in the picker: {name}. Nothing submitted.', True)
+        if matches > 1:
+            raise AgentError('ambiguous_dom', f'Multiple groups are named "{name}"; pick a unique group. Nothing submitted.', True)
+        picker.evaluate(_CLICK_GROUP_JS, name)
+        deadline = time.monotonic() + timeout_ms / 1000
+        while picker.evaluate(_READ_GROUP_JS, name) != 'true':
+            if time.monotonic() > deadline:
+                raise AgentError('group_not_selected', f'Could not select group: {name}. Nothing submitted.', True)
+            page.wait_for_timeout(150)
+    done = selectors.unique(selectors.visible(dom.groups_done_button(picker)), 'Done button')
+    done.click(timeout=timeout_ms)
+
+
+def publish(page, text: str, image: Path | None = None, video: Path | None = None,
+            timeout_ms: int = 15000, page_name: str | None = None,
+            page_id: str | None = None, groups: list[str] | None = None) -> dict:
+    """Publish approved content directly. Never retry a dispatched click.
+
+    At most one of `image` or `video` may be supplied. When `groups` is given,
+    the final composer step (Post settings or Reel settings) is used to also
+    share the post to those exact groups before the single Post click.
+    """
+    if image is not None and video is not None:
+        raise AgentError('invalid_arguments', 'Provide either an image or a video, not both.')
     text, image = validate_content(text, image)
+    video = validate_video(video)
+    media = video or image
+    kind = 'video' if video else 'image'
     profile = inspect_profile(page, timeout_ms, page_name=page_name, page_id=page_id)
     try:
         triggers = dom.composer_trigger(page)
@@ -153,7 +245,23 @@ def publish(page, text: str, image: Path | None = None, timeout_ms: int = 15000,
         audience = _audience(dialog)
         editor = selectors.unique(dom.post_textbox(dialog), 'post textbox')
         editor.fill(text, timeout=timeout_ms)
-        if image:
+        if video:
+            upload = dom.video_upload_input(dialog)
+            if upload.count() == 0:
+                photo = selectors.unique(dom.photo_video_button(dialog), 'Photo/video button')
+                photo.click(timeout=timeout_ms)
+                upload = dom.video_upload_input(dialog)
+            if upload.count() != 1:
+                raise AgentError('ambiguous_dom', 'Expected one video upload input in the composer.', True)
+            upload.set_input_files(str(video), timeout=timeout_ms)
+            # Facebook uploads and processes the video asynchronously, and it
+            # clears the file input after reading it, so verify via the preview.
+            try:
+                selectors.visible(dom.uploaded_video(dialog)).first.wait_for(state='visible', timeout=timeout_ms)
+            except PlaywrightTimeout:
+                pass
+            selectors.unique(selectors.visible(dom.remove_attachment_button(dialog)), 'video attachment preview')
+        elif image:
             upload = dom.image_upload_input(dialog)
             # File inputs are commonly hidden; uniqueness still matters.
             if upload.count() == 0:
@@ -178,18 +286,27 @@ def publish(page, text: str, image: Path | None = None, timeout_ms: int = 15000,
             if not (matching_files or matching_alt):
                 raise AgentError('content_changed', 'Image selection differs from the supplied file.', True)
         _check_composer(dialog, profile, text, audience)
-        _check_attachments(dialog, image)
-        next_btn = selectors.visible(dom.next_button(dialog))
-        post_btn = selectors.visible(dom.post_button(dialog))
-        if next_btn.count() == 1 and post_btn.count() == 0:
-            next_btn.first.click(timeout=timeout_ms)
-            post_button_locator = dom.post_button(page)
-            selectors.visible(post_button_locator).first.wait_for(state='visible', timeout=timeout_ms)
-            submit = selectors.unique(post_button_locator, 'Post button')
-            active_dialog = selectors.visible(dom.submission_dialog(page, submit)).first
-        else:
-            submit = selectors.unique(dom.post_button(dialog), 'Post button')
-            active_dialog = dialog
+        _check_attachments(dialog, media, kind)
+        # Facebook may insert extra wizard steps (e.g. Create post -> Edit reel
+        # -> Reel settings). Click any visible Next until the Post button shows.
+        step_deadline = time.monotonic() + timeout_ms / 1000
+        while True:
+            posts = selectors.visible(dom.post_button(page))
+            if posts.count():
+                submit = selectors.unique(posts, 'Post button')
+                break
+            nxt = selectors.visible(dom.next_button(page))
+            if nxt.count() == 1:
+                nxt.first.click(timeout=timeout_ms)
+                page.wait_for_timeout(300)
+                continue
+            if time.monotonic() > step_deadline:
+                raise AgentError('dom_error', 'Post button did not appear after the composer steps.', True)
+            page.wait_for_timeout(300)
+        # Group sharing lives on the final step (Post settings or Reel settings).
+        if groups:
+            _share_to_groups(page, groups, timeout_ms=timeout_ms)
+        active_dialog = selectors.visible(dom.submission_dialog(page, submit)).first
         deadline = time.monotonic() + timeout_ms / 1000
         # Playwright 1.50 misroutes Locator.is_enabled to is_editable.
         while submit.is_disabled():
@@ -205,7 +322,10 @@ def publish(page, text: str, image: Path | None = None, timeout_ms: int = 15000,
         selectors.check_block(page)
         raise AgentError('dom_error', f'Composer preparation failed before submission: {exc}', True) from exc
 
-    result = {'status': 'uncertain', 'profile': profile, 'audience': audience, 'image': str(image) if image else None,
+    result = {'status': 'uncertain', 'profile': profile, 'audience': audience,
+              'image': str(image) if image else None,
+              'video': str(video) if video else None,
+              'groups': list(groups) if groups else [],
               'human_action_required': True, 'message': 'Check the open Facebook tab before attempting this post again.'}
     # From this point forward every failure is uncertain, including click timeouts.
     try:
