@@ -58,9 +58,15 @@ def profile_edit_control(page):
 
 
 def page_management_control(page):
-    """Page-only management controls; their presence rejects a personal profile."""
+    """Page-only management controls."""
     return page.get_by_role('button', name=PAGE_MANAGEMENT).or_(
         page.get_by_role('link', name=PAGE_MANAGEMENT))
+
+
+def switch_into_page_control(page):
+    """A Page viewed without its posting identity being active."""
+    return page.get_by_role('button', name='Switch into Page', exact=True).or_(
+        page.get_by_role('link', name='Switch into Page', exact=True))
 
 
 # Composer / identity / audience / text

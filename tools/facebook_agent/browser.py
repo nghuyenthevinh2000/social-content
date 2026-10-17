@@ -25,11 +25,12 @@ class Browser(CDPBrowser):
     def page(self):
         return self._single_page
 
-    def check_authenticated(self) -> dict:
-        """Verify that an account is already logged in with a personal profile.
+    def check_authenticated(self, page_name: str | None = None, page_id: str | None = None) -> dict:
+        """Verify an editable personal profile or an explicitly named active Page.
 
         Navigates through /me, validating that the user is authenticated and has
-        an active, editable personal profile (not a Page, Group, or login screen).
+        an active, editable identity. Page mode requires page_name; Groups and
+        login screens are rejected. No account switching is performed.
 
         Returns:
             dict with profile 'name' and 'url'.
@@ -40,7 +41,7 @@ class Browser(CDPBrowser):
             AgentError('account_restricted'): If the account is restricted.
             AgentError('not_personal_profile'): If logged into a Page or Group.
         """
-        return inspect_profile(self.page, self.timeout_ms)
+        return inspect_profile(self.page, self.timeout_ms, page_name=page_name, page_id=page_id)
 
     def is_authenticated(self) -> bool:
         """Check if an account is already logged into Facebook without raising on failure."""
@@ -50,9 +51,9 @@ class Browser(CDPBrowser):
         except AgentError:
             return False
 
-    def doctor(self) -> dict:
-        """Check CDP connectivity, authentication, and personal profile readiness."""
-        profile = self.check_authenticated()
+    def doctor(self, page_name: str | None = None, page_id: str | None = None) -> dict:
+        """Check connectivity and readiness of a personal profile or explicit Page."""
+        profile = self.check_authenticated(page_name=page_name, page_id=page_id)
         return {
             'connected': True,
             'authenticated': True,

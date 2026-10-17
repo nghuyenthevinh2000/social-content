@@ -1,6 +1,6 @@
 ---
 name: facebook_agent
-summary: Direct DOM publishing of approved text and an optional image to a personal Facebook profile, with exact content checks and restored attachment rejection, using the shared Chrome Twitter profile.
+summary: Direct DOM publishing to a personal Facebook profile or explicitly named active Fanpage, with exact content checks and restored attachment rejection.
 tags: [facebook, playwright, cdp, publishing]
 submodules:
   tests/: Offline DOM fixture, validation, CLI, and browser lifecycle tests.
@@ -14,7 +14,7 @@ submodules:
   cli.py: Doctor and direct post commands with JSON output.
 ---
 
-# Facebook personal-profile agent
+# Facebook profile and Fanpage agent
 
 Design: [`2026-10-02-facebook-agent-design.md`](../../../../docs/superpowers/specs/2026-10-02-facebook-agent-design.md).
 Implementation plan: [`2026-10-02-facebook-agent.md`](../../../../docs/superpowers/plans/2026-10-02-facebook-agent.md).
@@ -58,14 +58,38 @@ uv run python -m tools.facebook_agent --cdp http://127.0.0.1:9222 \
 
 Text is passed unchanged; links can appear in the text. For multiline text in
 bash/zsh, use `--text $'First line\nSecond line'`. Nonempty text is required;
-image-only posts, multiple images, videos, scheduling, Pages, and Groups are not
+image-only posts, multiple images, videos, scheduling, and Groups are not
 supported. Image validation checks PNG/JPEG/GIF/WebP file signatures; Facebook
 still decides whether the actual file can be uploaded.
+
+### Fanpage publishing (explicit opt-in)
+
+Manually switch into the intended Page in the shared Chrome browser first.
+Supply its exact displayed name to both commands:
+
+```bash
+uv run python -m tools.facebook_agent doctor --page-name "Your Page Name"
+uv run python -m tools.facebook_agent post --page-name "Your Page Name" \
+  --text "Approved caption" --image "/absolute/path/photo.png"
+```
+
+Alternatively, use `--page-id 123` for a
+`profile.php?id=123` Page: the active `/me` URL must contain that exact ID.
+A vanity URL redirect is rejected in ID mode; use the verified exact name instead.
+Without either Page option, Pages remain rejected. Page-name mode checks editable-owner
+and management controls, the exact heading, and the composer author before
+posting. It rejects a "Switch into Page" prompt rather than switching accounts.
+Audience, exact text, image checks, and single-click/uncertain-result behavior
+are unchanged. Missing or ambiguous controls stop publication; this supports
+the regular Create post composer, not Meta Business Suite or paid campaigns.
+Offline fixtures cover Page mode; live Facebook UI compatibility still needs
+a read-only `doctor` check and a user-approved post.
 
 ## Publishing behavior
 
 1. Open a new visible tab and navigate through Facebook `/me`.
-2. Verify own-profile Edit profile controls and name; reject Page-management UI.
+2. Verify own-profile Edit profile controls and name; reject Page-management UI
+   unless `--page-name` explicitly selects the exact active Page.
 3. Open Create post, check posting identity and read the existing audience.
    Reject restored attachments rather than merging them with this request.
 4. Fill the exact text; attach the optional image and wait for its removal control

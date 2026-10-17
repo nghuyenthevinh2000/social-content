@@ -1,4 +1,4 @@
-"""Personal-profile navigation, composer validation, and one-click publishing."""
+"""Profile/Page navigation, composer validation, and one-click publishing."""
 
 import time
 from pathlib import Path
@@ -10,8 +10,14 @@ from .models import AgentError, validate_content
 from . import dom, selectors
 
 
-def inspect_profile(page, timeout_ms: int = 30000) -> dict:
-    """Navigate through /me, verifying an editable personal profile."""
+def inspect_profile(page, timeout_ms: int = 30000, page_name: str | None = None,
+                    page_id: str | None = None) -> dict:
+    """Inspect /me; Page mode requires the exact expected, already-active Page."""
+    if page_name is not None and not page_name.strip():
+        raise AgentError('invalid_arguments', 'page-name must not be blank.')
+    if page_id is not None and (not page_id.isascii() or not page_id.isdecimal()):
+        raise AgentError('invalid_arguments', 'page-id must contain ASCII digits only.')
+    page_mode = page_name is not None or page_id is not None
     try:
         page.goto('https://www.facebook.com/me', wait_until='domcontentloaded', timeout=timeout_ms)
         selectors.check_block(page)
@@ -22,15 +28,36 @@ def inspect_profile(page, timeout_ms: int = 30000) -> dict:
             selectors.visible(edit).first.wait_for(state='visible', timeout=timeout_ms)
         except PlaywrightTimeout:
             selectors.check_block(page)
+            if page_mode:
+                raise AgentError('not_active_page', 'Editable Page controls were not found. Switch into the intended Page manually.', True)
             raise AgentError('not_personal_profile', 'Own-profile Edit profile control was not found. Pages and Groups are unsupported.', True)
         management = dom.page_management_control(page)
-        if selectors.visible(management).count():
+        if page_mode:
+            if (not selectors.visible(management).count()
+                    or selectors.visible(dom.switch_into_page_control(page)).count()):
+                raise AgentError('not_active_page', 'Switch into the intended Page manually before continuing.', True)
+        elif selectors.visible(management).count():
             raise AgentError('not_personal_profile', 'Page management controls detected; only personal profiles are supported.', True)
         parsed = urlparse(page.url)
         path = parsed.path.strip('/')
+        if page_id is not None and (path != 'profile.php' or parse_qs(parsed.query).get('id') != [page_id]):
+            raise AgentError('page_identity_mismatch', f'Active /me URL does not match Page ID {page_id}: {page.url}. Switch into the intended Page manually.', True)
         if not path or '/' in path or path in ('me', 'home.php', 'groups', 'pages') or (
                 path == 'profile.php' and not parse_qs(parsed.query).get('id')):
             raise AgentError('not_personal_profile', 'Could not identify a canonical personal-profile URL.', True)
+        if page_name is not None:
+            heading = selectors.unique(page.get_by_role('heading', name=page_name, exact=True), 'expected Page heading')
+            return {'name': heading.inner_text().strip(), 'url': page.url, 'type': 'page'}
+        if page_id is not None:
+            candidates = dom.profile_primary_heading(page).filter(has_not_text=dom.PAGE_MANAGEMENT)
+            if selectors.visible(candidates).count() != 1:
+                headings = selectors.visible(page.locator(dom.PROFILE_HEADINGS)).all_text_contents()
+                raise AgentError('ambiguous_dom', f'Cannot determine Page author safely. Visible headings: {headings}. Supply --page-name with the exact Page name.', True)
+            heading = selectors.unique(candidates, 'Page heading')
+            name = heading.inner_text().strip()
+            if not name:
+                raise AgentError('ambiguous_dom', 'Page name is empty.', True)
+            return {'name': name, 'url': page.url, 'type': 'page'}
         named_heading = selectors.visible(dom.profile_name(page, path)).first
         if not named_heading.count():
             h1s = selectors.visible(dom.profile_primary_heading(page))
@@ -98,10 +125,11 @@ def _confirmation(page):
     return selectors.visible(dom.post_confirmation(page))
 
 
-def publish(page, text: str, image: Path | None = None, timeout_ms: int = 15000) -> dict:
+def publish(page, text: str, image: Path | None = None, timeout_ms: int = 15000,
+            page_name: str | None = None, page_id: str | None = None) -> dict:
     """Publish approved content directly. Never retry a dispatched click."""
     text, image = validate_content(text, image)
-    profile = inspect_profile(page, timeout_ms)
+    profile = inspect_profile(page, timeout_ms, page_name=page_name, page_id=page_id)
     try:
         trigger = selectors.unique(dom.composer_trigger(page), 'profile composer trigger')
         trigger.click(timeout=timeout_ms)

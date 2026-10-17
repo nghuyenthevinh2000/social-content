@@ -32,15 +32,19 @@ class JsonArgumentParser(argparse.ArgumentParser):
 
 def build_parser():
     doctor_timeout = get_default_doctor_timeout_ms()
-    parser = JsonArgumentParser(prog='facebook_agent', description='Publish approved content to your Facebook personal profile through visible Chrome.')
+    parser = JsonArgumentParser(prog='facebook_agent', description='Publish approved content to your Facebook profile or explicitly named active Page.')
     parser.add_argument('--cdp', default='http://127.0.0.1:9222', help='Existing Chrome CDP endpoint')
     parser.add_argument('--timeout-ms', type=int, default=None, help=f'Timeout per DOM stage (default: {doctor_timeout} for doctor, 15000 for post)')
     commands = parser.add_subparsers(dest='command', required=True)
     doctor = commands.add_parser('doctor', help='Check connection, login, and personal-profile identity without posting')
     doctor.add_argument('--timeout-ms', type=int, default=argparse.SUPPRESS, help=f'Timeout per DOM stage (default: {doctor_timeout})')
+    doctor.add_argument('--page-name', help='Exact name of the already-active Fanpage (default: personal profile only)')
+    doctor.add_argument('--page-id', help='Expected active Page ID from its profile.php?id= URL')
     post = commands.add_parser('post', help='Publish supplied approved content directly, without prompting')
     post.add_argument('--text', required=True, help='Exact approved post text')
     post.add_argument('--image', help='Optional local PNG, JPEG, GIF, or WebP image')
+    post.add_argument('--page-name', help='Exact name of the already-active Fanpage (default: personal profile only)')
+    post.add_argument('--page-id', help='Expected active Page ID from its profile.php?id= URL')
     post.add_argument('--timeout-ms', type=int, default=argparse.SUPPRESS, help='Timeout per DOM stage (default: 15000)')
     return parser
 
@@ -53,15 +57,20 @@ def main(argv=None) -> int:
             timeout_ms = get_default_doctor_timeout_ms() if args.command == 'doctor' else 15000
         if timeout_ms <= 0:
             raise AgentError('invalid_arguments', 'timeout-ms must be positive.')
+        if args.page_name is not None and not args.page_name.strip():
+            raise AgentError('invalid_arguments', 'page-name must not be blank.')
+        if args.page_id is not None and (not args.page_id.isascii() or not args.page_id.isdecimal()):
+            raise AgentError('invalid_arguments', 'page-id must contain ASCII digits only.')
         if args.command == 'post':
             text, image = validate_content(args.text, args.image)
         with Browser(endpoint=args.cdp, timeout_ms=timeout_ms) as browser:
             if args.command == 'doctor':
-                data = browser.doctor()
+                data = browser.doctor(page_name=args.page_name, page_id=args.page_id)
             else:
                 # Keep the visible tab for both successful posts and manual recovery.
                 browser.keep_page = True
-                data = publish(browser.page, text, image=image, timeout_ms=timeout_ms)
+                data = publish(browser.page, text, image=image, timeout_ms=timeout_ms,
+                               page_name=args.page_name, page_id=args.page_id)
         uncertain = data.get('status') == 'uncertain'
         print(json.dumps({'ok': not uncertain, 'data': data}, ensure_ascii=False, indent=2))
         return 4 if uncertain else 0

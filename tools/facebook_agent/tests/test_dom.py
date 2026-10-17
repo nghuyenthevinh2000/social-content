@@ -105,6 +105,65 @@ class DomTests(unittest.TestCase):
             publish(self.page, 'Hello', timeout_ms=200)
         self.assertEqual(self.page.evaluate('window.clicks'), 0)
 
+    def test_explicit_active_page_can_publish(self):
+        self.html = FIXTURE.replace('<h1>', '<button>Manage Page</button><h1>')
+        result = publish(self.page, 'Page post', timeout_ms=500, page_name='Alice Example')
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertEqual(result['profile']['type'], 'page')
+        self.assertEqual(self.page.evaluate('window.clicks'), 1)
+
+    def test_page_requires_matching_name_and_active_page_controls(self):
+        for control, name in (('Manage Page', 'Wrong Page'),
+                              ('Switch into Page', 'Alice Example'),
+                              ('', 'Alice Example')):
+            with self.subTest(control=control, name=name):
+                self.html = FIXTURE.replace('<h1>', f'<button>{control}</button><h1>')
+                with self.assertRaises(AgentError):
+                    publish(self.page, 'Page post', timeout_ms=200, page_name=name)
+                self.assertEqual(self.page.evaluate('window.clicks'), 0)
+
+    def test_page_composer_identity_must_match_even_if_text_names_page(self):
+        self.html = FIXTURE.replace('<h1>', '<button>Manage Page</button><h1>').replace(
+            '<h3>Alice Example</h3>', '<h3>Wrong Page</h3>')
+        with self.assertRaises(AgentError):
+            publish(self.page, 'Alice Example', timeout_ms=200, page_name='Alice Example')
+        self.assertEqual(self.page.evaluate('window.clicks'), 0)
+
+    def test_page_doctor_does_not_open_composer(self):
+        self.html = FIXTURE.replace('<h1>', '<button>Manage Page</button><h1>')
+        result = inspect_profile(self.page, timeout_ms=500, page_name='Alice Example')
+        self.assertEqual(result['type'], 'page')
+        self.assertFalse(self.page.get_by_role('dialog').is_visible())
+
+    def test_page_id_must_match_active_me_url(self):
+        self.html = FIXTURE.replace('<h1>', '<button>Manage Page</button><h1>')
+        self.page.unroute('**/*')
+        self.page.route('**/*', lambda route: route.fulfill(
+            body=self.html + "<script>history.replaceState(null, '', '/profile.php?id=123')</script>",
+            content_type='text/html'))
+        result = publish(self.page, 'Page post', timeout_ms=500, page_id='123')
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertEqual(result['profile']['name'], 'Alice Example')
+        with self.assertRaises(AgentError) as error:
+            publish(self.page, 'Wrong page', timeout_ms=200, page_id='456')
+        self.assertEqual(error.exception.code, 'page_identity_mismatch')
+        self.assertEqual(self.page.evaluate('window.clicks'), 0)
+
+    def test_page_id_does_not_mistake_management_heading_for_author(self):
+        self.html = FIXTURE.replace('<h1>Alice Example</h1>',
+                                    '<h1>Manage Page</h1><h2>Alice Example</h2>')
+        self.html = self.html.replace('<body>', '<body><button>Manage Page</button>')
+        self.page.unroute('**/*')
+        self.page.route('**/*', lambda route: route.fulfill(
+            body=self.html + "<script>history.replaceState(null, '', '/profile.php?id=123')</script>",
+            content_type='text/html'))
+        with self.assertRaises(AgentError) as error:
+            publish(self.page, 'Page post', timeout_ms=200, page_id='123')
+        self.assertEqual(error.exception.code, 'ambiguous_dom')
+        self.assertEqual(self.page.evaluate('window.clicks'), 0)
+        result = inspect_profile(self.page, timeout_ms=200, page_id='123', page_name='Alice Example')
+        self.assertEqual(result['name'], 'Alice Example')
+
     def test_ambiguous_post_buttons_stop_before_click(self):
         self.html = FIXTURE.replace('<button id="post"', '<button>Post</button><button id="post"')
         with self.assertRaises(AgentError):

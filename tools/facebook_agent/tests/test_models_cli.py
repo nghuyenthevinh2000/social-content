@@ -61,6 +61,24 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertFalse(result['ok'])
 
+    def test_blank_page_name_does_not_connect(self):
+        with patch('tools.facebook_agent.cli.Browser') as browser:
+            code, _ = self.invoke(['doctor', '--page-name', ' '])
+        self.assertEqual(code, 2)
+        browser.assert_not_called()
+
+    def test_page_name_forwarded_to_doctor_and_publish(self):
+        with patch('tools.facebook_agent.cli.Browser') as browser:
+            browser.return_value.__enter__.return_value.doctor.return_value = {'authenticated': True}
+            code, _ = self.invoke(['doctor', '--page-name', 'Test Page'])
+            self.assertEqual(code, 0)
+            browser.return_value.__enter__.return_value.doctor.assert_called_once_with(page_name='Test Page', page_id=None)
+        with patch('tools.facebook_agent.cli.Browser'), patch(
+                'tools.facebook_agent.cli.publish', return_value={'status': 'confirmed'}) as post:
+            code, _ = self.invoke(['post', '--page-name', 'Test Page', '--text', 'Hello'])
+            self.assertEqual(code, 0)
+            self.assertEqual(post.call_args.kwargs['page_name'], 'Test Page')
+
     def test_browser_error_is_json(self):
         with patch('tools.facebook_agent.cli.Browser', side_effect=AgentError(
                 'browser_connection_failed', 'No CDP', human_action_required=True)):
