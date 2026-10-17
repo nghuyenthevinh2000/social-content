@@ -1,0 +1,22 @@
+[
+  {
+    "url": "https://www.facebook.com/jordan.lee",
+    "label": "Jordan Lee",
+    "message": "Hi Jordan, thanks for following the page. I work on social content automation and thought your recent post on local marketing was sharp. Open to a quick chat this week?"
+  },
+  {
+    "url": "https://www.facebook.com/casey.morgan",
+    "label": "Casey Morgan",
+    "message": "Hey Casey, I saw your comment in the small business group. We built a tool that drafts and schedules posts automatically - happy to share a short demo if it's useful."
+  },
+  {
+    "recipient": "https://www.facebook.com/profile.php?id=100012345678901",
+    "label": "Riley Chen",
+    "text": "Hi Riley, congrats on the new studio launch. If you ever want help keeping your page active without the manual grind, I'd be glad to show what we use. No pressure either way."
+  },
+  {
+    "url": "https://www.facebook.com/taylorbrooks.page",
+    "label": "Taylor Brooks",
+    "message": "Hi Taylor, reaching out because your bakery's page has great photos but posts only a couple times a month. I can help you batch a month of content in an afternoon. Want the rundown?"
+  }
+]

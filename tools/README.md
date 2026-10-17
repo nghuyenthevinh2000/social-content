@@ -1,12 +1,28 @@
 ---
 name: tools
-summary: Local automation tools for terminal-operated X workflows and direct approved-input Facebook and LinkedIn personal publishing.
-tags: [tools, automation, social-content]
+summary: Local automation tools for terminal-operated X workflows and direct approved-input
+  Facebook and LinkedIn personal publishing.
+tags:
+- tools
+- automation
+- social-content
 submodules:
-  social_agent/: Shared platform-independent browser CDP diagnostics and launcher foundation.
-  facebook_agent/: Direct Facebook text and image publishing using the shared Chrome profile.
-  twitter_agent/: Terminal-operated X DOM CLI with direct reply submission and approved image posting.
-  linkedin_agent/: Direct approved-input doctor/post CLI with JSON exits, local image validation, and uncertainty-safe personal posting.
+  facebook_agent/: Direct DOM publishing to a personal Facebook profile or explicitly
+    named active Fanpage, with optional multi-group sharing, plus planned direct
+    messaging with humanized typing, pacing, and exact content checks.
+  linkedin_agent/: Direct approved-input LinkedIn CLI supports legacy and native-dialog
+    composers with verified personal author pickers, emitted media choosers, ordered
+    previews, and guarded one-click uncertainty handling.
+  reddit-research-mcp/: Subdirectory containing reddit-research-mcp modules
+  reddit_agent/: Subdirectory containing reddit_agent modules
+  samples/: Example input files for the social content tools, such as the facebook_agent
+    direct-message plan.
+  social_agent/: Shared platform-independent browser diagnostics, invisible stealth
+    engine, and browser startup foundation for social content publishing tools.
+  twitter_agent/: Terminal-operated X DOM CLI with direct reply submission and explicitly
+    approved standalone image posting, exact content checks, attempt quotas, randomized
+    browsing delays, single-click submissions, and JSON-configured topic reporting
+    with an agent workflow.
 ---
 
 # Tools
@@ -14,7 +30,9 @@ submodules:
 - [`social_agent/`](./social_agent/): Shared platform-independent browser CDP
   diagnostics and browser startup foundation.
 - [`facebook_agent/`](./facebook_agent/): Direct personal-profile publishing of
-  approved text and images, using the existing `chrome-twitter-profile`.
+  approved text and images, optional sharing to up to 9 named groups through the
+  composer, and JSON-planned direct messaging with humanized typing and pacing,
+  using the existing `chrome-twitter-profile`.
 - [`twitter_agent/`](./twitter_agent/): Terminal-operated X DOM CLI with visible
   browser operations, draft persistence, direct submission, attempt quotas, and
   approved image posting.
