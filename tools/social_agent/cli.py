@@ -87,8 +87,8 @@ def build_parser() -> argparse.ArgumentParser:
         '-b',
         '--backend',
         dest='backend',
-        choices=['invisible', 'cdp'],
-        default=None,
+        choices=['cdp', 'invisible'],
+        default='cdp',
         help='Browser backend (default: invisible or env BROWSER_BACKEND)',
     )
     start.add_argument(

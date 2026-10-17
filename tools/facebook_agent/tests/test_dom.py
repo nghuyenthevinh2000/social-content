@@ -71,6 +71,13 @@ class DomTests(unittest.TestCase):
         self.assertEqual(self.page.evaluate('window.clicks'), 1)
         self.assertEqual(self.page.evaluate('window.submittedText'), 'Hello 👋\nWorld')
 
+    def test_waits_for_delayed_composer_trigger(self):
+        self.html = FIXTURE.replace('<button onclick=', '<button id="composer-trigger" hidden onclick=', 1)
+        self.html += "<script>setTimeout(() => document.getElementById('composer-trigger').hidden=false, 100)</script>"
+        result = publish(self.page, 'Hello', timeout_ms=500)
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertEqual(self.page.evaluate('window.clicks'), 1)
+
     def test_publishes_image_after_preview(self):
         with tempfile.TemporaryDirectory() as directory:
             image = Path(directory) / 'photo.png'
@@ -163,6 +170,39 @@ class DomTests(unittest.TestCase):
         self.assertEqual(self.page.evaluate('window.clicks'), 0)
         result = inspect_profile(self.page, timeout_ms=200, page_id='123', page_name='Alice Example')
         self.assertEqual(result['name'], 'Alice Example')
+
+    def test_duplicate_page_labels_allowed_only_with_matching_page_id(self):
+        self.html = FIXTURE.replace('<h1>', '<button>Manage Page</button><h1>')
+        self.html = self.html.replace('</h1>', '</h1><h2>Alice Example</h2>')
+        self.page.unroute('**/*')
+        self.page.route('**/*', lambda route: route.fulfill(
+            body=self.html + "<script>history.replaceState(null, '', '/profile.php?id=123')</script>",
+            content_type='text/html'))
+        result = publish(self.page, 'Page post', timeout_ms=500,
+                         page_id='123', page_name='Alice Example')
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertEqual(result['profile']['name'], 'Alice Example')
+        self.assertEqual(self.page.evaluate('window.clicks'), 1)
+        for page_id, code in ((None, 'ambiguous_dom'), ('456', 'page_identity_mismatch')):
+            with self.subTest(page_id=page_id), self.assertRaises(AgentError) as error:
+                publish(self.page, 'Page post', timeout_ms=200,
+                        page_id=page_id, page_name='Alice Example')
+            self.assertEqual(error.exception.code, code)
+            self.assertEqual(self.page.evaluate('window.clicks'), 0)
+
+    def test_duplicate_page_labels_do_not_bypass_composer_identity(self):
+        self.html = FIXTURE.replace('<h1>', '<button>Manage Page</button><h1>')
+        self.html = self.html.replace('</h1>', '</h1><h2>Alice Example</h2>').replace(
+            '<h3>Alice Example</h3>', '<h3>Wrong Page</h3>')
+        self.page.unroute('**/*')
+        self.page.route('**/*', lambda route: route.fulfill(
+            body=self.html + "<script>history.replaceState(null, '', '/profile.php?id=123')</script>",
+            content_type='text/html'))
+        with self.assertRaises(AgentError) as error:
+            publish(self.page, 'Alice Example', timeout_ms=200,
+                    page_id='123', page_name='Alice Example')
+        self.assertIn('posting identity', error.exception.message)
+        self.assertEqual(self.page.evaluate('window.clicks'), 0)
 
     def test_ambiguous_post_buttons_stop_before_click(self):
         self.html = FIXTURE.replace('<button id="post"', '<button>Post</button><button id="post"')

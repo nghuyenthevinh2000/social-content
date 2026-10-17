@@ -46,7 +46,12 @@ def inspect_profile(page, timeout_ms: int = 30000, page_name: str | None = None,
                 path == 'profile.php' and not parse_qs(parsed.query).get('id')):
             raise AgentError('not_personal_profile', 'Could not identify a canonical personal-profile URL.', True)
         if page_name is not None:
-            heading = selectors.unique(page.get_by_role('heading', name=page_name, exact=True), 'expected Page heading')
+            headings = selectors.visible(page.get_by_role('heading', name=page_name, exact=True))
+            # Repeated display labels are not distinct identities. Accept them
+            # only after the active /me URL matched the explicitly supplied ID.
+            if page_id is not None and {name.strip() for name in headings.all_inner_texts()} == {page_name}:
+                return {'name': page_name, 'url': page.url, 'type': 'page'}
+            heading = selectors.unique(headings, 'expected Page heading')
             return {'name': heading.inner_text().strip(), 'url': page.url, 'type': 'page'}
         if page_id is not None:
             candidates = dom.profile_primary_heading(page).filter(has_not_text=dom.PAGE_MANAGEMENT)
@@ -131,7 +136,9 @@ def publish(page, text: str, image: Path | None = None, timeout_ms: int = 15000,
     text, image = validate_content(text, image)
     profile = inspect_profile(page, timeout_ms, page_name=page_name, page_id=page_id)
     try:
-        trigger = selectors.unique(dom.composer_trigger(page), 'profile composer trigger')
+        triggers = dom.composer_trigger(page)
+        selectors.visible(triggers).first.wait_for(state='visible', timeout=timeout_ms)
+        trigger = selectors.unique(triggers, 'profile composer trigger')
         trigger.click(timeout=timeout_ms)
         dialogs = dom.composer_dialog(page)
         if dialogs.count() > 1:

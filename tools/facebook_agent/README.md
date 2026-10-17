@@ -79,6 +79,9 @@ A vanity URL redirect is rejected in ID mode; use the verified exact name instea
 Without either Page option, Pages remain rejected. Page-name mode checks editable-owner
 and management controls, the exact heading, and the composer author before
 posting. It rejects a "Switch into Page" prompt rather than switching accounts.
+When both `--page-id` and `--page-name` are supplied, repeated identical Page
+headings are accepted only after verifying the active URL's exact Page ID.
+Composer identity and all actionable controls still require unique matches.
 Audience, exact text, image checks, and single-click/uncertain-result behavior
 are unchanged. Missing or ambiguous controls stop publication; this supports
 the regular Create post composer, not Meta Business Suite or paid campaigns.
