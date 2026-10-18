@@ -1,10 +1,10 @@
-"""Unit tests for tools.social_agent.doctor."""
+"""Unit tests for tools.common.doctor."""
 
 import unittest
 from unittest.mock import MagicMock, patch
 
-from tools.social_agent.config import AgentError
-from tools.social_agent.doctor import run_doctor
+from tools.common.config import AgentError
+from tools.common.doctor import run_doctor
 
 
 class DoctorTests(unittest.TestCase):
@@ -77,7 +77,7 @@ class DoctorTests(unittest.TestCase):
         mock_browser.seed = 99
         mock_browser.__enter__.return_value = mock_browser
 
-        with patch('tools.social_agent.doctor.InvisibleBrowser', return_value=mock_browser):
+        with patch('tools.common.doctor.InvisibleBrowser', return_value=mock_browser):
             result = run_doctor(backend='invisible', seed=99)
             self.assertEqual(result['connected'], True)
             self.assertEqual(result['backend'], 'invisible')

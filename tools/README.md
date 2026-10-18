@@ -1,7 +1,7 @@
 ---
 name: tools
 summary: Local automation tools for terminal-operated X workflows and direct approved-input
-  Facebook and LinkedIn personal publishing.
+  Facebook and LinkedIn personal publishing, built on a shared unified post format.
 tags:
 - tools
 - automation
@@ -15,10 +15,9 @@ submodules:
     previews, and guarded one-click uncertainty handling.
   reddit-research-mcp/: Subdirectory containing reddit-research-mcp modules
   reddit_agent/: Subdirectory containing reddit_agent modules
-  samples/: Example input files for the social content tools, such as the facebook_agent
-    direct-message plan.
-  social_agent/: Shared platform-independent browser diagnostics, invisible stealth
-    engine, and browser startup foundation for social content publishing tools.
+  common/: Shared platform-independent browser diagnostics, invisible stealth
+    engine, and browser startup foundation, plus the unified post format and
+    example input files (samples/) for social content publishing tools.
   twitter_agent/: Terminal-operated X DOM CLI with direct reply submission and explicitly
     approved standalone image posting, exact content checks, attempt quotas, randomized
     browsing delays, single-click submissions, and JSON-configured topic reporting
@@ -27,8 +26,10 @@ submodules:
 
 # Tools
 
-- [`social_agent/`](./social_agent/): Shared platform-independent browser CDP
-  diagnostics and browser startup foundation.
+- [`common/`](./common/): Shared platform-independent browser CDP diagnostics,
+  browser startup foundation, and the canonical unified post format
+  ([`samples/post.json`](./common/samples/post.json)) one platform-agnostic post
+  is resolved from for every publishing agent.
 - [`facebook_agent/`](./facebook_agent/): Direct personal-profile publishing of
   approved text and images, optional sharing to up to 9 named groups through the
   composer, and JSON-planned direct messaging with humanized typing and pacing,

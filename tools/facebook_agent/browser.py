@@ -2,7 +2,7 @@
 
 from playwright.sync_api import sync_playwright
 
-from tools.social_agent.browser import CDPBrowser
+from tools.common.browser import CDPBrowser
 from .models import AgentError
 from .posting import inspect_profile
 

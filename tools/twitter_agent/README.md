@@ -42,7 +42,7 @@ An agent-facing CLI with visible browser operations and direct submission from t
 
 The separate image-post command saves the CDP publishing workflow used for the
 Ha Noi post. It does not publish on import.
-Start Chrome with `uv run python -m tools.social_agent start-browser` and log into X first.
+Start Chrome with `uv run python -m tools.common start-browser` and log into X first.
 
 ```bash
 uv run python -m tools.twitter_agent.publish \
@@ -102,7 +102,7 @@ restrictions. Detected blocks and challenges still stop browser operations.
 Start Chrome with a dedicated profile outside the repository using the shared social agent launcher:
 
 ```bash
-uv run python -m tools.social_agent start-browser
+uv run python -m tools.common start-browser
 ```
 
 Or manually:

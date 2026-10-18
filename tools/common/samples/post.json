@@ -1,0 +1,28 @@
+{
+  "id": "spring-sale-2026",
+  "title": "Spring sale announcement",
+  "content": {
+    "text": "Placeholder shared caption for the spring sale. This single document drives Facebook, LinkedIn, and X, so the wording lives in one place. Replace this text and the image paths with real values before running anything.",
+    "images": ["assets/spring-sale.png"]
+  },
+  "posting_groups": [
+    "Austin Small Business Owners",
+    "Local Makers & Crafters",
+    "Vintage Resellers Network"
+  ],
+  "platforms": {
+    "facebook": {
+      "profile": "personal"
+    },
+    "linkedin": {
+      "text": "Placeholder LinkedIn caption for the spring sale.\n\nLinkedIn tolerates a longer, more narrative post than X, so it overrides the shared caption while still reusing the same images. Replace this text before running anything.",
+      "images": ["assets/spring-sale.png", "assets/spring-sale-detail.png"]
+    },
+    "twitter": {
+      "account": "examplehandle",
+      "approved": false,
+      "text": "Placeholder X caption for the spring sale. Short by design. Replace before running.",
+      "images": ["assets/spring-sale-wide.png"]
+    }
+  }
+}

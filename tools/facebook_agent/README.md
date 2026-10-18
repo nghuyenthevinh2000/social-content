@@ -46,7 +46,7 @@ From `projects/social-content`:
 
 ```bash
 uv sync
-uv run python -m tools.social_agent start-browser
+uv run python -m tools.common start-browser
 ```
 
 The browser startup uses the shared `$HOME/chrome-twitter-profile` and CDP port
@@ -130,7 +130,7 @@ uv run python -m tools.facebook_agent post --text "Approved caption" \
 # A JSON array of names, or an object with a "groups" array.
 # ["Austin Small Biz", "Local Makers"]   or   {"groups": ["Austin Small Biz"]}
 uv run python -m tools.facebook_agent post --text "Approved caption" \
-  --groups-file tools/samples/groups.json
+  --groups-file tools/common/samples/groups.json
 ```
 
 `--group` and `--groups-file` combine (flags first). Names must be unique; a

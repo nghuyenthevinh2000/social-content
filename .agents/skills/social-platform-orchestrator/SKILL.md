@@ -2,14 +2,14 @@
 name: social-platform-orchestrator
 description: >
   Orchestrate social content across Twitter/X, Facebook, and LinkedIn, and conduct audience/market research on Reddit.
-  Use tools/social_agent for shared browser startup/CDP diagnostics, tools/reddit-research-mcp for semantic community discovery,
+  Use tools/common for shared browser startup/CDP diagnostics, tools/reddit-research-mcp for semantic community discovery,
   tools/reddit_agent for post extraction, and platform-specific tools for authentication and publishing.
 ---
 
 # Social Platform Orchestrator
 
 Use this skill to coordinate multi-platform social media operations across **Twitter/X**, **Facebook**, and **LinkedIn**, and conduct target audience research on **Reddit**:
-- `tools/social_agent/`: Shared browser startup, CDP connectivity diagnostics, configuration, safe connection/disconnection, and tool-owned tab management. It does **not** authenticate accounts, navigate social platforms, or publish content.
+- `tools/common/`: Shared browser startup, CDP connectivity diagnostics, configuration, safe connection/disconnection, and tool-owned tab management. It does **not** authenticate accounts, navigate social platforms, or publish content.
 - `tools/twitter_agent/`: Terminal-operated X DOM CLI with reply workflows and standalone approved image publishing.
 - `tools/facebook_agent/`: Direct DOM publishing of approved text and an optional single image to personal Facebook profiles.
 - `tools/linkedin_agent/`: Direct approved-input doctor and publishing CLI for personal LinkedIn profiles with repeatable ordered images.
@@ -18,12 +18,12 @@ Use this skill to coordinate multi-platform social media operations across **Twi
 
 > [!IMPORTANT]
 > **MANDATORY RULE: STRICTLY USE EXISTING REPOSITORY TOOLS ONLY**
-> You must strictly use the existing repository CLI and research tools (`uv run python -m tools.social_agent`, `uv run python -m tools.facebook_agent`, `uv run python -m tools.linkedin_agent`, `uv run python -m tools.twitter_agent`, `uv run python -m tools.twitter_agent.publish`, `tools/reddit-research-mcp`, and `python3 tools/reddit_agent/research.py`).
+> You must strictly use the existing repository CLI and research tools (`uv run python -m tools.common`, `uv run python -m tools.facebook_agent`, `uv run python -m tools.linkedin_agent`, `uv run python -m tools.twitter_agent`, `uv run python -m tools.twitter_agent.publish`, `tools/reddit-research-mcp`, and `python3 tools/reddit_agent/research.py`).
 > - **DO NOT wander around writing or running ad-hoc Python snippets, one-liners (`python -c ...`), custom scripts, or ad-hoc automation code.**
 > - All browser management, diagnostics, configuration/environment inspection, publishing, and Reddit research must be executed directly through the established tool interfaces.
 
 ### Configuration
-Run all commands from the repository root. Read [`tools/social_agent/README.md`](../../../tools/social_agent/README.md) for shared browser command reference and [`references/platform-matrix.md`](references/platform-matrix.md) for publishing constraints.
+Run all commands from the repository root. Read [`tools/common/README.md`](../../../tools/common/README.md) for shared browser command reference and [`references/platform-matrix.md`](references/platform-matrix.md) for publishing constraints.
 
 Configuration resolves in this order: **explicit CLI arguments → environment variables → defaults**. The shared package loads `tools/.env` when `python-dotenv` is available, without overriding existing environment values. [`tools/.env.example`](../../../tools/.env.example) contains a minimal template; do not overwrite an existing `.env`.
 
@@ -44,21 +44,21 @@ Keep the launch host/port and connection endpoint consistent. `start-browser` pr
 
 ## 1. Shared Browser Control and Serialization
 
-All three platform tools share the standalone `tools/social_agent` browser foundation and connect to the **same dedicated Chrome browser** via Chrome DevTools Protocol (CDP):
+All three platform tools share the standalone `tools/common` browser foundation and connect to the **same dedicated Chrome browser** via Chrome DevTools Protocol (CDP):
 - **Default CDP Port**: `http://127.0.0.1:9222`
 - **Shared Chrome Profile**: `$HOME/chrome-twitter-profile`
-- **Browser Launcher**: `uv run python -m tools.social_agent start-browser`
-- **Browser Diagnostics**: `uv run python -m tools.social_agent doctor`
+- **Browser Launcher**: `uv run python -m tools.common start-browser`
+- **Browser Diagnostics**: `uv run python -m tools.common doctor`
 
 ### Browser control workflow
 
 1. Check the shared browser without navigating or modifying open tabs:
    ```bash
-   uv run python -m tools.social_agent doctor
+   uv run python -m tools.common doctor
    ```
 2. If the browser is unavailable, start or reuse the dedicated browser:
    ```bash
-   uv run python -m tools.social_agent start-browser
+   uv run python -m tools.common start-browser
    ```
    Require exit code `0` and JSON `ok: true`. `data.action` is `started` or `reused`. An existing responsive browser is reused, not restarted; reuse does not verify its actual profile or account identity.
 3. Run the shared `doctor` again after startup to verify CDP connectivity and an active browser context.
@@ -66,12 +66,12 @@ All three platform tools share the standalone `tools/social_agent` browser found
 
 For a custom local browser, keep startup and diagnostics aligned:
 ```bash
-uv run python -m tools.social_agent start-browser \
+uv run python -m tools.common start-browser \
   --port 9333 \
   --data-dir "$HOME/chrome-social-profile" \
   --timeout 20 \
   --chrome-bin "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-uv run python -m tools.social_agent doctor \
+uv run python -m tools.common doctor \
   --endpoint http://127.0.0.1:9333 \
   --timeout-ms 30000
 ```
@@ -80,7 +80,7 @@ uv run python -m tools.social_agent doctor \
 
 ### Browser and tab safety
 
-- Use `uv run python -m tools.social_agent start-browser` for shared browser startup.
+- Use `uv run python -m tools.common start-browser` for shared browser startup.
 - Do not kill or restart a responsive browser, delete its profile, close user tabs, or close the browser/context to clean up automation.
 - Shared `CDPBrowser` detaches by stopping the Playwright client, without calling `browser.close()` or `context.close()`.
 - Temporary pages created by the shared connection are tracked and closed on context-manager exit. A page marked with `preserve_page()` stays open for human inspection; unmanaged/user tabs are never closed.
@@ -92,7 +92,7 @@ uv run python -m tools.social_agent doctor \
 >
 > - **Drafting & Content Adaptation**: Can run in **parallel** across subagents.
 > - **Live Browser Execution (`start-browser`, shared/platform `doctor`, `post`, `publish`, `search`, `thread`, `reply submit`)**: Must be executed **strictly sequentially** against the same browser, including across subagents.
-> - Serialization is an orchestrator scheduling rule, not a global lock provided by `tools/social_agent`. Await each browser command or execution subagent before starting the next; do not use background or parallel browser calls.
+> - Serialization is an orchestrator scheduling rule, not a global lock provided by `tools/common`. Await each browser command or execution subagent before starting the next; do not use background or parallel browser calls.
 
 ---
 

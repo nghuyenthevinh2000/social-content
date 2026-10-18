@@ -1,6 +1,6 @@
 """Independent LinkedIn CDP lifecycle; disconnect without closing user Chrome."""
 
-from tools.social_agent.browser import CDPBrowser
+from tools.common.browser import CDPBrowser
 from .models import AgentError
 from . import dom, selectors
 

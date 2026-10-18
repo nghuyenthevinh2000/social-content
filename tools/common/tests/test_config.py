@@ -1,11 +1,11 @@
-"""Unit tests for tools.social_agent.config."""
+"""Unit tests for tools.common.config."""
 
 import os
 from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from tools.social_agent.config import (
+from tools.common.config import (
     DEFAULT_DOCTOR_TIMEOUT_MS,
     DEFAULT_ENDPOINT,
     DEFAULT_HOST,

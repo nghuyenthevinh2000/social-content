@@ -4,7 +4,7 @@ import re
 from typing import List, Optional
 from playwright.sync_api import sync_playwright
 
-from tools.social_agent.browser import CDPBrowser
+from tools.common.browser import CDPBrowser
 from .models import AgentError
 from .pacing import get_pacer
 from . import dom, selectors

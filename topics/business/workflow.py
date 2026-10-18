@@ -47,7 +47,7 @@ def main() -> None:
     args = ap.parse_args()
 
     if args.publish:
-        subprocess.run(["uv", "run", "python", "-m", "tools.social_agent", "start-browser"], cwd=REPO_ROOT, check=True)
+        subprocess.run(["uv", "run", "python", "-m", "tools.common", "start-browser"], cwd=REPO_ROOT, check=True)
 
     files = sorted(LESSONS.glob("*.json"))
     if args.file:

@@ -7,6 +7,7 @@ This document provides ready-to-use patterns, role prompts, and recipes for the 
 ## 1. Subagent Role Definitions
 
 ### A. Twitter Subagent
+
 - **Role Name**: `Twitter Platform Specialist`
 - **Responsibilities**:
   - Format short-form copy according to X guidelines (punchy hook, tight constraints, 280-char max).
@@ -21,6 +22,7 @@ This document provides ready-to-use patterns, role prompts, and recipes for the 
   > - Always return JSON results and exit codes. Never retry automatically on exit code 4.
 
 ### B. Facebook Subagent
+
 - **Role Name**: `Facebook Platform Specialist`
 - **Responsibilities**:
   - Adapt narrative content into authentic, personal storytelling posts for personal profiles.
@@ -36,6 +38,7 @@ This document provides ready-to-use patterns, role prompts, and recipes for the 
   > - Invoking `post` publishes immediately. Only run upon explicit human confirmation. Never retry on exit code 4.
 
 ### C. LinkedIn Subagent
+
 - **Role Name**: `LinkedIn Platform Specialist`
 - **Responsibilities**:
   - Adapt content into structured professional insights (frameworks, lessons, takeaways).
@@ -54,6 +57,7 @@ This document provides ready-to-use patterns, role prompts, and recipes for the 
 ## 2. Dispatch Recipes
 
 ### Recipe 1: Parallel Content Adaptation
+
 When the orchestrator receives an original piece of content or announcement:
 
 ```python
@@ -96,6 +100,7 @@ invoke_subagent(
 ```
 
 ### Recipe 2: Sequential Execution Dispatch
+
 After the user reviews the aggregated drafts and explicitly commands "Proceed to publish", the orchestrator dispatches the execution subagents sequentially:
 
 ```python
@@ -148,9 +153,11 @@ invoke_subagent(
 
 1. **CDP Port Offline (Exit Code 3)**:
    If a subagent reports `browser_connection_failed` or `not_authenticated`, the orchestrator notifies the user to run:
+
    ```bash
-   uv run python -m tools.social_agent start-browser
+   uv run python -m tools.common start-browser
    ```
+
    and complete manual login.
 
 2. **Uncertain Status (Exit Code 4)**:

@@ -1,4 +1,4 @@
-"""Unit tests for tools.social_agent.cli."""
+"""Unit tests for tools.common.cli."""
 
 import io
 import json
@@ -6,8 +6,9 @@ import sys
 import unittest
 from unittest.mock import patch
 
-from tools.social_agent.cli import main
-from tools.social_agent.config import AgentError
+from tools.common.cli import main
+from tools.common.config import AgentError
+from tools.common.post import PostError
 
 
 class CliTests(unittest.TestCase):
@@ -19,7 +20,7 @@ class CliTests(unittest.TestCase):
             'context_count': 1,
         }
         stdout = io.StringIO()
-        with patch('tools.social_agent.cli.run_doctor', return_value=mock_data), \
+        with patch('tools.common.cli.run_doctor', return_value=mock_data), \
              patch('sys.stdout', stdout):
             code = main(['doctor'])
 
@@ -30,7 +31,7 @@ class CliTests(unittest.TestCase):
 
     def test_doctor_failure_json(self):
         stdout = io.StringIO()
-        with patch('tools.social_agent.cli.run_doctor', side_effect=AgentError('browser_connection_failed', 'Cannot reach Chrome', human_action_required=True)), \
+        with patch('tools.common.cli.run_doctor', side_effect=AgentError('browser_connection_failed', 'Cannot reach Chrome', human_action_required=True)), \
              patch('sys.stdout', stdout):
             code = main(['doctor'])
 
@@ -48,7 +49,7 @@ class CliTests(unittest.TestCase):
             'user_data_dir': '/tmp/test-profile',
         }
         stdout = io.StringIO()
-        with patch('tools.social_agent.cli.start_browser', return_value=mock_data), \
+        with patch('tools.common.cli.start_browser', return_value=mock_data), \
              patch('sys.stdout', stdout):
             code = main(['start-browser', '--port', '9222', '--data-dir', '/tmp/test-profile'])
 
@@ -59,7 +60,7 @@ class CliTests(unittest.TestCase):
 
     def test_start_browser_failure_json(self):
         stdout = io.StringIO()
-        with patch('tools.social_agent.cli.start_browser', side_effect=AgentError('browser_readiness_timeout', 'Timed out waiting for CDP', human_action_required=True)), \
+        with patch('tools.common.cli.start_browser', side_effect=AgentError('browser_readiness_timeout', 'Timed out waiting for CDP', human_action_required=True)), \
              patch('sys.stdout', stdout):
             code = main(['start-browser'])
 
@@ -100,7 +101,7 @@ class CliTests(unittest.TestCase):
 
     def test_internal_error_json(self):
         stdout = io.StringIO()
-        with patch('tools.social_agent.cli.run_doctor', side_effect=RuntimeError('Unexpected crash')), \
+        with patch('tools.common.cli.run_doctor', side_effect=RuntimeError('Unexpected crash')), \
              patch('sys.stdout', stdout):
             code = main(['doctor'])
 
@@ -111,7 +112,7 @@ class CliTests(unittest.TestCase):
     def test_cli_doctor_invisible_flags(self):
         stdout = io.StringIO()
         mock_data = {'connected': True, 'backend': 'invisible', 'seed': 42}
-        with patch('tools.social_agent.cli.run_doctor', return_value=mock_data) as mock_doc, \
+        with patch('tools.common.cli.run_doctor', return_value=mock_data) as mock_doc, \
              patch('sys.stdout', stdout):
             code = main(['doctor', '--backend', 'invisible', '--seed', '42', '--binary', '/bin/engine', '--headless'])
 
@@ -128,7 +129,7 @@ class CliTests(unittest.TestCase):
     def test_cli_start_browser_invisible_flags(self):
         stdout = io.StringIO()
         mock_data = {'action': 'ready', 'backend': 'invisible'}
-        with patch('tools.social_agent.cli.start_browser', return_value=mock_data) as mock_sb, \
+        with patch('tools.common.cli.start_browser', return_value=mock_data) as mock_sb, \
              patch('sys.stdout', stdout):
             code = main(['start-browser', '--backend', 'invisible', '--seed', '42', '--binary', '/bin/engine', '--headless'])
 
@@ -143,6 +144,38 @@ class CliTests(unittest.TestCase):
             headless=True,
             binary_path='/bin/engine',
         )
+
+    def test_post_command_prints_plans(self):
+        stdout = io.StringIO()
+        mock_data = {'id': 'p1', 'title': 'Launch', 'posting_groups': ['Alpha'], 'plans': []}
+        with patch('tools.common.cli.plan_post', return_value=mock_data), \
+             patch('sys.stdout', stdout):
+            code = main(['post', 'tools/common/samples/post.json', '--platform', 'facebook'])
+
+        self.assertEqual(code, 0)
+        output = json.loads(stdout.getvalue())
+        self.assertTrue(output['ok'])
+        self.assertEqual(output['data'], mock_data)
+
+    def test_post_command_invalid_post_json(self):
+        stdout = io.StringIO()
+        with patch('tools.common.cli.plan_post', side_effect=PostError('invalid_post', 'bad post')), \
+             patch('sys.stdout', stdout):
+            code = main(['post', 'bad.json'])
+
+        self.assertEqual(code, 2)
+        output = json.loads(stdout.getvalue())
+        self.assertFalse(output['ok'])
+        self.assertEqual(output['error']['code'], 'invalid_post')
+
+    def test_post_command_rejects_unknown_platform(self):
+        stdout = io.StringIO()
+        with patch('sys.stdout', stdout):
+            code = main(['post', 'tools/common/samples/post.json', '--platform', 'mastodon'])
+
+        self.assertEqual(code, 2)
+        output = json.loads(stdout.getvalue())
+        self.assertEqual(output['error']['code'], 'invalid_arguments')
 
 
 if __name__ == '__main__':

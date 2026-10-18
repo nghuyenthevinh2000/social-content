@@ -1,11 +1,11 @@
-"""Unit tests for tools.social_agent.browser."""
+"""Unit tests for tools.common.browser."""
 
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-from tools.social_agent.browser import CDPBrowser
-from tools.social_agent.config import AgentError
+from tools.common.browser import CDPBrowser
+from tools.common.config import AgentError
 
 
 class BrowserTests(unittest.TestCase):
@@ -99,7 +99,7 @@ class BrowserTests(unittest.TestCase):
 
 class InvisibleBrowserTests(unittest.TestCase):
     def test_invisible_connect_success(self):
-        from tools.social_agent.browser import InvisibleBrowser
+        from tools.common.browser import InvisibleBrowser
         mock_context = MagicMock(spec=['new_page', 'pages', 'close', 'browser'])
         mock_page = MagicMock()
         mock_context.new_page.return_value = mock_page
@@ -123,7 +123,7 @@ class InvisibleBrowserTests(unittest.TestCase):
             self.assertIsNone(browser.context)
 
     def test_invisible_unsupported_raises_error(self):
-        from tools.social_agent.browser import InvisibleBrowser
+        from tools.common.browser import InvisibleBrowser
 
         with patch('invisible_playwright.InvisiblePlaywright', side_effect=NotImplementedError('macOS not supported')):
             browser = InvisibleBrowser(fallback_to_cdp=False)
@@ -132,7 +132,7 @@ class InvisibleBrowserTests(unittest.TestCase):
             self.assertEqual(ctx.exception.code, 'invisible_browser_unsupported')
 
     def test_invisible_unsupported_fallback_to_cdp(self):
-        from tools.social_agent.browser import InvisibleBrowser
+        from tools.common.browser import InvisibleBrowser
         mock_context = MagicMock()
         mock_browser = MagicMock()
         mock_browser.contexts = [mock_context]

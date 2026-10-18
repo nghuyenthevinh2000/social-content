@@ -1,12 +1,12 @@
-"""Unit tests for tools.social_agent.launcher."""
+"""Unit tests for tools.common.launcher."""
 
 from pathlib import Path
 import sys
 import unittest
 from unittest.mock import MagicMock, call, patch
 
-from tools.social_agent.config import AgentError
-from tools.social_agent.launcher import (
+from tools.common.config import AgentError
+from tools.common.launcher import (
     is_browser_responsive,
     launch_browser_process,
     start_browser,
@@ -52,7 +52,7 @@ class LauncherTests(unittest.TestCase):
         checker = MagicMock(side_effect=lambda p, h: check_results.pop(0) if check_results else True)
         launcher = MagicMock()
 
-        with patch('tools.social_agent.config.find_browser_binary', return_value='/usr/bin/google-chrome'):
+        with patch('tools.common.config.find_browser_binary', return_value='/usr/bin/google-chrome'):
             result = start_browser(
                 port=9222,
                 host='127.0.0.1',
@@ -79,7 +79,7 @@ class LauncherTests(unittest.TestCase):
         checker = MagicMock(return_value=False)
         launcher = MagicMock()
 
-        with patch('tools.social_agent.config.find_browser_binary', return_value=None):
+        with patch('tools.common.config.find_browser_binary', return_value=None):
             with self.assertRaises(AgentError) as ctx:
                 start_browser(
                     port=9222,
@@ -95,7 +95,7 @@ class LauncherTests(unittest.TestCase):
         checker = MagicMock(return_value=False)
         launcher = MagicMock()
 
-        with patch('tools.social_agent.config.find_browser_binary', return_value='/usr/bin/google-chrome'):
+        with patch('tools.common.config.find_browser_binary', return_value='/usr/bin/google-chrome'):
             with self.assertRaises(AgentError) as ctx:
                 start_browser(
                     port=9222,

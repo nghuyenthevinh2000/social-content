@@ -14,6 +14,7 @@ from .config import (
 )
 from .doctor import run_doctor
 from .launcher import start_browser
+from .post import PLATFORMS, PostError, plan_post
 
 
 class JsonArgumentParser(argparse.ArgumentParser):
@@ -24,7 +25,7 @@ class JsonArgumentParser(argparse.ArgumentParser):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = JsonArgumentParser(
-        prog='social_agent',
+        prog='python -m tools.common',
         description='Shared browser CDP diagnostics and launcher foundation for social content tools.',
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -135,6 +136,25 @@ def build_parser() -> argparse.ArgumentParser:
         help='Run browser in headless mode',
     )
 
+    # post command
+    post = commands.add_parser(
+        'post',
+        help='Validate a unified post and print per-platform plans and commands (no posting).',
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    post.add_argument(
+        'file',
+        help='Path to a unified post JSON document (see tools/common/samples/post.json)',
+    )
+    post.add_argument(
+        '--platform',
+        choices=PLATFORMS,
+        action='append',
+        dest='platforms',
+        default=None,
+        help='Limit output to one platform (repeatable; default: every enabled platform)',
+    )
+
     return parser
 
 
@@ -162,6 +182,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 headless=args.headless,
                 binary_path=args.binary,
             )
+        elif args.command == 'post':
+            data = plan_post(args.file, args.platforms)
         else:
             raise AgentError('invalid_arguments', f'Unknown command: {args.command}')
 
@@ -183,6 +205,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         }, ensure_ascii=False, indent=2) + '\n')
         sys.stdout.flush()
         return 2 if exc.code == 'invalid_arguments' else 3
+
+    except PostError as exc:
+        sys.stdout.write(json.dumps({
+            'ok': False,
+            'error': {
+                'code': exc.code,
+                'message': exc.message,
+                'human_action_required': exc.human_action_required,
+            }
+        }, ensure_ascii=False, indent=2) + '\n')
+        sys.stdout.flush()
+        return 2
 
     except Exception as exc:
         sys.stdout.write(json.dumps({

@@ -1,21 +1,23 @@
 ---
-name: social_agent
+name: common
 summary: Shared platform-independent browser diagnostics, invisible stealth engine, and browser startup foundation for social content publishing tools.
 tags: [tools, automation, social-content, cdp, browser, invisible-playwright, stealth]
 submodules:
   __init__.py: Social agent shared package.
   __main__.py: Module CLI entry point.
-  cli.py: Shared CLI exposing doctor and start-browser commands.
+  cli.py: Shared CLI exposing doctor, start-browser, and post (dry-run) commands.
   config.py: Shared endpoint, timeout, browser binary, port, profile, and backend configuration.
   browser.py: Platform-independent invisible stealth browser and CDP connection with safe disconnection.
   doctor.py: Browser and connectivity diagnostics without platform navigation.
   launcher.py: Browser process detection, startup, and readiness check.
-  tests/: Unit tests for browser lifecycle, diagnostics, startup, and CLI.
+  post.py: Unified platform-agnostic post schema, validation, and per-platform argument adapters.
+  samples/: Example input files (unified post, group list, and facebook_agent message plan).
+  tests/: Unit tests for browser lifecycle, diagnostics, startup, CLI, and the unified post format.
 ---
 
 # Shared Social Agent Foundation
 
-`tools/social_agent` provides a platform-independent foundation for browser automation tools in this repository. It owns browser diagnostics, browser startup, and stealth automation backed by [`tools/invisible_playwright_mcp`](../invisible_playwright_mcp).
+`tools/common` provides a platform-independent foundation for browser automation tools in this repository. It owns browser diagnostics, browser startup, and stealth automation backed by [`tools/invisible_playwright_mcp`](../invisible_playwright_mcp), plus the shared posting format described below.
 
 Platform-specific publishing, DOM selectors, authentication, and pacing remain in their respective platform tools (`facebook_agent`, `linkedin_agent`, `twitter_agent`).
 
@@ -33,10 +35,11 @@ Switch backends via `--backend invisible|cdp` or environment variable `BROWSER_B
 Check browser availability and context readiness without navigating to any social website or altering open tabs:
 
 ```bash
-uv run python -m tools.social_agent doctor
+uv run python -m tools.common doctor
 ```
 
 Options:
+
 - `-b`, `--backend BACKEND`: Browser backend (`invisible` or `cdp`, default: `invisible` or env `BROWSER_BACKEND`)
 - `--seed SEED`: Deterministic fingerprint seed for invisible browser
 - `--binary PATH`: Custom browser engine binary
@@ -45,6 +48,7 @@ Options:
 - `--timeout-ms`: Connection timeout in milliseconds (default: `30000` or env `DEFAULT_DOCTOR_TIMEOUT_MS`)
 
 Output (invisible):
+
 ```json
 {
   "ok": true,
@@ -60,6 +64,7 @@ Output (invisible):
 ```
 
 Output (cdp):
+
 ```json
 {
   "ok": true,
@@ -77,10 +82,11 @@ Output (cdp):
 Initialize the invisible stealth browser profile or detect/start a responsive CDP browser:
 
 ```bash
-uv run python -m tools.social_agent start-browser
+uv run python -m tools.common start-browser
 ```
 
 Options:
+
 - `-b`, `--backend BACKEND`: Browser backend (`invisible` or `cdp`, default: `invisible`)
 - `-d`, `--data-dir DIR`: Browser profile directory (default: `$HOME/chrome-twitter-profile`)
 - `--seed SEED`: Deterministic fingerprint seed for invisible browser
@@ -91,6 +97,7 @@ Options:
 - `--chrome-bin PATH`: Path to Chromium/Chrome executable (default: auto-detected or env `CHROME_BIN`)
 
 Output (invisible):
+
 ```json
 {
   "ok": true,
@@ -105,6 +112,50 @@ Output (invisible):
   }
 }
 ```
+
+### 3. Unified post validation (`post`)
+
+Validate a single platform-agnostic post document and print the resolved
+per-platform plans and equivalent commands. This never connects to a browser or
+posts anything:
+
+```bash
+uv run python -m tools.common post tools/common/samples/post.json
+uv run python -m tools.common post tools/common/samples/post.json --platform twitter
+```
+
+## Unified posting format
+
+One JSON document records approved content once and resolves it into each
+posting agent's arguments, so a post authored for one platform can be reused on
+the others. See [`samples/post.json`](./samples/post.json) for a complete
+example and [`post.py`](./post.py) for the schema and validation.
+
+| Field | Meaning |
+| --- | --- |
+| `id`, `title` | Optional labels for reporting. |
+| `content.text` | Required shared caption; every platform inherits it. |
+| `content.images` | Shared image paths, resolved relative to the post file. |
+| `content.video` | Optional single video path (Facebook only). |
+| `posting_groups` | Exact Facebook group names to also share to (max 9). |
+| `platforms` | Required map of `facebook`, `linkedin`, and/or `twitter` blocks. |
+
+Each platform block enables that platform (unless `"enabled": false`) and may
+override `text`, `images`, or `video`. A present key replaces the shared value:
+`"images": []` clears inherited media, and `"video": null` clears an inherited
+video. Platform-specific keys:
+
+- **facebook**: `profile` (`personal` or `page`), `page_name`, `page_id`, and a
+  `posting_groups` override. At most one image or one video.
+- **linkedin**: 1–20 images, no video. Text up to 3,000 characters.
+- **twitter**: `account` (required) and `approved` (default `false`). Exactly one
+  image, no video. Text up to 280 characters.
+
+Per-platform length and media limits are enforced at load time, so a shared
+caption that is too long for X must be shortened in its `platforms.twitter.text`
+override. `load_post()` returns a `Post` whose `for_platform(name)` gives
+`arguments()` (matching each agent's publish function) and `command()` (the
+equivalent `uv run` invocation).
 
 ## Guarantees
 

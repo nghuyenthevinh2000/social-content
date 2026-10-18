@@ -31,7 +31,7 @@ retry. Run commands from the `projects/social-content` project root.
 
 ```bash
 uv sync
-uv run python -m tools.social_agent start-browser
+uv run python -m tools.common start-browser
 ```
 
 The browser startup reuses `$HOME/chrome-twitter-profile` and local CDP port `9222`;
@@ -140,7 +140,7 @@ same uniqueness checks: mixed layouts and hidden duplicates fail closed. Feed
 links outside legacy navigation are not authentication evidence; no dynamic
 hashed classes are used.
 
-Browser startup uses `uv run python -m tools.social_agent start-browser`, retaining
+Browser startup uses `uv run python -m tools.common start-browser`, retaining
 `$HOME/chrome-twitter-profile` and CDP port `9222`. The runtime does not import Twitter
 models or selectors.
 

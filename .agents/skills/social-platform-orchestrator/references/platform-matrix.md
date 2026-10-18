@@ -30,12 +30,14 @@ This reference document outlines the exact technical specifications, input valid
 ## 2. Command Line Invocation Syntax
 
 ### Shared Browser Setup
+
 ```bash
 # Launch Chrome with dedicated social profile and CDP on port 9222
-uv run python -m tools.social_agent start-browser
+uv run python -m tools.common start-browser
 ```
 
 ### Pre-Flight Doctor Checks
+
 ```bash
 # Facebook
 uv run python -m tools.facebook_agent doctor
@@ -50,6 +52,7 @@ uv run python -m tools.twitter_agent doctor
 ### Publishing Commands
 
 #### Facebook (`tools/facebook_agent`)
+
 ```bash
 # Text-only
 uv run python -m tools.facebook_agent post \
@@ -66,6 +69,7 @@ uv run python -m tools.facebook_agent --cdp http://127.0.0.1:9222 --timeout-ms 2
 ```
 
 #### LinkedIn (`tools/linkedin_agent`)
+
 ```bash
 # Single image post (image is required!)
 uv run python -m tools.linkedin_agent post \
@@ -86,6 +90,7 @@ uv run python -m tools.linkedin_agent --timeout-ms 30000 post \
 ```
 
 #### Twitter / X (`tools/twitter_agent`)
+
 ```bash
 # Standalone Image Post (requires --approved)
 uv run python -m tools.twitter_agent.publish \
@@ -105,6 +110,7 @@ uv run python -m tools.twitter_agent reply submit DRAFT_ID
 ### Reddit Research & Discovery
 
 #### 1. Semantic Community Discovery (`tools/reddit-research-mcp`)
+
 ```bash
 # Vector search across 20,000+ communities to find relevant subreddits
 uv run --directory tools/reddit-research-mcp python3 -c "
@@ -118,6 +124,7 @@ for s in res.get('subreddits', []):
 ```
 
 #### 2. Community Post Extraction (`tools/reddit_agent`)
+
 ```bash
 # Fetch recent discussions from the last 6 months into local directory
 python3 tools/reddit_agent/research.py \
@@ -141,20 +148,27 @@ python3 tools/reddit_agent/research.py \
 All three tools produce JSON on stdout:
 
 ### Success Payloads (Exit Code 0)
+
 - **Facebook**:
+
   ```json
   {"ok": true, "data": {"status": "confirmed", "audience": "Public"}}
   ```
+
 - **LinkedIn**:
+
   ```json
   {"ok": true, "data": {"status": "posted", "url": null}}
   ```
+
 - **Twitter Publish**:
+
   ```json
   {"ok": true, "data": {"state": "submitted", "url": "https://x.com/i/status/184..."}}
   ```
 
 ### Error Payloads (Exit Codes 1, 2, 3, 4)
+
 ```json
 {
   "ok": false,
@@ -166,7 +180,8 @@ All three tools produce JSON on stdout:
 }
 ```
 
-### Exit Code Definitions:
+### Exit Code Definitions
+
 - **0**: Success.
 - **1**: Unexpected internal error.
 - **2**: Invalid input parameters (arguments, character limits, bad image format).

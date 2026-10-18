@@ -14,7 +14,7 @@ submodules:
   scripts/: Documentation and resources for scripts.
   src/: Documentation and resources for src.
   tools/: Local automation tools for terminal-operated X workflows and direct approved-input
-    Facebook and LinkedIn personal publishing.
+    Facebook and LinkedIn personal publishing, built on a shared unified post format.
   topics/: Documentation and resources for topics.
 ---
 
