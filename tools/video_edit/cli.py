@@ -29,13 +29,7 @@ from .io import (
 )
 from .proxy import smooth_proxy, synthetic_card_proxy
 from .video import encode, plan_frames, probe_video, render
-from .watermark import (
-    METHODS,
-    RemoveConfig,
-    region_from_box,
-    region_from_mask_file,
-    render_watermark,
-)
+from .watermark import find_backend, install_backend, render_watermark
 
 _DETECT_MODES = ("saturated", "edges", "bright")
 
@@ -341,49 +335,25 @@ def cmd_proxy(args) -> int:
 
 
 def cmd_watermark(args) -> int:
-    clone_offset = None
-    if args.clone_offset is not None:
-        try:
-            clone_offset = tuple(int(value) for value in args.clone_offset.split(","))
-        except ValueError as error:
-            raise QuadError("clone offset must be dx,dy in pixels") from error
-        if len(clone_offset) != 2:
-            raise QuadError("clone offset must be dx,dy in pixels")
-    cfg = RemoveConfig(
-        method=args.method,
-        iterations=args.iterations,
-        level_iterations=args.level_iterations,
-        inpaint_radius=args.inpaint_radius,
-        regressor_grow=args.regressor_grow,
-        alpha_floor=args.alpha_floor,
-        est_grow=args.est_grow,
-        clone_offset=clone_offset,
-    )
-    region = None
-    if args.mask_file:
-        region = region_from_mask_file(args.mask_file)
-    elif args.box:
-        region = region_from_box(args.box, _frame_shape(args.video), grow=args.grow)
     render_watermark(
-        args.video,
+        args.video or args.image,
         args.out_dir,
-        region=region,
-        search=args.search,
-        threshold=args.threshold,
-        grow=args.grow,
-        config=cfg,
-        start=args.start,
-        limit=args.limit,
-        crf=args.crf,
-        preset=args.preset,
-        skip_encode=args.skip_encode,
+        backend=args.backend,
+        image=bool(args.image),
+        cpu=args.cpu,
+        legacy=args.legacy,
+        region=args.region,
+        alpha=args.alpha,
+        sigma=args.sigma,
+        ml=args.ml,
+        force=args.force,
     )
     return 0
 
 
-def _frame_shape(video: str) -> tuple[int, int]:
-    info = probe_video(video)
-    return (info.height, info.width)
+def cmd_watermark_install(args) -> int:
+    print(f"installed   {install_backend()}")
+    return 0
 
 
 def cmd_doctor(args) -> int:
@@ -391,6 +361,10 @@ def cmd_doctor(args) -> int:
     print(f"python        {sys.version.split()[0]}")
     print(f"opencv        {cv2.__version__}")
     print(f"numpy         {np.__version__}")
+    try:
+        print(f"watermark     {find_backend()}")
+    except QuadError:
+        print("watermark     not installed (run watermark-install)")
     try:
         import sam2  # noqa: F401
 
@@ -501,32 +475,24 @@ def build_parser() -> argparse.ArgumentParser:
     proxy.set_defaults(func=cmd_proxy)
 
     watermark = sub.add_parser(
-        "watermark", help="lift a static corner watermark (e.g. the Gemini sparkle) out of every frame"
+        "watermark", help="remove visible Gemini/Veo watermarks using the official calibrated backend"
     )
-    watermark.add_argument("--video", required=True)
+    media = watermark.add_mutually_exclusive_group(required=True)
+    media.add_argument("--video", help="original video; audio is passed through by the backend")
+    media.add_argument("--image", help="PNG frame for calibrated repair of skipped frames")
     watermark.add_argument("--out-dir", default="out/video-clean")
-    watermark.add_argument("--box", help="'x,y,w,h' in pixels, skipping detection")
-    watermark.add_argument("--mask-file", help="PNG mask, non-zero where the watermark is")
-    watermark.add_argument("--search", help="'x,y,w,h' fractions or pixels to look in (default bottom-right)")
-    watermark.add_argument("--threshold", type=float, default=0.15, help="fraction of the peak response")
-    watermark.add_argument("--grow", type=int, default=2, help="grow the mask by this many pixels")
-    watermark.add_argument(
-        "--method", choices=METHODS, default="unmix",
-        help="clone overlays nearby pixels; temporal borrows aligned frames; unmix inverts a translucent model; harmonic fills from the boundary",
-    )
-    watermark.add_argument("--iterations", type=int, default=600, help="relaxation passes at full resolution")
-    watermark.add_argument("--level-iterations", type=int, default=120, help="relaxation passes per pyramid level")
-    watermark.add_argument("--inpaint-radius", type=int, default=3, help="Telea seed radius")
-    watermark.add_argument("--regressor-grow", type=int, default=0, help="unmix: regressor hole; 0 derives it")
-    watermark.add_argument("--clone-offset", help="legacy rectangular source offset dx,dy; default uses surface-aware texture overlay (use =-64,0 for negatives)")
-    watermark.add_argument("--alpha-floor", type=float, default=0.30, help="unmix: do not invert harder than 1/this")
-    watermark.add_argument("--est-grow", type=int, default=3, help="unmix: px the model reaches past the core")
-    watermark.add_argument("--start", type=int, default=0)
-    watermark.add_argument("--limit", type=int, help="process only this many frames, for a quick look")
-    watermark.add_argument("--crf", type=int, default=14)
-    watermark.add_argument("--preset", default="slow")
-    watermark.add_argument("--skip-encode", action="store_true", help="write frames and manifest only")
+    watermark.add_argument("--backend", help="executable override; otherwise VEO_WATERMARK_BIN or the pinned installation")
+    watermark.add_argument("--cpu", action=argparse.BooleanOptionalAction, default=True, help="CPU denoise by default; --no-cpu allows GPU")
+    watermark.add_argument("--legacy", action="store_true", help="older watermark profile; also used for calibrated V1 frame repair")
+    watermark.add_argument("--region", help="explicit watermark x,y,w,h in pixels; default auto-detects")
+    watermark.add_argument("--alpha", type=float, help="constant calibrated intensity, 0.05..3; default backend estimation")
+    watermark.add_argument("--sigma", type=float, help="denoise strength, 1..150; default backend setting")
+    watermark.add_argument("--ml", action="store_true", help="opt into upstream ML intensity estimation")
+    watermark.add_argument("--force", action="store_true", help="bypass detection for a known watermark, mainly individual PNG repairs")
     watermark.set_defaults(func=cmd_watermark)
+
+    installer = sub.add_parser("watermark-install", help="download the pinned official backend and verify its SHA256")
+    installer.set_defaults(func=cmd_watermark_install)
 
     doctor = sub.add_parser("doctor", help="report versions and backend availability")
     doctor.set_defaults(func=cmd_doctor)

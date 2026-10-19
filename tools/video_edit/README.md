@@ -2,9 +2,8 @@
 name: video_edit
 summary: Deterministic perspective texture-swap that pastes real camera texture
   pixels onto a proxy frame's detected product surface, keeping the proxy's
-  lighting and shadows. Also lifts a static corner watermark out of a video,
-  located from the frames themselves and filled from the frame's own boundary.
-  No generative step.
+  lighting and shadows. Visible Gemini/Veo watermark processing delegates to
+  the official calibrated allenk/VeoWatermarkRemover backend.
 tags: [opencv, texture, compositing, product-video, watermark-removal]
 ---
 
@@ -175,144 +174,40 @@ single bad frame cannot flicker.
 
 ## Watermark
 
-An AI video carries a mark that is composited into every frame at the same
-pixel. `watermark` finds it and lifts it back out:
+| Policy | Official workflow |
+| :--- | :--- |
+| Backend | [Allen Kuo's VeoWatermarkRemover](https://github.com/allenk/VeoWatermarkRemover), pinned to [v0.6.5-demo](https://github.com/allenk/VeoWatermarkRemover/releases/tag/v0.6.5-demo). |
+| Installation | `uv run python -m tools.video_edit watermark-install` downloads the platform release, verifies its pinned SHA256, and installs under ignored `.bin/`. No downloads happen during rendering. macOS Universal and Linux/Windows x64 are supported. |
+| Run from repository root | `uv run python -m tools.video_edit watermark --video INPUT.mp4 --out-dir NEW_OUTPUT_DIRECTORY` |
+| Outputs | `result.mp4`, `backend.log`, `manifest.json` with hashes, engine options, and reported skips. Existing results and source media are never overwritten. |
+| Scope | Visible Gemini/Veo watermarks only; does not remove invisible SynthID. Process original footage before texture replacement or repeated encoding. |
+| Retired | The custom watermark algorithms and their old method/mask/slice flags have been removed. Texture compositing and its blend modes remain unchanged. |
+| Upstream trust | Release executables are unsigned previews. Installation checks the published release digest, not an independent security audit. Review the upstream source and [license](https://github.com/allenk/GeminiWatermarkTool/blob/main/LICENSE). No OS security bypass is performed. |
 
-```bash
-uv run --project ../.. python -m tools.video_edit watermark \
-  --video Girl_presenting_red_paper_20261018230134.mp4 \
-  --out-dir out/video-clean
+```text
+Verified install -> Original video -> Calibrated removal -> Inspect skips/edges -> Publish
+                                                               |
+                                                        Repair PNG frames
 ```
 
-### Finding it
-
-A mark that never moves is the one thing in a frame that survives a *temporal
-median of local contrast*: the scene moves and averages away, the mark does not.
-The median runs over every frame inside a search window, bottom-right by default
-(`0.45,0.60,0.55,0.40` of the frame; `--search` takes fractions or pixels). The
-response comes out as a *ring*, because the interior of a large mark has no
-local contrast of its own, so the ring's external contour is filled to get the
-footprint and `--grow` (default 2 px) covers the soft antialiased edge.
-
-Candidates are scored by their mean response, which is an order of magnitude
-higher for a closed ring than for the persistent content edges the same field
-also contains, and rejected if they do not clear the noise floor (3× the median
-absolute deviation of the field). On this clip the field peaks at 13.2 inside
-the mark against a noise floor of 0.4. `--box x,y,w,h` or `--mask-file` skips
-detection; `preview.png` shows what was chosen.
-
-### Removing it
-
-To overlay surrounding pixels instead of reconstructing the hidden scene:
-
-```bash
-uv run python -m tools.video_edit watermark --method clone \
-  --video local/paper-ink-product/Girl_presenting_red_paper_20261018230134.mp4 \
-  --out-dir local/paper-ink-product/out/video-edit-clone-surface
-```
-
-`clone` now follows the existing compositor's separation of surface coverage,
-texture and lighting. It distinguishes neutral paper from chromatic skin using
-chroma (not the watermark's brightened luminance), then estimates illumination
-from clean pixels of each material separately. A small clean same-frame texture
-tile is mirrored using `tile_mirror` and overlaid with the shared `apply_shading`
-blend. Feathering stays inside a mask grown by 6 pixels. No rectangular donor
-silhouette is pasted across the moving edge.
-
-This assumes neutral/chromatic materials and a translucent neutral watermark;
-it is not a general semantic segmenter. Texture is repeated and edge coverage
-and shading remain approximate. Use `--clone-offset=-64,0` to opt into the legacy
-rectangular donor patch 64 pixels left; `dx,dy` is source minus destination.
-Contaminated and out-of-frame explicit donors are rejected.
-
-The earlier 240-frame clone-overlay trial covers the mark but visual inspection still
-shows a rectangular patch and misaligned arm/paper edges. See
-`out/video-edit-clone-overlay/comparison.png` under the media directory. This
-trial is not a visually seamless result. All three clone tests pass; the full
-suite at that point had 81 passes and the same two pre-existing unmix failures.
-
-The revised surface-aware render is `out/video-edit-clone-surface/result.mp4`
-under the media directory: 240 frames, 720×1280, AAC audio preserved. Its
-`comparison.png` shows original / old clone / revised overlay at frames 40,
-120, 160 and 200. The rectangle and displaced donor edge are no longer present
-in these frames; some boundary softness and shading mismatch remain at high
-zoom. All four clone tests pass, including a curved two-material boundary with
-grain; the full suite has 82 passes and the same two unmix failures.
-
-To try motion-aware frame borrowing, run from the repository root:
-
-```bash
-uv run python -m tools.video_edit watermark --method temporal \
-  --video local/paper-ink-product/Girl_presenting_red_paper_20261018230134.mp4 \
-  --out-dir local/paper-ink-product/out/video-edit-temporal
-```
-
-`temporal` estimates optical flow on filled guide crops so the fixed watermark
-does not anchor the motion. It borrows original donor pixels outside a widened
-watermark mask, rejects inconsistent forward/backward motion and mismatched
-surroundings, and blends inward without changing pixels outside the mask.
-It prints the percentage of masked pixels with clean donor support. Remaining
-pixels use harmonic fill. This is experimental: split at cuts first, inspect
-occlusions and edges, and expect memory use proportional to clip length (only
-local crops are buffered). It does not guarantee recovery of never-exposed detail.
-
-Real-clip trial: all 240 frames rendered with audio, but only 7.9% of masked
-pixels had accepted clean donors. Inspection at frames 40, 120, 160 and 200
-shows smooth fallback patches and edge notches; this is not a visually clean
-replacement for `unmix`. See `out/video-edit-temporal/comparison.png` under the
-media directory (original / unmix / encoded temporal). The lower static
-residual, 13.169 to 1.619, does not establish visual quality. The three new
-temporal tests pass; the full suite has 78 passes and the same two unmix failures.
-
-`--method unmix` is currently the experimental default. It estimates a per-pixel
-gain from a membrane spanning a wider hole, calibrates against an unmarked ring,
-and uses a harmonic fill of the temporal mean to estimate the offset. Clips
-with too little motion or an apparently opaque mark fall back to harmonic.
-The estimate is approximate: two synthetic opacity/reconstruction tests still
-fail, so it is not verified to make the watermark invisible.
-
-`--method harmonic` holds the hole's real boundary values and
-relaxes the interior to the membrane spanning them: three pyramid levels of
-Jacobi passes (`--level-iterations`), then `--iterations` at full resolution. A
-Telea pass seeds that relaxation, which clears the overlay's high-frequency
-residue in one step. Nothing is invented: every filled value comes either from
-the frame's own boundary or from a linear relaxation of it.
-
-The choice is measured, not aesthetic. No footprint is exact, so the mask
-boundary still carries a pixel or two of the mark's soft edge. Telea propagates
-that rim straight back into the hole and rebuilds the mark's own outline; the
-membrane averages the whole boundary, so a thin contaminated rim barely moves
-it. Averaged local contrast left inside the mask on this clip:
-
-| Method | Before | After |
-| :--- | ---: | ---: |
-| `harmonic` | 13.17 | **0.70** (the noise floor) |
-| `telea` | 13.17 | 4.82 |
-
-The membrane also continues a soft, out-of-focus edge smoothly through the hole,
-where Telea's fast marching leaves a straight, stuck-in-place notch. The price
-is that a genuinely *hard* edge behind the mark gets rounded off rather than
-reproduced: `--method telea` and `--method ns` are there for that case, and
-`--method` is the only thing that changes.
-
-`out/video-clean/` holds the render, `mask.png` the footprint, `preview.png` the
-detection drawn on the first frame, `frames/` the 240 PNGs and `manifest.json`
-the region, parameters, and residual before and after. Audio is copied across.
-
-| Parameter | Default | Effect |
+| Option | Default | Purpose |
 | :--- | :--- | :--- |
-| `--search` | bottom-right | Where to look: `x,y,w,h` as fractions (all ≤ 1) or pixels. |
-| `--threshold` | `0.15` | Fraction of the peak response that counts as mark. |
-| `--grow` | `2` | Pixels added to the footprint, to cover the antialiased edge. |
-| `--method` | `unmix` | `clone`, experimental `unmix` / `temporal`, or `harmonic`, `telea`, `ns`. |
-| `--clone-offset` | surface-aware | Opt into legacy rectangular donor offset `dx,dy`; negative values need `=`. |
-| `--regressor-grow` | `0` | Unmix hole growth in pixels; 0 derives it from mark size. |
-| `--alpha-floor` | `0.30` | Minimum scene multiplier; limits inverse amplification. |
-| `--est-grow` | `3` | Growth of the estimated correction footprint. |
-| `--iterations` / `--level-iterations` | `600` / `120` | Relaxation passes, full resolution and per pyramid level. |
-| `--box` / `--mask-file` | — | Place the region by hand instead of detecting it. |
-| `--start` / `--limit` | `0` / — | Process a slice, for inspecting before committing to a render. |
-| `--crf` / `--preset` | `14` / `slow` | x264 quality and speed. |
+| `--backend` / `VEO_WATERMARK_BIN` | Pinned local installation, then PATH | Override executable location. Override builds are identified by their actual binary hash; the pinned release link is a reference. |
+| `--cpu` / `--no-cpu` | CPU | Matches the tested macOS workflow; opt into GPU if appropriate. |
+| `--region x,y,w,h` | Auto-detect | Force a known watermark location. |
+| `--alpha` | Backend estimation | Set constant calibrated intensity, 0.05–3. |
+| `--sigma` | Backend setting | Denoise strength, 1–150. |
+| `--legacy` | Off | Older watermark profile, or V1 small-template frame repair. |
+| `--ml` | Off | Opt into upstream ML intensity estimation. |
+| `--force` | Off | Bypass detection for a known mark; mainly individual PNG repairs. |
+| `--image FRAME.png` | Video input | Use the same engine for an extracted frame; writes `result.png` instead of MP4. |
+
+| Repair and verification | Required action |
+| :--- | :--- |
+| Skipped frames | Inspect `backend.log`; a successful exit does not mean every frame was cleaned. No custom fill fallback runs. |
+| Tested single-frame repair | `uv run python -m tools.video_edit watermark --image FRAME.png --legacy --region 576,1136,48,48 --alpha 0.63 --sigma 20 --force --out-dir NEW_FRAME_DIRECTORY` — these values apply to the tested Tet clip, not every video. |
+| Finish | Replace only confirmed problem frames and reassemble with original audio. Check frame count, FPS, duration, colour and audio; inspect moving boundaries and playback. |
+| Local evidence | `local/paper-ink-product/out/tet-veo-calibrated/` holds the automatic trial, frame-131 repair, final video, comparison and provenance. Sampled frames were substantially cleaner than the retired overlay; perfect recovery is not guaranteed. |
 
 ## Outputs
 
@@ -406,24 +301,12 @@ Run from the repository root:
 uv run python -m unittest discover -s tools/video_edit/tests -t .
 ```
 
-Relocation verification: 77 tests run, 75 pass, 2 experimental unmix quality
-tests fail (opacity accuracy and reconstruction improvement). The real clip
-renders all 240 frames to `local/paper-ink-product/out/video-edit-watermark-check/result.mp4`
-with AAC audio preserved. Visual inspection of frames 40, 120, 160 and 200
-still shows coloured/edge artifacts; removal is not yet visually clean.
-`comparison.png` beside that output shows magnified before/after crops.
-
-26 tests cover corner ordering, detection accuracy against a fixture with
-known ground truth, mirrored-tile seam continuity, W3C soft-light, grain
-survival, lighting transfer, mask placement, determinism, the CLI, and the real
-`paper_do_nhung_close.jpg`. 16 more cover the video path: aspect measurement
-from unclipped frames only, quad reconstruction against a known sheet, occlusion
-masking, frame planning, rendering, and the `video` command end to end on a
-generated clip. 18 more cover watermark removal: footprint detection against a
-synthetic mark and against the measured box on the real clip, the membrane
-against a curved shading field and against a hard edge, the static residual
-against both boundary fills, determinism, untouched pixels outside the mask, and
-the `watermark` command on a generated clip.
+| Tests | Coverage |
+| :--- | :--- |
+| Texture/still | Corner ordering, detection against ground truth, mirrored tiling, blend modes, lighting, masks, determinism and CLI. |
+| Video | Aspect measurement, quad reconstruction, occlusion, planning, rendering and source-video regressions when local media is present. |
+| Official watermark wrapper | CLI routing, verified installation, explicit frame repair, input/output protection, backend failures, manifests and skipped-frame warnings. Unit tests mock the external engine; they do not certify removal quality. |
+| Removed | Tests specific to retired custom watermark algorithms, including the failing unmix reconstruction tests. They were not weakened or reclassified as passing. |
 
 Generated examples remain under `local/paper-ink-product`, in `out/demo/`, `out/demo2/`, `out/video/` and
 `out/video-clean/`:
@@ -434,9 +317,7 @@ Generated examples remain under `local/paper-ink-product`, in `out/demo/`, `out/
   the same close-up composited back. Demonstrates the no-AI path.
 - `out/video/` — the held-sheet clip, all 240 frames re-surfaced. `frames/`
   holds the composited PNGs, `manifest.json` the per-frame detection record.
-- `out/video-clean/` — the same clip with its corner watermark lifted out.
-  `preview.png` marks the detected footprint on the first frame, `mask.png` is
-  the footprint itself, and `manifest.json` records the residual before and
-  after (13.17 to 0.70, the noise floor).
+- `out/video-clean/` — historical output from the retired watermark backend,
+  retained as an artifact, not an example of the official workflow.
 
 These are build outputs, not product photos, and `local/` is not tracked by git.
