@@ -7,6 +7,7 @@ tags:
 - automation
 - social-content
 submodules:
+  video_edit/: OpenCV texture compositing and static-video watermark removal.
   facebook_agent/: Direct DOM publishing to a personal Facebook profile or explicitly
     named active Fanpage, with optional multi-group sharing, plus planned direct
     messaging with humanized typing, pacing, and exact content checks.
@@ -25,6 +26,9 @@ submodules:
 ---
 
 # Tools
+
+- [`video_edit/`](./video_edit/): Texture compositing and static-video watermark
+  removal. Run `uv run python -m tools.video_edit --help` from the repository root.
 
 - [`common/`](./common/): Shared platform-independent browser CDP diagnostics,
   browser startup foundation, and the canonical unified post format
