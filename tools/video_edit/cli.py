@@ -341,6 +341,14 @@ def cmd_proxy(args) -> int:
 
 
 def cmd_watermark(args) -> int:
+    clone_offset = None
+    if args.clone_offset is not None:
+        try:
+            clone_offset = tuple(int(value) for value in args.clone_offset.split(","))
+        except ValueError as error:
+            raise QuadError("clone offset must be dx,dy in pixels") from error
+        if len(clone_offset) != 2:
+            raise QuadError("clone offset must be dx,dy in pixels")
     cfg = RemoveConfig(
         method=args.method,
         iterations=args.iterations,
@@ -349,6 +357,7 @@ def cmd_watermark(args) -> int:
         regressor_grow=args.regressor_grow,
         alpha_floor=args.alpha_floor,
         est_grow=args.est_grow,
+        clone_offset=clone_offset,
     )
     region = None
     if args.mask_file:
@@ -503,12 +512,13 @@ def build_parser() -> argparse.ArgumentParser:
     watermark.add_argument("--grow", type=int, default=2, help="grow the mask by this many pixels")
     watermark.add_argument(
         "--method", choices=METHODS, default="unmix",
-        help="unmix inverts a measured translucent model; harmonic fills from the boundary",
+        help="clone overlays nearby pixels; temporal borrows aligned frames; unmix inverts a translucent model; harmonic fills from the boundary",
     )
     watermark.add_argument("--iterations", type=int, default=600, help="relaxation passes at full resolution")
     watermark.add_argument("--level-iterations", type=int, default=120, help="relaxation passes per pyramid level")
     watermark.add_argument("--inpaint-radius", type=int, default=3, help="Telea seed radius")
     watermark.add_argument("--regressor-grow", type=int, default=0, help="unmix: regressor hole; 0 derives it")
+    watermark.add_argument("--clone-offset", help="legacy rectangular source offset dx,dy; default uses surface-aware texture overlay (use =-64,0 for negatives)")
     watermark.add_argument("--alpha-floor", type=float, default=0.30, help="unmix: do not invert harder than 1/this")
     watermark.add_argument("--est-grow", type=int, default=3, help="unmix: px the model reaches past the core")
     watermark.add_argument("--start", type=int, default=0)

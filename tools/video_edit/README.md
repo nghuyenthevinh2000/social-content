@@ -203,6 +203,67 @@ detection; `preview.png` shows what was chosen.
 
 ### Removing it
 
+To overlay surrounding pixels instead of reconstructing the hidden scene:
+
+```bash
+uv run python -m tools.video_edit watermark --method clone \
+  --video local/paper-ink-product/Girl_presenting_red_paper_20261018230134.mp4 \
+  --out-dir local/paper-ink-product/out/video-edit-clone-surface
+```
+
+`clone` now follows the existing compositor's separation of surface coverage,
+texture and lighting. It distinguishes neutral paper from chromatic skin using
+chroma (not the watermark's brightened luminance), then estimates illumination
+from clean pixels of each material separately. A small clean same-frame texture
+tile is mirrored using `tile_mirror` and overlaid with the shared `apply_shading`
+blend. Feathering stays inside a mask grown by 6 pixels. No rectangular donor
+silhouette is pasted across the moving edge.
+
+This assumes neutral/chromatic materials and a translucent neutral watermark;
+it is not a general semantic segmenter. Texture is repeated and edge coverage
+and shading remain approximate. Use `--clone-offset=-64,0` to opt into the legacy
+rectangular donor patch 64 pixels left; `dx,dy` is source minus destination.
+Contaminated and out-of-frame explicit donors are rejected.
+
+The earlier 240-frame clone-overlay trial covers the mark but visual inspection still
+shows a rectangular patch and misaligned arm/paper edges. See
+`out/video-edit-clone-overlay/comparison.png` under the media directory. This
+trial is not a visually seamless result. All three clone tests pass; the full
+suite at that point had 81 passes and the same two pre-existing unmix failures.
+
+The revised surface-aware render is `out/video-edit-clone-surface/result.mp4`
+under the media directory: 240 frames, 720×1280, AAC audio preserved. Its
+`comparison.png` shows original / old clone / revised overlay at frames 40,
+120, 160 and 200. The rectangle and displaced donor edge are no longer present
+in these frames; some boundary softness and shading mismatch remain at high
+zoom. All four clone tests pass, including a curved two-material boundary with
+grain; the full suite has 82 passes and the same two unmix failures.
+
+To try motion-aware frame borrowing, run from the repository root:
+
+```bash
+uv run python -m tools.video_edit watermark --method temporal \
+  --video local/paper-ink-product/Girl_presenting_red_paper_20261018230134.mp4 \
+  --out-dir local/paper-ink-product/out/video-edit-temporal
+```
+
+`temporal` estimates optical flow on filled guide crops so the fixed watermark
+does not anchor the motion. It borrows original donor pixels outside a widened
+watermark mask, rejects inconsistent forward/backward motion and mismatched
+surroundings, and blends inward without changing pixels outside the mask.
+It prints the percentage of masked pixels with clean donor support. Remaining
+pixels use harmonic fill. This is experimental: split at cuts first, inspect
+occlusions and edges, and expect memory use proportional to clip length (only
+local crops are buffered). It does not guarantee recovery of never-exposed detail.
+
+Real-clip trial: all 240 frames rendered with audio, but only 7.9% of masked
+pixels had accepted clean donors. Inspection at frames 40, 120, 160 and 200
+shows smooth fallback patches and edge notches; this is not a visually clean
+replacement for `unmix`. See `out/video-edit-temporal/comparison.png` under the
+media directory (original / unmix / encoded temporal). The lower static
+residual, 13.169 to 1.619, does not establish visual quality. The three new
+temporal tests pass; the full suite has 78 passes and the same two unmix failures.
+
 `--method unmix` is currently the experimental default. It estimates a per-pixel
 gain from a membrane spanning a wider hole, calibrates against an unmarked ring,
 and uses a harmonic fill of the temporal mean to estimate the offset. Clips
@@ -243,7 +304,8 @@ the region, parameters, and residual before and after. Audio is copied across.
 | `--search` | bottom-right | Where to look: `x,y,w,h` as fractions (all ≤ 1) or pixels. |
 | `--threshold` | `0.15` | Fraction of the peak response that counts as mark. |
 | `--grow` | `2` | Pixels added to the footprint, to cover the antialiased edge. |
-| `--method` | `unmix` | Experimental `unmix`, or `harmonic`, `telea`, `ns`. |
+| `--method` | `unmix` | `clone`, experimental `unmix` / `temporal`, or `harmonic`, `telea`, `ns`. |
+| `--clone-offset` | surface-aware | Opt into legacy rectangular donor offset `dx,dy`; negative values need `=`. |
 | `--regressor-grow` | `0` | Unmix hole growth in pixels; 0 derives it from mark size. |
 | `--alpha-floor` | `0.30` | Minimum scene multiplier; limits inverse amplification. |
 | `--est-grow` | `3` | Growth of the estimated correction footprint. |

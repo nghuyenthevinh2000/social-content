@@ -50,7 +50,7 @@ from .video import VideoInfo, encode, iter_frames, probe_video
 # which is where a corner-anchored mark lives.  Wide enough that the mark is
 # inside it with margin on every side, whatever its offset from the corner.
 DEFAULT_SEARCH = (0.45, 0.60, 0.55, 0.40)
-METHODS = ("unmix", "harmonic", "telea", "ns")
+METHODS = ("unmix", "harmonic", "telea", "ns", "temporal", "clone")
 # A translucent mark is modelled as value = (1 - a) * scene + a * colour.  The
 # slope estimate is biased by the smoothness of the regressor, so it is
 # calibrated against a ring of unmarked pixels; ``est_grow`` widens the model's
@@ -115,6 +115,7 @@ class RemoveConfig:
     est_grow: int = DEFAULT_EST_GROW
     min_motion: float = DEFAULT_MIN_MOTION
     alpha_fallback: float = DEFAULT_ALPHA_FALLBACK
+    clone_offset: tuple[int, int] | None = None
 
 
 @dataclass
@@ -362,7 +363,7 @@ def _model_margin(config: RemoveConfig, region: WatermarkRegion) -> int:
     """Crop margin wide enough for the regressor's hole, the ring and the fill."""
     size = max(region.box[2], region.box[3])
     if config.method != "unmix":
-        return max(config.levels) + 4 if config.method == "harmonic" else 2
+        return max(config.levels) + 4 if config.method in ("harmonic", "temporal") else 2
     return int(_regressor_grow(config, region) + max(config.levels) + 6)
 
 
@@ -491,6 +492,10 @@ def clean_frame(
     config: RemoveConfig,
     fit: UnmixFit | None = None,
 ) -> np.ndarray:
+    if config.method == "clone":
+        from .clone import clone_frame
+
+        return clone_frame(frame, region.mask, config.clone_offset)[0]
     margin = _model_margin(config, region)
     x0, y0, x1, y1 = region.crop_window(margin)
     crop = frame[y0:y1, x0:x1]
@@ -502,7 +507,7 @@ def clean_frame(
             raise QuadError("the unmix model was measured over a different window")
         # observed = multiplier * scene + offset, so scene = (observed - offset) / multiplier
         filled = np.clip((crop.astype(np.float32) - fit.offset) / fit.multiplier, 0, 255).astype(np.uint8)
-    elif config.method in ("harmonic", "unmix"):
+    elif config.method in ("harmonic", "unmix", "temporal"):
         # ``unmix`` without a measured model is the documented fallback to the
         # membrane, which needs no model at all.
         filled = harmonic_fill(crop, mask, config)
@@ -557,8 +562,34 @@ def clean_video(
     ys, xs = np.where(masked)
     residuals: list[np.ndarray] = []
     written: list[int] = []
+    temporal_frames = []
+    if config.method == "temporal":
+        from .temporal import borrow_frame
+
+        window = region.crop_window(96)
+        x0, y0, x1, y1 = window
+        local_mask = masked[y0:y1, x0:x1]
+        temporal_frames = [frame[y0:y1, x0:x1].copy()
+                           for _, frame in iter_frames(video, start=start, limit=limit)]
+        guide_mask = cv2.dilate(local_mask.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0
+        guides = [cv2.cvtColor(harmonic_fill(crop, guide_mask, config), cv2.COLOR_BGR2GRAY)
+                  for crop in temporal_frames]
+        coverage = []
+    previous_clone = None
     for index, frame in iter_frames(video, start=start, limit=limit):
-        cleaned = clean_frame(frame, region, config, fit)
+        if config.method == "temporal":
+            crop = temporal_frames[len(written)]
+            fallback = harmonic_fill(crop, local_mask, config)
+            filled, fraction = borrow_frame(len(written), temporal_frames, guides, local_mask, fallback)
+            coverage.append(fraction)
+            cleaned = frame.copy()
+            cleaned[y0:y1, x0:x1] = filled
+        elif config.method == "clone":
+            from .clone import clone_frame
+
+            cleaned, previous_clone = clone_frame(frame, region.mask, config.clone_offset, previous_clone)
+        else:
+            cleaned = clean_frame(frame, region, config, fit)
         write_png(frames_dir / f"{index:05d}.png", cleaned)
         written.append(index)
         gray = cv2.cvtColor(cleaned, cv2.COLOR_BGR2GRAY).astype(np.float32)
@@ -570,6 +601,8 @@ def clean_video(
     # The mark is static, so any of it left over is still static: the median
     # over time isolates that from the frame that just moved.
     residual = float(np.median(stack, axis=0).max()) if len(stack) > 2 else float(stack.max())
+    if config.method == "temporal":
+        print(f"temporal    clean donor coverage {np.mean(coverage):.1%} (rest harmonic)")
     return written, residual, fit, refused
 
 
@@ -618,7 +651,28 @@ def render_watermark(
     if not skip_encode:
         encoded = encode(frames_dir, info.path, out_path, info.fps, crf=crf, preset=preset)
 
-    if fit is not None:
+    if config.method == "clone":
+        what = (
+            "Nearby same-surface texture covers the watermark using the shared lighting-carry "
+            "overlay blend. Explicit clone offsets use legacy rectangular patch copying."
+        )
+        limits = [
+            "Copied surrounding pixels are not the original scene behind the watermark.",
+            "Automatic coverage assumes neutral and chromatic materials, such as paper and skin; "
+            "similar-coloured materials or opaque marks may not separate correctly.",
+            "Small texture tiles are repeated; fine texture and shading are approximate.",
+            "Automatic replacement extends six pixels past the mask with inward feathering; "
+            "explicit offsets retain the rectangular patch and can misalign edges.",
+        ]
+    elif config.method == "temporal":
+        what = "Motion-aligned unmarked donor pixels replace the watermark, with harmonic fallback."
+        limits = [
+            "One continuous shot is required; split at cuts first.",
+            "Flow can misalign skin, occlusions or deforming surfaces; inspect moving edges.",
+            "Pixels never exposed outside the watermark use a spatial harmonic fill.",
+            "Only a local crop is buffered, but memory still grows with clip length.",
+        ]
+    elif fit is not None:
         what = (
             "A translucent static watermark was located from the video's own frames and its "
             "per-pixel opacity was measured, then inverted. The scene under the mark -- its "
@@ -653,6 +707,7 @@ def render_watermark(
         "region": region.as_dict(),
         "config": {
             "method": config.method,
+            "clone_offset": config.clone_offset,
             "iterations": config.iterations,
             "level_iterations": config.level_iterations,
             "levels": list(config.levels),
