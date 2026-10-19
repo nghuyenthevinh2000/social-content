@@ -47,7 +47,7 @@ def is_exempt_file(target_file_str: str) -> bool:
     if path.name.lower() in EXEMPT_NAMES:
         return True
     rel = normalize_rel_path(str(path))
-    if rel.startswith('.agents/') or rel.startswith('scripts/') or '/scratch/' in str(path):
+    if rel.startswith('.agents/') or rel.startswith('scripts/') or rel.startswith('plans/') or '/scratch/' in str(path):
         return True
     return False
 

@@ -1,45 +1,77 @@
 ---
 name: social-content
-summary: Social content skills, research, publishing resources, and local tools for supervised X workflows and direct Facebook publishing.
-tags: [social-content, publishing, tools]
+summary: AI agent toolkit for audience research, storytelling, visual assets, and supervised social publishing.
+tags: [social-content, publishing, tools, agent-skills]
 ---
 
-# Social Content & Skills Overview
+# Social Content & Agent Skills
 
-This repository contains specialized agent skills, topic research, draft posts, visual assets, and style analyses used for end-to-end content creation, storytelling, and publishing.
+> **Paste this to your agent to install:**
+>
+> ```text
+> install https://github.com/nghuyenthevinh2000/social-content
+> ```
 
-## Available Skills
+A modular agent toolkit and operating system for end-to-end social content creation: audience research, storytelling frameworks, humanized copywriting, visual infographics/slides, video compositing, and guarded platform publishing (LinkedIn, X, Facebook).
 
-| Name | Description |
-| --- | --- |
-| [`beautiful-html-templates`](./.agents/skills/beautiful-html-templates/SKILL.md) | A library of 34+ reusable, production-ready HTML slide deck templates and styling systems across diverse aesthetics (editorial, brutalist, minimal, playful, retro, technical, bold). Use when building, designing, generating, or adapting interactive HTML slide presentations, keynotes, or pitch decks with tone-first template matching, live previews, and design-system adaptations. |
-| [`branding`](./.agents/skills/branding/SKILL.md) | Comprehensive end-to-end brand operating system covering strategy, identity, naming, positioning, messaging, voice, guidelines, audience research, audits, architecture, and rebranding. Manages brands as structured, persistent packages on disk (`brand.yaml` + markdown artifacts) across 15 specialized branding workflows. |
-| [`documentation`](./.agents/skills/documentation/SKILL.md) | Creates, structures, and reviews technical documentation following the Diátaxis framework (tutorials, how-to guides, reference, and explanation pages). Use when a user needs to write or reorganize docs, structure a tutorial vs. a how-to guide, build reference docs or API documentation, create explanation pages, choose between Diátaxis documentation types, or improve existing documentation structure. |
-| [`humanizer`](./.agents/skills/humanizer/SKILL.md) | Rewrite AI-sounding text so it reads naturally without changing what it says. Use when editing or reviewing prose for inflated claims, sales language, vague sources, repetitive structure, stock AI words, passive voice, filler, or chatbot artifacts. Based on Wikipedia's "Signs of AI writing." |
-| [`infographic`](./.agents/skills/infographic/SKILL.md) | Author high-impact visual infographics and executive one-pagers as self-contained HTML files with embedded chart logic and Playwright 2x Retina screenshots. Combines 5 structural infographic templates (business plans, executive summaries, enterprise architecture stacks, financial reports, social media dashboards) with 34 curated design styles. Use when the user asks to create an infographic, one-pager, visual chart, executive briefing visual, or architecture stack. |
-| [`story-engine`](./.agents/skills/story-engine/SKILL.md) | Unified storytelling skill. Run before writing any story, post, caption, or narrative. Covers two sequential phases: (1) Story Integrity — interrogates whether the story earns the right to be told; (2) Story Craft — shapes and writes the story using a platform-specific format file from story-formats/. LinkedIn formats include Jescil-Richard and Jasmin Alić frameworks. |
-| [`video-editing`](./.agents/skills/video-editing/SKILL.md) | Compose, crop, overlay, and encode composite video clips using ffmpeg on macOS. Covers the full pipeline: probing source videos, face-centered circular overlay (OpenCV 5 YuNet detection), variable-frame-rate sync fixes, background music mixing with volume control, circle fade-out via alpha channel, and Dolby Vision / 10-bit HEVC quirks. Use when combining videos, adding a talking-head circle overlay, mixing background music, or producing social-media composite clips. |
-| [`web-design`](./.agents/skills/web-design/SKILL.md) | Design and build web pages and interfaces using a preview-first workflow. Use for websites, landing pages, dashboards, portfolios, pricing pages, UI redesigns, and layout work. Requires a project-specific browser preview and complete design spec before implementing the full page. |
-| [`writing-style-analyzer`](./.agents/skills/writing-style-analyzer/SKILL.md) | Analyze the writing style of any content creator by name. The agent runs web searches to gather real writing samples, then synthesizes a structured "Style DNA" report covering voice, tone, sentence rhythm, hook patterns, vocabulary, structural conventions, and platform-specific habits. Reports are saved to `plans/<creator-slug>.md`. Use when you want to study, emulate, or contrast a creator's style. |
+---
 
-## Repository Structure & Directories
+## 🚀 Quickstart & Onboarding
 
-Read in [`FRONTMATTER.md`](./FRONTMATTER.md)
+> **Newcomer Agent Onboarding Guide:**
+> Read **[`plans/newcomer-agent-onboarding-guide.md`](./plans/newcomer-agent-onboarding-guide.md)** for the complete walkthrough:
+>
+> - **4-Stage Content Engine**: The conceptual mental model connecting research, storytelling, rich visuals, and guarded publishing.
+> - **Starter Flows to Try**:
+>   1. *Authentic Storytelling & Copywriting* ([`story-engine`](./.agents/skills/story-engine/SKILL.md) ➔ [`humanizer`](./.agents/skills/humanizer/SKILL.md))
+>   2. *Executive Visual Infographic / Slides* ([`infographic`](./.agents/skills/infographic/SKILL.md) / [`beautiful-html-templates`](./.agents/skills/beautiful-html-templates/SKILL.md))
+>   3. *Creator Style DNA Analysis* ([`writing-style-analyzer`](./.agents/skills/writing-style-analyzer/SKILL.md))
+> - **Advanced Capabilities**: End-to-end Brand OS, supervised social publishing, Reddit pain-point research, and video compositing.
 
-## Skill-Selection Router (Jev Hook)
+## 🛠 Available Skills Catalog
 
-A [TypeSafe](https://typesafe.ai)-backed PreInvocation hook picks the right
-skill *and* the right resource inside it (template/reference) for every
-request, before the agent reasons on its own.
+All skills live in [`.agents/skills/`](./.agents/skills/) and can be loaded dynamically or pre-routed by the agent.
 
-**Features:**
+| Skill | Focus & Core Purpose |
+| :--- | :--- |
+| [`beautiful-html-templates`](./.agents/skills/beautiful-html-templates/SKILL.md) | 34+ production-ready HTML slide deck templates and presentation styling systems. |
+| [`branding`](./.agents/skills/branding/SKILL.md) | End-to-end brand operating system (`brand.yaml`, identity, voice, positioning, guidelines). |
+| [`documentation`](./.agents/skills/documentation/SKILL.md) | Technical documentation authoring following the Diátaxis framework. |
+| [`file-conversion`](./.agents/skills/file-conversion/SKILL.md) | Bidirectional document conversions (PDF to Markdown, Markdown to PDF with Mermaid). |
+| [`glasser`](./.agents/skills/glasser/SKILL.md) | 1,000+ paid and high-quality data endpoints (person/company search, enrichment, scraping). |
+| [`humanizer`](./.agents/skills/humanizer/SKILL.md) | Rewrites AI-sounding prose into natural, rhythmic human language without changing meaning. |
+| [`infographic`](./.agents/skills/infographic/SKILL.md) | Authors self-contained HTML visual infographics (16:9 / 9:16) with Playwright 2x Retina captures. |
+| [`ponytail`](./.agents/skills/ponytail/SKILL.md) | Minimalist development ethos: standard libraries first, shortest path, zero unnecessary code. |
+| [`social-platform-orchestrator`](./.agents/skills/social-platform-orchestrator/SKILL.md) | Orchestrates content across Twitter/X, Facebook, LinkedIn, and Reddit research. |
+| [`story-engine`](./.agents/skills/story-engine/SKILL.md) | Unified storytelling engine: integrity checks + platform craft frameworks (LinkedIn, X). |
+| [`twitter-reply-strategy`](./.agents/skills/twitter-reply-strategy/SKILL.md) | Discovers, scores, and drafts high-visibility Twitter/X replies. |
+| [`typesafe-ai`](./.agents/skills/typesafe-ai/SKILL.md) | AI primitives and typed probability judgments (System One / Jev models). |
+| [`video-editing`](./.agents/skills/video-editing/SKILL.md) | ffmpeg and OpenCV face-centered circular overlays, audio mixing, and video composition. |
+| [`web-design`](./.agents/skills/web-design/SKILL.md) | Preview-first web design for landing pages, dashboards, and UI layouts. |
+| [`writing-style-analyzer`](./.agents/skills/writing-style-analyzer/SKILL.md) | Reverse-engineers any creator's Style DNA from real writing samples. |
 
-- Two-stage selection — which skill(s) apply, then which specific resource inside the top skill applies
-- Multi-group support — skills needing more than one independent pick at once (e.g. a layout *and* a design style) get separate rankings, not one merged/forced choice
-- Honest confidence — reports "No strong existing candidate, LLM decides" instead of forcing a weak pick
-- Fails open — any error (missing key, bad payload, no match) never blocks the turn
-- One-click install into any workspace via `uv`
-- Optional visual demo — animated bar-chart view of Jev's confidence per skill/resource
+---
+
+## 🤖 Local Automation Tools (`tools/`)
+
+Deterministic local tools for supervised, human-in-the-loop social actions. Read more in [`tools/README.md`](./tools/README.md).
+
+- [`tools/linkedin_agent/`](./tools/linkedin_agent/): Direct CLI for approved personal LinkedIn text and ordered image posts.
+- [`tools/twitter_agent/`](./tools/twitter_agent/): Terminal-operated X DOM CLI for reply submission and approved image posting.
+- [`tools/facebook_agent/`](./tools/facebook_agent/): Direct publishing to personal profile or named Fanpage with optional group sharing.
+- [`tools/reddit-research-mcp/`](./tools/reddit-research-mcp/): Semantic community discovery and audience pain-point mining.
+- [`tools/video_edit/`](./tools/video_edit/): Video watermark removal and OpenCV texture compositing.
+- [`tools/common/`](./tools/common/): Shared browser startup, CDP diagnostics, and canonical unified post format ([`samples/post.json`](./tools/common/samples/post.json)).
+
+---
+
+## ⚡ Skill-Selection Router (Jev Hook)
+
+A [TypeSafe](https://typesafe.ai)-backed PreInvocation hook automatically identifies and ranks the best skill and resource for every prompt before the agent executes.
+
+- **Two-stage selection**: Determines which skill applies, then selects the exact resource/template inside that skill.
+- **Multi-group support**: Independent rankings for combined needs (e.g., layout + aesthetic style).
+- **Fails open**: Transparent fallback to standard LLM reasoning if anything errors or confidence is low.
 
 Quick install into another workspace:
 
@@ -47,17 +79,17 @@ Quick install into another workspace:
 ./scripts/install-skill-hook.sh /path/to/other/workspace
 ```
 
-This vendors `.agents/hooks/skill-selector/skill_selector.py` + `skill_injector_hook.py`,
-fetches `python-dotenv` / `pyyaml` / `typesafe-sdk` via `uv`, and registers
-the hook in `.agents/hooks.json`. Requires `uv` and a `TYPESAFE_API_KEY`.
-
-Quick deploy / run visual demo webapp:
+Run visual demo webapp:
 
 ```bash
 uv run --project . python scripts/skill-selector-demo/server.py
-# open http://127.0.0.1:8765
+# Open http://127.0.0.1:8765
 ```
 
-See **[plans/skill-selection-router-hook-guide.md](./plans/skill-selection-router-hook-guide.md)**
-for the full guide: how it works, all relevant files, install steps for
-this repo vs. other workspaces, testing, and the optional visual demo.
+See **[plans/skill-selection-router-hook-guide.md](./plans/skill-selection-router-hook-guide.md)** for detailed setup and architecture.
+
+---
+
+## 📁 Repository Structure
+
+Refer to [`FRONTMATTER.md`](./FRONTMATTER.md) for full directory mapping and semantic routing.
