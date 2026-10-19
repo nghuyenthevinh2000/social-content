@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chủ doanh nghiệp &amp; dân bán hàng — Nemotron Personas Việt Nam</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fcf7ec;
+    --primary: #e84a27;
+    --c1: #e84a27;
+    --c2: #0d9488;
+    --c3: #d97706;
+    --text: #191716;
+    --text-muted: #554e47;
+    --text-light: #8d8378;
+    --track: rgba(25, 23, 22, 0.08);
+    --card-bg: rgba(232, 74, 39, 0.045);
+    --border: rgba(25, 23, 22, 0.14);
+    --hair: rgba(25, 23, 22, 0.12);
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--bg); }
+
+  #canvas {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 720px;
+    height: 1280px;
+    transform-origin: center center;
+    background: var(--bg);
+    padding: 28px 34px 24px 34px;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-body);
+    color: var(--text-muted);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .watermark { position: absolute; inset: 0; width: 720px; height: 1280px; pointer-events: none; z-index: 0; }
+  .stack { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--c1);
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+  }
+  .sec-label {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--c1);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+
+  /* ---------- hanging banner ---------- */
+  .banner {
+    position: absolute;
+    top: 0;
+    right: 34px;
+    width: 100px;
+    background: var(--c1);
+    border-radius: 0 0 14px 14px;
+    padding: 16px 10px 15px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    text-align: center;
+    z-index: 2;
+    cursor: pointer;
+    will-change: transform, opacity;
+  }
+  .banner svg { width: 32px; height: 32px; }
+  .banner b {
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    color: var(--bg);
+    text-transform: uppercase;
+  }
+  .banner span { font-size: 10px; font-weight: 500; color: rgba(252, 247, 236, 0.9); line-height: 1.25; }
+
+  /* ---------- 1. header (108px) ---------- */
+  .band-header {
+    height: 108px;
+    padding-right: 116px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    will-change: transform, opacity;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 26.5px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    margin: 5px 0 6px 0;
+  }
+  .subline { font-size: 12.5px; font-weight: 500; color: var(--text-muted); line-height: 1.25; }
+
+  /* ---------- 2. metric chips (124px) ---------- */
+  .band-chips {
+    height: 124px;
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .chip {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-left-width: 4.5px;
+    border-radius: 14px;
+    padding: 14px 12px 15px 13px;
+    display: flex;
+    flex-direction: column;
+    will-change: transform, opacity;
+  }
+  .chip.g1 { border-left-color: var(--c1); background: rgba(232, 74, 39, 0.055); border-color: rgba(232, 74, 39, 0.24); }
+  .chip.g2 { border-left-color: var(--c2); background: rgba(13, 148, 136, 0.055); border-color: rgba(13, 148, 136, 0.24); }
+  .chip.g3 { border-left-color: var(--c3); background: rgba(217, 119, 6, 0.055); border-color: rgba(217, 119, 6, 0.24); }
+  .chip .who {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.25;
+    margin-bottom: auto;
+  }
+  .chip .metrics { display: flex; justify-content: space-between; align-items: flex-end; gap: 6px; }
+  .chip .m { display: flex; flex-direction: column; gap: 5px; }
+  .chip .m em {
+    font-family: var(--font-display);
+    font-style: normal;
+    font-size: 16.5px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--c1);
+    line-height: 1;
+  }
+  .chip.g2 .m em { color: var(--c2); }
+  .chip.g3 .m em { color: var(--c3); }
+  .chip .m i {
+    font-style: normal;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--text-light);
+    letter-spacing: 0.02em;
+  }
+
+  /* ---------- charts (2 rows only) ---------- */
+  .band-c1 {
+    height: 470px;
+    margin-top: 20px;
+    border-top: 1.5px solid var(--hair);
+    padding-top: 18px;
+    display: flex;
+    flex-direction: column;
+  }
+  .band-c3 {
+    height: 416px;
+    margin-top: 20px;
+    border-top: 1.5px solid var(--hair);
+    padding-top: 18px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .legend { display: flex; gap: 22px; margin-bottom: 18px; }
+  .legend-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .dot-1 { background: var(--c1); }
+  .dot-2 { background: var(--c2); }
+  .dot-3 { background: var(--c3); }
+
+  /* C1 — two columns of 3 core themes */
+  .themes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    flex: 1;
+  }
+  .theme-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .theme { will-change: transform, opacity; }
+  .theme-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 9px;
+    line-height: 1.25;
+  }
+  .bline { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .bline:last-child { margin-bottom: 0; }
+  .barea { flex: 1; height: 14px; background: var(--track); border-radius: 7px; overflow: hidden; }
+  .bfill {
+    height: 100%;
+    border-radius: 7px;
+    background: var(--c1);
+    will-change: transform;
+    transform-origin: left center;
+  }
+  .bfill.s2 { background: var(--c2); }
+  .bfill.s3 { background: var(--c3); }
+  .bpct {
+    width: 38px;
+    text-align: right;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--c1);
+  }
+  .bline:nth-child(3) .bpct { color: var(--c2); }
+  .bline:nth-child(4) .bpct { color: var(--c3); }
+  .bline .bpct.low { color: var(--text-light); font-weight: 600; }
+
+  /* C2 (formerly C3) — distinctive skills columns (3 cols × 4 top skills) */
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    flex: 1;
+  }
+  .skill-col {
+    display: flex;
+    flex-direction: column;
+  }
+  .col-head {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.25;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .col-head::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--c1);
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .cols > div:nth-child(2) .col-head::before { background: var(--c2); }
+  .cols > div:nth-child(3) .col-head::before { background: var(--c3); }
+
+  .skill-list {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1;
+    padding-bottom: 4px;
+  }
+  .srow { will-change: transform, opacity; }
+  .sname {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--text);
+    margin-bottom: 7px;
+  }
+  .sflex { display: flex; align-items: center; gap: 9px; }
+  .strack { flex: 1; height: 14px; background: var(--track); border-radius: 7px; overflow: hidden; }
+  .sfill {
+    height: 100%;
+    border-radius: 7px;
+    background: var(--c1);
+    will-change: transform;
+    transform-origin: left center;
+  }
+  .cols > div:nth-child(2) .sfill { background: var(--c2); }
+  .cols > div:nth-child(3) .sfill { background: var(--c3); }
+  .cols > div:nth-child(2) .bpct { color: var(--c2); }
+  .cols > div:nth-child(3) .bpct { color: var(--c3); }
+
+  /* ---------- footer (56px) ---------- */
+  .band-footer {
+    height: 56px;
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    border-top: 1.5px solid var(--hair);
+    padding-top: 9px;
+    font-family: var(--font-display);
+    font-size: 11px;
+    line-height: 1.45;
+    letter-spacing: 0.01em;
+    color: var(--text-light);
+    will-change: transform, opacity;
+  }
+  .band-footer b { font-weight: 600; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div id="canvas">
+
+  <svg class="watermark" viewBox="0 0 720 1280" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="wg1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#e84a27" stop-opacity="0.06"/>
+        <stop offset="100%" stop-color="#d97706" stop-opacity="0.015"/>
+      </linearGradient>
+      <linearGradient id="wg2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#0d9488" stop-opacity="0.06"/>
+        <stop offset="100%" stop-color="#0d9488" stop-opacity="0.01"/>
+      </linearGradient>
+    </defs>
+    <polygon class="wm-poly-1" points="470,0 720,0 720,330 560,170" fill="url(#wg1)"/>
+    <path class="wm-line" d="M430,-40 L740,300 M540,10 L760,250" stroke="#e84a27" stroke-width="1" stroke-opacity="0.12"/>
+    <circle class="wm-ring-1" cx="672" cy="150" r="130" stroke="#d97706" stroke-width="1" stroke-opacity="0.1"/>
+    <polygon class="wm-poly-2" points="0,900 240,1030 0,1160" fill="url(#wg2)"/>
+    <circle class="wm-ring-2" cx="70" cy="1100" r="120" stroke="#0d9488" stroke-width="1" stroke-opacity="0.09"/>
+  </svg>
+
+  <div class="banner" title="Click hoặc nhấn R để phát lại chuyển động 10s">
+    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 22L32 12L52 22" stroke="#fcf7ec" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="16" y="24" width="32" height="26" rx="2" stroke="#fcf7ec" stroke-width="3.4"/>
+      <path d="M26 50V36H38V50" stroke="#fcf7ec" stroke-width="3.4" stroke-linejoin="round"/>
+      <path d="M6 54H58" stroke="#fcf7ec" stroke-width="3.4" stroke-linecap="round"/>
+    </svg>
+    <b>FPT ×<br>NVIDIA</b>
+    <span>Nemotron · 1M</span>
+  </div>
+
+  <div class="stack">
+
+    <!-- 1. header -->
+    <header class="band-header">
+      <div class="eyebrow">FPT × NVIDIA · NEMOTRON-PERSONAS-VIETNAM</div>
+      <h1>Tệp dữ liệu mở mô phỏng<br>1.000.000 người Việt</h1>
+      <div class="subline">Chủ doanh nghiệp · chủ tiệm · dân bán hàng (189.519 hồ sơ) quan tâm điều gì?</div>
+    </header>
+
+    <!-- 2. metric chips -->
+    <section class="band-chips">
+      <div class="chip g1">
+        <div class="who">Chủ DN / Giám đốc</div>
+        <div class="metrics">
+          <div class="m"><em>1.325</em><i>NGƯỜI</i></div>
+          <div class="m"><em>38</em><i>TUỔI</i></div>
+          <div class="m"><em>77%</em><i>ĐÔ THỊ</i></div>
+          <div class="m"><em>40%</em><i>NỮ</i></div>
+        </div>
+      </div>
+      <div class="chip g2">
+        <div class="who">Chủ tiệm / Quán ăn</div>
+        <div class="metrics">
+          <div class="m"><em>53.052</em><i>NGƯỜI</i></div>
+          <div class="m"><em>40</em><i>TUỔI</i></div>
+          <div class="m"><em>40%</em><i>ĐÔ THỊ</i></div>
+          <div class="m"><em>60%</em><i>NỮ</i></div>
+        </div>
+      </div>
+      <div class="chip g3">
+        <div class="who">Bán hàng / Tiểu thương</div>
+        <div class="metrics">
+          <div class="m"><em>135.142</em><i>NGƯỜI</i></div>
+          <div class="m"><em>40</em><i>TUỔI</i></div>
+          <div class="m"><em>41%</em><i>ĐÔ THỊ</i></div>
+          <div class="m"><em>64%</em><i>NỮ</i></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. chart 1 — ambitions (6 core themes) -->
+    <section class="band-c1">
+      <div class="sec-head">
+        <div class="sec-label">Mục tiêu nghề nghiệp cốt lõi — % số người trong nhóm nhắc tới</div>
+      </div>
+      <div class="legend">
+        <div class="legend-entry"><span class="dot dot-1"></span><span>Chủ doanh nghiệp</span></div>
+        <div class="legend-entry"><span class="dot dot-2"></span><span>Chủ tiệm</span></div>
+        <div class="legend-entry"><span class="dot dot-3"></span><span>Bán hàng</span></div>
+      </div>
+
+      <div class="themes">
+        <div class="theme-col">
+          <div class="theme">
+            <div class="theme-name">Mở rộng quy mô</div>
+            <div class="bline"><div class="barea"><div class="bfill" style="width:82.6%"></div></div><div class="bpct">82,6</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s2" style="width:80.5%"></div></div><div class="bpct">80,5</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s3" style="width:72.3%"></div></div><div class="bpct">72,3</div></div>
+          </div>
+
+          <div class="theme">
+            <div class="theme-name">Ổn định &amp; bền vững</div>
+            <div class="bline"><div class="barea"><div class="bfill" style="width:66.7%"></div></div><div class="bpct">66,7</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s2" style="width:62.4%"></div></div><div class="bpct">62,4</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s3" style="width:71.8%"></div></div><div class="bpct">71,8</div></div>
+          </div>
+
+          <div class="theme">
+            <div class="theme-name">Học kỹ năng mới</div>
+            <div class="bline"><div class="barea"><div class="bfill" style="width:47.7%"></div></div><div class="bpct">47,7</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s2" style="width:47.2%"></div></div><div class="bpct">47,2</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s3" style="width:54.9%"></div></div><div class="bpct">54,9</div></div>
+          </div>
+        </div>
+
+        <div class="theme-col">
+          <div class="theme">
+            <div class="theme-name">Giữ khách hàng</div>
+            <div class="bline"><div class="barea"><div class="bfill" style="width:11.2%"></div></div><div class="bpct low">11,2</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s2" style="width:44.5%"></div></div><div class="bpct">44,5</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s3" style="width:52.9%"></div></div><div class="bpct">52,9</div></div>
+          </div>
+
+          <div class="theme">
+            <div class="theme-name">Thu nhập &amp; doanh thu</div>
+            <div class="bline"><div class="barea"><div class="bfill" style="width:12.6%"></div></div><div class="bpct low">12,6</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s2" style="width:17.0%"></div></div><div class="bpct low">17,0</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s3" style="width:38.1%"></div></div><div class="bpct">38,1</div></div>
+          </div>
+
+          <div class="theme">
+            <div class="theme-name">Gia đình &amp; con cái</div>
+            <div class="bline"><div class="barea"><div class="bfill" style="width:6.6%"></div></div><div class="bpct low">6,6</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s2" style="width:23.0%"></div></div><div class="bpct">23,0</div></div>
+            <div class="bline"><div class="barea"><div class="bfill s3" style="width:31.6%"></div></div><div class="bpct">31,6</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. chart 2 — distinctive skills (top 4 per group) -->
+    <section class="band-c3">
+      <div class="sec-head">
+        <div class="sec-label">Kỹ năng đặc trưng theo nhóm — % người trong nhóm · trục 0–40%</div>
+      </div>
+      <div class="cols">
+
+        <div class="skill-col">
+          <div class="col-head">Chủ doanh nghiệp</div>
+          <div class="skill-list">
+            <div class="srow">
+              <div class="sname">Lãnh đạo đội nhóm</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:83.5%"></div></div><div class="bpct">33,4</div></div>
+            </div>
+            <div class="srow">
+              <div class="sname">Quản trị chiến lược</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:55.5%"></div></div><div class="bpct">22,2</div></div>
+            </div>
+            <div class="srow">
+              <div class="sname">Phân tích thị trường</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:38%"></div></div><div class="bpct">15,2</div></div>
+            </div>
+            <div class="srow">
+              <div class="sname">Phân tích dữ liệu</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:32.8%"></div></div><div class="bpct">13,1</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="skill-col">
+          <div class="col-head">Chủ tiệm</div>
+          <div class="skill-list">
+            <div class="srow">
+              <div class="sname">Giao tiếp khách hàng</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:91%"></div></div><div class="bpct">36,4</div></div>
+            </div>
+            <div class="srow">
+              <div class="sname">Quản lý kho hàng</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:68.5%"></div></div><div class="bpct">27,4</div></div>
+            </div>
+            <div class="srow">
+              <div class="sname">Chăm sóc khách hàng</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:50.8%"></div></div><div class="bpct">20,3</div></div>
+            </div>
+            <div class="srow">
+              <div class="sname">Vận hành quán ăn</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:45.5%"></div></div><div class="bpct">18,2</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="skill-col">
+          <div class="col-head">Bán hàng</div>
+          <div class="skill-list">
+            <div class="srow">
+              <div class="sname">Giao tiếp khách hàng</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:94.5%"></div></div><div class="bpct">37,8</div></div>
+            </div>
+            <div class="srow">
+              <div class="sname">Đàm phán giá cả</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:46.8%"></div></div><div class="bpct">18,7</div></div>
+            </div>
+            <div class="srow">
+              <div class="sname">Chăm sóc khách hàng</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:42.3%"></div></div><div class="bpct">16,9</div></div>
+            </div>
+            <div class="srow">
+              <div class="sname">Quản lý tồn kho</div>
+              <div class="sflex"><div class="strack"><div class="sfill" style="width:38.3%"></div></div><div class="bpct">15,3</div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 5. footer -->
+    <footer class="band-footer">
+      Nguồn: nvidia/Nemotron-Personas-Vietnam · CC BY 4.0 · 189.519/1.000.000 persona · phân tích 17/10/2026
+      <b>Sở thích không tách được nhóm: cả ba đều xem phim, hát karaoke, nghe V-pop, đọc sách (lệch tối đa 1,9×).</b>
+    </footer>
+
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  function fitCanvas() {
+    const scale = Math.min(window.innerWidth / 720, window.innerHeight / 1280, 1);
+    canvas.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+  }
+  window.addEventListener('resize', fitCanvas);
+  fitCanvas();
+
+  // --- 10-Second Motion Choreography Engine (2-Row Layout) ---
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('static') === '1') return;
+
+    function easeOut(t) {
+      if (t <= 0) return 0;
+      if (t >= 1) return 1;
+      return 1 - Math.pow(1 - t, 3.6);
+    }
+
+    function progress(ms, startMs, durationMs) {
+      return easeOut((ms - startMs) / durationMs);
+    }
+
+    function parseVNNumber(raw) {
+      const text = raw.trim();
+      const hasPct = text.endsWith('%');
+      const clean = text.replace('%', '');
+      if (clean.includes('.')) {
+        return {
+          target: parseInt(clean.replace(/\./g, ''), 10),
+          format: (val) => Math.round(val).toLocaleString('de-DE') + (hasPct ? '%' : '')
+        };
+      } else if (clean.includes(',')) {
+        return {
+          target: parseFloat(clean.replace(',', '.')),
+          format: (val) => val.toFixed(1).replace('.', ',') + (hasPct ? '%' : '')
+        };
+      } else {
+        return {
+          target: parseInt(clean, 10),
+          format: (val) => Math.round(val) + (hasPct ? '%' : '')
+        };
+      }
+    }
+
+    const banner = document.querySelector('.banner');
+    const header = document.querySelector('.band-header');
+    const wmRing1 = document.querySelector('.wm-ring-1');
+    const wmRing2 = document.querySelector('.wm-ring-2');
+    const wmLine = document.querySelector('.wm-line');
+
+    const chips = Array.from(document.querySelectorAll('.band-chips .chip')).map((el, i) => {
+      const nums = Array.from(el.querySelectorAll('.m em')).map(em => ({
+        el: em,
+        ...parseVNNumber(em.textContent)
+      }));
+      return { el, index: i, nums };
+    });
+
+    const c1Head = document.querySelector('.band-c1 .sec-head');
+    const c1Legend = document.querySelector('.band-c1 .legend');
+    const themes = Array.from(document.querySelectorAll('.band-c1 .theme')).map((el, i) => {
+      const bars = Array.from(el.querySelectorAll('.bline')).map((bline, j) => {
+        const fill = bline.querySelector('.bfill');
+        const pct = bline.querySelector('.bpct');
+        return {
+          fill,
+          pct,
+          ...parseVNNumber(pct.textContent),
+          rowIdx: j
+        };
+      });
+      return { el, index: i, bars };
+    });
+
+    const c3Head = document.querySelector('.band-c3 .sec-head');
+    const skillCols = Array.from(document.querySelectorAll('.band-c3 .cols > div')).map((colEl, i) => {
+      const head = colEl.querySelector('.col-head');
+      const rows = Array.from(colEl.querySelectorAll('.srow')).map((srow, j) => {
+        const fill = srow.querySelector('.sfill');
+        const pct = srow.querySelector('.bpct');
+        return {
+          srow,
+          fill,
+          pct,
+          ...parseVNNumber(pct.textContent),
+          rowIdx: j
+        };
+      });
+      return { colEl, head, index: i, rows };
+    });
+
+    const footer = document.querySelector('.band-footer');
+
+    function renderAt(ms) {
+      // 0.0s–1.3s: Header, Banner & Watermark
+      const pBanner = progress(ms, 0, 950);
+      banner.style.transform = `translateY(${(1 - pBanner) * -110}%)`;
+      banner.style.opacity = Math.min(1, ms / 250);
+
+      const pHeader = progress(ms, 150, 1000);
+      header.style.opacity = pHeader;
+      header.style.transform = `translateY(${(1 - pHeader) * 14}px)`;
+
+      const drift = Math.sin((ms / 10000) * Math.PI);
+      if (wmRing1) wmRing1.style.transform = `translate(${drift * -6}px, ${drift * 5}px)`;
+      if (wmRing2) wmRing2.style.transform = `translate(${drift * 6}px, ${drift * -5}px)`;
+      if (wmLine) wmLine.style.strokeOpacity = (0.06 + 0.08 * drift).toFixed(3);
+
+      // 1.2s–3.0s: KPI Chips stagger + count-up
+      chips.forEach((chip) => {
+        const start = 1150 + chip.index * 200;
+        const p = progress(ms, start, 900);
+        chip.el.style.opacity = p;
+        chip.el.style.transform = `translateY(${(1 - p) * 14}px)`;
+        const pCount = progress(ms, start + 100, 1250);
+        chip.nums.forEach((n) => {
+          n.el.textContent = n.format(n.target * pCount);
+        });
+      });
+
+      // 3.0s–6.2s: Chart 1 — 6 Core Career Ambitions
+      const pC1Head = progress(ms, 2900, 650);
+      c1Head.style.opacity = pC1Head;
+      c1Legend.style.opacity = pC1Head;
+      c1Head.style.transform = `translateY(${(1 - pC1Head) * 10}px)`;
+
+      themes.forEach((th) => {
+        const start = 3150 + th.index * 260;
+        const pTh = progress(ms, start, 700);
+        th.el.style.opacity = pTh;
+        th.el.style.transform = `translateY(${(1 - pTh) * 8}px)`;
+
+        th.bars.forEach((b) => {
+          const bStart = start + 100 + b.rowIdx * 90;
+          const pBar = progress(ms, bStart, 1200);
+          b.fill.style.transform = `scaleX(${pBar})`;
+          b.pct.style.opacity = progress(ms, bStart + 150, 750);
+          b.pct.textContent = b.format(b.target * pBar);
+        });
+      });
+
+      // 6.2s–9.0s: Chart 2 — Distinctive Skills (3 color waves)
+      const pC3Head = progress(ms, 6150, 650);
+      c3Head.style.opacity = pC3Head;
+      c3Head.style.transform = `translateY(${(1 - pC3Head) * 10}px)`;
+
+      skillCols.forEach((col) => {
+        const start = 6350 + col.index * 360;
+        const pCol = progress(ms, start, 700);
+        col.head.style.opacity = pCol;
+        col.head.style.transform = `translateY(${(1 - pCol) * 8}px)`;
+
+        col.rows.forEach((r) => {
+          const rStart = start + 120 + r.rowIdx * 120;
+          const pBar = progress(ms, rStart, 1100);
+          r.srow.style.opacity = progress(ms, rStart, 600);
+          r.fill.style.transform = `scaleX(${pBar})`;
+          r.pct.style.opacity = pBar;
+          r.pct.textContent = r.format(r.target * pBar);
+
+          if (r.rowIdx === 0 && ms >= 8300 && ms <= 9200) {
+            const pulse = Math.sin(((ms - 8300) / 900) * Math.PI);
+            r.fill.style.filter = `brightness(${1 + 0.18 * pulse})`;
+          } else {
+            r.fill.style.filter = 'none';
+          }
+        });
+      });
+
+      // 9.0s–10.0s: Footer & Final Hold
+      const pFooter = progress(ms, 8950, 700);
+      footer.style.opacity = pFooter;
+      footer.style.transform = `translateY(${(1 - pFooter) * 6}px)`;
+    }
+
+    let rafId = null;
+    window.setAnimationTime = function(ms) {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      renderAt(ms);
+    };
+
+    function playTimeline() {
+      if (rafId) cancelAnimationFrame(rafId);
+      const t0 = performance.now();
+      function tick(now) {
+        const elapsed = now - t0;
+        renderAt(Math.min(elapsed, 10000));
+        if (elapsed < 10000) {
+          rafId = requestAnimationFrame(tick);
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    banner.addEventListener('click', playTimeline);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'r' || e.key === 'R') playTimeline();
+    });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', playTimeline);
+    } else {
+      playTimeline();
+    }
+  })();
+</script>
+</body>
+</html>

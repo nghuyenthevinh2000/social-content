@@ -4,6 +4,8 @@ summary: Documentation and resources for plans.
 tags:
 - reflections
 submodules:
+  facebook-user-research-strategy.md: Table-only Facebook audience discovery strategy with wide and targeted search, a 20-business synthesis gate, and paper/ink buyer qualification.
+  facebook-target-audience-research.md: Facebook keyword-led B2B audience research plan, Glasser capability findings, and wedding-invitation printer pilot.
   deep-seated-question-gemini.md: Deep-Seated Questions to Refine a Storyteller's
     Mindset
   deep-seated-question-openai.md: Deep-Seated Questions for a Storyteller
@@ -19,4 +21,3 @@ submodules:
   wireframe.md: +---------------------------------------------------------------------------------------------------------+
   twitter-reply-guy-strategy-2026.md: Research findings and tool improvement notes from the Teract Twitter Reply Guy Strategy 2026 article.
 ---
-
