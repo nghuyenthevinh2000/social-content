@@ -3,19 +3,12 @@
 import argparse
 import csv
 import json
-import os
 from pathlib import Path
-import sys
 import time
 from typing import List, Optional
 
-try:
-    from dotenv import load_dotenv
-    _env_path = Path(__file__).resolve().parents[1] / '.env'
-    if _env_path.exists():
-        load_dotenv(_env_path)
-except ImportError:
-    pass
+from tools.common.cli_support import JsonArgumentParser, emit_error, emit_success
+from tools.common.config import get_default_doctor_timeout_ms
 
 from .browser import Browser
 from .models import AgentError, normalize_target, validate_text
@@ -26,40 +19,10 @@ from .submission import submit_draft
 from .topic_config import load_topics
 
 
-def get_default_doctor_timeout_ms() -> int:
-    try:
-        return int(os.environ.get('DEFAULT_DOCTOR_TIMEOUT_MS', 30000))
-    except (ValueError, TypeError):
-        return 30000
-
-
 DEFAULT_TOPICS = (
     'AI, LLM, claude, cursor, openai, gemini, engineering, '
     '"just shipped", "just launched", "I built", startup, founder'
 )
-
-
-class JsonArgumentParser(argparse.ArgumentParser):
-    """Argument parser that raises AgentError on invalid arguments while preserving help."""
-    def error(self, message):
-        raise AgentError('invalid_arguments', message)
-
-
-def emit_success(data):
-    sys.stdout.write(json.dumps({'ok': True, 'data': data}, indent=2) + '\n')
-    sys.stdout.flush()
-
-
-def emit_error(code: str, message: str, human_action_required: bool = False):
-    sys.stdout.write(json.dumps({
-        'ok': False,
-        'error': {
-            'code': code,
-            'message': message,
-            'human_action_required': human_action_required,
-        }
-    }, indent=2) + '\n')
-    sys.stdout.flush()
 
 
 def error_exit_code(code: str) -> int:

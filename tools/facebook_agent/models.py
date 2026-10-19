@@ -4,22 +4,16 @@ import json
 from pathlib import Path
 from urllib.parse import urlparse
 
+from tools.common.errors import AgentError
+from tools.common.groups import MAX_SHARE_GROUPS, validate_group_names
+
 MAX_MESSAGE_CHARS = 20000
-MAX_SHARE_GROUPS = 9
 FACEBOOK_HOSTS = {'www.facebook.com', 'facebook.com', 'm.facebook.com', 'web.facebook.com'}
 PROFILE_PLAN_KEYS = {'url', 'recipient', 'message', 'text', 'label'}
 NON_PROFILE_PATHS = {
     '', 'home.php', 'me', 'groups', 'pages', 'messages', 'watch',
     'marketplace', 'friends', 'notifications', 'bookmarks', 'events',
 }
-
-
-class AgentError(Exception):
-    def __init__(self, code: str, message: str, human_action_required: bool = False):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.human_action_required = human_action_required
 
 
 def validate_content(text: str, image: str | Path | None = None) -> tuple[str, Path | None]:
@@ -139,23 +133,6 @@ def load_message_plan(path: str | Path) -> list[dict]:
     if not isinstance(entries, list) or not entries:
         raise AgentError('invalid_plan', 'Plan must contain at least one recipient.')
     return [_validate_recipient(entry, index) for index, entry in enumerate(entries, start=1)]
-
-
-def validate_group_names(names) -> list[str]:
-    """Validate group names to share a post to, preserving order."""
-    cleaned: list[str] = []
-    seen: set[str] = set()
-    for index, item in enumerate(names, start=1):
-        if not isinstance(item, str) or not item.strip() or '\x00' in item:
-            raise AgentError('invalid_groups', f'Group {index} must be a nonempty name.')
-        name = item.strip()
-        if name in seen:
-            raise AgentError('invalid_groups', f'Group name repeated: {name}')
-        seen.add(name)
-        cleaned.append(name)
-    if len(cleaned) > MAX_SHARE_GROUPS:
-        raise AgentError('invalid_groups', f'At most {MAX_SHARE_GROUPS} groups can be shared to in one post.')
-    return cleaned
 
 
 def load_group_names(path: str | Path) -> list[str]:

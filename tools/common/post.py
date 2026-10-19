@@ -18,11 +18,13 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from .errors import AgentError
+from .groups import MAX_SHARE_GROUPS, validate_group_names
+
 FACEBOOK_MAX_TEXT = 63206
 LINKEDIN_MAX_TEXT = 3000
 TWITTER_MAX_TEXT = 280
 LINKEDIN_MAX_IMAGES = 20
-MAX_SHARE_GROUPS = 9
 
 PLATFORMS = ('facebook', 'linkedin', 'twitter')
 FACEBOOK_PROFILES = ('personal', 'page')
@@ -37,14 +39,8 @@ _PLATFORM_KEYS = {
 }
 
 
-class PostError(Exception):
+class PostError(AgentError):
     """Stable error raised for any invalid or unsupported post document."""
-
-    def __init__(self, code: str, message: str, human_action_required: bool = False):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.human_action_required = human_action_required
 
 
 def _invalid(message: str) -> PostError:
@@ -93,19 +89,10 @@ def _resolve_images(value: Any, base_dir: Path | None, where: str) -> tuple[str,
 def _validate_group_names(names: Any) -> tuple[str, ...]:
     if not isinstance(names, list):
         raise PostError('invalid_groups', 'posting_groups must be an array of group names.')
-    cleaned: list[str] = []
-    seen: set[str] = set()
-    for index, item in enumerate(names, start=1):
-        if not isinstance(item, str) or not item.strip() or '\x00' in item:
-            raise PostError('invalid_groups', f'posting_groups[{index}] must be a nonempty group name.')
-        name = item.strip()
-        if name in seen:
-            raise PostError('invalid_groups', f'posting_groups repeats the name: {name}')
-        seen.add(name)
-        cleaned.append(name)
-    if len(cleaned) > MAX_SHARE_GROUPS:
-        raise PostError('invalid_groups', f'At most {MAX_SHARE_GROUPS} posting_groups are allowed per post.')
-    return tuple(cleaned)
+    try:
+        return tuple(validate_group_names(names))
+    except AgentError as exc:
+        raise PostError(exc.code, exc.message, exc.human_action_required) from exc
 
 
 @dataclass(frozen=True)

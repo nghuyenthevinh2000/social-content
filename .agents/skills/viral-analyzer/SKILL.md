@@ -1,11 +1,33 @@
 ---
-name: writing-style-analyzer
+name: viral-analyzer
 description: >
-  Analyze the writing style of any content creator by name. The agent runs web searches
-  to gather real writing samples, then synthesizes a structured "Style DNA" report covering
-  voice, tone, sentence rhythm, hook patterns, vocabulary, structural conventions, and
-  platform-specific habits. Use when a user wants to study, emulate, or contrast a creator's style.
+  Discover and analyze viral content and personalized Facebook Reels recommendations
+  using product context. Allow ordinary entertainment and uncertain content; exclude
+  only explicit promotion of unrelated products or services. Also analyze a named
+  creator's writing style using sourced samples and a Style DNA report.
 ---
+
+# Viral Content and Reels Research
+
+| Mode | Required workflow |
+| --- | --- |
+| Facebook recommendations / viral inspiration | Read [Reels selection policy](references/reels-selection.md), understand the user's product, collect recommendations using existing repository tools, then apply the evidence-based selection gate before ranking. |
+| Creator writing analysis | Use the Writing Style Analyzer workflow below. Its creator-name and four-search requirements apply only to that mode. |
+
+```text
+Read product → Observe feed → Explicit unrelated promotion? → Yes: exclude
+                                                       → No / unclear: allow
+```
+
+| Persistent selection rule | Requirement |
+| --- | --- |
+| Default | Allow. Unclear promotional intent goes on the allow-list, not a review queue. |
+| Exclusion | Identify both an explicitly promoted offer and why it differs from the user's product. Cite observed evidence; never infer selling solely from a creator name, topic, language, or follow control. |
+| Ordinary content | Dancing, women dancing, daily life, cooking, scenery, comedy, and noncommercial education remain eligible without needing a paper-related topic. |
+| Product context | For this project, start at `local/paper-ink-product/product-marketing.json`, then `posts/hypothesis.json` and `customer/profile.json`. Read current files rather than trusting the Page name. |
+| Tool boundary | The Facebook `reels` CLI captures raw observations. Use `judge-reels` for the Jev decision layer afterward; collection success is not classification success. Preserve raw data and excluded judgments separately. |
+| Jev execution | Start with `judge-reels --input <observations.json> --product-dir <product-directory> --output <new-judgments.json> --limit 10 --dry-run`. Live execution requires `TYPESAFE_API_KEY`, removing `--dry-run`, and explicit `--approve-api` authorization to transmit text/product context and incur API charges. |
+| Jev limits | Text-only judgments, source-selected evidence, provisional 0.90 threshold, default allow on semantic uncertainty. Missing credentials/API failures are operational errors, not successful allow decisions. Report unprocessed records; do not claim calibrated Vietnamese accuracy from offline tests. |
 
 # Writing Style Analyzer
 

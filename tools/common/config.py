@@ -7,13 +7,23 @@ import shutil
 import sys
 from typing import List, Optional, Union
 
-try:
-    from dotenv import load_dotenv
-    _env_path = Path(__file__).resolve().parents[1] / '.env'
-    if _env_path.exists():
-        load_dotenv(_env_path)
-except ImportError:
-    pass
+from .errors import AgentError as BaseAgentError
+
+
+def load_environment(*, include_repository: bool = False):
+    """Existing environment wins over tool configuration and optional repo defaults."""
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    env_path = Path(__file__).resolve().parents[1] / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+    if include_repository:
+        load_dotenv(Path(__file__).resolve().parents[2] / '.env')
+
+
+load_environment()
 
 
 DEFAULT_BACKEND: str = 'invisible'
@@ -46,16 +56,19 @@ LINUX_CHROME_CANDIDATES: List[str] = [
 ]
 
 
-class AgentError(Exception):
+class AgentError(BaseAgentError):
     """Structured operational error for social agent tools."""
-    def __init__(self, code: str, message: str, human_action_required: bool = False):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.human_action_required = human_action_required
 
     def __str__(self) -> str:
         return f'[{self.code}] {self.message}'
+
+
+def get_default_doctor_timeout_ms() -> int:
+    """Preserve agent CLIs' fallback for malformed environment timeouts."""
+    try:
+        return int(os.environ.get('DEFAULT_DOCTOR_TIMEOUT_MS', DEFAULT_DOCTOR_TIMEOUT_MS))
+    except (ValueError, TypeError):
+        return DEFAULT_DOCTOR_TIMEOUT_MS
 
 
 def find_browser_binary(custom_bin: Optional[str] = None) -> Optional[str]:

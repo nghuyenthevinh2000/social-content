@@ -25,7 +25,8 @@ A modular agent toolkit and operating system for end-to-end social content creat
 > - **Starter Flows to Try**:
 >   1. *Authentic Storytelling & Copywriting* ([`story-engine`](./.agents/skills/story-engine/SKILL.md) ➔ [`humanizer`](./.agents/skills/humanizer/SKILL.md))
 >   2. *Executive Visual Infographic / Slides* ([`infographic`](./.agents/skills/infographic/SKILL.md) / [`beautiful-html-templates`](./.agents/skills/beautiful-html-templates/SKILL.md))
->   3. *Creator Style DNA Analysis* ([`writing-style-analyzer`](./.agents/skills/writing-style-analyzer/SKILL.md))
+>   3. *Creator Style DNA Analysis* ([`viral-analyzer`](./.agents/skills/viral-analyzer/SKILL.md))
+> - **1,000-Point Exploration Quest**: A gamified challenge rewarding agents/users for trying all 15 skills, video tools, brand OS, and guarded publishing CLIs.
 > - **Advanced Capabilities**: End-to-end Brand OS, supervised social publishing, Reddit pain-point research, and video compositing.
 
 ## 🛠 Available Skills Catalog
@@ -47,8 +48,8 @@ All skills live in [`.agents/skills/`](./.agents/skills/) and can be loaded dyna
 | [`twitter-reply-strategy`](./.agents/skills/twitter-reply-strategy/SKILL.md) | Discovers, scores, and drafts high-visibility Twitter/X replies. |
 | [`typesafe-ai`](./.agents/skills/typesafe-ai/SKILL.md) | AI primitives and typed probability judgments (System One / Jev models). |
 | [`video-editing`](./.agents/skills/video-editing/SKILL.md) | ffmpeg and OpenCV face-centered circular overlays, audio mixing, and video composition. |
+| [`viral-analyzer`](./.agents/skills/viral-analyzer/SKILL.md) | Discover and analyze viral Facebook Reels and reverse-engineer creator Style DNA from real writing samples. |
 | [`web-design`](./.agents/skills/web-design/SKILL.md) | Preview-first web design for landing pages, dashboards, and UI layouts. |
-| [`writing-style-analyzer`](./.agents/skills/writing-style-analyzer/SKILL.md) | Reverse-engineers any creator's Style DNA from real writing samples. |
 
 ---
 

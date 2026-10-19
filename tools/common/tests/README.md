@@ -14,6 +14,7 @@ submodules:
   test_doctor.py: Browser diagnostics tests without platform navigation.
   test_launcher.py: Browser process detection, startup, and readiness tests.
   test_post.py: Unified post validation, inheritance, overrides, and per-platform adapters.
+  test_shared_support.py: Compatibility checks for shared errors, CLI output, environment defaults, and group validation.
 ---
 
 # tools.common tests

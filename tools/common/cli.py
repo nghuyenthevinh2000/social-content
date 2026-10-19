@@ -1,8 +1,6 @@
 """CLI entry point exposing doctor and start-browser with JSON output and stable exit codes."""
 
 import argparse
-import json
-import sys
 from typing import List, Optional
 
 from .config import (
@@ -15,12 +13,12 @@ from .config import (
 from .doctor import run_doctor
 from .launcher import start_browser
 from .post import PLATFORMS, PostError, plan_post
+from .cli_support import JsonArgumentParser as BaseJsonArgumentParser, emit_error, emit_success
 
 
-class JsonArgumentParser(argparse.ArgumentParser):
+class JsonArgumentParser(BaseJsonArgumentParser):
     """Argument parser that raises AgentError on invalid arguments while preserving help output."""
-    def error(self, message: str):
-        raise AgentError('invalid_arguments', message)
+    error_class = AgentError
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -187,45 +185,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             raise AgentError('invalid_arguments', f'Unknown command: {args.command}')
 
-        sys.stdout.write(json.dumps({'ok': True, 'data': data}, ensure_ascii=False, indent=2) + '\n')
-        sys.stdout.flush()
+        emit_success(data, ensure_ascii=False)
         return 0
 
     except SystemExit as exc:
         return exc.code
 
     except AgentError as exc:
-        sys.stdout.write(json.dumps({
-            'ok': False,
-            'error': {
-                'code': exc.code,
-                'message': exc.message,
-                'human_action_required': exc.human_action_required,
-            }
-        }, ensure_ascii=False, indent=2) + '\n')
-        sys.stdout.flush()
+        emit_error(exc.code, exc.message, exc.human_action_required, ensure_ascii=False)
         return 2 if exc.code == 'invalid_arguments' else 3
 
     except PostError as exc:
-        sys.stdout.write(json.dumps({
-            'ok': False,
-            'error': {
-                'code': exc.code,
-                'message': exc.message,
-                'human_action_required': exc.human_action_required,
-            }
-        }, ensure_ascii=False, indent=2) + '\n')
-        sys.stdout.flush()
+        emit_error(exc.code, exc.message, exc.human_action_required, ensure_ascii=False)
         return 2
 
     except Exception as exc:
-        sys.stdout.write(json.dumps({
-            'ok': False,
-            'error': {
-                'code': 'internal_error',
-                'message': str(exc),
-                'human_action_required': True,
-            }
-        }, ensure_ascii=False, indent=2) + '\n')
-        sys.stdout.flush()
+        emit_error('internal_error', str(exc), True, ensure_ascii=False)
         return 1

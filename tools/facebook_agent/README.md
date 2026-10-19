@@ -142,6 +142,42 @@ groups are included in the result as `groups`. Because the picker is part of
 Facebook's evolving composer, a live read-only check is worthwhile before the
 first real group share.
 
+## Read-only Reels recommendations
+
+| Command | Behavior |
+| --- | --- |
+| `uv run python -m tools.facebook_agent reels --page-id 61595289277974 --limit 15 --output local/facebook-reels/session.json` | Verifies the already-active Page, opens For You Reels, and captures up to 15 visible observations as JSON. Existing output files are never overwritten. |
+| Scope | Captures visible text, links, and labeled controls. Review language, URLs, and engagement labels before reporting. No publication-date filter or nationwide ranking. |
+| Side effects | Opens and preserves a tool-owned tab; watches and scrolls only. Viewing can influence recommendations. No likes, follows, comments, or shares. |
+
+```text
+Verify Page → Open For You → Capture → Scroll → Save JSON → Review
+```
+
+### Jev decision layer
+
+| Setting | Behavior |
+| --- | --- |
+| Entry point | `uv run python -m tools.facebook_agent judge-reels --input observations.json --product-dir local/paper-ink-product --output judgments.json --limit 10 --dry-run` |
+| Live execution | Remove `--dry-run` and add `--approve-api`. Set `TYPESAFE_API_KEY` in `tools/.env` or the environment. Sends observed text and reduced product context to TypeSafe; never sends customer leads or browser cookies. Live requests may incur charges. |
+| Decisions | Two Jev Noul probabilities identify explicit promotion and an unrelated offer; two Choice questions select observed promotional and offer evidence. Exclude only when all four signals reach `--threshold` (default 0.90) and both source lines exist. Otherwise allow. |
+| Calibration | Threshold is provisional, not a measured Vietnamese accuracy guarantee. Offline tests cover policy composition and API wiring, not model comprehension. Validate on labeled Vietnamese examples before relying on automatic exclusion. |
+| Boundaries | Text only, no audio/video analysis. `--limit` caps requests, not monetary charges. No retries. Resolved model, token usage, source evidence, and product context are saved separately from unchanged raw observations. |
+| Failures | Missing credentials abort before calls; API failures save partial judgments and fail explicitly. Unprocessed observations are not silently classified as allowed. Existing output files are refused. |
+
+```text
+Saved observations + product → Jev signals + source lines → Code policy → Allow / exclude
+```
+
+### Timed Vietnamese-audience collection
+
+| Command / output | Meaning |
+| --- | --- |
+| `uv run python -m tools.facebook_agent benchmark-reels --page-id 61595289277974 --product-dir local/paper-ink-product --output-dir local/paper-ink-product/sources/new-run --target-count 10 --max-observations 50 --approve-api` | Collect one bounded feed sample, then run Jev sequentially until 10 allowed Vietnamese-audience matches or the observation limit. Requires credentials before browsing. |
+| Audience | Additional Noul requires clear Vietnamese-audience text at a provisional 0.90 threshold. This is independent of default-allow promotion decisions; unknown audience is not a promotion exclusion. |
+| Files | `observations.json`, `jev-judgments.json`, `selected-reels.json`, `timing.json`; new output directory required. A shortfall is reported, not padded. |
+| Timer | Monotonic wall time for collection, Jev stage, per-request latency, and pipeline. Same-sample comparison: collection-only versus collection plus Jev. Not a comparison against equivalent manual filtering. Code changes, diagnostics, and report drafting are excluded. |
+
 ## Publishing behavior
 
 1. Open a new visible tab and navigate through Facebook `/me`.

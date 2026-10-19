@@ -1,38 +1,20 @@
 """Direct approved-input LinkedIn CLI with JSON results and fail-closed exits."""
 
 import argparse
-import json
-import os
-from pathlib import Path
-
-try:
-    from dotenv import load_dotenv
-    _env_path = Path(__file__).resolve().parents[1] / '.env'
-    if _env_path.exists():
-        load_dotenv(_env_path)
-except ImportError:
-    pass
+from tools.common.cli_support import JsonArgumentParser as BaseJsonArgumentParser, emit_result, error_result
+from tools.common.config import get_default_doctor_timeout_ms
 
 from .browser import Browser
 from .models import AgentError, validate_inputs
 from .posts import publish_post
 
 
-def get_default_doctor_timeout_ms() -> int:
-    try:
-        return int(os.environ.get('DEFAULT_DOCTOR_TIMEOUT_MS', 30000))
-    except (ValueError, TypeError):
-        return 30000
-
-
-class JsonArgumentParser(argparse.ArgumentParser):
-    def error(self, message):
-        # argparse's message can contain arbitrary supplied post text or paths.
-        raise AgentError(
-            'invalid_arguments',
-            'Invalid arguments. Use --help; post requires --text and at least one --image, '
-            'and global options must precede the command.',
-        )
+class JsonArgumentParser(BaseJsonArgumentParser):
+    # argparse's message can contain arbitrary supplied post text or paths.
+    error_message = (
+        'Invalid arguments. Use --help; post requires --text and at least one --image, '
+        'and global options must precede the command.'
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -81,10 +63,7 @@ def main(argv: list[str] | None = None) -> int:
         result = {'ok': True, 'data': data}
         status = 0
     except AgentError as error:
-        result = {'ok': False, 'error': {
-            'code': error.code, 'message': error.message,
-            'human_action_required': error.human_action_required,
-        }}
+        result = error_result(error.code, error.message, error.human_action_required)
         if error.code in ('invalid_arguments', 'invalid_timeout', 'invalid_text', 'invalid_images'):
             status = 2
         elif error.code == 'submission_uncertain':
@@ -100,10 +79,7 @@ def main(argv: list[str] | None = None) -> int:
             status = 1
     except Exception:
         # Never serialize exception repr/tracebacks: they may contain payloads.
-        result = {'ok': False, 'error': {
-            'code': 'unexpected_error', 'message': 'Unexpected failure. Inspect Chrome manually before retrying.',
-            'human_action_required': True,
-        }}
+        result = error_result('unexpected_error', 'Unexpected failure. Inspect Chrome manually before retrying.', True)
         status = 1
-    print(json.dumps(result, indent=2))
+    emit_result(result)
     return status

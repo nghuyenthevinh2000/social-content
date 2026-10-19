@@ -6,6 +6,9 @@ submodules:
   __init__.py: Social agent shared package.
   __main__.py: Module CLI entry point.
   cli.py: Shared CLI exposing doctor, start-browser, and post (dry-run) commands.
+  cli_support.py: Shared JSON output and argument-parser helpers; exit policies remain platform-local.
+  errors.py: Canonical structured agent error with compatibility re-exports in platform models.
+  groups.py: Canonical sharing-group validation and nine-group limit.
   config.py: Shared endpoint, timeout, browser binary, port, profile, and backend configuration.
   browser.py: Platform-independent invisible stealth browser and CDP connection with safe disconnection.
   doctor.py: Browser and connectivity diagnostics without platform navigation.

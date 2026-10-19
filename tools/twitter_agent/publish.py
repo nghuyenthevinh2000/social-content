@@ -6,10 +6,11 @@ No separate supervisor terminal is required.
 
 import argparse
 import hashlib
-import json
 import mimetypes
 from pathlib import Path
 from urllib.parse import urlsplit
+
+from tools.common.cli_support import emit_result, error_result
 
 from . import dom, selectors
 from .browser import Browser
@@ -138,13 +139,11 @@ def main() -> int:
             raise AgentError('approval_required', 'Use --approved only after explicit approval of the text and image.', True)
         outcome = publish(args.text, args.image, Store(args.state_dir), args.endpoint,
                           args.account, args.approved)
-        print(json.dumps({'ok': outcome['state'] == 'submitted', 'data': outcome}, ensure_ascii=False))
+        emit_result({'ok': outcome['state'] == 'submitted', 'data': outcome}, ensure_ascii=False, indent=None)
         return 0 if outcome['state'] == 'submitted' else 4
     except (AgentError, OSError) as exc:
-        print(json.dumps({'ok': False, 'error': {
-            'code': getattr(exc, 'code', 'file_error'), 'message': str(exc),
-            'human_action_required': getattr(exc, 'human_action_required', False),
-        }}, ensure_ascii=False))
+        emit_result(error_result(getattr(exc, 'code', 'file_error'), str(exc),
+                                 getattr(exc, 'human_action_required', False)), ensure_ascii=False, indent=None)
         return 2
 
 
