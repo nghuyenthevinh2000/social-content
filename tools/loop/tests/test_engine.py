@@ -614,5 +614,478 @@ class EngineTest(unittest.TestCase):
         self.assertTrue(any(e['path'] == str(reused_csv.relative_to(self.root.resolve())) for e in manifest['evidence_files']))
 
 
+    def test_cli_due_reports_placement_checkpoints(self):
+        import contextlib
+        import io
+        engine.initialize(self.root, self.page_id)
+        pub = engine.register(self.state, 1, 'https://www.facebook.com/reel/111', '2026-01-01T00:00:00Z')
+        pub['metrics_status'] = 'collected'
+        state = {
+            'schema_version': 2,
+            'publications': [pub],
+            'placements': [{
+                'id': 'pl-orig-1', 'publication_id': pub['id'], 'kind': 'original_page',
+                'checkpoints': {
+                    '24h': {'due_at': '2026-01-02T00:00:00Z', 'status': 'collected'},
+                    '7d': {'due_at': '2026-01-08T00:00:00Z', 'status': 'pending'},
+                },
+            }],
+        }
+        engine.save(self.state_path, state)
+        with patch.object(engine, 'now', return_value=engine.timestamp('2026-01-09T00:00:00Z')):
+            stream = io.StringIO()
+            with contextlib.redirect_stdout(stream):
+                engine.main(['--project', str(self.root), 'due'])
+        due = json.loads(stream.getvalue())
+        self.assertEqual([(item['placement_id'], item['checkpoint']) for item in due],
+                         [('pl-orig-1', '7d')])
+
+    def test_compare_and_prepare_review_dispatch_without_collection(self):
+        import contextlib
+        import io
+        cycle_res = self._run_single_placement_cycle()
+        run_id = cycle_res['run_id']
+        run_dir = self.root / 'loop/runs' / run_id
+        (run_dir / 'review-bundle.json').unlink()
+
+        with patch.object(engine.subprocess, 'run',
+                          side_effect=AssertionError('compare must not collect')):
+            stream = io.StringIO()
+            with contextlib.redirect_stdout(stream):
+                engine.main(['--project', str(self.root), 'compare', '--run', run_id])
+            compared = json.loads(stream.getvalue())
+            self.assertEqual(compared['status'], 'compared')
+            self.assertEqual(compared['comparison_file'], f'loop/runs/{run_id}/comparison.json')
+            self.assertFalse((run_dir / 'review-bundle.json').exists())
+
+            stream = io.StringIO()
+            with contextlib.redirect_stdout(stream):
+                engine.main(['--project', str(self.root), 'prepare-review', '--run', run_id])
+            prepared = json.loads(stream.getvalue())
+            self.assertEqual(prepared['status'], 'review_prepared')
+            self.assertTrue((run_dir / 'review-bundle.json').exists())
+            self.assertTrue(prepared['summary'])
+
+        with self.assertRaises(ValueError):
+            engine.main(['--project', str(self.root), 'compare', '--run', 'missing-run'])
+
+    def test_resume_repairs_changed_evidence_without_overwriting(self):
+        import subprocess
+        res1 = self._run_single_placement_cycle(insights_fails=True)
+        self.assertEqual(res1['status'], 'collection_incomplete')
+        run_id = res1['run_id']
+        run_dir = self.root / 'loop/runs' / run_id
+        lib_path = self.root / 'sources/post-metrics/captures' / run_id / 'content-library.json'
+        original_hash = engine._sha256(lib_path)
+
+        lib_path.write_text(json.dumps({'placements': [], 'tampered': True}))
+
+        commands = []
+        def working(cmd, **kwargs):
+            commands.append(list(cmd))
+            if 'content-library' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'placements': []}))
+            elif 'insights-export' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text('Date,Reactions\n2026-01-01,0\n')
+            elif 'insights-import' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'posts': []}))
+            elif 'insights' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({
+                    'capture_complete': True,
+                    'profile': {'url': f'https://www.facebook.com/?id={self.page_id}'},
+                    'records': [{'observed_at': '2026-01-02T01:00:00Z',
+                                 'post_metrics': {'views': 100}}],
+                }))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        engine.cycle(self.root, resume=run_id, runner=working)
+        manifest = json.loads((run_dir / 'manifest.json').read_text())
+        self.assertTrue(any(g.get('kind') == 'evidence_repair' for g in manifest['gaps']))
+        lib_entries = [e for e in manifest['evidence_files']
+                       if e['path'].startswith(f'sources/post-metrics/captures/{run_id}/')]
+        self.assertEqual(len({e['path'] for e in lib_entries}), len(lib_entries))
+        by_path = {e['path']: e['sha256'] for e in lib_entries}
+        repaired = [path for path in by_path if 'repairs/' in path]
+        self.assertEqual(len(repaired), 1)
+        self.assertIn('repair1', repaired[0])
+        self.assertEqual(by_path[f'sources/post-metrics/captures/{run_id}/content-library.json'],
+                         original_hash)
+        self.assertTrue((self.root / repaired[0]).exists())
+        self.assertTrue(json.loads(lib_path.read_text())['tampered'])
+
+    def test_empty_insights_records_is_a_gap_not_a_crash(self):
+        import subprocess
+        engine.initialize(self.root, self.page_id)
+        pub = engine.register(self.state, 1, 'https://www.facebook.com/reel/111', '2026-01-01T00:00:00Z')
+        state = {
+            'schema_version': 2,
+            'publications': [pub],
+            'placements': [{
+                'id': 'pl-orig-1', 'publication_id': pub['id'], 'kind': 'original_page',
+                'permalink': pub['url'], 'insights_url': 'https://www.facebook.com/insights/111',
+                'visibility': 'visible', 'visible_at': '2026-01-01T00:00:00Z',
+                'checkpoints': {'24h': {'due_at': '2026-01-02T00:00:00Z', 'status': 'pending'}},
+            }],
+        }
+        engine.save(self.state_path, state)
+
+        def runner(cmd, **kwargs):
+            if 'content-library' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'placements': []}))
+            elif 'insights-export' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text('Date,Reactions\n2026-01-01,0\n')
+            elif 'insights-import' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'posts': [{'post_id': '111'}]}))
+            elif 'insights' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({
+                    'capture_complete': True,
+                    'profile': {'url': f'https://www.facebook.com/?id={self.page_id}'},
+                    'records': [],
+                }))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        res = engine.cycle(self.root, runner=runner)
+        self.assertEqual(res['status'], 'partial_collection_pending_review')
+        manifest = json.loads((self.root / 'loop/runs' / res['run_id'] / 'manifest.json').read_text())
+        self.assertTrue(any(g.get('kind') == 'post_insights_unusable' for g in manifest['gaps']))
+        state = json.loads(self.state_path.read_text())
+        self.assertNotEqual(state['placements'][0]['checkpoints']['24h']['status'], 'collected')
+
+    def test_untracked_existing_library_is_repaired_not_overwritten(self):
+        import subprocess
+        res1 = self._run_single_placement_cycle(insights_fails=True)
+        run_id = res1['run_id']
+        run_dir = self.root / 'loop/runs' / run_id
+        lib_relative = f'sources/post-metrics/captures/{run_id}/content-library.json'
+        lib_path = self.root / lib_relative
+        original = lib_path.read_text()
+        manifest = json.loads((run_dir / 'manifest.json').read_text())
+        manifest['collector_status']['content_library'] = 'failed'
+        manifest['evidence_files'] = [e for e in manifest['evidence_files'] if e['path'] != lib_relative]
+        engine.save(run_dir / 'manifest.json', manifest)
+
+        def runner(cmd, **kwargs):
+            if 'content-library' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'placements': []}))
+            elif 'insights' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({
+                    'capture_complete': True,
+                    'profile': {'url': f'https://www.facebook.com/?id={self.page_id}'},
+                    'records': [{'observed_at': '2026-01-02T01:00:00Z',
+                                 'post_metrics': {'views': 100}}],
+                }))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        engine.cycle(self.root, resume=run_id, runner=runner)
+        self.assertEqual(lib_path.read_text(), original)
+        repairs = list((lib_path.parent / 'repairs').glob('content-library-repair*.json'))
+        self.assertTrue(repairs)
+        updated = json.loads((run_dir / 'manifest.json').read_text())
+        self.assertTrue(any(g.get('kind') == 'evidence_repair'
+                            and g.get('repair_path', '').endswith(repairs[0].name)
+                            for g in updated['gaps']))
+
+    def test_csv_audit_without_csv_is_repaired_to_new_path(self):
+        import subprocess
+        engine.initialize(self.root, self.page_id)
+        pub = engine.register(self.state, 1, 'https://www.facebook.com/reel/111', '2026-01-01T00:00:00Z')
+        state = {
+            'schema_version': 2,
+            'publications': [pub],
+            'placements': [{
+                'id': 'pl-orig-1', 'publication_id': pub['id'], 'kind': 'original_page',
+                'permalink': pub['url'], 'insights_url': 'https://www.facebook.com/insights/111',
+                'visibility': 'visible', 'visible_at': '2026-01-01T00:00:00Z',
+                'checkpoints': {'24h': {'due_at': '2026-01-02T00:00:00Z', 'status': 'pending'}},
+            }],
+        }
+        engine.save(self.state_path, state)
+
+        def failing(cmd, **kwargs):
+            if 'content-library' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'placements': []}))
+            elif 'insights-export' in cmd:
+                output = Path(cmd[cmd.index('--output') + 1])
+                output.with_suffix('.export.json').write_text(json.dumps({
+                    'profile': {'url': f'https://www.facebook.com/?id={self.page_id}'},
+                    'status': 'creation_requested', 'report_id': '42',
+                    'existing_report_ids': ['42'],
+                }))
+                return subprocess.CompletedProcess(args=cmd, returncode=1,
+                                                   stdout='', stderr='Expected one visible Export data; found 0')
+            elif 'insights' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({
+                    'capture_complete': True,
+                    'profile': {'url': f'https://www.facebook.com/?id={self.page_id}'},
+                    'records': [{'observed_at': '2026-01-02T01:00:00Z',
+                                 'post_metrics': {'views': 100}}],
+                }))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        res1 = engine.cycle(self.root, runner=failing)
+        self.assertEqual(res1['status'], 'partial_collection_pending_review')
+        run_id = res1['run_id']
+        original_csv = (self.root / 'sources/post-metrics/exports'
+                        / f'content-summary-{self.page_id}-{run_id}.csv')
+        self.assertFalse(original_csv.exists())
+        self.assertTrue(original_csv.with_suffix('.export.json').exists())
+
+        def working(cmd, **kwargs):
+            if 'insights-export' in cmd:
+                output = Path(cmd[cmd.index('--output') + 1])
+                self.assertIn('/exports/repairs/', str(output))
+                self.assertNotEqual(output, original_csv)
+                self.assertEqual(cmd[cmd.index('--report-id') + 1], '42')
+                output.write_text('Date,Reactions\n2026-01-01,0\n')
+            elif 'insights-import' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(
+                    json.dumps({'posts': [{'post_id': '111'}]}))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        engine.cycle(self.root, resume=run_id, runner=working)
+        manifest = json.loads((self.root / 'loop/runs' / run_id / 'manifest.json').read_text())
+        self.assertTrue(any(e.get('type') == 'summary_csv' and '/exports/repairs/' in e['path']
+                            for e in manifest['evidence_files']))
+
+    def test_valid_csv_is_reimported_without_another_export(self):
+        import hashlib
+        import subprocess
+        engine.initialize(self.root, self.page_id)
+        pub = engine.register(self.state, 1, 'https://www.facebook.com/reel/111', '2026-01-01T00:00:00Z')
+        state = {
+            'schema_version': 2,
+            'publications': [pub],
+            'placements': [{
+                'id': 'pl-orig-1', 'publication_id': pub['id'], 'kind': 'original_page',
+                'permalink': pub['url'], 'insights_url': 'https://www.facebook.com/insights/111',
+                'visibility': 'visible', 'visible_at': '2026-01-01T00:00:00Z',
+                'checkpoints': {'24h': {'due_at': '2026-01-02T00:00:00Z', 'status': 'pending'}},
+            }],
+        }
+        engine.save(self.state_path, state)
+        exports = []
+
+        def import_fails(cmd, **kwargs):
+            if 'content-library' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'placements': []}))
+            elif 'insights-export' in cmd:
+                exports.append(list(cmd))
+                Path(cmd[cmd.index('--output') + 1]).write_text('Date,Reactions\n2026-01-01,0\n')
+            elif 'insights-import' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).unlink(missing_ok=True)
+                return subprocess.CompletedProcess(args=cmd, returncode=1,
+                                                   stdout='', stderr='import failed')
+            elif 'insights' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({
+                    'capture_complete': True,
+                    'profile': {'url': f'https://www.facebook.com/?id={self.page_id}'},
+                    'records': [{'observed_at': '2026-01-02T01:00:00Z',
+                                 'post_metrics': {'views': 100}}],
+                }))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        res1 = engine.cycle(self.root, runner=import_fails)
+        self.assertEqual(res1['status'], 'partial_collection_pending_review')
+        run_id = res1['run_id']
+        csv_path = (self.root / 'sources/post-metrics/exports'
+                    / f'content-summary-{self.page_id}-{run_id}.csv')
+        original_hash = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+        export_count = len(exports)
+
+        imports = []
+        def working(cmd, **kwargs):
+            if 'insights-export' in cmd:
+                exports.append(list(cmd))
+                Path(cmd[cmd.index('--output') + 1]).write_text('Date,Reactions\n2026-01-01,0\n')
+            elif 'insights-import' in cmd:
+                imports.append(list(cmd))
+                self.assertEqual(cmd[cmd.index('--csv') + 1], str(csv_path.resolve()))
+                Path(cmd[cmd.index('--output') + 1]).write_text(
+                    json.dumps({'posts': [{'post_id': '111'}]}))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        engine.cycle(self.root, resume=run_id, runner=working)
+        self.assertEqual(len(exports), export_count)
+        self.assertTrue(imports)
+        self.assertEqual(hashlib.sha256(csv_path.read_bytes()).hexdigest(), original_hash)
+        manifest = json.loads((self.root / 'loop/runs' / run_id / 'manifest.json').read_text())
+        self.assertEqual(manifest['collector_status']['csv_export'], 'completed')
+        self.assertFalse(any('/exports/repairs/' in e['path']
+                             for e in manifest['evidence_files']
+                             if e.get('type') == 'summary_csv'))
+
+    def test_intact_resume_has_no_side_effects_or_attempt_increment(self):
+        import subprocess
+        res1 = self._run_single_placement_cycle(insights_fails=True)
+        run_id = res1['run_id']
+
+        def working(cmd, **kwargs):
+            if 'content-library' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'placements': []}))
+            elif 'insights-export' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text('Date,Reactions\n2026-01-01,0\n')
+            elif 'insights-import' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'posts': []}))
+            elif 'insights' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({
+                    'capture_complete': True,
+                    'profile': {'url': f'https://www.facebook.com/?id={self.page_id}'},
+                    'records': [{'observed_at': '2026-01-02T01:00:00Z',
+                                 'post_metrics': {'views': 100}}],
+                }))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        engine.cycle(self.root, resume=run_id, runner=working)
+        attempts = json.loads(self.state_path.read_text())['placements'][0]['checkpoints']['24h']['attempts']
+        self.assertEqual(attempts, 1)
+
+        engine.record_run_review(self.root, run_id, {
+            'observation': 'One snapshot',
+            'limitation': 'No inquiry data',
+            'evidence_ids': ['pl-orig-1'],
+        })
+
+        commands = []
+        def forbidden(cmd, **kwargs):
+            commands.append(list(cmd))
+            raise AssertionError(f'unexpected collector call: {cmd}')
+
+        res = engine.cycle(self.root, resume=run_id, runner=forbidden)
+        self.assertEqual(commands, [])
+        self.assertEqual(res['status'], 'review_proposed')
+        attempts_again = json.loads(self.state_path.read_text())['placements'][0]['checkpoints']['24h']['attempts']
+        self.assertEqual(attempts_again, 1)
+        checkpoint = json.loads(self.state_path.read_text())['placements'][0]['checkpoints']['24h']
+        self.assertEqual(checkpoint['review_status'], 'reviewed')
+
+    def test_no_work_surfaces_pending_reviews_and_open_runs(self):
+        cycle_res = self._run_single_placement_cycle()
+        res = engine.cycle(self.root)
+        self.assertEqual(res['status'], 'no_work')
+        self.assertEqual(res['pending_review_count'], 1)
+        self.assertIn(cycle_res['run_id'], {run['run_id'] for run in res['open_runs']})
+
+        review = engine.record_run_review(self.root, cycle_res['run_id'], {
+            'observation': 'One late snapshot',
+            'limitation': 'No inquiry data',
+            'evidence_ids': ['pl-orig-1'],
+        })
+        self.assertEqual(review['status'], 'proposed')
+        manifest = json.loads((self.root / 'loop/runs' / cycle_res['run_id'] / 'manifest.json').read_text())
+        self.assertEqual(manifest['status'], 'review_proposed')
+        self.assertEqual(manifest['review_status'], 'proposed')
+        state = json.loads(self.state_path.read_text())
+        self.assertEqual(state['placements'][0]['checkpoints']['24h']['review_status'], 'reviewed')
+        self.assertEqual(engine.pending_work(self.root, state)['pending_review_count'], 0)
+
+    def test_gap_deduplication(self):
+        from tools.loop import comparison as comparison_module
+        gaps = [
+            {'kind': 'csv_export_failed', 'detail': 'same'},
+            {'kind': 'csv_export_failed', 'detail': 'same'},
+            {'kind': 'unresolved_group_identity', 'placement_id': 'row-a', 'detail': 'same'},
+            {'kind': 'unresolved_group_identity', 'placement_id': 'row-b', 'detail': 'same'},
+        ]
+        self.assertEqual(len(comparison_module.dedupe_gaps(gaps)), 3)
+
+    def test_page_post_id_maps_library_row_to_placement(self):
+        from tools.loop import comparison as comparison_module
+        normalized = comparison_module.normalize_observations(
+            {'run_id': 'run-x', 'gaps': []},
+            {'content_library_rows': [
+                {'id': 'row-known', 'post_id': '111', 'kind': 'original_page', 'views': 10},
+                {'id': 'row-group', 'post_id': None, 'kind': 'group_copy',
+                 'group_name': 'Group A', 'views': 5},
+            ]},
+            placements=[{'id': 'pl-1', 'publication_id': 'pub-1', 'copy_post_id': '111'}],
+        )
+        known = next(item for item in normalized['observations'] if item['id'] == 'obs-lib-row-known')
+        self.assertEqual(known['placement_id'], 'pl-1')
+        self.assertEqual(known['publication_id'], 'pub-1')
+        self.assertEqual(known['identity_source'], 'page_post_id')
+        group = next(item for item in normalized['observations'] if item['id'] == 'obs-lib-row-group')
+        self.assertIsNone(group['placement_id'])
+        self.assertEqual([gap['kind'] for gap in normalized['gaps']], ['unresolved_group_identity'])
+
+    def test_group_copy_without_visible_time_stays_descriptive(self):
+        import subprocess
+        engine.initialize(self.root, self.page_id)
+        pub = engine.register(self.state, 1, 'https://www.facebook.com/reel/111', '2026-01-01T00:00:00Z')
+        state = {
+            'schema_version': 2,
+            'publications': [pub],
+            'placements': [{
+                'id': 'pl-group-1', 'publication_id': pub['id'], 'kind': 'group_copy',
+                'permalink': pub['url'], 'insights_url': 'https://www.facebook.com/insights/111',
+                'visibility': 'visible', 'visible_at': None,
+                'checkpoints': {'24h': {'due_at': '2026-01-02T00:00:00Z', 'status': 'pending'}},
+            }],
+        }
+        engine.save(self.state_path, state)
+
+        def runner(cmd, **kwargs):
+            if 'content-library' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'placements': []}))
+            elif 'insights-export' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text('Date,Reactions\n2026-01-01,0\n')
+            elif 'insights-import' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'posts': []}))
+            elif 'insights' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({
+                    'capture_complete': True,
+                    'profile': {'url': f'https://www.facebook.com/?id={self.page_id}'},
+                    'records': [{'observed_at': '2026-01-02T01:00:00Z',
+                                 'post_metrics': {'views': 100}}],
+                }))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        res = engine.cycle(self.root, runner=runner)
+        run_dir = self.root / 'loop/runs' / res['run_id']
+        comparison_data = json.loads((run_dir / 'comparison.json').read_text())
+        self.assertEqual(comparison_data['content_comparison']['creative_matrix'], [])
+        reasons = {item.get('exclusion_reason')
+                   for item in comparison_data['content_comparison']['descriptive_observations']}
+        self.assertIn('unknown_age', reasons)
+        manifest = json.loads((run_dir / 'manifest.json').read_text())
+        self.assertTrue(any(g.get('kind') == 'unknown_visible_at' for g in manifest['gaps']))
+
+    def _run_single_placement_cycle(self, insights_fails=False):
+        import subprocess
+        engine.initialize(self.root, self.page_id)
+        pub = engine.register(self.state, 1, 'https://www.facebook.com/reel/111', '2026-01-01T00:00:00Z')
+        state = {
+            'schema_version': 2,
+            'publications': [pub],
+            'placements': [{
+                'id': 'pl-orig-1', 'publication_id': pub['id'], 'kind': 'original_page',
+                'permalink': pub['url'], 'insights_url': 'https://www.facebook.com/insights/111',
+                'visibility': 'visible', 'visible_at': '2026-01-01T00:00:00Z',
+                'checkpoints': {'24h': {'due_at': '2026-01-02T00:00:00Z', 'status': 'pending'}},
+            }],
+        }
+        engine.save(self.state_path, state)
+
+        def runner(cmd, **kwargs):
+            if 'content-library' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'placements': []}))
+            elif 'insights-export' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text('Date,Reactions\n2026-01-01,0\n')
+            elif 'insights-import' in cmd:
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({'posts': []}))
+            elif 'insights' in cmd:
+                if insights_fails:
+                    return subprocess.CompletedProcess(args=cmd, returncode=1,
+                                                       stdout='', stderr='insights error')
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps({
+                    'capture_complete': True,
+                    'profile': {'url': f'https://www.facebook.com/?id={self.page_id}'},
+                    'records': [{'observed_at': '2026-02-02T01:00:00Z',
+                                 'post_metrics': {'views': 100}}],
+                }))
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout='ok', stderr='')
+
+        return engine.cycle(self.root, runner=runner)
+
+
 if __name__ == '__main__':
     unittest.main()

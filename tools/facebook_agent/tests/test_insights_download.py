@@ -8,7 +8,13 @@ from types import SimpleNamespace
 import unittest
 from urllib.parse import quote
 
-from tools.facebook_agent.insights_export import export_csv, report_id_from_url, validate_download
+from tools.facebook_agent.insights_export import (
+    export_csv,
+    pending_creations,
+    reconcile_creation_history,
+    report_id_from_url,
+    validate_download,
+)
 from tools.facebook_agent.models import AgentError
 
 
@@ -106,6 +112,114 @@ class DownloadTest(unittest.TestCase):
                 self.assertEqual(audit['report_id'], '123')
                 self.assertTrue(path.exists())
                 self.assertFalse(path.with_suffix('.csv.download').exists())
+            finally:
+                browser.close()
+
+
+class CreationReconciliationTest(unittest.TestCase):
+    def _audit(self, root, name, page_id='456', **data):
+        path = root / name
+        record = {'profile': {'url': f'https://www.facebook.com/profile.php?id={page_id}'},
+                  **data}
+        path.write_text(json.dumps(record))
+        return path
+
+    def test_pending_creations_scope_and_exclusion(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._audit(root, 'a.export.json', status='creation_requested',
+                        report_id=None, existing_report_ids=['42'])
+            self._audit(root, 'done.export.json', status='downloaded', report_id='42')
+            self._audit(root, 'other.export.json', page_id='999', status='creation_requested')
+            self._audit(root, 'unknown.export.json', status='creation_state_unknown')
+            self._audit(root, 'prep.export.json', status='preparing')
+
+            pending = pending_creations(root, '456')
+            self.assertEqual([Path(item['audit']).name for item in pending],
+                             ['a.export.json', 'unknown.export.json'])
+            self.assertEqual(pending[0]['existing_report_ids'], ['42'])
+            self.assertEqual(pending_creations(root, '456', exclude=root / 'a.export.json'),
+                             [{'audit': str(root / 'unknown.export.json'),
+                               'status': 'creation_state_unknown', 'report_id': None,
+                               'existing_report_ids': [], 'output': None}])
+            self.assertEqual([Path(item['audit']).name
+                              for item in pending_creations(root / 'repairs', '456')],
+                             ['a.export.json', 'unknown.export.json'])
+
+    def test_reconcile_requires_exactly_one_candidate(self):
+        outstanding = [{'audit': 'a', 'status': 'creation_requested', 'report_id': None,
+                        'existing_report_ids': ['42']}]
+        candidate, decision = reconcile_creation_history(outstanding, {'42', '123'})
+        self.assertEqual(candidate, '123')
+        self.assertEqual(decision['status'], 'resolved')
+
+        candidate, decision = reconcile_creation_history(outstanding, {'42'})
+        self.assertIsNone(candidate)
+        self.assertEqual(decision['status'], 'unconfirmed')
+
+        candidate, decision = reconcile_creation_history(outstanding, {'42', '123', '124'})
+        self.assertIsNone(candidate)
+        self.assertEqual(decision['status'], 'ambiguous')
+
+    def test_explicit_report_waits_for_unverified_creation(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._audit(root, 'prior.export.json', status='creation_requested',
+                        report_id=None, existing_report_ids=['42'])
+            with self.assertRaises(AgentError) as error:
+                export_csv(None, '456', root / 'retry.csv', report_id='999')
+            self.assertEqual(error.exception.code, 'export_uncertain')
+
+    def test_existing_creation_is_reconciled_from_history_without_new_report(self):
+        from playwright.sync_api import sync_playwright
+        html = '''<button onclick="menu()">Export data</button><main id="ui"></main>
+        <script>
+        window.createClicks = 0;
+        function menu() {ui.innerHTML = `<div role="menu">
+          <button role="menuitem" onclick="history()">Report history</button>
+          <button role="menuitem" onclick="report()">Create new data report</button></div>`;}
+        function history() {ui.innerHTML = `<div role="dialog"><h2>Report history</h2>
+          <button onclick="ui.innerHTML=''">Close</button>
+          <a href="https://scontent.test.fbcdn.net/report.42">Download</a>
+          <a target="_blank" href="https://scontent.test.fbcdn.net/report.123">Download</a></div>`;}
+        function report() {window.createClicks++; ui.innerHTML = `<div role="dialog"><h2>Create data report</h2>
+          <button>Content\\nView data for your posts, reels, videos and more.</button>
+          <p>Last 28 days</p><button onclick="ui.innerHTML=''">Create report (.csv)</button></div>`;}
+        </script>'''
+        with TemporaryDirectory() as temp, sync_playwright() as playwright:
+            root = Path(temp)
+            prior = self._audit(root, 'prior.export.json', status='creation_requested',
+                                report_id=None, existing_report_ids=['42'],
+                                settings_displayed='Create data report')
+            second = self._audit(root, 'second.export.json', status='creation_state_unknown',
+                                 report_id=None, existing_report_ids=['42', '123'])
+            browser = playwright.chromium.launch(headless=True)
+            try:
+                context = browser.new_context(accept_downloads=True)
+                context.route('https://www.facebook.com/**',
+                              lambda route: route.fulfill(body=html, content_type='text/html'))
+                context.route('https://scontent.test.fbcdn.net/**', lambda route: route.fulfill(
+                    body='Post ID,Page ID,Title\n123,456,Example\n',
+                    headers={'content-type': 'text/csv',
+                             'content-disposition': 'attachment; filename="report.csv"'}))
+                page = context.new_page()
+                stub = SimpleNamespace(
+                    page=page, timeout_ms=5000, keep_page=False,
+                    check_authenticated=lambda **_: {'url': 'https://www.facebook.com/profile.php?id=456'})
+                path = root / 'repairs' / 'reconciled.csv'
+                result = export_csv(stub, '456', path, download_timeout_seconds=10)
+                self.assertEqual(result['status'], 'downloaded')
+                self.assertEqual(result['rows'], 1)
+                self.assertEqual(page.evaluate('window.createClicks'), 0)
+                current = json.loads(path.with_suffix('.export.json').read_text())
+                self.assertEqual(current['report_id'], '123')
+                self.assertEqual(current['reconciliation']['status'], 'resolved')
+                self.assertNotEqual(current['status'], 'creation_requested')
+                prior_data = json.loads(prior.read_text())
+                self.assertEqual(prior_data['status'], 'creation_reconciled')
+                self.assertEqual(prior_data['report_id'], '123')
+                self.assertEqual(current['unreconciled_audits'], [str(second)])
+                self.assertEqual(json.loads(second.read_text())['status'], 'creation_state_unknown')
             finally:
                 browser.close()
 

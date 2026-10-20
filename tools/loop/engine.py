@@ -7,9 +7,10 @@ import fcntl
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 import uuid
 
 from tools.loop import comparison
@@ -37,6 +38,60 @@ def save(path, data):
     temp = path.with_suffix(path.suffix + '.tmp')
     temp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
     temp.replace(path)
+
+
+def _sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _add_gap(manifest, gap):
+    """Append a gap without duplicating the same kind/identity/detail."""
+    gaps = manifest.setdefault('gaps', [])
+    if comparison.gap_key(gap) not in {comparison.gap_key(item) for item in gaps}:
+        gaps.append(gap)
+
+
+def _evidence_entry(manifest, relative):
+    return next((item for item in manifest.get('evidence_files', [])
+                 if item.get('path') == relative), None)
+
+
+def _check_reusable_evidence(root, manifest, relative, ev_type=None):
+    """Verify recorded path + hash + type before any collector is reused."""
+    entry = _evidence_entry(manifest, relative)
+    if entry is None:
+        return False, 'not_recorded'
+    path = Path(root) / relative
+    if not path.is_file():
+        return False, 'missing'
+    if entry.get('sha256') != _sha256(path):
+        return False, 'hash_mismatch'
+    if ev_type and entry.get('type') != ev_type:
+        return False, 'type_mismatch'
+    return True, 'ok'
+
+
+def _repair_path(captures_dir, relative_name, manifest):
+    """Never overwrite historical evidence; allocate a sibling repair path."""
+    original = Path(relative_name)
+    counter = manifest.setdefault('repair_attempts', {})
+    attempt = int(counter.get(relative_name, 0)) + 1
+    while True:
+        candidate = captures_dir / 'repairs' / f"{original.stem}-repair{attempt}{original.suffix}"
+        if not candidate.exists():
+            break
+        attempt += 1
+    counter[relative_name] = attempt
+    return candidate
+
+
+def _record_repair(manifest, original_relative, repair_relative, reason):
+    _add_gap(manifest, {
+        'kind': 'evidence_repair',
+        'path': original_relative,
+        'repair_path': repair_relative,
+        'detail': f"Prior evidence {original_relative} was {reason}; it is preserved. Re-collection targets {repair_relative}.",
+    })
 
 
 def validate_page_id(value):
@@ -497,17 +552,239 @@ def record_action(root, event):
     return record
 
 
-def _record_evidence_file(manifest, path_str, sha256_hash, ev_type):
+def _record_evidence_file(manifest, path_str, sha256_hash, ev_type, *, parent_path=None):
     for entry in manifest.setdefault('evidence_files', []):
         if entry.get('path') == path_str:
-            entry['sha256'] = sha256_hash
-            entry['type'] = ev_type
-            return
-    manifest['evidence_files'].append({
-        'path': path_str,
-        'sha256': sha256_hash,
-        'type': ev_type,
-    })
+            if entry.get('sha256') != sha256_hash:
+                _add_gap(manifest, {
+                    'kind': 'evidence_hash_conflict',
+                    'path': path_str,
+                    'detail': f"{path_str} was recorded as {entry.get('sha256')} but now hashes to {sha256_hash}; the historical hash is preserved and this write is not accepted.",
+                })
+                return False
+            if ev_type and entry.get('type') != ev_type:
+                entry['type'] = ev_type
+            return True
+    entry = {'path': path_str, 'sha256': sha256_hash, 'type': ev_type}
+    if parent_path:
+        entry['parent_path'] = parent_path
+    manifest['evidence_files'].append(entry)
+    return True
+
+
+def _validate_run_id(run_id):
+    if not isinstance(run_id, str) or not re.fullmatch(r'[\w\-\.]+', run_id) or '..' in run_id:
+        raise ValueError(f"Invalid run ID '{run_id}': path traversal or invalid characters.")
+    return run_id
+
+
+def load_run(root, run_id):
+    root = Path(root).resolve()
+    _validate_run_id(run_id)
+    run_dir = root / 'loop/runs' / run_id
+    manifest_path = run_dir / 'manifest.json'
+    if not manifest_path.is_file():
+        raise ValueError(f"Run '{run_id}' does not exist; cannot operate on it.")
+    return run_dir, json.loads(manifest_path.read_text())
+
+
+def _load_actions(root):
+    path = Path(root) / 'loop/actions.jsonl'
+    if not path.exists():
+        return []
+    actions = []
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            actions.append(json.loads(line))
+        except ValueError:
+            continue
+    return actions
+
+
+def _load_hypotheses(root, config):
+    if not config.get('hypotheses_file'):
+        return {}
+    try:
+        return json.loads(project_file(root, config['hypotheses_file']).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def _open_runs(root):
+    """Describe runs that still need a decision, without changing them."""
+    root = Path(root).resolve()
+    result = []
+    for run_dir in sorted((root / 'loop/runs').glob('*/')):
+        manifest_path = run_dir / 'manifest.json'
+        if not manifest_path.is_file():
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text())
+        except (OSError, ValueError):
+            continue
+        status = manifest.get('status')
+        review_path = run_dir / 'review.json'
+        review_status = None
+        if review_path.is_file():
+            try:
+                review_status = json.loads(review_path.read_text()).get('status')
+            except (OSError, ValueError):
+                review_status = 'unreadable'
+        failed = [key for key, value in manifest.get('collector_status', {}).items() if value == 'failed']
+        actionable = (
+            status in ('in_progress', 'collection_incomplete', 'partial_collection_pending_review', 'pending_agent_review')
+            or failed
+            or review_status == 'proposed'
+        )
+        if actionable:
+            result.append({
+                'run_id': run_dir.name,
+                'status': status,
+                'review_status': review_status,
+                'failed_collectors': failed,
+                'gap_count': len(manifest.get('gaps', [])),
+            })
+    return result
+
+
+def pending_work(root, state):
+    """Surface reviews and failed runs even when no checkpoint is due."""
+    root = Path(root).resolve()
+    pending_reviews = []
+    represented = {str(item.get('publication_id')) for item in state.get('placements', [])}
+    for placement in state.get('placements', []):
+        for name, checkpoint in placement.get('checkpoints', {}).items():
+            if checkpoint.get('review_status') == 'pending':
+                pending_reviews.append({
+                    'kind': 'placement_checkpoint',
+                    'placement_id': placement.get('id'),
+                    'publication_id': placement.get('publication_id'),
+                    'checkpoint': name,
+                    'checkpoint_status': checkpoint.get('status'),
+                    'observation_ref': checkpoint.get('selected_observation_ref'),
+                })
+    for publication in state.get('publications', []):
+        if str(publication.get('id')) in represented:
+            continue
+        if publication.get('review_status') == 'pending':
+            pending_reviews.append({
+                'kind': 'publication',
+                'publication_id': publication.get('id'),
+                'checkpoint': '24h',
+                'checkpoint_status': publication.get('metrics_status'),
+                'observation_ref': publication.get('receipt_file'),
+            })
+    open_runs = _open_runs(root)
+    return {
+        'pending_reviews': pending_reviews,
+        'open_runs': open_runs,
+        'pending_review_count': len(pending_reviews),
+        'open_run_count': len(open_runs),
+    }
+
+
+def compare_run(root, run_id):
+    """Recompute deterministic comparisons for a run; never collects."""
+    root = Path(root).resolve()
+    run_dir, manifest = load_run(root, run_id)
+    normalized_path = root / 'sources/post-metrics/normalized' / f"{run_id}.json"
+    if not normalized_path.is_file():
+        raise ValueError(f"Run '{run_id}' has no normalized observations; run cycle before compare.")
+    normalized = json.loads(normalized_path.read_text())
+    state = json.loads((root / 'loop/publications.json').read_text())
+    actions = _load_actions(root)
+
+    selected = comparison.select_comparable(normalized.get('observations', []), state.get('placements', []))
+    content = comparison.compare_content(selected, actions=actions)
+    groups = comparison.compare_groups(selected, actions=actions)
+    gaps = comparison.dedupe_gaps(
+        list(manifest.get('gaps', [])) + list(normalized.get('gaps', [])) + list(selected.get('gaps', []))
+    )
+    artifact = {
+        'run_id': run_id,
+        'content_comparison': content,
+        'group_comparison': groups,
+        'gaps': gaps,
+    }
+    save(run_dir / 'comparison.json', artifact)
+    return {
+        'run_id': run_id,
+        'status': 'compared',
+        'comparison_file': str((run_dir / 'comparison.json').relative_to(root)),
+        'eligible_content_items': len(content.get('creative_matrix', [])),
+        'eligible_group_items': len(groups.get('group_matrix', [])),
+        'gap_count': len(gaps),
+        'exit_code': 0,
+    }
+
+
+def prepare_review(root, run_id):
+    """Rebuild the review bundle for a run from its comparison artifact."""
+    root = Path(root).resolve()
+    run_dir, manifest = load_run(root, run_id)
+    comparison_path = run_dir / 'comparison.json'
+    if not comparison_path.is_file():
+        raise ValueError(f"Run '{run_id}' has no comparison; run compare first.")
+    artifact = json.loads(comparison_path.read_text())
+    config = load_project(root)
+    bundle = comparison.build_review_bundle(artifact, hypotheses=_load_hypotheses(root, config))
+    save(run_dir / 'review-bundle.json', bundle)
+    manifest['review_bundle'] = str((run_dir / 'review-bundle.json').relative_to(root))
+    save(run_dir / 'manifest.json', manifest)
+    return {
+        'run_id': run_id,
+        'status': 'review_prepared',
+        'review_bundle': str((run_dir / 'review-bundle.json').relative_to(root)),
+        'summary': bundle.get('summary', {}),
+        'exit_code': 0,
+    }
+
+
+def _validate_library(manifest, data, page_id):
+    """Reject empty, mismatched or unidentified library captures as usable coverage."""
+    captured_page = data.get('page_id')
+    placements = data.get('placements')
+    if captured_page is not None and str(captured_page) != str(page_id):
+        manifest['collector_status']['content_library'] = 'failed'
+        _add_gap(manifest, {
+            'kind': 'content_library_page_mismatch',
+            'detail': f"Content Library evidence belongs to Page {captured_page}, not {page_id}.",
+        })
+        return False
+    if data.get('traversal_complete') is False:
+        manifest['collector_status']['content_library'] = 'failed'
+        _add_gap(manifest, {
+            'kind': 'content_library_traversal_incomplete',
+            'detail': 'Content Library reported incomplete scroll-container traversal; rows are not complete coverage.',
+        })
+        return False
+    if captured_page is not None and not isinstance(placements, list):
+        manifest['collector_status']['content_library'] = 'failed'
+        _add_gap(manifest, {
+            'kind': 'content_library_empty',
+            'detail': 'Content Library evidence contains no placement rows.',
+        })
+        return False
+    if captured_page is not None and isinstance(placements, list):
+        usable = any(
+            str(row.get('post_id') or '').isdigit() or row.get('group_id')
+            for row in placements
+        )
+        if not usable:
+            manifest['collector_status']['content_library'] = 'failed'
+            _add_gap(manifest, {
+                'kind': 'content_library_unidentified',
+                'detail': 'No Content Library row has a verified post or group identity; coverage is not usable.',
+            })
+            return False
+    if captured_page is None:
+        _add_gap(manifest, {
+            'kind': 'content_library_unverified',
+            'detail': 'Content Library evidence has no Page identity; completeness cannot be verified.',
+        })
+    return True
 
 
 def cycle(root, *, dry_run=False, resume=None, runner=None):
@@ -523,10 +800,7 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
 
     # 1. Resume validation or new run ID
     if resume:
-        import re
-        if not re.fullmatch(r'[\w\-\.]+', resume) or '..' in resume:
-            raise ValueError(f"Invalid resume run ID '{resume}': path traversal or invalid characters.")
-        run_id = resume
+        run_id = _validate_run_id(resume)
         run_dir = root / 'loop/runs' / run_id
         manifest_path = run_dir / 'manifest.json'
         if not manifest_path.exists():
@@ -559,6 +833,7 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
 
     # 2. Check for legitimately empty worklist
     if not due_work:
+        pending = pending_work(root, state)
         if dry_run:
             return {
                 'status': 'no_work',
@@ -566,18 +841,24 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
                 'page_id': page_id,
                 'due_work_count': 0,
                 'due_work': [],
+                **pending,
                 'exit_code': 0,
             }
         run_dir.mkdir(parents=True, exist_ok=True)
         manifest['status'] = 'no_work'
         manifest['completed_at'] = now().isoformat()
-        manifest['warnings'].append('No placement checkpoints or publications are currently due.')
+        manifest['pending_work'] = pending
+        manifest['warnings'].append(
+            'No placement checkpoints or publications are currently due. '
+            f"Pending reviews: {pending['pending_review_count']}; open runs: {pending['open_run_count']}."
+        )
         save(manifest_path, manifest)
         return {
             'status': 'no_work',
             'run_id': run_id,
             'due_work_count': 0,
             'message': 'No due checkpoints.',
+            **pending,
             'exit_code': 0,
         }
 
@@ -615,122 +896,246 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
         'csv_evidence_hash': None,
         'csv_source_file': None,
     }
+    collection_changed = False
 
     # 4. Sequential Collector Execution
     # Collector 1: Content Library
-    lib_output = captures_dir / 'content-library.json'
-    if manifest.get('collector_status', {}).get('content_library') == 'completed' and lib_output.exists():
+    lib_relative = f"sources/post-metrics/captures/{run_id}/content-library.json"
+    lib_output = root / lib_relative
+    lib_data = None
+    lib_hash = None
+    lib_relative_used = lib_relative
+    lib_completed = manifest.get('collector_status', {}).get('content_library') == 'completed'
+    reusable, reuse_reason = (False, 'not_completed')
+    if lib_completed:
+        reusable, reuse_reason = _check_reusable_evidence(root, manifest, lib_relative, 'content_library')
+    if reusable:
         lib_data = json.loads(lib_output.read_text())
-        lib_hash = hashlib.sha256(lib_output.read_bytes()).hexdigest()
+        lib_hash = _sha256(lib_output)
     else:
+        # Missing or changed completed evidence is repaired at a new path.
+        lib_recorded = _evidence_entry(manifest, lib_relative) is not None
+        has_history = lib_completed or lib_recorded or lib_output.exists()
+        lib_target = (_repair_path(captures_dir, lib_relative, manifest)
+                      if has_history else lib_output)
+        if lib_target != lib_output:
+            _record_repair(manifest, lib_relative, str(lib_target.relative_to(root)),
+                           reuse_reason if (lib_completed or lib_recorded) else 'unrecorded')
+        collection_changed = True
         manifest.setdefault('collector_status', {})['content_library'] = 'in_progress'
         save(manifest_path, manifest)
+        lib_target.parent.mkdir(parents=True, exist_ok=True)
         cmd = [
             sys.executable, '-m', 'tools.facebook_agent', 'content-library',
-            '--page-id', page_id, '--output', str(lib_output), '--scrolls', '3'
+            '--page-id', page_id, '--output', str(lib_target), '--scrolls', '3'
         ]
         try:
             res = runner(cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=120)
-            if lib_output.exists():
-                lib_data = json.loads(lib_output.read_text())
-                lib_hash = hashlib.sha256(lib_output.read_bytes()).hexdigest()
-                manifest['evidence_files'].append({
-                    'path': str(lib_output.relative_to(root)),
-                    'sha256': lib_hash,
-                    'type': 'content_library'
-                })
+            if lib_target.exists():
+                lib_data = json.loads(lib_target.read_text())
+                lib_hash = _sha256(lib_target)
+                lib_relative_used = str(lib_target.relative_to(root))
+                parent = lib_relative if lib_target != lib_output else None
+                _record_evidence_file(manifest, lib_relative_used, lib_hash, 'content_library',
+                                      parent_path=parent)
                 manifest['collector_status']['content_library'] = 'completed'
-                manifest['gaps'] = [g for g in manifest.get('gaps', []) if g.get('kind') not in ('content_library_failed', 'content_library_error')]
+                manifest['gaps'] = [g for g in manifest.get('gaps', [])
+                                    if g.get('kind') not in ('content_library_failed', 'content_library_error')]
+                _validate_library(manifest, lib_data, page_id)
             else:
                 lib_data = None
                 manifest['collector_status']['content_library'] = 'failed'
-                manifest['gaps'].append({
+                _add_gap(manifest, {
                     'kind': 'content_library_failed',
                     'detail': res.stderr or res.stdout or 'content-library did not create output file'
                 })
-        except Exception as exc:
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             lib_data = None
             manifest['collector_status']['content_library'] = 'failed'
-            manifest['gaps'].append({'kind': 'content_library_error', 'detail': str(exc)})
+            _add_gap(manifest, {'kind': 'content_library_error', 'detail': str(exc)})
         save(manifest_path, manifest)
 
     if lib_data and isinstance(lib_data.get('placements'), list):
         for row in lib_data['placements']:
             raw_inputs['content_library_rows'].append({
                 **row,
-                'evidence_file': str(lib_output.relative_to(root)),
+                'evidence_file': lib_relative_used,
                 'evidence_hash': lib_hash,
             })
 
     # Collector 2: Summary CSV Export & Import (if original Page due)
     needs_csv = any(item.get('placement_kind') == 'original_page' or item.get('kind') == 'publication' for item in due_work)
+    imported_data = None
+    csv_hash = None
+    actual_csv = None
     if needs_csv:
         csv_output = exports_dir / f"content-summary-{page_id}-{run_id}.csv"
         joined_output = exports_dir / f"content-summary-{page_id}-{run_id}.imported.json"
+        csv_relative = str(csv_output.relative_to(root))
+        joined_relative = str(joined_output.relative_to(root))
         actual_csv = csv_output
 
-        if manifest.get('collector_status', {}).get('csv_export') == 'completed' and joined_output.exists():
-            imported_data = json.loads(joined_output.read_text())
-            csv_ev = next((e for e in manifest.get('evidence_files', []) if e.get('type') == 'summary_csv'), None)
-            if csv_ev and (root / csv_ev['path']).exists():
+        csv_completed = manifest.get('collector_status', {}).get('csv_export') == 'completed'
+        evidence_files = manifest.get('evidence_files', [])
+        csv_ev = next((e for e in reversed(evidence_files) if e.get('type') == 'summary_csv'), None)
+        joined_ev = next((e for e in reversed(evidence_files)
+                          if e.get('type') == 'imported_csv_summary'), None)
+        csv_ok = False
+        joined_ok = False
+        joined_used = joined_output
+        if csv_ev:
+            csv_ok, _ = _check_reusable_evidence(root, manifest, csv_ev['path'], 'summary_csv')
+            if csv_ok:
                 actual_csv = root / csv_ev['path']
-            csv_hash = hashlib.sha256(actual_csv.read_bytes()).hexdigest() if actual_csv.exists() else None
-        else:
+        if joined_ev:
+            joined_ok, _ = _check_reusable_evidence(root, manifest, joined_ev['path'],
+                                                    'imported_csv_summary')
+            if joined_ok:
+                joined_used = root / joined_ev['path']
+
+        def clear_csv_gaps(include_import=True):
+            blocked = {'csv_export_failed', 'csv_export_error', 'csv_evidence_unusable'}
+            if include_import:
+                blocked.add('csv_import_failed')
+            manifest['gaps'] = [g for g in manifest.get('gaps', [])
+                                if g.get('kind') not in blocked]
+
+        if csv_ok and joined_ok:
+            imported_data = json.loads(joined_used.read_text())
+            csv_hash = _sha256(actual_csv)
+        elif csv_ok:
+            # A verified CSV is never re-exported; only its joined import is rebuilt.
+            collection_changed = True
+            csv_hash = _sha256(actual_csv)
+            if joined_ev or joined_output.exists():
+                joined_target = _repair_path(exports_dir, joined_relative, manifest)
+                _record_repair(manifest, joined_relative, str(joined_target.relative_to(root)),
+                               'missing or changed')
+            else:
+                joined_target = joined_output
+            clear_csv_gaps(include_import=False)
             manifest['collector_status']['csv_export'] = 'in_progress'
             save(manifest_path, manifest)
+            joined_target.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                res_imp = runner([
+                    sys.executable, '-m', 'tools.facebook_agent', 'insights-import',
+                    '--page-id', page_id, '--csv', str(actual_csv),
+                    '--output', str(joined_target), '--breakdown', 'summary'
+                ], cwd=REPO_ROOT, capture_output=True, text=True, timeout=120)
+                if joined_target.exists():
+                    imported_data = json.loads(joined_target.read_text())
+                    j_hash = _sha256(joined_target)
+                    _record_evidence_file(manifest, str(joined_target.resolve().relative_to(root)),
+                                          j_hash, 'imported_csv_summary',
+                                          parent_path=joined_relative if joined_target != joined_output else None)
+                    manifest['collector_status']['csv_export'] = 'completed'
+                    clear_csv_gaps()
+                else:
+                    imported_data = None
+                    manifest['collector_status']['csv_export'] = 'failed'
+                    _add_gap(manifest, {
+                        'kind': 'csv_import_failed',
+                        'detail': res_imp.stderr or res_imp.stdout or 'insights-import failed'
+                    })
+            except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+                imported_data = None
+                manifest['collector_status']['csv_export'] = 'failed'
+                _add_gap(manifest, {'kind': 'csv_import_failed', 'detail': str(exc)})
+            save(manifest_path, manifest)
+        else:
+            if csv_completed or csv_ev:
+                _add_gap(manifest, {
+                    'kind': 'csv_evidence_unusable',
+                    'detail': 'Recorded CSV evidence is missing or its hash changed; export will be re-attempted through reconciliation.',
+                })
+            collection_changed = True
+            csv_recorded = csv_ev is not None
+            csv_audit = csv_output.with_suffix('.export.json')
+            has_history = (csv_completed or csv_recorded or csv_output.exists()
+                           or joined_output.exists() or csv_audit.exists())
+            if has_history:
+                csv_target = _repair_path(exports_dir, csv_relative, manifest)
+                joined_target = _repair_path(exports_dir, joined_relative, manifest)
+                _record_repair(manifest, csv_relative, str(csv_target.relative_to(root)),
+                               'missing or changed')
+            else:
+                csv_target, joined_target = csv_output, joined_output
+            actual_csv = csv_target
+            manifest['collector_status']['csv_export'] = 'in_progress'
+            save(manifest_path, manifest)
+            csv_target.parent.mkdir(parents=True, exist_ok=True)
+            # A known report ID turns a retry into a download, never a second report.
+            prior_report_id = None
+            prior_csv_audit = csv_output.with_suffix('.export.json')
+            if prior_csv_audit.is_file():
+                try:
+                    prior_report_id = json.loads(prior_csv_audit.read_text()).get('report_id')
+                except (OSError, ValueError):
+                    prior_report_id = None
             export_cmd = [
                 sys.executable, '-m', 'tools.facebook_agent', 'insights-export',
-                '--page-id', page_id, '--output', str(csv_output), '--breakdown', 'summary'
+                '--page-id', page_id, '--output', str(csv_target), '--breakdown', 'summary'
             ]
+            if prior_report_id:
+                export_cmd += ['--report-id', str(prior_report_id)]
             try:
                 res = runner(export_cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=120)
                 # Parse stdout envelope: {"ok": true, "data": {"output": "..."}} or top-level output
                 if res.stdout:
                     try:
                         exp_json = json.loads(res.stdout)
-                        out_val = (exp_json.get('data') or {}).get('output') or exp_json.get('output')
-                        if out_val and Path(out_val).exists():
-                            actual_csv = Path(out_val).resolve()
-                    except Exception:
+                        if isinstance(exp_json, dict):
+                            out_val = ((exp_json.get('data') or {}).get('output')
+                                       if isinstance(exp_json.get('data'), dict) else None)
+                            out_val = out_val or exp_json.get('output')
+                            if isinstance(out_val, str) and Path(out_val).exists():
+                                actual_csv = Path(out_val).resolve()
+                    except (ValueError, OSError):
                         pass
 
                 if actual_csv.exists():
-                    csv_hash = hashlib.sha256(actual_csv.read_bytes()).hexdigest()
-                    _record_evidence_file(manifest, str(actual_csv.resolve().relative_to(root)), csv_hash, 'summary_csv')
+                    csv_hash = _sha256(actual_csv)
+                    _record_evidence_file(manifest, str(actual_csv.resolve().relative_to(root)),
+                                          csv_hash, 'summary_csv')
+                    clear_csv_gaps(include_import=False)
                     import_cmd = [
                         sys.executable, '-m', 'tools.facebook_agent', 'insights-import',
-                        '--page-id', page_id, '--csv', str(actual_csv), '--output', str(joined_output), '--breakdown', 'summary'
+                        '--page-id', page_id, '--csv', str(actual_csv),
+                        '--output', str(joined_target), '--breakdown', 'summary'
                     ]
                     res_imp = runner(import_cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=120)
-                    if joined_output.exists():
-                        imported_data = json.loads(joined_output.read_text())
-                        j_hash = hashlib.sha256(joined_output.read_bytes()).hexdigest()
-                        _record_evidence_file(manifest, str(joined_output.resolve().relative_to(root)), j_hash, 'imported_csv_summary')
+                    if joined_target.exists():
+                        imported_data = json.loads(joined_target.read_text())
+                        j_hash = _sha256(joined_target)
+                        _record_evidence_file(manifest, str(joined_target.resolve().relative_to(root)),
+                                              j_hash, 'imported_csv_summary',
+                                              parent_path=joined_relative if joined_target != joined_output else None)
                         manifest['collector_status']['csv_export'] = 'completed'
-                        manifest['gaps'] = [g for g in manifest.get('gaps', []) if g.get('kind') not in ('csv_export_failed', 'csv_export_error', 'csv_import_failed')]
+                        clear_csv_gaps()
                     else:
                         imported_data = None
                         manifest['collector_status']['csv_export'] = 'failed'
-                        manifest['gaps'].append({
+                        _add_gap(manifest, {
                             'kind': 'csv_import_failed',
                             'detail': res_imp.stderr or res_imp.stdout or 'insights-import failed'
                         })
                 else:
                     imported_data = None
                     manifest['collector_status']['csv_export'] = 'failed'
-                    manifest['gaps'].append({
+                    _add_gap(manifest, {
                         'kind': 'csv_export_failed',
                         'detail': res.stderr or res.stdout or 'insights-export did not create CSV'
                     })
-            except Exception as exc:
+            except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
                 imported_data = None
                 manifest['collector_status']['csv_export'] = 'failed'
-                manifest['gaps'].append({'kind': 'csv_export_error', 'detail': str(exc)})
+                _add_gap(manifest, {'kind': 'csv_export_error', 'detail': str(exc)})
             save(manifest_path, manifest)
 
         if imported_data and isinstance(imported_data.get('posts'), list):
             raw_inputs['csv_evidence_hash'] = csv_hash
-            raw_inputs['csv_source_file'] = str(actual_csv.resolve().relative_to(root)) if actual_csv.exists() else None
+            raw_inputs['csv_source_file'] = str(actual_csv.resolve().relative_to(root)) if actual_csv and actual_csv.exists() else None
             raw_inputs['csv_posts'] = imported_data['posts']
 
     # Collector 3: Post Dashboard Insights
@@ -746,35 +1151,59 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
 
         target_id = item.get('placement_id') or item.get('id')
         cp_name = item.get('checkpoint', '24h')
-        cap_output = captures_dir / f"{target_id}-{cp_name}.insights.json"
+        cap_relative = f"sources/post-metrics/captures/{run_id}/{target_id}-{cp_name}.insights.json"
+        cap_output = root / cap_relative
+        cap_data = None
+        cap_hash = None
+        cap_relative_used = cap_relative
+        reused = False
 
-        if cap_output.exists():
-            cap_data = json.loads(cap_output.read_text())
-            cap_hash = hashlib.sha256(cap_output.read_bytes()).hexdigest()
-            _record_evidence_file(manifest, str(cap_output.relative_to(root)), cap_hash, 'post_insights')
+        cap_ev = _evidence_entry(manifest, cap_relative)
+        if cap_ev and cap_output.exists():
+            cap_ok, cap_reason = _check_reusable_evidence(root, manifest, cap_relative, 'post_insights')
+            if cap_ok:
+                cap_data = json.loads(cap_output.read_text())
+                cap_hash = _sha256(cap_output)
+                reused = True
+            else:
+                cap_target = _repair_path(captures_dir, cap_relative, manifest)
+                _record_repair(manifest, cap_relative, str(cap_target.relative_to(root)), cap_reason)
+        elif cap_ev or cap_output.exists():
+            cap_target = _repair_path(captures_dir, cap_relative, manifest)
+            _record_repair(manifest, cap_relative, str(cap_target.relative_to(root)),
+                           'missing' if cap_ev else 'unrecorded')
         else:
+            cap_target = cap_output
+
+        if not reused:
+            collection_changed = True
+            cap_target.parent.mkdir(parents=True, exist_ok=True)
             cap_cmd = [
                 sys.executable, '-m', 'tools.facebook_agent', 'insights',
                 '--page-id', page_id, '--url', insights_url, '--open', 'Source',
-                '--output', str(cap_output), '--scrolls', '2'
+                '--output', str(cap_target), '--scrolls', '2'
             ]
             try:
                 res = runner(cap_cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=120)
-                if cap_output.exists():
-                    cap_data = json.loads(cap_output.read_text())
-                    cap_hash = hashlib.sha256(cap_output.read_bytes()).hexdigest()
-                    _record_evidence_file(manifest, str(cap_output.relative_to(root)), cap_hash, 'post_insights')
-                    manifest['gaps'] = [g for g in manifest.get('gaps', []) if not (g.get('kind') in ('post_insights_failed', 'post_insights_error') and g.get('placement_id') == target_id)]
+                if cap_target.exists():
+                    cap_data = json.loads(cap_target.read_text())
+                    cap_hash = _sha256(cap_target)
+                    cap_relative_used = str(cap_target.relative_to(root))
+                    _record_evidence_file(manifest, cap_relative_used, cap_hash, 'post_insights',
+                                          parent_path=cap_relative if cap_target != cap_output else None)
+                    manifest['gaps'] = [g for g in manifest.get('gaps', [])
+                                        if not (g.get('kind') in ('post_insights_failed', 'post_insights_error')
+                                                and g.get('placement_id') == target_id)]
                 else:
                     cap_data = None
-                    manifest['gaps'].append({
+                    _add_gap(manifest, {
                         'kind': 'post_insights_failed',
                         'placement_id': target_id,
                         'detail': res.stderr or res.stdout or f"insights capture failed for {insights_url}"
                     })
-            except Exception as exc:
+            except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
                 cap_data = None
-                manifest['gaps'].append({
+                _add_gap(manifest, {
                     'kind': 'post_insights_error',
                     'placement_id': target_id,
                     'detail': str(exc)
@@ -782,44 +1211,64 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
             save(manifest_path, manifest)
 
         if cap_data and cap_data.get('capture_complete'):
-            record = cap_data.get('records', [{}])[0]
+            records = cap_data.get('records') or []
+            record = records[0] if records else {}
             metrics = record.get('post_metrics') or {}
-
-            # Calculate actual age in hours from visible_at / submitted_at / published_at
-            pub_dt = None
-            for pl in state.get('placements', []):
-                if pl.get('id') == target_id:
-                    time_str = pl.get('visible_at') or pl.get('submitted_at') or pl.get('published_at') or pl.get('first_seen_at')
+            observed_raw = record.get('observed_at')
+            usable_metrics = [value for value in metrics.values() if value is not None]
+            profile_url = (cap_data.get('profile') or {}).get('url', '')
+            profile_id = parse_qs(urlparse(profile_url).query).get('id', [None])[0]
+            if (not records or not observed_raw or not usable_metrics
+                    or (profile_id is not None and profile_id != page_id)):
+                _add_gap(manifest, {
+                    'kind': 'post_insights_unusable',
+                    'placement_id': target_id,
+                    'detail': 'Insights capture lacks Page identity, an observation time, records or any non-null metric; not accepted as required collection.'
+                })
+            else:
+                # Only a verified visible time may define age. Unknown approval time stays unknown.
+                pub_dt = None
+                placement = next((pl for pl in state.get('placements', [])
+                                  if pl.get('id') == target_id), None)
+                if placement is not None:
+                    if placement.get('kind', 'original_page') == 'original_page':
+                        time_str = placement.get('visible_at') or placement.get('submitted_at')
+                    else:
+                        time_str = placement.get('visible_at')
                     if time_str:
                         pub_dt = timestamp(time_str)
-                    break
-            if not pub_dt:
-                for pub in state.get('publications', []):
-                    if pub.get('id') == (item.get('publication_id') or item.get('id')):
-                        time_str = pub.get('published_at')
-                        if time_str:
-                            pub_dt = timestamp(time_str)
-                        break
+                if pub_dt is None and (placement is None
+                                       or placement.get('kind', 'original_page') == 'original_page'):
+                    for pub in state.get('publications', []):
+                        if pub.get('id') == (item.get('publication_id') or item.get('id')):
+                            if pub.get('published_at'):
+                                pub_dt = timestamp(pub['published_at'])
+                            break
 
-            obs_dt = timestamp(record.get('observed_at')) or now()
-            if pub_dt:
-                actual_age = round((obs_dt - pub_dt).total_seconds() / 3600, 2)
-            else:
-                baseline_hours = 168.0 if cp_name == '7d' else 24.0
-                due_dt = timestamp(item.get('due_at')) if item.get('due_at') else obs_dt
-                actual_age = round(baseline_hours + ((obs_dt - due_dt).total_seconds() / 3600), 2)
+                obs_dt = timestamp(observed_raw)
+                if pub_dt:
+                    actual_age = round((obs_dt - pub_dt).total_seconds() / 3600, 2)
+                else:
+                    actual_age = None
+                    _add_gap(manifest, {
+                        'kind': 'unknown_visible_at',
+                        'placement_id': target_id,
+                        'detail': 'Placement has no verified approval/visible time; snapshot stays descriptive with unknown age.'
+                    })
 
-            raw_inputs['insights_captures'].append({
-                'placement_id': target_id,
-                'publication_id': item.get('publication_id') or item.get('id'),
-                'checkpoint': cp_name,
-                'actual_age_hours': actual_age,
-                'evidence_file': str(cap_output.relative_to(root)),
-                'evidence_hash': cap_hash,
-                **cap_data,
-            })
+                raw_inputs['insights_captures'].append({
+                    'placement_id': target_id,
+                    'publication_id': item.get('publication_id') or item.get('id'),
+                    'checkpoint': cp_name,
+                    'actual_age_hours': actual_age,
+                    'evidence_file': cap_relative_used,
+                    'evidence_hash': cap_hash,
+                    'reused': reused,
+                    **cap_data,
+                })
 
     # 5. Check for Collection Incomplete
+    manifest['gaps'] = comparison.dedupe_gaps(manifest.get('gaps', []))
     total_observations = (
         len(raw_inputs['insights_captures']) +
         len(raw_inputs['content_library_rows']) +
@@ -840,7 +1289,7 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
         }
 
     # 6. Normalize observations
-    normalized = comparison.normalize_observations(manifest, raw_inputs)
+    normalized = comparison.normalize_observations(manifest, raw_inputs, state.get('placements', []))
     norm_path = root / 'sources/post-metrics/normalized' / f"{run_id}.json"
     norm_path.parent.mkdir(parents=True, exist_ok=True)
     save(norm_path, normalized)
@@ -848,20 +1297,13 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
     # 7. Select comparable & run comparisons
     selected = comparison.select_comparable(normalized['observations'], state.get('placements', []))
 
-    actions = []
-    actions_path = root / 'loop/actions.jsonl'
-    if actions_path.exists():
-        for line in actions_path.read_text().splitlines():
-            if line.strip():
-                try:
-                    actions.append(json.loads(line))
-                except ValueError:
-                    pass
-
+    actions = _load_actions(root)
     content_comp = comparison.compare_content(selected, actions=actions)
     group_comp = comparison.compare_groups(selected, actions=actions)
 
-    all_gaps = list(manifest.get('gaps', [])) + list(normalized.get('gaps', [])) + list(selected.get('gaps', []))
+    all_gaps = comparison.dedupe_gaps(
+        list(manifest.get('gaps', [])) + list(normalized.get('gaps', [])) + list(selected.get('gaps', []))
+    )
     comp_artifact = {
         'run_id': run_id,
         'content_comparison': content_comp,
@@ -870,7 +1312,7 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
     }
     save(run_dir / 'comparison.json', comp_artifact)
 
-    # 8. Checkpoint commit in publications.json
+    # 8. Checkpoint commit in publications.json; reuse never increments attempts.
     for cap in raw_inputs['insights_captures']:
         p_id = cap.get('placement_id')
         cp_name = cap.get('checkpoint', '24h')
@@ -878,35 +1320,38 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
             if pl['id'] == p_id and cp_name in pl.get('checkpoints', {}):
                 cp = pl['checkpoints'][cp_name]
                 cp['status'] = 'collected'
-                cp['attempts'] = cp.get('attempts', 0) + 1
+                if not cap.get('reused'):
+                    cp['attempts'] = cp.get('attempts', 0) + 1
                 cp['selected_observation_ref'] = cap.get('evidence_file')
-                cp['review_status'] = 'pending'
+                if not cap.get('reused') or not cp.get('review_status'):
+                    cp['review_status'] = 'pending'
         for pub in state.get('publications', []):
             if pub['id'] == cap.get('publication_id'):
                 pub['metrics_status'] = 'collected'
-                pub['review_status'] = 'pending'
+                if not cap.get('reused') or not pub.get('review_status'):
+                    pub['review_status'] = 'pending'
                 pub['receipt_file'] = cap.get('evidence_file')
     save(state_path, state)
 
     # 9. Build review bundle
-    hypotheses = {}
-    if config.get('hypotheses_file'):
-        try:
-            hypotheses = json.loads(project_file(root, config['hypotheses_file']).read_text())
-        except Exception:
-            pass
-
+    hypotheses = _load_hypotheses(root, config)
     bundle = comparison.build_review_bundle(comp_artifact, hypotheses=hypotheses)
     save(run_dir / 'review-bundle.json', bundle)
 
     failed_collectors = [k for k, v in manifest.get('collector_status', {}).items() if v == 'failed']
-    any_insights_failed = any(g.get('kind') in ('post_insights_failed', 'post_insights_error') for g in manifest.get('gaps', []))
+    any_insights_failed = any(g.get('kind') in ('post_insights_failed', 'post_insights_error',
+                                                'post_insights_unusable')
+                              for g in manifest.get('gaps', []))
     is_partial = bool(failed_collectors or any_insights_failed)
 
     if is_partial:
         status_str = 'partial_collection_pending_review'
         exit_code = 1
         manifest['warnings'].append(f"Incomplete collection: collectors {failed_collectors or 'post_insights'} encountered errors; partial review available.")
+    elif manifest.get('review_status') in ('proposed', 'approved') and not collection_changed:
+        # Re-staging identical evidence must not silently invalidate a recorded review.
+        status_str = f"review_{manifest['review_status']}"
+        exit_code = 0
     else:
         status_str = 'pending_agent_review'
         exit_code = 0
@@ -926,12 +1371,40 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
     }
 
 
+def _mark_reviewed(root, review_data):
+    """Link a recorded review back to the placement/publication it cites."""
+    state_path = Path(root) / 'loop/publications.json'
+    if not state_path.is_file():
+        return
+    state = json.loads(state_path.read_text())
+    ids = set()
+    for key in ('publication_id', 'placement_id'):
+        if review_data.get(key):
+            ids.add(str(review_data[key]))
+    for value in review_data.get('evidence_ids', []) or []:
+        ids.add(str(value))
+    for value in review_data.get('evidence', []) or []:
+        if isinstance(value, str):
+            ids.add(value)
+    changed = False
+    for placement in state.get('placements', []):
+        if str(placement.get('id')) in ids or str(placement.get('publication_id')) in ids:
+            for checkpoint in placement.get('checkpoints', {}).values():
+                if checkpoint.get('status') == 'collected':
+                    checkpoint['review_status'] = 'reviewed'
+                    changed = True
+    for publication in state.get('publications', []):
+        if str(publication.get('id')) in ids or str(publication.get('post_id')) in ids:
+            publication['review_status'] = 'reviewed'
+            changed = True
+    if changed:
+        save(state_path, state)
+
+
 def record_run_review(root, run_id, review_data):
     """Save structured proposals and human-readable review table for a run."""
     root = Path(root).resolve()
-    run_dir = root / 'loop/runs' / run_id
-    if not run_dir.exists():
-        raise ValueError(f"Run {run_id} not found.")
+    run_dir, manifest = load_run(root, run_id)
 
     for field in ('observation', 'limitation'):
         if not review_data.get(field):
@@ -945,6 +1418,15 @@ def record_run_review(root, run_id, review_data):
         **review_data,
     }
     save(review_path, review_record)
+
+    # A recorded review changes run state but never implies approval or repairs collection.
+    manifest['status'] = 'review_proposed'
+    manifest['review_status'] = 'proposed'
+    manifest['review_file'] = str(review_path.relative_to(root))
+    manifest['reviewed_at'] = review_record['reviewed_at']
+    save(run_dir / 'manifest.json', manifest)
+
+    _mark_reviewed(root, review_data)
 
     # Human-readable markdown
     md_lines = [
@@ -966,7 +1448,7 @@ def record_run_review(root, run_id, review_data):
 def approve_run_review(root, run_id, proposal_ids=None):
     """Record explicit human approval for selected proposals in a run."""
     root = Path(root).resolve()
-    run_dir = root / 'loop/runs' / run_id
+    run_dir, manifest = load_run(root, run_id)
     review_path = run_dir / 'review.json'
     if not review_path.exists():
         raise ValueError(f"No review found for run {run_id}.")
@@ -977,12 +1459,10 @@ def approve_run_review(root, run_id, proposal_ids=None):
     review_data['approved_proposals'] = proposal_ids or [s.get('id') for s in review_data.get('suggestions', [])]
     save(review_path, review_data)
 
-    manifest_path = run_dir / 'manifest.json'
-    if manifest_path.exists():
-        manifest = json.loads(manifest_path.read_text())
-        manifest['status'] = 'review_approved'
-        manifest['approved_at'] = review_data['approved_at']
-        save(manifest_path, manifest)
+    manifest['status'] = 'review_approved'
+    manifest['review_status'] = 'approved'
+    manifest['approved_at'] = review_data['approved_at']
+    save(run_dir / 'manifest.json', manifest)
 
     return review_data
 
@@ -1061,6 +1541,12 @@ def main(argv=None):
             if result.get('exit_code', 0) != 0 or result.get('status') == 'collection_incomplete':
                 sys.exit(1)
             return
+        elif args.command == 'compare':
+            print(json.dumps(compare_run(root, args.run_id), indent=2))
+            return
+        elif args.command == 'prepare-review':
+            print(json.dumps(prepare_review(root, args.run_id), indent=2))
+            return
         elif args.command == 'record-action':
             event_data = json.loads(args.file.read_text())
             print(json.dumps(record_action(root, event_data), indent=2))
@@ -1096,9 +1582,11 @@ def main(argv=None):
             else:
                 parser.error('Provide either --run or --id for review.')
         elif args.command == 'due':
-            result = [item for item in state['publications'] if due(item, now())]
+            result = due_checkpoints(state, now())
+        elif args.command == 'status':
+            result = {**state, 'pending_work': pending_work(root, state)}
         else:
-            result = state
+            parser.error(f"Unsupported command '{args.command}'.")
 
         print(json.dumps(result, ensure_ascii=False, indent=2))
 

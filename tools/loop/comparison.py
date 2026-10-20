@@ -9,6 +9,24 @@ Implements rules from:
 from datetime import datetime, timezone
 import hashlib
 from typing import Any, Dict, List, Optional
+import uuid
+
+
+def gap_key(gap: Dict[str, Any]) -> tuple:
+    """Stable identity for duplicate clean-up; keeps distinct placements separate."""
+    return (gap.get('kind'), gap.get('placement_id'), gap.get('detail'))
+
+
+def dedupe_gaps(gaps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    seen = set()
+    unique = []
+    for gap in gaps:
+        key = gap_key(gap)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(gap)
+    return unique
 
 
 DEFAULT_POLICY: Dict[str, Any] = {
@@ -22,10 +40,19 @@ def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def normalize_observations(manifest: Dict[str, Any], raw_inputs: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_observations(
+    manifest: Dict[str, Any],
+    raw_inputs: Dict[str, Any],
+    placements: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
     """Normalize raw collector outputs into scoped observations and gap tasks."""
     observations = []
     gaps = list(manifest.get('gaps', []))
+    placement_by_post = {
+        str(item.get('copy_post_id')): item
+        for item in placements or []
+        if item.get('copy_post_id')
+    }
 
     # 1. Dashboard captures
     for cap in raw_inputs.get('insights_captures', []):
@@ -97,12 +124,17 @@ def normalize_observations(manifest: Dict[str, Any], raw_inputs: Dict[str, Any])
             row_text = row.get('raw_text', '')
             row_id = hashlib.sha256(row_text.encode('utf-8')).hexdigest()[:10] if row_text else uuid.uuid4().hex[:8]
 
+        # A verified Page post ID is the only safe join. Titles are never merged.
+        matched = placement_by_post.get(str(row.get('post_id'))) if row.get('post_id') else None
+        placement_id = matched.get('id') if matched else row.get('placement_id')
+        publication_id = matched.get('publication_id') if matched else row.get('publication_id')
+
         group_id = row.get('group_id')
         placement_kind = row.get('kind') or row.get('placement_kind')
         if (not group_id and placement_kind == 'group_copy') or row.get('unresolved_group_identity'):
             gaps.append({
                 'kind': 'unresolved_group_identity',
-                'placement_id': row.get('placement_id') or row_id,
+                'placement_id': placement_id or row_id,
                 'group_name': row.get('group_name'),
                 'detail': f"Group copy '{row.get('group_name') or row.get('permalink') or row_id}' lacks a stable numeric group ID; distribution is descriptive only."
             })
@@ -112,8 +144,10 @@ def normalize_observations(manifest: Dict[str, Any], raw_inputs: Dict[str, Any])
 
         observations.append({
             'id': f"obs-lib-{row_id}",
-            'placement_id': row.get('placement_id'),
-            'publication_id': row.get('publication_id'),
+            'placement_id': placement_id,
+            'publication_id': publication_id,
+            'identity_source': 'page_post_id' if matched else ('group_id' if group_id else 'unresolved'),
+            'copy_post_id': row.get('post_id'),
             'checkpoint': 'observation',
             'observed_at': row.get('observed_at') or _iso_now(),
             'actual_age_hours': row.get('age_hours'),
@@ -174,7 +208,7 @@ def normalize_observations(manifest: Dict[str, Any], raw_inputs: Dict[str, Any])
     return {
         'manifest_id': manifest.get('run_id'),
         'observations': observations,
-        'gaps': gaps,
+        'gaps': dedupe_gaps(gaps),
     }
 
 
@@ -254,7 +288,7 @@ def select_comparable(
     return {
         'eligible': eligible,
         'descriptive': descriptive,
-        'gaps': gaps,
+        'gaps': dedupe_gaps(gaps),
     }
 
 

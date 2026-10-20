@@ -41,30 +41,122 @@ def report_id_from_url(url):
     return match[1] if match else None
 
 
-def reconcile_report(directory, page_id, report_id):
+def reconcile_report(directory, page_id, report_id, exclude=None):
     """Reuse verified local evidence; an uncertain prior click is not permission to retry."""
     uncertain = []
-    for audit in sorted(Path(directory).glob('*.export.json')):
-        try:
-            data = json.loads(audit.read_text())
-        except (OSError, ValueError):
-            continue
-        profile = data.get('profile', {})
-        query = parse_qs(urlsplit(profile.get('url', '')).query)
-        if data.get('report_id') != report_id or query.get('id') != [page_id]:
-            continue
-        if data.get('status') == 'downloaded':
-            path = Path(data.get('output', ''))
-            if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == data.get('sha256'):
-                metrics = validate_download(path, page_id)
-                return {'status': 'reused', 'output': str(path), 'audit': str(audit),
-                        'report_id': report_id, **metrics}
-            uncertain.append(str(audit))
-        elif data.get('status') in ('download_requested', 'download_not_received'):
-            uncertain.append(str(audit))
+    seen = set()
+    for folder in _audit_directories(directory):
+        for audit in sorted(folder.glob('*.export.json')):
+            if audit.resolve() in seen:
+                continue
+            seen.add(audit.resolve())
+            if exclude is not None and audit.resolve() == Path(exclude).resolve():
+                continue
+            try:
+                data = json.loads(audit.read_text())
+            except (OSError, ValueError):
+                continue
+            profile = data.get('profile', {})
+            query = parse_qs(urlsplit(profile.get('url', '')).query)
+            if data.get('report_id') != report_id or query.get('id') != [page_id]:
+                continue
+            if data.get('status') == 'downloaded':
+                path = Path(data.get('output', ''))
+                if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == data.get('sha256'):
+                    metrics = validate_download(path, page_id)
+                    return {'status': 'reused', 'output': str(path), 'audit': str(audit),
+                            'report_id': report_id, **metrics}
+                uncertain.append(str(audit))
+            elif data.get('status') in ('download_requested', 'download_not_received'):
+                uncertain.append(str(audit))
     if uncertain:
         raise AgentError('export_uncertain', 'A prior download may have succeeded. Reconcile these audits and local downloads before retrying: ' + ', '.join(uncertain), True)
     return None
+
+
+CREATION_UNVERIFIED = ('creation_requested', 'creation_state_unknown',
+                       'creation_reconciliation_failed', 'download_requested',
+                       'download_not_received')
+
+
+def _audit_directories(directory):
+    """Include the parent exports directory when writing into a repairs/ subdirectory."""
+    directory = Path(directory)
+    directories = [directory]
+    if directory.name == 'repairs':
+        directories.append(directory.parent)
+    return directories
+
+
+def pending_creations(directory, page_id, exclude=None):
+    """Audits for this Page whose creation/download outcome is not verified."""
+    pending = []
+    seen = set()
+    for folder in _audit_directories(directory):
+        for audit in sorted(folder.glob('*.export.json')):
+            if audit.resolve() in seen:
+                continue
+            seen.add(audit.resolve())
+            if exclude is not None and audit.resolve() == Path(exclude).resolve():
+                continue
+            try:
+                data = json.loads(audit.read_text())
+            except (OSError, ValueError):
+                continue
+            profile = data.get('profile') or {}
+            query = parse_qs(urlsplit(profile.get('url', '')).query)
+            if query.get('id') != [page_id]:
+                continue
+            if data.get('status') not in CREATION_UNVERIFIED:
+                continue
+            pending.append({
+                'audit': str(audit),
+                'status': data.get('status'),
+                'report_id': data.get('report_id'),
+                'existing_report_ids': data.get('existing_report_ids') or [],
+                'output': data.get('output'),
+            })
+    return pending
+
+
+def reconcile_creation_history(outstanding, available_ids):
+    """Match uncertain creation requests to verified report history before any retry."""
+    decisions = []
+    candidates = set()
+    ambiguous = False
+    available = {str(value) for value in available_ids}
+    for item in outstanding:
+        before = {str(value) for value in item.get('existing_report_ids') or []}
+        new_ids = available - before
+        explicit = item.get('report_id')
+        if explicit and str(explicit) in available:
+            candidate = str(explicit)
+            basis = 'explicit_report_id'
+        elif len(new_ids) == 1:
+            candidate = next(iter(new_ids))
+            basis = 'new_history_entry'
+        elif len(new_ids) == 0:
+            candidate = None
+            basis = 'no_new_history_entry'
+        else:
+            candidate = None
+            basis = 'multiple_new_history_entries'
+            ambiguous = True
+        if candidate:
+            candidates.add(candidate)
+        decisions.append({
+            'audit': item.get('audit'),
+            'prior_status': item.get('status'),
+            'prior_report_id': explicit,
+            'new_report_ids': sorted(new_ids),
+            'candidate': candidate,
+            'basis': basis,
+        })
+    if len(candidates) == 1 and not ambiguous:
+        return next(iter(candidates)), {'status': 'resolved', 'decisions': decisions}
+    if not candidates and not ambiguous:
+        return None, {'status': 'unconfirmed', 'decisions': decisions}
+    return None, {'status': 'ambiguous', 'candidates': sorted(candidates), 'decisions': decisions}
 
 
 def export_csv(browser, page_id, output, download_timeout_seconds=90, report_id=None, breakdown='summary'):
@@ -84,10 +176,28 @@ def export_csv(browser, page_id, output, download_timeout_seconds=90, report_id=
         raise AgentError('invalid_arguments', 'Breakdown must be "summary" or "daily".')
     if report_id is not None and (not report_id.isascii() or not report_id.isdigit()):
         raise AgentError('invalid_arguments', 'Report ID must contain ASCII digits only.')
+    outstanding = []
     if report_id is not None:
         existing = reconcile_report(output.parent, page_id, report_id)
         if existing:
             return existing
+        # An unrelated earlier click still makes any new creation unsafe.
+        outstanding = pending_creations(output.parent, page_id, exclude=audit)
+        if outstanding:
+            raise AgentError(
+                'export_uncertain',
+                'An earlier report creation is still unverified; reconcile it before requesting another report: '
+                + ', '.join(item['audit'] for item in outstanding),
+                True)
+    else:
+        # Never create a second report while an earlier click is unverified.
+        outstanding = pending_creations(output.parent, page_id, exclude=audit)
+        for item in outstanding:
+            prior = item.get('report_id')
+            if prior:
+                existing = reconcile_report(output.parent, page_id, prior)
+                if existing:
+                    return existing
     if any(path.exists() for path in (output, audit, staging)):
         raise AgentError('invalid_arguments', 'Choose a new .csv path; CSV, audit and staging paths must not exist.')
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -127,6 +237,20 @@ def export_csv(browser, page_id, output, download_timeout_seconds=90, report_id=
         dialogs.first.wait_for(state='visible')
         return selectors.unique(dialogs, label + ' dialog')
 
+    def reopen_history():
+        """Only reopen through a verified visible menu; never swallow a blocked UI."""
+        try:
+            page.get_by_role('button', name='Export data', exact=True).first.wait_for(
+                state='visible', timeout=15000)
+        except Exception as exc:
+            result['status'] = 'creation_state_unknown'
+            record('creation-state-unknown')
+            raise AgentError(
+                'export_uncertain',
+                f'Report creation state is unknown and the Export data menu is not usable. Inspect {audit} and report history before retrying.',
+                True) from exc
+        return open_menu('Report history')
+
     def report_links(dialog):
         links = dialog.locator('a[href]').filter(has_text=re.compile(r'^Download$'))
         return {identity: links.nth(index) for index in range(links.count())
@@ -140,35 +264,90 @@ def export_csv(browser, page_id, output, download_timeout_seconds=90, report_id=
         page.wait_for_timeout(1500)
         existing = set(report_links(history))
         result['existing_report_ids'] = sorted(existing)
+        if report_id is None and outstanding:
+            candidate, reconciliation = reconcile_creation_history(
+                outstanding, existing)
+            result['reconciliation'] = reconciliation
+            if candidate is None:
+                result['status'] = 'creation_reconciliation_failed'
+                record('creation-reconciliation-failed')
+                raise AgentError(
+                    'export_uncertain',
+                    f"An earlier report creation cannot be reconciled to exactly one history entry ({reconciliation['status']}). Inspect {audit} and report history; do not create another report.",
+                    True)
+            report_id = candidate
+            result['report_id'] = report_id
+            # Persist an unverified download state so a crash before the click cannot
+            # be mistaken for permission to create another report.
+            result['status'] = 'download_requested'
+            decisions = {decision.get('audit'): decision
+                         for decision in reconciliation.get('decisions', [])}
+            for item in outstanding:
+                if (decisions.get(item['audit']) or {}).get('candidate') != report_id:
+                    result.setdefault('unreconciled_audits', []).append(item['audit'])
+                    continue
+                prior_path = Path(item['audit'])
+                try:
+                    prior = json.loads(prior_path.read_text())
+                except (OSError, ValueError):
+                    continue
+                prior['status'] = 'creation_reconciled'
+                prior['reconciled_at'] = datetime.now(timezone.utc).isoformat()
+                prior['reconciliation'] = reconciliation
+                if not prior.get('report_id'):
+                    prior['report_id'] = report_id
+                prior_path.write_text(json.dumps(prior, ensure_ascii=False, indent=2) + '\n')
+            record('creation-reconciled')
         if report_id is None:
             selectors.unique(selectors.visible(history.get_by_role('button', name='Close', exact=True)), 'Close history').click()
             dialog = open_menu('Create new data report')
             dialog.get_by_text('Create data report', exact=True).wait_for()
             content = dialog.get_by_role('button', name=re.compile(r'^Content\s+View data'))
             selectors.unique(selectors.visible(content), 'Content report type').click()
-            result['settings_displayed'] = dialog.inner_text()
+            settings_text = dialog.inner_text()
+            result['settings_displayed'] = settings_text
+            result['request'] = {
+                'page_id': page_id,
+                'breakdown': breakdown,
+                'output': str(output),
+                'settings_sha256': hashlib.sha256(settings_text.encode('utf-8')).hexdigest(),
+                'existing_report_ids': sorted(existing),
+                'requested_at': datetime.now(timezone.utc).isoformat(),
+            }
             record('report-settings')
             create = selectors.unique(selectors.visible(dialog.get_by_role('button', name='Create report (.csv)', exact=True)), 'Create report')
             result['status'] = 'creation_requested'
             audit.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
             create.click()  # Exactly one report request; never retry automatically.
             page.wait_for_timeout(2000)
+            result['post_click_state'] = {
+                'observed_at': datetime.now(timezone.utc).isoformat(),
+                'dialog_visible': dialog.is_visible(),
+                'downloads_received': len(downloads),
+                'url': page.url,
+            }
+            audit.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
+            record('creation-submitted')
             if not downloads:
-                try:
-                    done_btn = dialog.get_by_role('button', name=re.compile(r'^(?:Done|Close|Xong|Đóng)$', re.I))
-                    if done_btn.count() > 0 and done_btn.first.is_visible():
-                        done_btn.first.click()
-                except Exception:
-                    pass
-                try:
-                    dialog.wait_for(state='hidden', timeout=10000)
-                except Exception:
-                    pass
-                try:
-                    page.get_by_role('button', name='Export data', exact=True).wait_for(state='visible', timeout=10000)
-                except Exception:
-                    pass
-                history = open_menu('Report history')
+                if dialog.is_visible():
+                    try:
+                        done_btn = dialog.get_by_role('button', name=re.compile(r'^(?:Done|Close|Xong|Đóng)$', re.I))
+                        if done_btn.count() > 0 and done_btn.first.is_visible():
+                            done_btn.first.click()
+                    except Exception as exc:
+                        result['dialog_close_error'] = str(exc)
+                    try:
+                        dialog.wait_for(state='hidden', timeout=10000)
+                    except Exception as exc:
+                        result['status'] = 'creation_state_unknown'
+                        result['dialog_close_error'] = str(exc)
+                        record('dialog-open')
+                        raise AgentError(
+                            'export_uncertain',
+                            f'Report creation dialog did not close after one request. Inspect {audit}; do not create another report.',
+                            True) from exc
+                    result['dialog_closed'] = True
+                history = reopen_history()
         deadline = time.monotonic() + download_timeout_seconds
         clicked_download = False
         while not downloads and time.monotonic() < deadline:
@@ -182,7 +361,8 @@ def export_csv(browser, page_id, output, download_timeout_seconds=90, report_id=
                 raise AgentError('export_failed', 'Multiple new reports appeared; choose the explicit report ID to download.', True)
             if len(candidates) == 1:
                 result['report_id'] = next(iter(candidates))
-                existing_download = reconcile_report(output.parent, page_id, result['report_id'])
+                existing_download = reconcile_report(output.parent, page_id, result['report_id'],
+                                                     exclude=audit)
                 if existing_download:
                     result['status'] = 'reused'
                     result['reused_output'] = existing_download['output']
