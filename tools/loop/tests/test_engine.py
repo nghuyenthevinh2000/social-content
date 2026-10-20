@@ -914,6 +914,25 @@ class EngineTest(unittest.TestCase):
                              for e in manifest['evidence_files']
                              if e.get('type') == 'summary_csv'))
 
+    def test_verified_library_is_reused_after_a_failed_repair(self):
+        res1 = self._run_single_placement_cycle()
+        run_id = res1['run_id']
+        run_dir = self.root / 'loop/runs' / run_id
+        manifest = json.loads((run_dir / 'manifest.json').read_text())
+        manifest['collector_status']['content_library'] = 'failed'
+        engine.save(run_dir / 'manifest.json', manifest)
+
+        commands = []
+        def forbidden(cmd, **kwargs):
+            commands.append(list(cmd))
+            raise AssertionError(f'unexpected collector call: {cmd}')
+
+        engine.cycle(self.root, resume=run_id, runner=forbidden)
+        self.assertEqual(commands, [])
+        updated = json.loads((run_dir / 'manifest.json').read_text())
+        self.assertEqual(updated['collector_status']['content_library'], 'completed')
+        self.assertTrue(any(e['type'] == 'content_library' for e in updated['evidence_files']))
+
     def test_intact_resume_has_no_side_effects_or_attempt_increment(self):
         import subprocess
         res1 = self._run_single_placement_cycle(insights_fails=True)
@@ -996,7 +1015,10 @@ class EngineTest(unittest.TestCase):
                 {'id': 'row-known', 'post_id': '111', 'kind': 'original_page', 'views': 10},
                 {'id': 'row-group', 'post_id': None, 'kind': 'group_copy',
                  'group_name': 'Group A', 'views': 5},
-            ]},
+            ],
+            'csv_posts': [{'post_id': '111', 'export_period_totals': {'reactions': 3}},
+                          {'post_id': '999', 'export_period_totals': {'reactions': 0}}],
+            'csv_evidence_hash': 'hash'},
             placements=[{'id': 'pl-1', 'publication_id': 'pub-1', 'copy_post_id': '111'}],
         )
         known = next(item for item in normalized['observations'] if item['id'] == 'obs-lib-row-known')
@@ -1005,6 +1027,12 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(known['identity_source'], 'page_post_id')
         group = next(item for item in normalized['observations'] if item['id'] == 'obs-lib-row-group')
         self.assertIsNone(group['placement_id'])
+        csv_known = next(item for item in normalized['observations'] if item['id'] == 'obs-csv-111')
+        self.assertEqual(csv_known['placement_id'], 'pl-1')
+        self.assertEqual(csv_known['identity_source'], 'page_post_id')
+        csv_other = next(item for item in normalized['observations'] if item['id'] == 'obs-csv-999')
+        self.assertIsNone(csv_other['placement_id'])
+        self.assertEqual(csv_other['identity_source'], 'unresolved')
         self.assertEqual([gap['kind'] for gap in normalized['gaps']], ['unresolved_group_identity'])
 
     def test_group_copy_without_visible_time_stays_descriptive(self):

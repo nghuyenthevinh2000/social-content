@@ -103,6 +103,13 @@ def pending_creations(directory, page_id, exclude=None):
                 data = json.loads(audit.read_text())
             except (OSError, ValueError):
                 continue
+            sidecar = audit.with_suffix('.reconciliation.json')
+            if sidecar.is_file():
+                try:
+                    if json.loads(sidecar.read_text()).get('status') == 'resolved':
+                        continue
+                except (OSError, ValueError):
+                    pass
             profile = data.get('profile') or {}
             query = parse_qs(urlsplit(profile.get('url', '')).query)
             if query.get('id') != [page_id]:
@@ -282,21 +289,20 @@ def export_csv(browser, page_id, output, download_timeout_seconds=90, report_id=
             result['status'] = 'download_requested'
             decisions = {decision.get('audit'): decision
                          for decision in reconciliation.get('decisions', [])}
+            reconciled_at = datetime.now(timezone.utc).isoformat()
             for item in outstanding:
                 if (decisions.get(item['audit']) or {}).get('candidate') != report_id:
                     result.setdefault('unreconciled_audits', []).append(item['audit'])
                     continue
-                prior_path = Path(item['audit'])
-                try:
-                    prior = json.loads(prior_path.read_text())
-                except (OSError, ValueError):
-                    continue
-                prior['status'] = 'creation_reconciled'
-                prior['reconciled_at'] = datetime.now(timezone.utc).isoformat()
-                prior['reconciliation'] = reconciliation
-                if not prior.get('report_id'):
-                    prior['report_id'] = report_id
-                prior_path.write_text(json.dumps(prior, ensure_ascii=False, indent=2) + '\n')
+                # Record the resolution beside the audit; historical bytes are never rewritten.
+                sidecar = Path(item['audit']).with_suffix('.reconciliation.json')
+                sidecar.write_text(json.dumps({
+                    'status': 'resolved',
+                    'audit': item['audit'],
+                    'report_id': report_id,
+                    'reconciled_at': reconciled_at,
+                    'reconciliation': reconciliation,
+                }, ensure_ascii=False, indent=2) + '\n')
             record('creation-reconciled')
         if report_id is None:
             selectors.unique(selectors.visible(history.get_by_role('button', name='Close', exact=True)), 'Close history').click()
@@ -433,67 +439,80 @@ def import_export(csv_path, output, page_id, dashboard_files=(), breakdown=None)
         raise AgentError('invalid_arguments', 'Output already exists; choose a new path.')
     posts = {}
     row_count = duplicates = 0
+
+    def parse_day(value):
+        try:
+            return datetime.strptime((value or '').strip(), '%m/%d/%Y').date().isoformat()
+        except ValueError:
+            return None
+
     with Path(csv_path).open(encoding='utf-8-sig', newline='') as stream:
         reader = csv.DictReader(stream)
         headers = set(reader.fieldnames or [])
         base_required = {'Post ID', 'Page ID', 'Publish time', 'Permalink'}
         if not base_required.issubset(headers):
             raise AgentError('invalid_arguments', 'CSV is missing base Content Library columns.')
-        is_daily = 'Date' in headers
-        if breakdown == 'daily' and not is_daily:
-            raise AgentError('invalid_arguments', 'Requested daily breakdown but CSV does not contain a Date column.')
-        if breakdown == 'summary' and is_daily:
-            raise AgentError('invalid_arguments', 'Requested summary breakdown but CSV contains a daily Date column.')
-        detected_breakdown = 'daily' if is_daily else 'summary'
+        rows = list(reader)
 
-        for row in reader:
-            row_count += 1
-            if row['Page ID'] != page_id:
-                raise AgentError('invalid_arguments', 'CSV contains a different Page ID.')
-            post_id = row['Post ID']
-            if not post_id.isascii() or not post_id.isdigit():
-                raise AgentError('invalid_arguments', 'Invalid Post ID.')
-            entry = posts.setdefault(post_id, {
-                'post_id': post_id, 'page_id': page_id, 'title': row.get('Title'),
-                'permalink': row['Permalink'], 'post_type': row.get('Post type'),
-                'duration_seconds': float(row['Duration (sec)']) if row.get('Duration (sec)') else None,
-                'publish_time_raw': row['Publish time'], 'publish_timezone': None,
-                'breakdown': detected_breakdown,
-                'daily': [], 'dashboard_snapshots': [],
-            })
-            if (entry['permalink'], entry['publish_time_raw']) != (row['Permalink'], row['Publish time']):
-                raise AgentError('invalid_arguments', 'Conflicting metadata for one Post ID.')
+    # A Date column alone is not proof of daily rows: the Summary export uses
+    # Date="Lifetime". Only parseable dates make the file a daily breakdown.
+    is_daily = any(parse_day(row.get('Date')) for row in rows)
+    if breakdown == 'daily' and not is_daily:
+        raise AgentError('invalid_arguments', 'Requested daily breakdown but CSV does not contain a Date column.')
+    if breakdown == 'summary' and is_daily:
+        raise AgentError('invalid_arguments', 'Requested summary breakdown but CSV contains daily Date rows.')
+    detected_breakdown = 'daily' if is_daily else 'summary'
 
-            if is_daily:
-                day = {'date': datetime.strptime(row['Date'], '%m/%d/%Y').date().isoformat(),
-                       'data_comment': row.get('Data comment') or None}
-                for header, key in METRICS.items():
-                    if header in row:
-                        value = row[header].strip()
-                        day[key] = float(value) if value not in ('', '--', 'N/A') else None
-                        if day[key] is not None and (not math.isfinite(day[key]) or day[key] < 0):
-                            raise AgentError('invalid_arguments', 'CSV metrics must be finite nonnegative values.')
-                previous = next((item for item in entry['daily'] if item['date'] == day['date']), None)
-                if previous:
-                    if previous != day:
-                        raise AgentError('invalid_arguments', 'Conflicting rows for one post/day; refusing double count.')
-                    duplicates += 1
-                    continue
-                entry['daily'].append(day)
-            else:
-                summary_row = {}
-                for header, key in METRICS.items():
-                    if header in row:
-                        value = row[header].strip()
-                        summary_row[key] = float(value) if value not in ('', '--', 'N/A') else None
-                        if summary_row[key] is not None and (not math.isfinite(summary_row[key]) or summary_row[key] < 0):
-                            raise AgentError('invalid_arguments', 'CSV metrics must be finite nonnegative values.')
-                if 'summary_metrics' in entry:
-                    if entry['summary_metrics'] != summary_row:
-                        raise AgentError('invalid_arguments', 'Conflicting summary rows for one Post ID.')
-                    duplicates += 1
-                    continue
-                entry['summary_metrics'] = summary_row
+    for row in rows:
+        row_count += 1
+        if row['Page ID'] != page_id:
+            raise AgentError('invalid_arguments', 'CSV contains a different Page ID.')
+        post_id = row['Post ID']
+        if not post_id.isascii() or not post_id.isdigit():
+            raise AgentError('invalid_arguments', 'Invalid Post ID.')
+        entry = posts.setdefault(post_id, {
+            'post_id': post_id, 'page_id': page_id, 'title': row.get('Title'),
+            'permalink': row['Permalink'], 'post_type': row.get('Post type'),
+            'duration_seconds': float(row['Duration (sec)']) if row.get('Duration (sec)') else None,
+            'publish_time_raw': row['Publish time'], 'publish_timezone': None,
+            'breakdown': detected_breakdown,
+            'daily': [], 'dashboard_snapshots': [],
+        })
+        if (entry['permalink'], entry['publish_time_raw']) != (row['Permalink'], row['Publish time']):
+            raise AgentError('invalid_arguments', 'Conflicting metadata for one Post ID.')
+
+        if is_daily:
+            day_iso = parse_day(row.get('Date'))
+            if day_iso is None:
+                raise AgentError('invalid_arguments', 'CSV mixes daily and summary Date values.')
+            day = {'date': day_iso, 'data_comment': row.get('Data comment') or None}
+            for header, key in METRICS.items():
+                if header in row:
+                    value = row[header].strip()
+                    day[key] = float(value) if value not in ('', '--', 'N/A') else None
+                    if day[key] is not None and (not math.isfinite(day[key]) or day[key] < 0):
+                        raise AgentError('invalid_arguments', 'CSV metrics must be finite nonnegative values.')
+            previous = next((item for item in entry['daily'] if item['date'] == day['date']), None)
+            if previous:
+                if previous != day:
+                    raise AgentError('invalid_arguments', 'Conflicting rows for one post/day; refusing double count.')
+                duplicates += 1
+                continue
+            entry['daily'].append(day)
+        else:
+            summary_row = {}
+            for header, key in METRICS.items():
+                if header in row:
+                    value = row[header].strip()
+                    summary_row[key] = float(value) if value not in ('', '--', 'N/A') else None
+                    if summary_row[key] is not None and (not math.isfinite(summary_row[key]) or summary_row[key] < 0):
+                        raise AgentError('invalid_arguments', 'CSV metrics must be finite nonnegative values.')
+            if 'summary_metrics' in entry:
+                if entry['summary_metrics'] != summary_row:
+                    raise AgentError('invalid_arguments', 'Conflicting summary rows for one Post ID.')
+                duplicates += 1
+                continue
+            entry['summary_metrics'] = summary_row
 
     for entry in posts.values():
         if entry['breakdown'] == 'daily':

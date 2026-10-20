@@ -176,11 +176,15 @@ def normalize_observations(
     csv_hash = raw_inputs.get('csv_evidence_hash')
     for post in raw_inputs.get('csv_posts', []):
         post_id = post.get('post_id')
+        matched = placement_by_post.get(str(post_id)) if post_id else None
         summary = post.get('export_period_totals') or post.get('summary_metrics') or {}
         observations.append({
             'id': f"obs-csv-{post_id}",
-            'placement_id': post.get('placement_id'),
-            'publication_id': post.get('publication_id'),
+            'placement_id': matched.get('id') if matched else post.get('placement_id'),
+            'publication_id': matched.get('publication_id') if matched else post.get('publication_id'),
+            'identity_source': ('page_post_id' if matched
+                                else ('explicit' if post.get('placement_id') else 'unresolved')),
+            'copy_post_id': post_id,
             'checkpoint': 'period_summary',
             'observed_at': _iso_now(),
             'actual_age_hours': None,

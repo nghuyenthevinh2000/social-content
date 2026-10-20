@@ -110,5 +110,23 @@ class ExportTest(unittest.TestCase):
         self.assertEqual(data['average_seconds_viewed_aggregate'], 20.0)
 
 
+    def test_summary_export_with_lifetime_date_column_imports(self):
+        lifetime_row = {**self.row, 'Date': 'Lifetime'}
+        self.write_rows([lifetime_row])
+        import_export(self.csv, self.output, '456', breakdown='summary')
+        data = json.loads(self.output.read_text())['posts'][0]
+        self.assertEqual(data['breakdown'], 'summary')
+        self.assertEqual(data['export_period_totals']['reactions'], 0.0)
+        self.assertEqual(data['daily'], [])
+
+    def test_daily_rows_rejected_for_summary_breakdown(self):
+        self.write_rows([self.row])
+        with self.assertRaises(AgentError):
+            import_export(self.csv, self.output, '456', breakdown='summary')
+        self.write_rows([{**self.row, 'Date': 'Lifetime'}])
+        with self.assertRaises(AgentError):
+            import_export(self.csv, self.output, '456', breakdown='daily')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -52,8 +52,24 @@ def _add_gap(manifest, gap):
 
 
 def _evidence_entry(manifest, relative):
-    return next((item for item in manifest.get('evidence_files', [])
-                 if item.get('path') == relative), None)
+    """Latest recorded entry for a path; the newest verified capture wins on reuse."""
+    matches = [item for item in manifest.get('evidence_files', [])
+               if item.get('path') == relative]
+    return matches[-1] if matches else None
+
+
+def _note_hash_conflicts(manifest, relative):
+    """Document contradictory historical hashes without discarding either one."""
+    hashes = {item.get('sha256') for item in manifest.get('evidence_files', [])
+              if item.get('path') == relative}
+    if len(hashes) > 1:
+        _add_gap(manifest, {
+            'kind': 'evidence_hash_conflict',
+            'path': relative,
+            'detail': (f"{relative} has {len(hashes)} recorded hashes "
+                       f"({', '.join(sorted(h or '' for h in hashes))}); "
+                       "the latest matching file is used and no historical file is overwritten."),
+        })
 
 
 def _check_reusable_evidence(root, manifest, relative, ev_type=None):
@@ -906,12 +922,21 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
     lib_hash = None
     lib_relative_used = lib_relative
     lib_completed = manifest.get('collector_status', {}).get('content_library') == 'completed'
-    reusable, reuse_reason = (False, 'not_completed')
-    if lib_completed:
-        reusable, reuse_reason = _check_reusable_evidence(root, manifest, lib_relative, 'content_library')
+    _note_hash_conflicts(manifest, lib_relative)
+    # Verified evidence beats a later failed collector run: reuse it and do not re-collect.
+    reusable, reuse_reason = _check_reusable_evidence(root, manifest, lib_relative, 'content_library')
     if reusable:
         lib_data = json.loads(lib_output.read_text())
         lib_hash = _sha256(lib_output)
+        if _validate_library(manifest, lib_data, page_id):
+            manifest['collector_status']['content_library'] = 'completed'
+            # The selected evidence is usable; drop coverage gaps that described a discarded repair.
+            manifest['gaps'] = [g for g in manifest.get('gaps', [])
+                                if g.get('kind') not in ('content_library_empty',
+                                                         'content_library_unidentified',
+                                                         'content_library_traversal_incomplete',
+                                                         'content_library_unverified')]
+        save(manifest_path, manifest)
     else:
         # Missing or changed completed evidence is repaired at a new path.
         lib_recorded = _evidence_entry(manifest, lib_relative) is not None
@@ -1158,6 +1183,7 @@ def cycle(root, *, dry_run=False, resume=None, runner=None):
         cap_relative_used = cap_relative
         reused = False
 
+        _note_hash_conflicts(manifest, cap_relative)
         cap_ev = _evidence_entry(manifest, cap_relative)
         if cap_ev and cap_output.exists():
             cap_ok, cap_reason = _check_reusable_evidence(root, manifest, cap_relative, 'post_insights')

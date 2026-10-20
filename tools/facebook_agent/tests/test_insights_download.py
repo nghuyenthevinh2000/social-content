@@ -133,6 +133,9 @@ class CreationReconciliationTest(unittest.TestCase):
             self._audit(root, 'other.export.json', page_id='999', status='creation_requested')
             self._audit(root, 'unknown.export.json', status='creation_state_unknown')
             self._audit(root, 'prep.export.json', status='preparing')
+            resolved = self._audit(root, 'resolved.export.json', status='creation_requested')
+            resolved.with_suffix('.reconciliation.json').write_text(
+                json.dumps({'status': 'resolved', 'report_id': '7'}))
 
             pending = pending_creations(root, '456')
             self.assertEqual([Path(item['audit']).name for item in pending],
@@ -216,10 +219,16 @@ class CreationReconciliationTest(unittest.TestCase):
                 self.assertEqual(current['reconciliation']['status'], 'resolved')
                 self.assertNotEqual(current['status'], 'creation_requested')
                 prior_data = json.loads(prior.read_text())
-                self.assertEqual(prior_data['status'], 'creation_reconciled')
-                self.assertEqual(prior_data['report_id'], '123')
+                self.assertEqual(prior_data['status'], 'creation_requested')
+                self.assertIsNone(prior_data.get('report_id'))
+                sidecar = json.loads(prior.with_suffix('.reconciliation.json').read_text())
+                self.assertEqual(sidecar['status'], 'resolved')
+                self.assertEqual(sidecar['report_id'], '123')
+                self.assertFalse(second.with_suffix('.reconciliation.json').exists())
                 self.assertEqual(current['unreconciled_audits'], [str(second)])
                 self.assertEqual(json.loads(second.read_text())['status'], 'creation_state_unknown')
+                self.assertEqual([Path(i['audit']).name for i in pending_creations(root, '456')],
+                                 ['second.export.json'])
             finally:
                 browser.close()
 
