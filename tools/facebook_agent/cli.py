@@ -31,24 +31,37 @@ def build_parser():
     reels.add_argument('--page-id', required=True, help='Expected already-active Page ID')
     reels.add_argument('--limit', type=int, default=15, help='Number of feed observations (1-50)')
     reels.add_argument('--output', required=True, help='Save raw observations as JSON')
-    judge = commands.add_parser('judge-reels', help='Use Jev to classify saved observations; does not open Facebook')
-    judge.add_argument('--input', required=True, help='Saved Reels observations JSON')
-    judge.add_argument('--product-dir', required=True, help='Directory containing product-marketing.json')
-    judge.add_argument('--output', required=True, help='New judgments JSON; raw input is preserved')
-    judge.add_argument('--limit', type=int, default=10, help='Maximum paid requests (1-100), one per Reel')
-    judge.add_argument('--threshold', type=float, default=0.9, help='Provisional exclusion threshold; uncertainty allows')
-    judge.add_argument('--model', default='jev-latest', help='TypeSafe model; resolved model is recorded')
-    judge.add_argument('--dry-run', action='store_true', help='Validate inputs and save run manifest without API calls')
-    judge.add_argument('--approve-api', action='store_true', help='Authorize sending observed text and product context to TypeSafe for paid judgments')
-    judge.add_argument('--vietnamese-audience', action='store_true', help='Also judge Vietnamese-speaking audience fit independently of promotion')
-    judge.add_argument('--target-count', type=int, help='Stop after this many allowed audience-matching Reels')
-    benchmark = commands.add_parser('benchmark-reels', help='Time collection-only versus collection plus Jev on the same feed sample')
-    benchmark.add_argument('--page-id', required=True)
-    benchmark.add_argument('--product-dir', required=True)
-    benchmark.add_argument('--output-dir', required=True, help='New directory for raw data, Jev judgments, shortlist, and timing')
-    benchmark.add_argument('--target-count', type=int, default=10)
-    benchmark.add_argument('--max-observations', type=int, default=50)
-    benchmark.add_argument('--approve-api', action='store_true')
+    insights = commands.add_parser('insights', help='Read the active Page Insights dashboard; never publishes')
+    insights.add_argument('--page-id', required=True)
+    insights.add_argument('--output', required=True, help='New evidence JSON path; screenshots saved alongside')
+    insights.add_argument('--url', help='Facebook professional dashboard/Insights URL')
+    insights.add_argument('--open', action='append', default=[], dest='open_labels', help='Exact read-only navigation label, repeatable')
+    insights.add_argument('--scrolls', type=int, default=3, help='Scroll captures, 0-8')
+    insights.add_argument('--hover-demographics', action='store_true', help='Read age/gender bar tooltips without clicks')
+    content_lib = commands.add_parser('content-library', help='Extract rows with their rendered column headers, row identity/status, group labels/URLs, and copy links')
+    content_lib.add_argument('--page-id', required=True)
+    content_lib.add_argument('--output', required=True, help='New evidence JSON path')
+    content_lib.add_argument('--scrolls', type=int, default=5, help='Scroll count (0-20)')
+    importer = commands.add_parser('insights-import', help='Import daily or summary Content Library CSV and join dashboard evidence')
+    importer.add_argument('--page-id', required=True)
+    importer.add_argument('--csv', required=True)
+    importer.add_argument('--dashboard', action='append', default=[], help='Dashboard capture JSON, repeatable')
+    importer.add_argument('--breakdown', choices=['summary', 'daily'], default=None, help='Explicit breakdown type')
+    importer.add_argument('--output', required=True)
+    exporter = commands.add_parser('insights-export', help='Create and download one Content Library CSV report')
+    exporter.add_argument('--page-id', required=True)
+    exporter.add_argument('--output', required=True, help='New .csv path; audit JSON and screenshots saved alongside')
+    exporter.add_argument('--download-timeout-seconds', type=int, default=90)
+    exporter.add_argument('--breakdown', choices=['summary', 'daily'], default='summary', help='Report breakdown setting')
+    exporter.add_argument('--report-id', help='Download an existing Report history entry without creating another report')
+    follow = commands.add_parser('follow', help='Follow one explicitly approved Reel creator as the already-active Page')
+    follow.add_argument('--page-id', required=True)
+    follow.add_argument('--creator', help='Exact creator display name; required for Reel-derived profiles')
+    source = follow.add_mutually_exclusive_group(required=True)
+    source.add_argument('--reel', help='Observed Reel URL proving creator identity')
+    source.add_argument('--profile-url', help='Explicitly approved Facebook vanity profile URL')
+    follow.add_argument('--approved', action='store_true', help='Authorize one Follow click; never unfollows')
+    follow.add_argument('--output', required=True, help='New follow audit JSON file')
     post = commands.add_parser('post', help='Publish supplied approved content directly, without prompting')
     post.add_argument('--text', required=True, help='Exact approved post text')
     post.add_argument('--image', help='Optional local PNG, JPEG, GIF, or WebP image')
@@ -96,16 +109,17 @@ def _build_pacer(args) -> MessagePacer:
 def main(argv=None) -> int:
     try:
         args = build_parser().parse_args(argv)
-        if args.command == 'benchmark-reels':
-            from .reel_benchmark import run_benchmark
-            data = run_benchmark(args)
+        if args.command == 'insights-import':
+            from .insights_export import import_export
+            data = import_export(args.csv, args.output, args.page_id, args.dashboard, breakdown=args.breakdown)
             emit_success(data, ensure_ascii=False)
             return 0
-        if args.command == 'judge-reels':
-            from .reel_decisions import judge_file
-            data = judge_file(args)
-            emit_success(data, ensure_ascii=False)
-            return 0
+        if args.command == 'follow':
+            from .following import follow_creator
+            data = follow_creator(args)
+            code = 4 if data['status'] == 'uncertain' else 3 if data['status'] == 'failed' else 0
+            emit_success(data, ok=code == 0, ensure_ascii=False)
+            return code
         page_name = getattr(args, 'page_name', None)
         page_id = getattr(args, 'page_id', None)
         timeout_ms = args.timeout_ms
@@ -144,6 +158,17 @@ def main(argv=None) -> int:
                 with output.open('x') as stream:
                     json.dump(data, stream, ensure_ascii=False, indent=2)
                 data = {'profile': data['profile'], 'observations': len(data['records']), 'output': str(output)}
+            elif args.command == 'content-library':
+                from .content_library import scrape_content_library
+                data = scrape_content_library(browser, page_id, args.output, max_scrolls=args.scrolls)
+            elif args.command == 'insights':
+                from .insights import capture_insights
+                data = capture_insights(browser, page_id, args.output, args.url,
+                                        args.open_labels, args.scrolls, args.hover_demographics)
+            elif args.command == 'insights-export':
+                from .insights_export import export_csv
+                data = export_csv(browser, page_id, args.output, args.download_timeout_seconds, args.report_id,
+                                  breakdown=args.breakdown)
             elif args.command == 'post':
                 # Keep the visible tab for both successful posts and manual recovery.
                 browser.keep_page = True

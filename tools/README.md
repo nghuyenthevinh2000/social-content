@@ -7,6 +7,7 @@ tags:
 - automation
 - social-content
 submodules:
+  loop/: Project-scoped publication metrics, collection and agent review queue.
   video_edit/: OpenCV texture compositing and static-video watermark removal.
   facebook_agent/: Direct DOM publishing to a personal Facebook profile or explicitly
     named active Fanpage, with optional multi-group sharing, plus planned direct
@@ -26,6 +27,10 @@ submodules:
 ---
 
 # Tools
+
+| Tool | Purpose |
+| --- | --- |
+| [`loop/`](./loop/) | Project-agnostic metrics/review engine. Run `python -m tools.loop --project PATH --help`; each project owns its config, publications, evidence and worked comparisons. |
 
 - [`video_edit/`](./video_edit/): Texture compositing and static-video watermark
   removal. Run `uv run python -m tools.video_edit --help` from the repository root.

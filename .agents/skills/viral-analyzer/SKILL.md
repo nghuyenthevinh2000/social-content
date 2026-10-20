@@ -25,9 +25,9 @@ Read product → Observe feed → Explicit unrelated promotion? → Yes: exclude
 | Exclusion | Identify both an explicitly promoted offer and why it differs from the user's product. Cite observed evidence; never infer selling solely from a creator name, topic, language, or follow control. |
 | Ordinary content | Dancing, women dancing, daily life, cooking, scenery, comedy, and noncommercial education remain eligible without needing a paper-related topic. |
 | Product context | For this project, start at `local/paper-ink-product/product-marketing.json`, then `posts/hypothesis.json` and `customer/profile.json`. Read current files rather than trusting the Page name. |
-| Tool boundary | The Facebook `reels` CLI captures raw observations. Use `judge-reels` for the Jev decision layer afterward; collection success is not classification success. Preserve raw data and excluded judgments separately. |
-| Jev execution | Start with `judge-reels --input <observations.json> --product-dir <product-directory> --output <new-judgments.json> --limit 10 --dry-run`. Live execution requires `TYPESAFE_API_KEY`, removing `--dry-run`, and explicit `--approve-api` authorization to transmit text/product context and incur API charges. |
-| Jev limits | Text-only judgments, source-selected evidence, provisional 0.90 threshold, default allow on semantic uncertainty. Missing credentials/API failures are operational errors, not successful allow decisions. Report unprocessed records; do not claim calibrated Vietnamese accuracy from offline tests. |
+| Tool boundary | The Facebook `reels` CLI captures raw observations. Review them directly as the agent using product context and observed evidence; no separate Jev/TypeSafe classifier or probability gate. Preserve raw data and selection reasons separately. |
+| Vietnamese audience | Use observed Vietnamese captions or inspected speech/context, not an automatic probability threshold. A creator name alone is insufficient. Keep audience evidence separate from promotion decisions; do not claim unobserved nationality or viewer geography. |
+| Timing | Measure collection with `/usr/bin/time -p`. Report agent-review time separately when measured; never present collection-only time as total discovery time. |
 
 # Writing Style Analyzer
 

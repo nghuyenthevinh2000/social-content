@@ -16,6 +16,13 @@ class ReelsTests(unittest.TestCase):
         self.assertEqual(args.command, 'reels')
         self.assertEqual(args.limit, 15)
 
+    def test_classifier_commands_are_removed(self):
+        from tools.common.errors import AgentError
+
+        for command in ('judge-reels', 'benchmark-reels'):
+            with self.subTest(command=command), self.assertRaises(AgentError):
+                build_parser().parse_args([command])
+
 
 if __name__ == '__main__':
     unittest.main()

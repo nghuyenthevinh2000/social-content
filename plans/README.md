@@ -4,6 +4,7 @@ summary: Documentation and resources for plans.
 tags:
 - reflections
 submodules:
+  loop-live-cycle-fixes.md: Current remaining fixes from the live retest: CSV dialog/reconciliation, real library parsing, evidence handoffs and safe recovery. Supersedes the old resolved-task list.
   facebook-user-research-strategy.md: Table-only Facebook audience discovery strategy with wide and targeted search, a 20-business synthesis gate, and paper/ink buyer qualification.
   facebook-target-audience-research.md: Facebook keyword-led B2B audience research plan, Glasser capability findings, and wedding-invitation printer pilot.
   deep-seated-question-gemini.md: Deep-Seated Questions to Refine a Storyteller's

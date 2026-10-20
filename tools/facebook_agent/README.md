@@ -32,6 +32,27 @@ submodules:
 
 # Facebook profile and Fanpage agent
 
+## Read-only Page Insights
+
+| Action | Command / behavior |
+| --- | --- |
+| Capture dashboard | `uv run python -m tools.facebook_agent insights --page-id 61595289277974 --output local/paper-ink-product/sources/post-metrics/insights-new.json` |
+| Specific section/post | Supply an observed dashboard URL with `--url`; post Insights IDs must belong to the verified Page. |
+| Read-only navigation | Optional `--open 'Top countries'` or `--open Source`; only allowlisted navigation labels. No publishing, engagement or settings changes. |
+| Evidence | New JSON plus screenshots; `capture_complete` marks success. Rendered text, links and labeled `post_metrics` are retained. Existing JSON paths are refused. |
+| Limits | English labels; no hidden API calls or exact chart-point extraction. Suppressed metrics stay null; average percentage watched is not completion rate. Page and post scopes remain separate. |
+| Age and gender | Captures rendered `data-metric` gender labels, percentage-width segments and age rows; no guessing gender from colors. `--hover-demographics` also captures any exposed tooltips. |
+| Discovery | Captures the active Traffic/Source tab and labeled percentages. Use `--open Source` to retain both initial Traffic and Source snapshots. |
+| CSV join | `uv run python -m tools.facebook_agent insights-import --page-id PAGE_ID --csv EXPORT.csv --dashboard CAPTURE.json --output JOINED.json` (`--dashboard` repeatable). Joins by Post ID; preserves daily rows and cumulative snapshots separately. CSV publish timezone stays unknown; daily averages are not summed. |
+| CSV download | `uv run python -m tools.facebook_agent insights-export --page-id PAGE_ID --output NEW.csv`. Creates one Content report using the current UI date range/default Summary settings, then downloads the newly generated report from Report history. |
+| Existing report | Add `--report-id REPORT_ID` to download a specific completed report without creating another. Supports existing Daily breakdown files as well. On timeout, inspect the saved audit/history before requesting another report. |
+| Download safeguards | Verifies active Page and CSV Page IDs, saves settings/screenshots/hash, refuses existing output/audit/staging paths, and handles downloads opening in a popup. Never publishes or deletes content. Summary CSVs differ from daily exports; the existing daily importer must not be used blindly for Summary files. |
+| Duplicate prevention | Before downloading a report ID, inspect sibling export audits. A verified file with a matching hash/Page ID is returned as `reused`, without another download. An uncertain prior click blocks retries until reconciled. Checks cover this output directory, not a scan of personal Downloads or other folders. |
+
+```text
+Verify active Page → Read dashboard → Save DOM/screenshots → Review labeled metrics
+```
+
 Design: [`2026-10-02-facebook-agent-design.md`](../../../../docs/superpowers/specs/2026-10-02-facebook-agent-design.md).
 Implementation plan: [`2026-10-02-facebook-agent.md`](../../../../docs/superpowers/plans/2026-10-02-facebook-agent.md).
 
@@ -154,29 +175,33 @@ first real group share.
 Verify Page → Open For You → Capture → Scroll → Save JSON → Review
 ```
 
-### Jev decision layer
+### Product-aware agent review
 
-| Setting | Behavior |
+| Stage | Behavior |
 | --- | --- |
-| Entry point | `uv run python -m tools.facebook_agent judge-reels --input observations.json --product-dir local/paper-ink-product --output judgments.json --limit 10 --dry-run` |
-| Live execution | Remove `--dry-run` and add `--approve-api`. Set `TYPESAFE_API_KEY` in `tools/.env` or the environment. Sends observed text and reduced product context to TypeSafe; never sends customer leads or browser cookies. Live requests may incur charges. |
-| Decisions | Two Jev Noul probabilities identify explicit promotion and an unrelated offer; two Choice questions select observed promotional and offer evidence. Exclude only when all four signals reach `--threshold` (default 0.90) and both source lines exist. Otherwise allow. |
-| Calibration | Threshold is provisional, not a measured Vietnamese accuracy guarantee. Offline tests cover policy composition and API wiring, not model comprehension. Validate on labeled Vietnamese examples before relying on automatic exclusion. |
-| Boundaries | Text only, no audio/video analysis. `--limit` caps requests, not monetary charges. No retries. Resolved model, token usage, source evidence, and product context are saved separately from unchanged raw observations. |
-| Failures | Missing credentials abort before calls; API failures save partial judgments and fail explicitly. Unprocessed observations are not silently classified as allowed. Existing output files are refused. |
+| Context | Read the product directory before selecting inspiration. For paper campaigns, start with `local/paper-ink-product/product-marketing.json` and `posts/hypothesis.json`. |
+| Selection | Agent reviews raw observations directly; no separate Jev/TypeSafe calls or automatic audience probability threshold. |
+| Promotion | Allow by default. Exclude only explicit unrelated product/service promotion with observed evidence. Ordinary dancing, daily life, and education remain eligible. |
+| Audience | Use observed Vietnamese captions or actually inspected speech/context; a creator name alone is insufficient. |
+| Output | Keep raw observations unchanged; save selections and reasons separately. Historical Jev results remain available, but those commands are removed. |
+| Timer | Prefix the `reels` command with `/usr/bin/time -p` to measure collection CLI wall time. Track agent review separately; collection time is not end-to-end discovery time. |
 
 ```text
-Saved observations + product → Jev signals + source lines → Code policy → Allow / exclude
+Product context + saved observations → Agent review → Selected Reels + evidence
 ```
 
-### Timed Vietnamese-audience collection
+## Explicit creator follows
 
-| Command / output | Meaning |
+| Command / constraint | Behavior |
 | --- | --- |
-| `uv run python -m tools.facebook_agent benchmark-reels --page-id 61595289277974 --product-dir local/paper-ink-product --output-dir local/paper-ink-product/sources/new-run --target-count 10 --max-observations 50 --approve-api` | Collect one bounded feed sample, then run Jev sequentially until 10 allowed Vietnamese-audience matches or the observation limit. Requires credentials before browsing. |
-| Audience | Additional Noul requires clear Vietnamese-audience text at a provisional 0.90 threshold. This is independent of default-allow promotion decisions; unknown audience is not a promotion exclusion. |
-| Files | `observations.json`, `jev-judgments.json`, `selected-reels.json`, `timing.json`; new output directory required. A shortfall is reported, not padded. |
-| Timer | Monotonic wall time for collection, Jev stage, per-request latency, and pipeline. Same-sample comparison: collection-only versus collection plus Jev. Not a comparison against equivalent manual filtering. Code changes, diagnostics, and report drafting are excluded. |
+| `uv run python -m tools.facebook_agent follow --page-id 61595289277974 --creator "Lão Nông" --reel https://www.facebook.com/reel/3707988839450143 --approved --output local/paper-ink-product/sources/new-follow.json` | Requires explicit approval for one creator, verifies the active Page, resolves the creator profile from the observed Reel, and clicks only its unique Follow button. |
+| Confirmation | Records `confirmed` only after the profile shows Following. Existing follows are left unchanged. No likes, comments, shares, or unfollows. |
+| Direct profile | Use `--profile-url https://www.facebook.com/nam.anh.marketing.finance` instead of `--reel`. The supplied vanity URL must remain the same identity after navigation; `--creator` is optional and the observed display name is recorded. |
+| Safety | Refuses existing audit files; captures before/after evidence. Exit 4 means a click may have happened without confirmation: stop and inspect, never automatically retry. Exit 3 means failure before a confirmed result; inspect `clicked` before any retry. |
+
+```text
+Verify active Page → Match Reel creator → Check profile → Follow once → Confirm Following
+```
 
 ## Publishing behavior
 

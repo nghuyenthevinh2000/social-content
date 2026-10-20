@@ -40,14 +40,14 @@ Explicit product/service promotion supported by evidence?
 | Separate ranking | Apply this gate before ranking eligible inspiration. Low relevance or low engagement is not an unrelated-promotion exclusion. |
 | Local allowance | Allow-list means inclusion in the research output only. Never click Facebook favorites, follows, likes, hides, or recommendation controls. |
 
-| Jev integration | Contract |
+| Agent review | Contract |
 | --- | --- |
-| Command | `uv run python -m tools.facebook_agent judge-reels --input observations.json --product-dir local/paper-ink-product --output judgments.json --limit 10 --dry-run` |
-| Live calls | Explicit `--approve-api`, without `--dry-run`; requires `TYPESAFE_API_KEY`. Sends observed text and reduced product context to TypeSafe, not leads or cookies. Paid requests are bounded by `--limit`, not by a dollar cap. |
-| Model judgments | Independent Nouls for explicit promotion and unrelated offer; Choices select exact observed lines for promotional and offer evidence. Code requires all probabilities/selection confidences at least 0.90 and both selected source lines to exclude. |
-| Evidence schema | Runtime stores `promoted_offer_evidence` as source text, not a generated product name, plus `promotion_evidence`, model, token usage, signals, and limitations. Do not present a source span as a normalized product label. |
-| Validation | Threshold is provisional; offline tests do not establish semantic accuracy. Jev's documented English-heavy training makes Vietnamese validation especially important. |
-| Errors | Persist completed judgments; fail visibly on API errors. No silent allowance of unprocessed records. Never equate a dry run with model classification. |
+| Collection | `uv run python -m tools.facebook_agent reels --page-id 61595289277974 --limit 50 --output local/paper-ink-product/sources/new-observations.json` |
+| Selection | Agent reads the current product context and captured evidence directly. Do not invoke a separate Jev/TypeSafe decision layer or replace it with a keyword blacklist. |
+| Vietnamese audience | Cite observed Vietnamese-language content or actually inspected speech/context. No numeric audience gate. A Vietnamese-looking name alone does not establish audience fit. |
+| Evidence | Save selected URLs, source order/timestamps, caption evidence, allow/exclude reasons, and limitations separately from raw observations. Unclear promotion remains allowed. |
+| Timing | Prefix collection with `/usr/bin/time -p`; record collection and agent-review timing separately. Do not claim a controlled benchmark from different feed samples or unmeasured review time. |
+| Historical runs | Preserve prior Jev results and timing reports as historical evidence; they are not the current selection workflow. |
 
 ## Examples
 
