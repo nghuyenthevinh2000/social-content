@@ -2,52 +2,104 @@
 
 | Responsibility | Location |
 | --- | --- |
-| Reusable engine, tests and guidance | `tools/loop/` |
+| Reusable stage modules, tests and guidance | `tools/loop/` |
 | Page identity and optional hypothesis mapping | `<project>/loop/config.json` |
-| Publications, pending reviews and lock | `<project>/loop/publications.json`, `<project>/loop/.engine.lock` |
+| Publications, pending reviews, lock and current stage | `<project>/loop/publications.json`, `<project>/loop/.engine.lock`, `<project>/loop/status.json` |
 | Metrics and audit evidence | `<project>/sources/post-metrics/` |
-| Worked comparisons and historical reports | `<project>/loop/`; not bundled into the shared engine |
+| Worked comparisons and historical runs | `<project>/loop/runs/<run_id>/` |
 
 ```text
-tools.loop --project PATH → Project config/state → Collector → Evidence → Agent review
+register → checkpoints → collect → normalize → eligibility
+        → compare_posts / compare_groups → review → approval
 ```
+
+## Stage files
+
+| Stage | File | Input → output |
+| --- | --- | --- |
+| 1. Remember published posts | `register.py` | Confirmed URL, hypothesis number, verified publish time → publications and placements. Never publishes. |
+| 2. Find due measurements | `checkpoints.py` | Verified visibility/publication times → frozen 24h/7d worklist. Planned posts never count as published. |
+| 3. Capture evidence | `collect.py` | Due worklist → Content Library, CSV export/import and Insights receipts. Facebook collectors stay in `tools/facebook_agent/`. |
+| 4. Standardize metrics | `normalize.py` | Raw receipts → scoped observations; original timestamps, identity and nulls preserved. |
+| 5. Check comparability | `eligibility.py` | Observations → eligible set plus descriptive exclusions with reasons. |
+| 6a. Compare content | `compare_posts.py` | Eligible page observations → creative matrix, flags and limits. |
+| 6b. Compare groups | `compare_groups.py` | Eligible group copies → distribution or inquiry ranking with ties preserved. |
+| 7. Prepare/record learning | `review.py` | Comparison, hypotheses and gaps → review bundle, proposal, review log. |
+| 8. Record human decisions | `approval.py` | Selected proposal IDs → approval audit. Does not publish or reallocate. |
+
+| Supporting file | Boundary |
+| --- | --- |
+| `workflow.py` | Calls stages in order, owns frozen runs/resume/completion/pending work and is the only writer of `status.json`. |
+| `cli.py` | Arguments and dispatch only; no collection, normalization or ranking logic. |
+| `__main__.py` | Minimal entry point invoking `cli.main()`. |
+| `storage.py` | Project paths, config, atomic writes, locks, timestamps and evidence-hash primitives. No ranking or workflow decisions. |
+| `project_init.py` | One-time scaffolding and Schema v1→v2 migration. |
+| `tests/` | Stage-named offline tests plus end-to-end workflow, isolation and resume/CLI regressions. |
+
+## Current-stage reporting
+
+`<project>/loop/status.json` projects the active run's stage. The run manifest and project registry remain authoritative; the projection never schedules work.
+
+| Field | Meaning |
+| --- | --- |
+| `schema_version`, `run_id`, `updated_at` | Format version, selected run and timezone-aware write time. |
+| `current_stage`, `current_step`, `state` | Stage/substep and overall state: `idle`, `running`, `waiting`, `blocked`, `failed`, `interrupted` or `completed`. |
+| `stages` | Stage-keyed outcome, start/end time and reason. Waiting and running stages have no end time. |
+| `comparison_result` | `comparable` or `not_comparable`, with eligible/descriptive counts, exclusion reasons and a plain-language reason. |
+| `reason`, `error`, `next_action` | Plain-language status, structured failure detail and the specific next command. |
+| `artifacts` | Project-relative manifest, evidence, comparison, review bundle and review links. |
+| `pending_run_ids` | Other runs needing repair, agent review or human decision. |
+
+| Rule | Behavior |
+| --- | --- |
+| Write timing | Under the project lock, atomically before a stage and after success, skip, block, failure or human handoff. A failed pre-stage write prevents the stage. Transitions are mirrored into `manifest.stage_history`. |
+| No due work | `idle` only when nothing remains; otherwise `waiting`, retaining the selected run and all pending run IDs. Existing stage times are not rewritten. |
+| Partial collection | The failed collector and remaining repair stay visible while the partial review bundle is linked. |
+| Recovery | A `running` state left by an exited invocation becomes `interrupted` on the next locked invocation. Missing or older-schema projections rebuild from saved run state and recorded transitions; unknown times stay null. No blind retry. |
+| Review reconciliation | `prepare-review` retains a proposal while its evidence revision matches. Changed evidence supersedes the review and resets manifest/checkpoint states to pending. |
+
+## Commands
 
 | Command, from repository root | Purpose |
 | --- | --- |
-| `python -m tools.loop.project_init --project PATH --page-id PAGE_ID [--dry-run]` | Standalone full project bootstrapper. Scaffolds `loop/`, `product-marketing.json`, `posts/hypothesis.json`, `posts/1/`, `brand-assets/`, and `customer/`. |
-| `python -m tools.loop --project PATH init --page-id PAGE_ID [--dry-run]` | Initialize project configuration, product marketing, initial post, directory layout, and empty registry (Schema v2). Refuses conflicting configuration and preserves existing state. |
-| `python -m tools.loop --project PATH init --page-id PAGE_ID --hypotheses-file posts/hypothesis.json` | Optional hypothesis-number validation. Path must stay inside the project; no product-specific schema is required when omitted. |
-| `python -m tools.loop --project PATH migrate [--dry-run]` | Migrate project state to Schema v2 with atomic byte backup (`publications.json.v1.bak`) and placement checkpoints. |
-| `python -m tools.loop --project PATH status` | Inspect this project's memory plus `pending_work` (pending reviews and actionable runs). |
+| `python -m tools.loop --project PATH init --page-id PAGE_ID [--dry-run]` | Initialize project config, directories and empty Schema v2 registry without overwriting existing files. |
+| `python -m tools.loop --project PATH migrate [--dry-run]` | Migrate Schema v1 state with byte backup (`publications.json.v1.bak`). |
+| `python -m tools.loop --project PATH status` | Project memory, pending work and `status.json`. |
 | `python -m tools.loop --project PATH due` | List due placement checkpoints and legacy publications. No browser or paid calls. |
-| `python -m tools.loop --project PATH register --post 1 --url https://www.facebook.com/reel/POST_ID [--published-at TIMESTAMP]` | Register a confirmed canonical URL. Accepts omitted publish time without crashing. |
-| `python -m tools.loop --project PATH cycle [--dry-run] [--resume RUN_ID]` | Run frozen end-to-end collection, normalization, deterministic comparison, and review bundle staging. `no_work` still reports pending reviews and open runs. |
-| `python -m tools.loop --project PATH compare --run RUN_ID` | Recompute comparisons from stored normalized observations without collecting. |
-| `python -m tools.loop --project PATH prepare-review --run RUN_ID` | Rebuild `review-bundle.json` from an existing comparison without collecting. |
-| `python -m tools.loop --project PATH record-action --file EVENT.json` | Append a verified buyer action or qualified inquiry event to `loop/actions.jsonl`. |
-| `python -m tools.loop --project PATH review --run RUN_ID --file REVIEW.json` | Record an agent review with observation, limitation, and test suggestions. Sets the run to `review_proposed` and marks cited checkpoints `reviewed`. |
-| `python -m tools.loop --project PATH approve-review --run RUN_ID [--proposals ID1,ID2]` | Record explicit human approval for selected proposals before any actions are executed. |
-| `uv run python -m tools.loop --project PATH collect-insights` | Collect due post dashboards through the existing Facebook CLI and authenticated browser. Page identity comes from project config. |
-| `python -m tools.loop --project PATH collect --max-cost-usd AMOUNT` | Optional Glasser public-metrics fallback; explicit spend ceiling per invocation. |
-| `python -m tools.loop --project PATH review --id PUBLICATION_ID --file REVIEW.json` | Legacy review command on a single publication. |
-| `python -m unittest discover -s tools/loop/tests` | Offline tests, including isolation between unrelated projects. |
+| `python -m tools.loop --project PATH register --post 1 --url https://www.facebook.com/reel/POST_ID [--published-at TIMESTAMP]` | Register a confirmed canonical URL. |
+| `python -m tools.loop --project PATH cycle [--dry-run] [--resume RUN_ID]` | Run the stage pipeline, freeze the due worklist and stage the review bundle. |
+| `python -m tools.loop --project PATH compare --run RUN_ID` | Recompute comparisons from stored observations without collecting. |
+| `python -m tools.loop --project PATH prepare-review --run RUN_ID` | Rebuild `review-bundle.json` without collecting. |
+| `python -m tools.loop --project PATH record-action --file EVENT.json` | Append a verified buyer action or qualified inquiry to `loop/actions.jsonl`. |
+| `python -m tools.loop --project PATH review --run RUN_ID --file REVIEW.json` | Record observation, limitation and test suggestions; hand off to approval. |
+| `python -m tools.loop --project PATH approve-review --run RUN_ID [--proposals ID1,ID2]` | Record explicit human approval; no publishing. |
+| `python -m tools.loop --project PATH collect-insights` | Collect due dashboards through the authenticated browser; no Glasser charge. |
+| `python -m tools.loop --project PATH collect --max-cost-usd AMOUNT` | Optional paid public-metrics fallback with an explicit per-invocation ceiling. |
+| `python -m tools.loop --project PATH review --id PUBLICATION_ID --file REVIEW.json` | Legacy single-publication review. |
+| `python -m unittest discover -s tools/loop/tests` | Offline stage, status, workflow, CLI and project-isolation tests. |
 
-| Current behavior / limits | Rule |
+| Behavior / limit | Rule |
 | --- | --- |
-| Project-agnostic, Facebook collector | No fixed product directory, Page ID, audience or product rules. Platform-specific capture remains in `tools/facebook_agent/`. Other platforms are not implemented. |
-| Explicit scope | `--project` is required, even for status. Relative project roots resolve from the caller; evidence paths stay project-relative. Browser subprocesses run from the repository root. |
-| State ownership | No project records or metrics are stored under `tools/loop`. Existing project state and evidence remain where they were. |
-| Evidence integrity | Reuse requires a recorded path, matching SHA-256 and matching evidence type. Missing or changed evidence is re-collected to `captures/<run>/repairs/` or `exports/repairs/` with `parent_path` and an `evidence_repair` gap; historical files and hashes are never replaced. The latest recorded entry for a path wins; contradictory hashes are documented with `evidence_hash_conflict`. A verified capture is reused even after a later collector run failed, and a verified CSV is re-imported rather than re-exported. |
-| Checkpoint | Current engine supports 24h and 7d placement checkpoints. Actual age is retained; late snapshots cannot reconstruct exact first-day totals. Reused evidence does not increment `attempts`. |
-| Unknown visibility | Only a verified `visible_at` (or Page publication time for original posts) defines age. Group copies with unknown approval time stay descriptive with `actual_age_hours: null`. |
-| Review lifecycle | `no_work` and `status` expose `pending_reviews` and `open_runs`. Recording a review does not approve it or clear collection failures; re-staging identical evidence preserves the recorded review. |
-| Gap hygiene | Gaps are deduplicated by kind, placement and detail, so repeated collector errors do not multiply. |
-| Capture | Authenticated Page required. Retention/age values remain dashboard-reported; unavailable values are null. Collector does not autonomously invoke an agent. |
-| Safety | Per-project lock, atomic state writes, paid-run idempotency keys and reused receipts. Browser operations across different projects/platforms must still be serialized; a global browser lock is not implemented here. |
-| Activation | No scheduler, publishing, messaging, automatic pruning or new end-to-end cycle is enabled by this move. |
+| Project scope | `--project` is required; evidence paths stay project-relative. Browser subprocesses run from the repository root. |
+| Evidence integrity | Reuse requires recorded path, matching SHA-256 and matching type. Missing or changed evidence is collected to `repairs/`; history is never overwritten. |
+| Checkpoints | 24h and 7d ceremony supported. Actual age is retained; late snapshots cannot reconstruct first-day totals. Reused evidence does not increment `attempts`. |
+| Review lifecycle | `no_work` and `status` expose pending reviews and open runs. A recorded review is not approval and does not clear collection failures. |
+| Safety | Per-project lock, atomic writes, paid-run idempotency keys and reused receipts. No scheduler, publishing, messaging or automatic pruning. |
+
+## Implemented versus missing behavior
+
+| Area | Implemented | Still missing |
+| --- | --- | --- |
+| Stage visibility | Named files, frozen runs, resume and `status.json` transitions. | None in the refactor scope. |
+| Group views leaderboard | Distribution-only ranking and inquiry ranking stay separate; ties preserved; no reach pooling. | Resolved same-creative group copies at matched ages, a views-first leaderboard, group names/links and evidence in the matrix; repeated common rounds before allocation. |
+| Metric coverage | Available metrics carried through capture, import, normalization, comparison and review; unavailable values stay null. | A defined required-field contract across all stages with explicit reasons for each unavailable metric. |
+| Timestamp stability | Status transitions persist in the run manifest; rebuilds use recorded times and leave unknown times null. Original capture timestamps are carried where present. | Re-normalizing unchanged evidence must not assign a new observation time; library/CSV fallbacks still use processing time. |
+| Comparison visibility | Empty comparisons report `not_comparable` with eligible/descriptive counts and exclusion reasons; descriptive review stays possible. | A ranked leaderboard still requires resolved identities and eligible matched-age observations. |
+| Review consistency | Evidence revisions retain an unchanged proposal, supersede a stale one, and keep bundle/manifest/checkpoint states aligned; approval remains separate. | A human decision is still required after any rebuilt review. |
+| Existing acceptance findings | Refactor preserves behavior covered by tests. | See [the E2E retest](../../plans/loop-e2e-retest-20261020.md) and [live-cycle fix history](../../plans/loop-live-cycle-fixes.md); moving functions does not close those gaps. |
 
 | Guidance | Contents |
 | --- | --- |
-| [Implementation specification](metrics-learning-plan.md) | Proposed multi-checkpoint collection, run artifacts, comparison and review wiring; separates current behavior from future work. |
-| [Content comparison](content-comparison.md) | Reusable evidence and creative-comparison rules. |
-| [Group comparison](group-comparison.md) | Reusable same-content placement-ranking and allocation rules. |
+| [Implementation specification](../../plans/metrics-learning-plan.md) | Multi-checkpoint collection, run artifacts, comparison and review wiring. |
+| [Content comparison](../../plans/content-comparison.md) | Reusable evidence and creative-comparison rules. |
+| [Group comparison](../../plans/group-comparison.md) | Same-content placement-ranking and allocation rules. |

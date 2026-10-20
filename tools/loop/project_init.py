@@ -4,9 +4,12 @@ Standard library only.
 """
 
 import argparse
+from datetime import timedelta
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from tools.loop import storage
 
 
 DEFAULT_PRODUCT_CATALOG = {
@@ -219,6 +222,133 @@ def bootstrap_project(
         "product_catalog": str(catalog_path.relative_to(root)),
         "hypotheses": str(hypo_path.relative_to(root)),
         "first_post": str(post_1_path.relative_to(root)),
+    }
+
+
+def migrate(root, *, dry_run=False):
+    """Migrate schema v1 publications.json to schema v2 with placement checkpoints."""
+    root = Path(root).resolve()
+    state_path = root / 'loop/publications.json'
+    if not state_path.is_file():
+        raise ValueError(f"State file {state_path} does not exist; cannot migrate.")
+
+    config = storage.load_project(root)
+    page_id = config['page_id']
+
+    raw_bytes = state_path.read_bytes()
+    state = json.loads(raw_bytes.decode('utf-8'))
+
+    version = state.get('schema_version', 1)
+    if version == 2:
+        return {
+            'status': 'already_migrated',
+            'schema_version': 2,
+            'publications': len(state.get('publications', [])),
+            'placements': len(state.get('placements', [])),
+        }
+    if version != 1:
+        raise ValueError(f"Unsupported schema version: {version}")
+
+    backup_path = root / 'loop/publications.json.v1.bak'
+    publications = state.get('publications', [])
+    placements = []
+
+    for pub in publications:
+        pub_id = pub['id']
+        placement_id = f"{pub_id}-orig"
+        permalink = pub.get('url')
+        published_at = pub.get('published_at')
+        is_visible = bool(permalink and published_at)
+        pub_time = storage.timestamp(published_at) if published_at else None
+
+        due_24h = (pub_time + timedelta(hours=24)).isoformat() if pub_time else None
+        due_7d = (pub_time + timedelta(days=7)).isoformat() if pub_time else None
+
+        if pub.get('metrics_status') == 'collected':
+            status_24h = 'collected'
+            review_24h = pub.get('review_status', 'pending')
+            selected_ref_24h = pub.get('receipt_file')
+            attempts_24h = 1 if selected_ref_24h else 0
+        elif pub.get('metrics_status') == 'needs_attention':
+            status_24h = 'needs_attention'
+            review_24h = pub.get('review_status', 'waiting_for_metrics')
+            selected_ref_24h = pub.get('receipt_file')
+            attempts_24h = 1 if selected_ref_24h else 0
+        elif pub_time:
+            status_24h = pub.get('metrics_status', 'pending')
+            review_24h = pub.get('review_status', 'waiting_for_metrics')
+            selected_ref_24h = None
+            attempts_24h = 0
+        else:
+            status_24h = 'blocked'
+            review_24h = 'waiting_for_metrics'
+            selected_ref_24h = None
+            attempts_24h = 0
+
+        # Note: 7d checkpoint is never completed from a late 24h snapshot
+        status_7d = 'pending' if pub_time else 'blocked'
+        review_7d = 'waiting_for_metrics'
+        selected_ref_7d = None
+        attempts_7d = 0
+
+        placements.append({
+            'id': placement_id,
+            'publication_id': pub_id,
+            'kind': 'original_page',
+            'page_id': page_id,
+            'group_id': None,
+            'copy_post_id': pub.get('post_id'),
+            'permalink': permalink,
+            'insights_url': pub.get('insights_url'),
+            'visibility': 'visible' if is_visible else 'unknown',
+            'submitted_at': published_at,
+            'visible_at': published_at,
+            'first_seen_at': published_at,
+            'timestamp_confidence': 'exact' if published_at else 'unknown',
+            'checkpoints': {
+                '24h': {
+                    'due_at': due_24h,
+                    'status': status_24h,
+                    'attempts': attempts_24h,
+                    'selected_observation_ref': selected_ref_24h,
+                    'review_status': review_24h,
+                },
+                '7d': {
+                    'due_at': due_7d,
+                    'status': status_7d,
+                    'attempts': attempts_7d,
+                    'selected_observation_ref': selected_ref_7d,
+                    'review_status': review_7d,
+                },
+            },
+        })
+        pub.setdefault('creative_version', None)
+
+    new_state = {
+        'schema_version': 2,
+        'publications': publications,
+        'placements': placements,
+    }
+
+    if dry_run:
+        return {
+            'dry_run': True,
+            'backup_path': str(backup_path),
+            'target_path': str(state_path),
+            'publications_count': len(publications),
+            'placements_count': len(placements),
+        }
+
+    if not backup_path.exists():
+        backup_path.write_bytes(raw_bytes)
+    storage.save(state_path, new_state)
+
+    return {
+        'status': 'migrated',
+        'schema_version': 2,
+        'backup': str(backup_path),
+        'publications': len(publications),
+        'placements': len(placements),
     }
 
 

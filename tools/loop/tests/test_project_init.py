@@ -90,6 +90,45 @@ class ProjectInitTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             project_init.bootstrap_project(target, '999999999')
 
+    def test_migration_v1_to_v2_with_backup_and_checkpoints(self):
+        from tools.loop import storage
+        target = self.root / 'legacy-target'
+        project_init.bootstrap_project(target, self.page_id)
+        state_path = target / 'loop/publications.json'
+        legacy = {
+            'schema_version': 1,
+            'publications': [{
+                'id': 'pub-1', 'post': 1,
+                'url': 'https://www.facebook.com/reel/111',
+                'published_at': '2026-01-01T00:00:00Z',
+                'metrics_status': 'collected', 'review_status': 'pending',
+                'receipt_file': 'sources/post-metrics/pub-1-24h.run.json',
+            }],
+        }
+        storage.save(state_path, legacy)
+        legacy_bytes = state_path.read_bytes()
+
+        result = project_init.migrate(target)
+        self.assertEqual(result['status'], 'migrated')
+        self.assertEqual(result['schema_version'], 2)
+
+        backup_path = target / 'loop/publications.json.v1.bak'
+        self.assertTrue(backup_path.exists())
+        self.assertEqual(backup_path.read_bytes(), legacy_bytes)
+
+        v2_state = json.loads(state_path.read_text())
+        self.assertEqual(v2_state['schema_version'], 2)
+        self.assertEqual(len(v2_state['publications']), 1)
+        self.assertEqual(len(v2_state['placements']), 1)
+        placement = v2_state['placements'][0]
+        self.assertEqual(placement['kind'], 'original_page')
+        self.assertEqual(placement['checkpoints']['24h']['status'], 'collected')
+        # A legacy 24h snapshot never completes the 7d checkpoint.
+        self.assertEqual(placement['checkpoints']['7d']['status'], 'pending')
+
+        rerun = project_init.migrate(target)
+        self.assertEqual(rerun['status'], 'already_migrated')
+
 
 if __name__ == '__main__':
     unittest.main()

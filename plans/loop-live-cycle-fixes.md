@@ -2,6 +2,7 @@
 
 | Outcome — 2026-10-20 | Verified result |
 | --- | --- |
+| Latest retest | [Recovery/reuse retest](loop-e2e-retest-20261020.md): 188 tests pass; dispatch, review transition and safe resume verified. Full acceptance still blocked by timestamp drift, inconsistent bundle review flag and unresolved comparison evidence. Historical results below are preserved. |
 | Verdict | **Partial E2E, not yet a clean full loop.** The first live run reached live capture, normalization, comparison, review staging and agent review recording, but CSV export failed. A later reconciliation recovered the CSV without creating a second report; unresolved group identities and posts 1–2 metadata still block exact comparison. |
 | Post-fix code status | 2026-10-20: P0 command dispatch, evidence integrity, CSV reconciliation and several P1 lifecycle gaps are implemented with regression tests. Live CSV reconciliation then recovered report `1167141245976275` without creating a second report; the run now exits 0 with `pending_agent_review`. |
 | Scope | `tools/loop` against `local/paper-ink-product`. No custom scripts, runtime fixes, publishing, paid calls, proposal approval or hypothesis edits. JSON review input is data consumed by the existing CLI, not a helper script. |
