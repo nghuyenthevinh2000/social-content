@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -13,7 +14,11 @@ from tools.common.config import (
     DEFAULT_READINESS_TIMEOUT_SECONDS,
     AgentError,
     find_browser_binary,
+    find_free_port,
     get_config,
+    read_recorded_port,
+    resolve_profile_dir,
+    write_recorded_port,
 )
 
 
@@ -115,6 +120,31 @@ class ConfigTests(unittest.TestCase):
              patch('shutil.which', return_value=None):
             found = find_browser_binary()
             self.assertIsNone(found)
+
+    def test_resolve_profile_dir_prefers_explicit_argument(self):
+        with patch.dict(os.environ, {'CHROME_USER_DATA_DIR': '/tmp/env-profile'}, clear=True):
+            self.assertEqual(
+                resolve_profile_dir('/tmp/arg-profile'),
+                Path('/tmp/arg-profile').resolve(),
+            )
+
+    def test_find_free_port_is_bindable_and_avoids_the_default(self):
+        port = find_free_port()
+        self.assertGreater(port, 0)
+        self.assertLessEqual(port, 65535)
+
+    def test_recorded_port_roundtrip_and_missing_file(self):
+        with tempfile.TemporaryDirectory() as profile_dir:
+            self.assertIsNone(read_recorded_port(profile_dir))
+            write_recorded_port(profile_dir, 9411)
+            self.assertEqual(read_recorded_port(profile_dir), 9411)
+
+    def test_recorded_port_rejects_garbage(self):
+        with tempfile.TemporaryDirectory() as profile_dir:
+            (Path(profile_dir) / '.cdp-port').write_text('not-a-port', encoding='utf-8')
+            self.assertIsNone(read_recorded_port(profile_dir))
+            (Path(profile_dir) / '.cdp-port').write_text('70000', encoding='utf-8')
+            self.assertIsNone(read_recorded_port(profile_dir))
 
 
 if __name__ == '__main__':

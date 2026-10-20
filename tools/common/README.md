@@ -1,21 +1,22 @@
 ---
 name: common
-summary: Shared platform-independent browser diagnostics, invisible stealth engine, and browser startup foundation for social content publishing tools.
+summary: Shared platform-independent browser diagnostics, invisible stealth engine, multi-profile browser startup, and unified post format foundation for social content publishing tools.
 tags: [tools, automation, social-content, cdp, browser, invisible-playwright, stealth]
 submodules:
   __init__.py: Social agent shared package.
   __main__.py: Module CLI entry point.
-  cli.py: Shared CLI exposing doctor, start-browser, and post (dry-run) commands.
+  cli.py: Shared CLI exposing doctor, start-browser, profiles, and post (dry-run) commands.
   cli_support.py: Shared JSON output and argument-parser helpers; exit policies remain platform-local.
   errors.py: Canonical structured agent error with compatibility re-exports in platform models.
   groups.py: Canonical sharing-group validation and nine-group limit.
-  config.py: Shared endpoint, timeout, browser binary, port, profile, and backend configuration.
+  config.py: Shared endpoint, timeout, browser binary, port, profile, backend, and per-profile port configuration.
   browser.py: Platform-independent invisible stealth browser and CDP connection with safe disconnection.
-  doctor.py: Browser and connectivity diagnostics without platform navigation.
-  launcher.py: Browser process detection, startup, and readiness check.
+  doctor.py: Browser and connectivity diagnostics without platform navigation, per profile.
+  launcher.py: Per-profile browser process detection, auto-port startup, and readiness check.
   post.py: Unified platform-agnostic post schema, validation, and per-platform argument adapters.
+  profiles.py: Machine-local registry of used browser profiles, their CDP ports, and linked accounts under local/.
   samples/: Example input files (unified post, group list, and facebook_agent message plan).
-  tests/: Unit tests for browser lifecycle, diagnostics, startup, CLI, and the unified post format.
+  tests/: Unit tests for browser lifecycle, diagnostics, startup, CLI, profiles, and the unified post format.
 ---
 
 # Shared Social Agent Foundation
@@ -47,6 +48,7 @@ Options:
 - `--seed SEED`: Deterministic fingerprint seed for invisible browser
 - `--binary PATH`: Custom browser engine binary
 - `--headless`: Run browser in headless mode
+- `-d`, `--data-dir DIR`: Profile directory to diagnose; uses its recorded CDP port when set
 - `--cdp`, `--endpoint`: Chrome CDP endpoint (default: `http://127.0.0.1:9222` or env `CDP_ENDPOINT`)
 - `--timeout-ms`: Connection timeout in milliseconds (default: `30000` or env `DEFAULT_DOCTOR_TIMEOUT_MS`)
 
@@ -91,11 +93,11 @@ uv run python -m tools.common start-browser
 Options:
 
 - `-b`, `--backend BACKEND`: Browser backend (`invisible` or `cdp`, default: `invisible`)
-- `-d`, `--data-dir DIR`: Browser profile directory (default: `$HOME/chrome-twitter-profile`)
+- `-p`, `--port PORT`: CDP remote debugging port, or `auto` to assign a free port per profile and remember it (default: `9222`)
+- `-d`, `--data-dir DIR`: Browser profile directory, one per logged-in identity (default: `$HOME/chrome-twitter-profile`)
 - `--seed SEED`: Deterministic fingerprint seed for invisible browser
 - `--binary PATH`: Browser engine executable
 - `--headless`: Run browser in headless mode
-- `-p`, `--port PORT`: CDP remote debugging port (default: `9222`)
 - `--timeout SECONDS`: Readiness timeout in seconds (default: `15.0`)
 - `--chrome-bin PATH`: Path to Chromium/Chrome executable (default: auto-detected or env `CHROME_BIN`)
 
@@ -116,7 +118,102 @@ Output (invisible):
 }
 ```
 
-### 3. Unified post validation (`post`)
+### 3. Multiple browser profiles
+
+One Chrome profile directory (`--user-data-dir`) holds one login session, so one
+Facebook Page per profile means one profile directory per Page. Use `--port auto`
+so each profile gets its own unused CDP port instead of all profiles contending
+for `9222`:
+
+```bash
+# Page A: own profile, own port
+uv run python -m tools.common start-browser --data-dir ~/chrome-page-a --port auto
+
+# Page B: own profile, own port
+uv run python -m tools.common start-browser --data-dir ~/chrome-page-b --port auto
+```
+
+| Behavior | Detail |
+| --- | --- |
+| Port choice | `--port auto` binds an unused loopback port on first run and writes it to `<profile>/.cdp-port`. |
+| Port reuse | Later runs read that file, so a profile keeps a stable endpoint; Chrome cannot serve two processes from one profile directory. |
+| Already running | If the recorded port is responsive, `start-browser` reports `"action": "reused"` and launches nothing. |
+| Initial tab | A fresh profile is launched with `about:blank` so it keeps a browser context; Chrome drops to zero contexts once its first-run tab closes and CDP clients then refuse to attach. |
+| Diagnostics | `doctor --data-dir DIR` targets the profile's recorded port. |
+| Targeting an agent | Read `data.endpoint` from the output, or use `live_profile_endpoint(data_dir)` from Python, and pass it as the agent's `--cdp`. |
+| Recorded list | Every `start-browser` run records the profile, its backend, and its port in `tools/common/local/profiles.json` (gitignored). |
+
+```bash
+uv run python -m tools.common start-browser --data-dir ~/chrome-page-a --port auto
+# {"ok": true, "data": {"action": "started", "endpoint": "http://127.0.0.1:61316", "port": 61316, ...}}
+
+uv run python -m tools.facebook_agent --cdp http://127.0.0.1:61316 post --page-id 1234567890 --text "..."
+```
+
+Agents keep their existing `--cdp` contract, so profiles stay independent and no
+profile directory is shared between identities. The `invisible` backend already
+isolates profiles through `--data-dir` and ignores `--port`.
+
+### 4. Recorded profiles (`profiles`)
+
+List the profiles this machine has used, with the port and the accounts each one
+is logged into:
+
+```bash
+uv run python -m tools.common profiles
+uv run python -m tools.common profiles --data-dir ~/chrome-page-a --facebook-page-id 61595289277974
+```
+
+`start-browser` records every profile it starts or reuses, so the list grows as
+identities are added. Entries are keyed by the profile directory name and stored
+in `tools/common/local/profiles.json`, which is gitignored because ports and
+profile paths are machine-specific:
+
+```json
+{
+  "profiles": {
+    "chrome-twitter-profile": {
+      "backend": "cdp",
+      "data_dir": "/Users/user/chrome-twitter-profile",
+      "identities": {
+        "facebook": {"page_id": "61595289277974"},
+        "linkedin": {"account": "..."},
+        "twitter": {"account": "TheVinhNguyen4"}
+      },
+      "last_used": "2026-10-20T08:11:50Z",
+      "port": 62818
+    }
+  }
+}
+```
+
+| Key | Meaning |
+| --- | --- |
+| `backend`, `data_dir`, `port` | How the profile is launched and which endpoint it holds. |
+| `identities.facebook` | `page_id`, ASCII digits from the Page's `profile.php?id=` URL. |
+| `identities.linkedin` | `account`: the LinkedIn member or page this profile is logged into. |
+| `identities.twitter` | `account`: the X handle this profile is logged into. |
+| `last_used` | UTC timestamp of the last record. |
+
+Identity fields mirror the unified post schema, so an entry maps straight onto an
+agent's arguments. `identities` is optional per platform and merged field by
+field, so adding one platform never clears another, and a later `start-browser`
+run that only updates the port leaves the links intact.
+
+| Flag | Effect |
+| --- | --- |
+| `--data-dir DIR` | Profile to record or update; required by every identity flag. |
+| `--backend cdp\|invisible` | How the profile is launched (default: the configured backend). |
+| `--facebook-page-id` | Link a Facebook Page by ID. |
+| `--linkedin-account`, `--twitter-account` | Link the LinkedIn and X accounts. |
+| `--base-dir DIR` | Point the registry elsewhere (tests use temp dirs). |
+
+`load_registry()`, `record_profile()`, `normalize_identity()`, and
+`validate_registry()` expose the same operations to Python callers. A registry
+with an unknown platform or a malformed `page_id` fails closed with
+`invalid_registry` instead of being listed as valid.
+
+### 5. Unified post validation (`post`)
 
 Validate a single platform-agnostic post document and print the resolved
 per-platform plans and equivalent commands. This never connects to a browser or
@@ -167,3 +264,4 @@ equivalent `uv run` invocation).
 - **Safe client disconnection**: Detaching Playwright stops the client connection without closing the user's browser.
 - **Loopback binding**: Debugging and local endpoints are explicitly bound to loopback (`127.0.0.1`).
 - **Profile stability**: Preserves persistent profiles across runs to retain existing login sessions.
+- **Profile isolation**: Each profile directory is an independent login session with its own recorded CDP port, so several social identities can run side by side.

@@ -3,7 +3,7 @@
 from typing import Any, Dict, Optional
 
 from .browser import CDPBrowser, InvisibleBrowser
-from .config import get_config
+from .config import get_config, read_recorded_port, resolve_host, resolve_profile_dir
 
 
 def run_doctor(
@@ -15,11 +15,18 @@ def run_doctor(
     headless: Optional[bool] = None,
     binary_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Diagnose browser availability and context readiness.
+    """Diagnose browser availability and context readiness for one profile.
 
     Supports both invisible stealth browser and Chrome CDP without navigating
     to any social websites, altering tabs, or launching unmanaged processes.
+    When `data_dir` names a profile started with an auto-assigned port, the
+    recorded port is used so diagnostics target that identity.
     """
+    if endpoint is None and data_dir is not None:
+        recorded_port = read_recorded_port(resolve_profile_dir(data_dir))
+        if recorded_port is not None:
+            endpoint = f'http://{resolve_host(None)}:{recorded_port}'
+
     resolved_backend = backend
     if resolved_backend is None and endpoint is not None:
         resolved_backend = 'cdp'

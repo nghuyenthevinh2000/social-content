@@ -13,12 +13,45 @@ from .config import (
 from .doctor import run_doctor
 from .launcher import start_browser
 from .post import PLATFORMS, PostError, plan_post
+from .profiles import IDENTITY_FIELDS, load_registry, record_profile, registry_path, validate_registry
 from .cli_support import JsonArgumentParser as BaseJsonArgumentParser, emit_error, emit_success
 
 
 class JsonArgumentParser(BaseJsonArgumentParser):
     """Argument parser that raises AgentError on invalid arguments while preserving help output."""
     error_class = AgentError
+
+
+AUTO_PORT = 'auto'
+
+# Rejected caller input exits 2; operational failures exit 3.
+INVALID_INPUT_CODES = ('invalid_arguments', 'invalid_identity', 'invalid_registry')
+
+
+def port_argument(value: str):
+    """Accept an explicit port or 'auto' to let the profile pick a free one."""
+    if value == AUTO_PORT:
+        return AUTO_PORT
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            f'expected an integer port or "{AUTO_PORT}", got {value!r}'
+        ) from exc
+
+
+def identity_arguments(args) -> dict:
+    """Collect the platform identity flags into a per-platform mapping."""
+    identities: dict = {}
+    for platform, fields in IDENTITY_FIELDS.items():
+        values = {
+            field: getattr(args, f'{platform}_{field}')
+            for field in fields
+            if getattr(args, f'{platform}_{field}') is not None
+        }
+        if values:
+            identities[platform] = values
+    return identities
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -75,6 +108,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help='Run browser in headless mode',
     )
+    doctor.add_argument(
+        '-d',
+        '--data-dir',
+        dest='data_dir',
+        default=None,
+        help='Profile directory to diagnose; uses its recorded CDP port when set',
+    )
 
     # start-browser command
     start = commands.add_parser(
@@ -93,15 +133,17 @@ def build_parser() -> argparse.ArgumentParser:
     start.add_argument(
         '-p',
         '--port',
-        type=int,
+        type=port_argument,
         default=None,
-        help=f'CDP remote debugging port (default: {DEFAULT_PORT})',
+        help=f'CDP remote debugging port, or "{AUTO_PORT}" to assign a free one per '
+             f'profile and remember it (default: {DEFAULT_PORT})',
     )
     start.add_argument(
         '-d',
         '--data-dir',
         default=None,
-        help=f'Browser profile directory (default: {DEFAULT_PROFILE_DIR})',
+        help=f'Browser profile directory; one directory per logged-in identity '
+             f'(default: {DEFAULT_PROFILE_DIR})',
     )
     start.add_argument(
         '--timeout',
@@ -132,6 +174,50 @@ def build_parser() -> argparse.ArgumentParser:
         action='store_true',
         default=None,
         help='Run browser in headless mode',
+    )
+
+    # profiles command
+    profiles = commands.add_parser(
+        'profiles',
+        help='List the browser profiles this machine has used, with their CDP ports and linked accounts.',
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    profiles.add_argument(
+        '--data-dir',
+        dest='data_dir',
+        default=None,
+        help='Profile directory to record or update; required by the identity flags',
+    )
+    profiles.add_argument(
+        '--base-dir',
+        dest='base_dir',
+        default=None,
+        help='Registry directory (default: tools/common/local)',
+    )
+    profiles.add_argument(
+        '--backend',
+        dest='backend',
+        choices=['cdp', 'invisible'],
+        default=None,
+        help='Record how this profile is launched (default: the configured backend)',
+    )
+    profiles.add_argument(
+        '--facebook-page-id',
+        dest='facebook_page_id',
+        default=None,
+        help='Facebook Page ID from its profile.php?id= URL (ASCII digits; requires --data-dir)',
+    )
+    profiles.add_argument(
+        '--linkedin-account',
+        dest='linkedin_account',
+        default=None,
+        help='LinkedIn identity this profile is logged into (requires --data-dir)',
+    )
+    profiles.add_argument(
+        '--twitter-account',
+        dest='twitter_account',
+        default=None,
+        help='X handle this profile is logged into (requires --data-dir)',
     )
 
     # post command
@@ -165,13 +251,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                 endpoint=args.endpoint,
                 timeout_ms=args.timeout_ms,
                 backend=args.backend,
+                data_dir=args.data_dir,
                 seed=args.seed,
                 headless=args.headless,
                 binary_path=args.binary,
             )
         elif args.command == 'start-browser':
             data = start_browser(
-                port=args.port,
+                port=None if args.port == AUTO_PORT else args.port,
                 data_dir=args.data_dir,
                 timeout=args.timeout,
                 chrome_bin=args.chrome_bin,
@@ -179,7 +266,26 @@ def main(argv: Optional[List[str]] = None) -> int:
                 seed=args.seed,
                 headless=args.headless,
                 binary_path=args.binary,
+                auto_port=args.port == AUTO_PORT,
             )
+            record_profile(data_dir=args.data_dir, port=data.get('port'),
+                           backend=data.get('backend'))
+        elif args.command == 'profiles':
+            identities = identity_arguments(args)
+            if args.data_dir is None and identities:
+                raise AgentError(
+                    'invalid_arguments',
+                    'Identity flags need --data-dir so they can be linked to a profile.',
+                )
+            if args.data_dir is not None:
+                record_profile(data_dir=args.data_dir, backend=args.backend,
+                               identities=identities, base_dir=args.base_dir)
+            registry = load_registry(args.base_dir)
+            validate_registry(registry)
+            data = {
+                'registry_path': str(registry_path(args.base_dir)),
+                'profiles': registry['profiles'],
+            }
         elif args.command == 'post':
             data = plan_post(args.file, args.platforms)
         else:
@@ -193,7 +299,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     except AgentError as exc:
         emit_error(exc.code, exc.message, exc.human_action_required, ensure_ascii=False)
-        return 2 if exc.code == 'invalid_arguments' else 3
+        return 2 if exc.code in INVALID_INPUT_CODES else 3
 
     except PostError as exc:
         emit_error(exc.code, exc.message, exc.human_action_required, ensure_ascii=False)

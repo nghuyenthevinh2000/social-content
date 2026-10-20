@@ -2,13 +2,19 @@
 
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 from unittest.mock import MagicMock, call, patch
 
-from tools.common.config import AgentError
+from tools.common.config import (
+    AgentError,
+    read_recorded_port,
+    write_recorded_port,
+)
 from tools.common.launcher import (
     is_browser_responsive,
     launch_browser_process,
+    live_profile_endpoint,
     start_browser,
 )
 
@@ -132,6 +138,7 @@ class LauncherTests(unittest.TestCase):
                     '--remote-debugging-port=9222',
                     '--remote-debugging-address=127.0.0.1',
                     f'--user-data-dir={target_dir}',
+                    'about:blank',
                 ],
                 stdout=mock_popen.call_args.kwargs['stdout'],
                 stderr=mock_popen.call_args.kwargs['stderr'],
@@ -156,6 +163,7 @@ class LauncherTests(unittest.TestCase):
                     '--remote-debugging-port=9222',
                     '--remote-debugging-address=127.0.0.1',
                     f'--user-data-dir={target_dir}',
+                    'about:blank',
                 ],
                 start_new_session=True,
                 stdout=mock_popen.call_args.kwargs['stdout'],
@@ -176,6 +184,93 @@ class LauncherTests(unittest.TestCase):
             self.assertTrue(result['headless'])
             self.assertEqual(result['user_data_dir'], str(Path('/tmp/test-stealth-profile').resolve()))
             mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+
+    def test_start_browser_auto_port_assigns_and_records_free_port(self):
+        checker = MagicMock(side_effect=[False, True])
+        launcher = MagicMock()
+
+        with tempfile.TemporaryDirectory() as profile_dir, \
+             patch('tools.common.config.find_browser_binary', return_value='/usr/bin/google-chrome'):
+            result = start_browser(
+                data_dir=profile_dir,
+                chrome_bin='/usr/bin/google-chrome',
+                auto_port=True,
+                timeout=5.0,
+                check_interval=0.01,
+                responsive_checker=checker,
+                process_launcher=launcher,
+            )
+
+            self.assertEqual(result['action'], 'started')
+            self.assertGreater(result['port'], 0)
+            self.assertEqual(result['endpoint'], f'http://127.0.0.1:{result["port"]}')
+            self.assertEqual(read_recorded_port(profile_dir), result['port'])
+            launcher.assert_called_once_with(
+                '/usr/bin/google-chrome',
+                result['port'],
+                Path(profile_dir).resolve(),
+                '127.0.0.1',
+            )
+
+    def test_start_browser_auto_port_reuses_recorded_port(self):
+        checker = MagicMock(return_value=True)
+        launcher = MagicMock()
+
+        with tempfile.TemporaryDirectory() as profile_dir:
+            write_recorded_port(profile_dir, 9411)
+            result = start_browser(
+                data_dir=profile_dir,
+                auto_port=True,
+                responsive_checker=checker,
+                process_launcher=launcher,
+            )
+
+        self.assertEqual(result['action'], 'reused')
+        self.assertEqual(result['port'], 9411)
+        self.assertEqual(result['endpoint'], 'http://127.0.0.1:9411')
+        self.assertEqual(launcher.call_count, 0)
+
+    def test_start_browser_auto_port_is_isolated_per_profile(self):
+        launcher = MagicMock()
+
+        with tempfile.TemporaryDirectory() as root:
+            page_a = Path(root) / 'page-a'
+            page_b = Path(root) / 'page-b'
+            with patch('tools.common.config.find_browser_binary', return_value='/usr/bin/google-chrome'):
+                for profile in (page_a, page_b):
+                    start_browser(
+                        data_dir=profile,
+                        chrome_bin='/usr/bin/google-chrome',
+                        auto_port=True,
+                        timeout=5.0,
+                        check_interval=0.01,
+                        responsive_checker=MagicMock(side_effect=[False, True]),
+                        process_launcher=launcher,
+                    )
+
+            port_a = read_recorded_port(page_a)
+            port_b = read_recorded_port(page_b)
+
+        self.assertIsNotNone(port_a)
+        self.assertIsNotNone(port_b)
+        self.assertNotEqual(port_a, port_b)
+
+    def test_live_profile_endpoint_returns_none_without_recorded_port(self):
+        with tempfile.TemporaryDirectory() as profile_dir:
+            self.assertIsNone(
+                live_profile_endpoint(data_dir=profile_dir, responsive_checker=MagicMock(return_value=True))
+            )
+
+    def test_live_profile_endpoint_requires_responsive_browser(self):
+        with tempfile.TemporaryDirectory() as profile_dir:
+            write_recorded_port(profile_dir, 9412)
+            self.assertIsNone(
+                live_profile_endpoint(data_dir=profile_dir, responsive_checker=MagicMock(return_value=False))
+            )
+            self.assertEqual(
+                live_profile_endpoint(data_dir=profile_dir, responsive_checker=MagicMock(return_value=True)),
+                'http://127.0.0.1:9412',
+            )
 
 
 if __name__ == '__main__':

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 import shutil
+import socket
 import sys
 from typing import List, Optional, Union
 
@@ -31,6 +32,8 @@ DEFAULT_PORT: int = 9222
 DEFAULT_HOST: str = '127.0.0.1'
 DEFAULT_ENDPOINT: str = f'http://{DEFAULT_HOST}:{DEFAULT_PORT}'
 DEFAULT_PROFILE_DIR: str = '$HOME/chrome-twitter-profile'
+DEFAULT_PORT_FILENAME: str = '.cdp-port'
+DEFAULT_START_URL: str = 'about:blank'
 DEFAULT_DOCTOR_TIMEOUT_MS: int = 30000
 DEFAULT_READINESS_TIMEOUT_SECONDS: float = 15.0
 DEFAULT_CHECK_INTERVAL_SECONDS: float = 0.5
@@ -102,6 +105,66 @@ def find_browser_binary(custom_bin: Optional[str] = None) -> Optional[str]:
     return None
 
 
+def resolve_host(host: Optional[str] = None) -> str:
+    """Resolve the CDP host with documented override precedence."""
+    return host or os.environ.get('CDP_HOST') or DEFAULT_HOST
+
+
+def resolve_profile_dir(data_dir: Optional[Union[str, Path]] = None) -> Path:
+    """Resolve one browser profile directory.
+
+    Each profile directory is an independent Chrome `--user-data-dir`, so it
+    holds its own login session. Passing a distinct `data_dir` per identity is
+    what allows several social profiles to coexist.
+    """
+    if data_dir is not None:
+        raw_dir = str(data_dir)
+    else:
+        raw_dir = (
+            os.environ.get('STEALTHFOX_PROFILE_DIR')
+            or os.environ.get('CHROME_USER_DATA_DIR')
+            or os.environ.get('USER_DATA_DIR')
+            or DEFAULT_PROFILE_DIR
+        )
+    return Path(os.path.expandvars(os.path.expanduser(raw_dir))).resolve()
+
+
+def find_free_port(host: str = DEFAULT_HOST) -> int:
+    """Reserve an unused loopback TCP port for a profile's CDP endpoint."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind((host, 0))
+        return int(sock.getsockname()[1])
+
+
+def port_file_path(profile_dir: Union[str, Path]) -> Path:
+    """Path of the marker recording which CDP port a profile directory uses."""
+    return Path(profile_dir) / DEFAULT_PORT_FILENAME
+
+
+def read_recorded_port(profile_dir: Union[str, Path]) -> Optional[int]:
+    """Read the CDP port recorded for a profile directory, or None when unusable."""
+    try:
+        raw = port_file_path(profile_dir).read_text(encoding='utf-8').strip()
+    except OSError:
+        return None
+    try:
+        port = int(raw)
+    except ValueError:
+        return None
+    return port if 0 < port <= 65535 else None
+
+
+def write_recorded_port(profile_dir: Union[str, Path], port: int) -> None:
+    """Persist the CDP port chosen for a profile so later runs reconnect to it.
+
+    Chrome refuses to serve two processes from one user-data-dir, so a profile
+    must keep a stable port across runs instead of a fresh free port each time.
+    """
+    directory = Path(profile_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    port_file_path(directory).write_text(f'{int(port)}\n', encoding='utf-8')
+
+
 @dataclass(frozen=True)
 class Config:
     """Immutable resolved configuration for social agent browser interactions."""
@@ -153,7 +216,7 @@ def get_config(
         raise AgentError('invalid_arguments', f"Invalid browser backend: {raw_backend}. Must be 'invisible' or 'cdp'.")
 
     # 2. Resolve host and port
-    resolved_host = host or os.environ.get('CDP_HOST') or DEFAULT_HOST
+    resolved_host = resolve_host(host)
 
     resolved_port: int
     if port is not None:
@@ -185,16 +248,7 @@ def get_config(
             resolved_endpoint = f'http://{resolved_host}:{resolved_port}'
 
     # 4. Resolve user data directory / profile directory
-    if data_dir is not None:
-        raw_dir = str(data_dir)
-    else:
-        raw_dir = (
-            os.environ.get('STEALTHFOX_PROFILE_DIR')
-            or os.environ.get('CHROME_USER_DATA_DIR')
-            or os.environ.get('USER_DATA_DIR')
-            or DEFAULT_PROFILE_DIR
-        )
-    resolved_user_data_dir = Path(os.path.expandvars(os.path.expanduser(raw_dir))).resolve()
+    resolved_user_data_dir = resolve_profile_dir(data_dir)
 
     # 5. Resolve doctor timeout
     resolved_timeout_ms: int

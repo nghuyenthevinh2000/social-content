@@ -10,10 +10,11 @@ submodules:
   __init__.py: Marks the tests as a package for tools.common.
   test_browser.py: Lifecycle tests for the invisible stealth browser and CDP connection.
   test_cli.py: CLI contract tests for doctor, start-browser, and post commands.
-  test_config.py: Configuration and browser-binary discovery tests.
+  test_config.py: Configuration, browser-binary discovery, free-port, and profile-port tests.
   test_doctor.py: Browser diagnostics tests without platform navigation.
-  test_launcher.py: Browser process detection, startup, and readiness tests.
+  test_launcher.py: Browser process detection, per-profile startup, auto-port recording, and readiness tests.
   test_post.py: Unified post validation, inheritance, overrides, and per-platform adapters.
+  test_profiles.py: Machine-local profile registry load, record, identity-linking, and port-fallback tests.
   test_shared_support.py: Compatibility checks for shared errors, CLI output, environment defaults, and group validation.
 ---
 
