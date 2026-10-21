@@ -16,3 +16,6 @@
 	path = projects/hook-validation-loop/lac-hong-app
 	url = https://github.com/lac-hong-viral/lac-hong-app.git
 	ignore = untracked
+[submodule "projects/OpenMontage"]
+	path = projects/OpenMontage
+	url = https://github.com/calesthio/OpenMontage.git
