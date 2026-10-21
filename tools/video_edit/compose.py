@@ -7,9 +7,10 @@ from dataclasses import asdict, dataclass, field
 import cv2
 import numpy as np
 
-from .blend import apply_shading, bgr_to_rgb_float, blend, luminance, rgb_float_to_bgr
+from .blend import apply_pbr_shading, apply_shading, bgr_to_rgb_float, blend, luminance, rgb_float_to_bgr
 from .corners import order_corners
 from .proxy import flatten_texture, rotate_texture, tile_mirror
+from .shell import warp_shell_flap
 
 
 @dataclass
@@ -185,14 +186,26 @@ def compose(
     fill_value = float((proxy_lum * light_mask).sum() / denominator)
     filled = proxy_lum * light_mask + fill_value * (1.0 - light_mask)
     sigma = cfg.lighting_sigma if cfg.lighting_sigma > 0 else max(6.0, 0.06 * min(box_w, box_h))
-    illumination = cv2.GaussianBlur(filled, (0, 0), sigma)
-    reference = max(float((illumination * light_mask).sum() / denominator), 1e-6)
-    illumination = illumination / reference
-    illumination = np.clip(illumination, cfg.max_darken, cfg.max_lighten)
+    if cfg.blend_mode == "pbr":
+        # Bilateral filter is edge-preserving, so filter proxy_lum directly without an eroded fill_value halo ring.
+        inside_vals = proxy_lum[light_mask > 0.5]
+        reference = max(float(np.median(inside_vals)) if inside_vals.size else float(proxy_lum.mean()), 1e-6)
+        norm_lum = (proxy_lum / reference).astype(np.float32)
+        illumination = cv2.bilateralFilter(norm_lum, d=9, sigmaColor=0.08, sigmaSpace=12.0)
+        illumination = np.clip(illumination, min(cfg.max_darken, 0.30), cfg.max_lighten)
+    else:
+        illumination = cv2.GaussianBlur(filled, (0, 0), sigma)
+        reference = max(float((illumination * light_mask).sum() / denominator), 1e-6)
+        illumination = illumination / reference
+        illumination = np.clip(illumination, cfg.max_darken, cfg.max_lighten)
 
+    if cfg.blend_mode == "pbr":
+        warped = warp_shell_flap(warped, mask, illumination)
     warped_rgb = bgr_to_rgb_float(warped)
     if cfg.blend_mode == "shading":
         blended = apply_shading(warped_rgb, illumination, cfg.shading_strength)
+    elif cfg.blend_mode == "pbr":
+        blended = apply_pbr_shading(warped_rgb, illumination, cfg.shading_strength)
     else:
         blended = blend(proxy_rgb, warped_rgb, cfg.blend_mode)
         blended = np.clip(blended, 0.0, 1.0)

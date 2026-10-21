@@ -219,7 +219,10 @@ def rebuild_quad(quad: np.ndarray, aspect: float | None, width: int, height: int
                 anchor_bottom,
             ]
         )
-    return order_corners(rebuilt), True
+    try:
+        return order_corners(rebuilt), True
+    except QuadError:
+        return quad, False
 
 
 def smooth_quads(quads: np.ndarray, window: int = 11) -> np.ndarray:
@@ -253,6 +256,35 @@ def smooth_quads(quads: np.ndarray, window: int = 11) -> np.ndarray:
     return result.reshape(data.shape).astype(np.float32)
 
 
+def _detect_series(
+    video: VideoInfo,
+    *,
+    detect_mode: str,
+    detect_kwargs: dict,
+    start: int = 0,
+    limit: int | None = None,
+) -> tuple[list[np.ndarray | None], list[tuple[str, float]]]:
+    quads: list[np.ndarray | None] = []
+    meta: list[tuple[str, float]] = []
+    s_min = detect_kwargs.get("s_min", 150)
+    for index, frame in iter_frames(video.path, start=start, limit=limit):
+        try:
+            detection = detect_quad(frame, mode=detect_mode, **detect_kwargs)
+            if detect_mode == "saturated":
+                material = colour_mask(frame, s_min=s_min, kernel=3, dilate=0)
+                try:
+                    detection.corners = refine_sheet_quad(material, detection.corners)
+                    detection.method += "+edges"
+                except QuadError:
+                    pass  # retain the polygon fit if straight edges are hidden
+            quads.append(detection.corners)
+            meta.append((detection.method, detection.score))
+        except QuadError as error:
+            quads.append(None)
+            meta.append((f"failed: {error}", 0.0))
+    return quads, meta
+
+
 def plan_frames(
     video: VideoInfo,
     *,
@@ -264,23 +296,19 @@ def plan_frames(
     motion_window: int = 11,
 ) -> PlanSet:
     """Pass 1: detect a quad per frame, then stabilise it."""
-    quads: list[np.ndarray | None] = []
-    meta: list[tuple[str, float]] = []
-    for index, frame in iter_frames(video.path, start=start, limit=limit):
-        try:
-            detection = detect_quad(frame, mode=detect_mode, **detect_kwargs)
-            if detect_mode == "saturated":
-                material = colour_mask(frame, s_min=detect_kwargs.get("s_min", 150), kernel=3, dilate=0)
-                try:
-                    detection.corners = refine_sheet_quad(material, detection.corners)
-                    detection.method += "+edges"
-                except QuadError:
-                    pass  # retain the polygon fit if straight edges are hidden
-            quads.append(detection.corners)
-            meta.append((detection.method, detection.score))
-        except QuadError as error:
-            quads.append(None)
-            meta.append((f"failed: {error}", 0.0))
+    if detect_mode == "saturated" and detect_kwargs.get("s_min", 60) < 150:
+        high_kwargs = {**detect_kwargs, "s_min": 150}
+        quads, meta = _detect_series(
+            video, detect_mode=detect_mode, detect_kwargs=high_kwargs, start=start, limit=limit
+        )
+        if not any(q is not None for q in quads):
+            quads, meta = _detect_series(
+                video, detect_mode=detect_mode, detect_kwargs=detect_kwargs, start=start, limit=limit
+            )
+    else:
+        quads, meta = _detect_series(
+            video, detect_mode=detect_mode, detect_kwargs=detect_kwargs, start=start, limit=limit
+        )
 
     filled: list[np.ndarray | None] = list(quads)
     last: np.ndarray | None = None
@@ -294,15 +322,52 @@ def plan_frames(
     present = [quad for quad in filled if quad is not None]
     if not present:
         raise SystemExit("no frame yielded a usable quadrilateral; try another --detect mode or pass --corners")
+    first_valid = present[0]
+    for position, quad in enumerate(filled):
+        if quad is None:
+            filled[position] = first_valid
+            meta[position] = ("held-next", meta[position][1])
+        else:
+            break
 
     aspect = measure_aspect(present, video.width, video.height) if use_aspect else None
+    bottom_clipped_shot = use_aspect and (
+        sum(
+            1
+            for q in present
+            if _is_clipped(q[2], video.width, video.height) and _is_clipped(q[3], video.width, video.height)
+        )
+        > 0.5 * len(present)
+    )
+    if bottom_clipped_shot:
+        right_heights = [float(np.linalg.norm(q[2] - q[1])) for q in present]
+        top_widths = [
+            float(np.linalg.norm(q[1] - q[0]))
+            for q in present
+            if not _is_clipped(q[0], video.width, video.height) and not _is_clipped(q[1], video.width, video.height)
+        ]
+        h_sheet = float(np.percentile(right_heights, 90))
+        w_sheet = float(np.median(top_widths)) if top_widths else h_sheet * 0.95
+        aspect = w_sheet / max(h_sheet, 1.0)
 
     plans: list[FramePlan] = []
     for position, quad in enumerate(filled):
         if quad is None:
             continue
         clipped = any(_is_clipped(point, video.width, video.height) for point in quad)
-        rebuilt, reconstructed = rebuild_quad(quad, aspect, video.width, video.height)
+        if bottom_clipped_shot and not _is_clipped(quad[1], video.width, video.height):
+            tl, tr, br, _ = quad
+            top_dir = _unit(tr - tl)
+            right_dir = (
+                _unit(br - tr)
+                if float(np.linalg.norm(br - tr)) > 140.0
+                else np.array([-top_dir[1], top_dir[0]], np.float32)
+            )
+            tl_r = tr - top_dir * w_sheet
+            rebuilt = np.stack([tl_r, tr, tr + right_dir * h_sheet, tl_r + right_dir * h_sheet]).astype(np.float32)
+            reconstructed = True
+        else:
+            rebuilt, reconstructed = rebuild_quad(quad, aspect, video.width, video.height)
         plans.append(
             FramePlan(
                 index=start + position,
@@ -316,7 +381,10 @@ def plan_frames(
 
     smoothed = smooth_quads(np.array([plan.quad for plan in plans]), motion_window)
     for plan, quad in zip(plans, smoothed):
-        plan.quad = quad
+        try:
+            plan.quad = order_corners(quad)
+        except QuadError:
+            pass
 
     counts: dict[str, int] = {}
     for plan in plans:
@@ -396,6 +464,8 @@ def render(
         if plan is None:
             continue
         coverage = colour_mask(frame, **mask_kwargs) if occlusion else None
+        if coverage is not None and np.count_nonzero(coverage) < 0.01 * frame.shape[0] * frame.shape[1]:
+            coverage.fill(0)
         # The quad supplies UV geometry, not the silhouette. Occlusion can make
         # its polygon cut across visible paper; intersecting the two masks left
         # an exposed smooth strip that looked like a second sheet during motion.

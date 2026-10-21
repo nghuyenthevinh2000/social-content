@@ -76,8 +76,13 @@ def parse_corners(text: str) -> np.ndarray:
 
 def _mask_saturated(image: np.ndarray, s_min: int, v_min: int) -> np.ndarray:
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    mask = ((hsv[:, :, 1] >= s_min) & (hsv[:, :, 2] >= v_min)).astype(np.uint8) * 255
-    return mask
+    h, s, val = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
+    sat = (s >= s_min) & (val >= v_min)
+    if s_min >= 120:
+        # Retain bright specular reflections on crimson/red cardstock where S dips slightly below s_min.
+        spec_red = ((h <= 5) | (h >= 175)) & (s >= int(0.70 * s_min)) & (val >= max(145, v_min))
+        sat = sat | spec_red
+    return sat.astype(np.uint8) * 255
 
 
 def _mask_edges(image: np.ndarray) -> np.ndarray:
@@ -132,8 +137,12 @@ def colour_mask(
     hue_distance = np.minimum(hue_distance, 180 - hue_distance)
     # OpenCV hue wraps at 180. Learn the paper colour, rather than hardcoding
     # red, and reject dim shadows relative to the material's own exposure.
-    brightness_floor = max(v_min, 0.55 * float(np.median(hsv[:, :, 2][samples])))
-    material = (hue_distance <= 4) & (hsv[:, :, 2] >= brightness_floor)
+    median_v = float(np.median(hsv[:, :, 2][samples]))
+    brightness_floor = max(v_min, 0.55 * median_v)
+    deep_shadow_floor = max(v_min, 0.35 * median_v)
+    material = ((hue_distance <= 4) & (hsv[:, :, 2] >= brightness_floor)) | (
+        (hue_distance <= 5) & (hsv[:, :, 1] >= 180) & (hsv[:, :, 2] >= deep_shadow_floor)
+    )
     raw_mask = cv2.bitwise_and(raw_mask, material.astype(np.uint8) * 255)
     if dilate > 0:
         size = dilate * 2 + 1
@@ -183,17 +192,26 @@ def refine_sheet_quad(mask: np.ndarray, quad: np.ndarray) -> np.ndarray:
         else:
             side = 1 if midpoint @ horizontal > 0 else 3
         groups[side].append((length, segment))
-    if any(not groups[side] for side in (0, 1, 2)):
+    h_img, w_img = mask.shape[:2]
+    bottom_clipped = float(br[1]) >= h_img - 3.0 and float(bl[1]) >= h_img - 3.0
+    left_clipped = float(tl[0]) <= 2.0 and float(bl[0]) <= 2.0
+    if bottom_clipped:
+        groups[2].clear()
+    if left_clipped:
+        groups[3].clear()
+    required = (0, 1) if bottom_clipped else (0, 1, 2)
+    if any(not groups[side] for side in required):
         raise QuadError("top, right and bottom edges must be visible")
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     points = max(contours, key=cv2.contourArea).reshape(-1, 2).astype(np.float32)
+    seed_edges = ((tl, tr), (tr, br), (br, bl), (bl, tl))
     lines = []
     for side, group in enumerate(groups):
         if group:
             _, segment = max(group, key=lambda item: item[0])
             a, b = segment.reshape(2, 2).astype(np.float64)
         else:
-            a, b = bl, tl  # clipped left boundary stays on the image border
+            a, b = seed_edges[side]  # clipped boundary stays on the image border
         direction = b-a
         normal = np.array([-direction[1], direction[0]], np.float64)
         normal /= max(float(np.linalg.norm(normal)), 1e-6)

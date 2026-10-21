@@ -19,6 +19,7 @@ _LUMA = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
 # in relative terms. The rest are provided for comparison.
 BLEND_MODES = (
     "shading",
+    "pbr",
     "multiply",
     "screen",
     "overlay",
@@ -99,7 +100,7 @@ def blend(base: np.ndarray, top: np.ndarray, mode: str) -> np.ndarray:
         return _soft_light(b, t)
     if mode == "luminosity":
         return _luminosity(b, t)
-    if mode == "shading":
+    if mode in ("shading", "pbr"):
         # The caller multiplies by the illumination field; without one this is
         # a plain paste of the real pixels.
         return t
@@ -116,3 +117,22 @@ def apply_shading(rgb: np.ndarray, illumination: np.ndarray, strength: float) ->
     field = _as_three_channel(illumination.astype(np.float32), rgb.shape)
     field = 1.0 + (field - 1.0) * float(strength)
     return rgb * field
+
+
+def apply_pbr_shading(rgb: np.ndarray, illumination: np.ndarray, strength: float) -> np.ndarray:
+    """Single-image SVBRDF decomposition + raking-light relief + translucent bloom.
+
+    Separates ``rgb`` into smooth pigment albedo and zero-mean micro-groove
+    relief. Grooves emerge in raking/lit zones and flatten in deep cast shadow;
+    curved highlight ridges bloom toward translucent scarlet instead of clipping.
+    """
+    if strength == 0.0:
+        return rgb
+    albedo = cv2.GaussianBlur(rgb.astype(np.float32), (0, 0), 6.0)
+    relief = rgb.astype(np.float32) - albedo
+    illum = 1.0 + (illumination.astype(np.float32) - 1.0) * float(strength)
+    raking = np.clip((illum - 0.62) / 0.38, 0.12, 1.25)[..., None]
+    scarlet = np.array([0.96, 0.12, 0.14], dtype=np.float32)
+    sss = (np.clip((illum - 1.0) / 0.35, 0.0, 1.0) * (0.35 * float(strength)))[..., None]
+    shaded = albedo * illum[..., None] + relief * raking
+    return shaded * (1.0 - sss) + scarlet * sss

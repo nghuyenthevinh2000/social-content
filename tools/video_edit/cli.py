@@ -28,6 +28,7 @@ from .io import (
     write_png,
 )
 from .proxy import smooth_proxy, synthetic_card_proxy
+from .shell import run_blender_simulation
 from .video import encode, plan_frames, probe_video, render
 from .watermark import find_backend, install_backend, render_watermark
 
@@ -356,6 +357,19 @@ def cmd_watermark_install(args) -> int:
     return 0
 
 
+def cmd_sim(args) -> int:
+    manifest = run_blender_simulation(
+        args.texture,
+        args.out_dir,
+        frames=args.frames,
+        blender_bin=args.blender,
+    )
+    print(f"preset      {manifest['outputs']['blend_preset']}")
+    print(f"frames      {args.frames} written to {manifest['outputs']['frames_dir']}")
+    print(f"output      {manifest['outputs']['video']}")
+    return 0
+
+
 def cmd_doctor(args) -> int:
     print(f"video_edit {__version__}")
     print(f"python        {sys.version.split()[0]}")
@@ -493,6 +507,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     installer = sub.add_parser("watermark-install", help="download the pinned official backend and verify its SHA256")
     installer.set_defaults(func=cmd_watermark_install)
+
+    sim = sub.add_parser("sim", help="run headless Blender 120gsm thin-shell Cloth + Cycles PBR simulation")
+    sim.add_argument("--texture", required=True)
+    sim.add_argument("--out-dir", default="out/sim")
+    sim.add_argument("--frames", type=int, default=24)
+    sim.add_argument("--blender", help="path to blender executable")
+    sim.set_defaults(func=cmd_sim)
 
     doctor = sub.add_parser("doctor", help="report versions and backend availability")
     doctor.set_defaults(func=cmd_doctor)

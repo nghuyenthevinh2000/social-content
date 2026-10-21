@@ -114,6 +114,35 @@ class BlendTests(unittest.TestCase):
         rgb = np.array([[[0.6, 0.3, 0.2]]], np.float32)
         np.testing.assert_allclose(apply_shading(rgb, np.array([[0.4]], np.float32), 0.0), rgb)
 
+    def test_pbr_preserves_sharp_fold_step_and_attenuates_shadow_grooves(self):
+        proxy = np.full((120, 160, 3), (30, 20, 180), np.uint8)
+        proxy[:, 80:] = (15, 10, 80)  # sharp fold cast shadow step
+        quad = np.array([[10, 10], [150, 10], [150, 110], [10, 110]], np.float32)
+        tex = textured_red_card(80, 60, seed=7)
+        shading = compose(proxy, tex, quad, ComposeConfig(blend_mode="shading"))
+        pbr = compose(proxy, tex, quad, ComposeConfig(blend_mode="pbr"))
+        # Bilateral illumination in pbr mode keeps the step across x=80 much sharper than Gaussian shading.
+        step_shading = abs(float(shading.illumination[60, 76] - shading.illumination[60, 84]))
+        step_pbr = abs(float(pbr.illumination[60, 76] - pbr.illumination[60, 84]))
+        self.assertGreater(step_pbr, step_shading * 1.8)
+        # Grooves are attenuated in deep shadow relative to the lit side.
+        lit_var = float(cv2.Laplacian(cv2.cvtColor(pbr.image[:, 20:70], cv2.COLOR_BGR2GRAY), cv2.CV_32F).var())
+        shadow_var = float(cv2.Laplacian(cv2.cvtColor(pbr.image[:, 90:140], cv2.COLOR_BGR2GRAY), cv2.CV_32F).var())
+        self.assertGreater(lit_var, shadow_var * 2.0)
+
+    def test_shell_flap_warp_rotates_grooves_only_on_bent_flap(self):
+        from tools.video_edit.shell import warp_shell_flap
+
+        h, w = 240, 240
+        warped = textured_red_card(w, h, seed=9)
+        mask = np.ones((h, w), np.float32)
+        illum = np.ones((h, w), np.float32)
+        illum[90:140, 60:180] = 0.65  # cast shadow wedge
+        illum[20:88, 80:200] = 1.15   # bright folded flap above crease
+        bent = warp_shell_flap(warped, mask, illum)
+        self.assertGreater(float(np.abs(bent[30:80, 90:190].astype(float) - warped[30:80, 90:190]).mean()), 1.0)
+        np.testing.assert_array_equal(bent[160:220, 40:200], warped[160:220, 40:200])
+
 
 class ComposeTests(unittest.TestCase):
     def setUp(self):
