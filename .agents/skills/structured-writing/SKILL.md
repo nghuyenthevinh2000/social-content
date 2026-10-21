@@ -1,6 +1,6 @@
 ---
 name: structured-writing
-description: "Required for guides, plans, explanations, recommendations, comparisons, and analysis in this repository. Requires table-first writing, useful charts or diagrams, Discovery/Medium/Deep word ceilings, and a hard cap of 100 words outside tables. Applies to chat and authored documents."
+description: "Required for guides, plans, explanations, recommendations, comparisons, and analysis in this repository. Requires table-first writing, useful charts or diagrams (exempt when outputting to CLI/terminal), Discovery/Medium/Deep word ceilings, and a hard cap of 100 words outside tables. Applies to chat and authored documents."
 ---
 
 # Structured writing
@@ -12,7 +12,7 @@ description: "Required for guides, plans, explanations, recommendations, compari
 | Coverage | Apply to substantive explanatory and planning content in chat and authored files, including this skill. |
 | Other skills | Combine subject-specific guidance with this skill's presentation and length rules. Preserve necessary commands, examples, citations, and warnings. |
 | Existing content | Do not reformat unrelated documents unless asked. |
-| Exclusions | Brief acknowledgments, clarification questions, code-only responses, and creative/social copy are exempt. Plans and explanations about creative copy remain in scope. |
+| Exclusions | Brief acknowledgments, clarification questions, code-only responses, and creative copy are exempt. Diagrams are strictly omitted when outputting to CLI/terminal. |
 | Priority | Explicit user requirements and higher-priority instructions take precedence. |
 
 ## Choose a tier
@@ -38,7 +38,7 @@ description: "Required for guides, plans, explanations, recommendations, compari
 | Tables | Put substantive facts, decisions, comparisons, steps, checks, and caveats in Markdown tables. Prefer 2–4 columns and short cells; split overloaded tables. |
 | Outside-table text | Hard cap: 100 words total across the entire deliverable, not per section. Prefer tables for all prose. |
 | What counts outside | Include headings, paragraphs, lists, captions, frontmatter, diagram labels, and code or command blocks. No fenced-block exemption. |
-| Visual | Include at least one useful chart or diagram explaining a sequence, relationship, decision, timeline, or supported numerical comparison. |
+| Visual | Include at least one useful chart or diagram explaining a sequence, relationship, or decision. Omit diagrams entirely when outputting to CLI/terminal. |
 | Examples | Keep executable code and multiline examples in fenced blocks outside tables. They count toward both limits; if necessary examples cannot fit, ask for an explicit exception. |
 | Ending | Include a next action or unresolved decision only when needed; do not repeat the opening. |
 
@@ -51,6 +51,7 @@ description: "Required for guides, plans, explanations, recommendations, compari
 | Components or concepts | Relationship or dependency diagram |
 | Schedule | Timeline; mark unknown dates as unknown |
 | Measured comparison | Bar chart with units, source, and scale |
+| CLI / terminal output | Do not include diagrams; omit visual completely to avoid clutter |
 
 | Visual rule | Requirement |
 |---|---|
@@ -88,7 +89,7 @@ Draft -> Check total words AND outside-table words
 | Relevance | Every row adds a fact, decision, tradeoff, action, check, or explicit unknown. |
 | Evidence | Distinguish verified facts from assumptions; cite sources when needed. |
 | Clarity | Concrete verbs and specific terms; no inflated claims or generic filler. |
-| Visual | At least one useful, readable chart or diagram; no invented data. |
+| Visual | At least one useful, readable chart or diagram; omit when writing to CLI. |
 | Total length | Within the selected word ceiling. |
 | Outside tables | At most 100 words across all outside-table content combined. |
 | Completeness | Necessary context, commands, cautions, and next steps remain intact. |

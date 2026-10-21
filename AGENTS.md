@@ -9,7 +9,7 @@ Apply this to both chat responses and authored documents in this repository.
 
 | Requirement | Rule |
 |---|---|
-| Format | Use tables for substantive information and at least one useful chart or diagram per deliverable. Text outside tables has a hard cap of 100 words total. |
+| Format | Use tables for substantive information and at least one useful chart or diagram per deliverable (omit diagram when writing to CLI). Text outside tables has a hard cap of 100 words total. |
 | Default tier | Discovery, unless the user requests Medium or Deep, or explicitly requests equivalent detail. |
 | Word ceilings | Discovery: 1,500; Medium: 4,000; Deep: 10,000. Count all authored content. The 100-word outside-table cap is included, not additional. |
 | Quality | No padding, invented data, redundant charts, or silent truncation. |
