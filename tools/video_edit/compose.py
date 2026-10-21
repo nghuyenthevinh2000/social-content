@@ -7,10 +7,19 @@ from dataclasses import asdict, dataclass, field
 import cv2
 import numpy as np
 
-from .blend import apply_pbr_shading, apply_shading, bgr_to_rgb_float, blend, luminance, rgb_float_to_bgr
 from .corners import order_corners
+from .methods import (
+    apply_pbr_shading,
+    apply_shading,
+    bgr_to_rgb_float,
+    blend,
+    compute_pbr_illumination,
+    compute_shading_illumination,
+    luminance,
+    rgb_float_to_bgr,
+    warp_shell_flap,
+)
 from .proxy import flatten_texture, rotate_texture, tile_mirror
-from .shell import warp_shell_flap
 
 
 @dataclass
@@ -182,22 +191,13 @@ def compose(
     light_mask = _shrink_mask(mask, max(2.0, cfg.edge_feather))
     if float(light_mask.sum()) < 1.0:
         light_mask = mask
-    denominator = max(float(light_mask.sum()), 1e-6)
-    fill_value = float((proxy_lum * light_mask).sum() / denominator)
-    filled = proxy_lum * light_mask + fill_value * (1.0 - light_mask)
     sigma = cfg.lighting_sigma if cfg.lighting_sigma > 0 else max(6.0, 0.06 * min(box_w, box_h))
     if cfg.blend_mode == "pbr":
-        # Bilateral filter is edge-preserving, so filter proxy_lum directly without an eroded fill_value halo ring.
-        inside_vals = proxy_lum[light_mask > 0.5]
-        reference = max(float(np.median(inside_vals)) if inside_vals.size else float(proxy_lum.mean()), 1e-6)
-        norm_lum = (proxy_lum / reference).astype(np.float32)
-        illumination = cv2.bilateralFilter(norm_lum, d=9, sigmaColor=0.08, sigmaSpace=12.0)
-        illumination = np.clip(illumination, min(cfg.max_darken, 0.30), cfg.max_lighten)
+        illumination, reference = compute_pbr_illumination(proxy_lum, light_mask, cfg.max_darken, cfg.max_lighten)
     else:
-        illumination = cv2.GaussianBlur(filled, (0, 0), sigma)
-        reference = max(float((illumination * light_mask).sum() / denominator), 1e-6)
-        illumination = illumination / reference
-        illumination = np.clip(illumination, cfg.max_darken, cfg.max_lighten)
+        illumination, reference = compute_shading_illumination(
+            proxy_lum, light_mask, sigma, cfg.max_darken, cfg.max_lighten
+        )
 
     if cfg.blend_mode == "pbr":
         warped = warp_shell_flap(warped, mask, illumination)

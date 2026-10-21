@@ -29,6 +29,7 @@ import numpy as np
 from .compose import ComposeConfig, compose
 from .corners import QuadError, colour_mask, detect_quad, order_corners, refine_sheet_quad
 from .io import write_png
+from .methods.flow_track import track_surface_flow
 
 BORDER_TOLERANCE = 2.0
 
@@ -294,9 +295,18 @@ def plan_frames(
     limit: int | None = None,
     use_aspect: bool = True,
     motion_window: int = 11,
+    track_mode: str = "quad",
 ) -> PlanSet:
     """Pass 1: detect a quad per frame, then stabilise it."""
-    if detect_mode == "saturated" and detect_kwargs.get("s_min", 60) < 150:
+    if track_mode == "flow":
+        flow_quads = track_surface_flow(
+            iter_frames(video.path, start=start, limit=limit),
+            s_min=max(detect_kwargs.get("s_min", 150), 150),
+            v_min=detect_kwargs.get("v_min", 40),
+        )
+        quads = [q for q in flow_quads]
+        meta = [("flow-ransac", 1.0) for _ in flow_quads]
+    elif detect_mode == "saturated" and detect_kwargs.get("s_min", 60) < 150:
         high_kwargs = {**detect_kwargs, "s_min": 150}
         quads, meta = _detect_series(
             video, detect_mode=detect_mode, detect_kwargs=high_kwargs, start=start, limit=limit

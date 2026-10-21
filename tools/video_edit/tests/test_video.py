@@ -267,6 +267,26 @@ class VideoCliTests(unittest.TestCase):
         self.assertTrue((out_dir / "frames" / "00000.png").exists())
         self.assertIsNone(manifest["outputs"]["video"])
 
+    def test_flow_track_mode_runs_from_unified_cli(self):
+        from tools.video_edit.cli import main
+
+        out_dir = self.tmp / "out-flow"
+        code = main(
+            [
+                "video",
+                "--video", str(self.video),
+                "--texture", str(self.texture),
+                "--out-dir", str(out_dir),
+                "--track-mode", "flow",
+                "--blend-mode", "pbr",
+                "--s-min", "60",
+                "--skip-encode",
+            ]
+        )
+        self.assertEqual(code, 0)
+        manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["stabilisation"]["detection_counts"], {"flow-ransac": 4})
+
 
 if __name__ == "__main__":
     unittest.main()

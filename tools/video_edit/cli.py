@@ -11,7 +11,6 @@ import cv2
 import numpy as np
 
 from . import __version__
-from .blend import BLEND_MODES
 from .compose import ComposeConfig, compose, config_to_dict, INTERPOLATIONS
 from .corners import (
     QuadError,
@@ -27,8 +26,8 @@ from .io import (
     write_json,
     write_png,
 )
+from .methods import BLEND_MODES, TRACK_MODES, run_blender_simulation
 from .proxy import smooth_proxy, synthetic_card_proxy
-from .shell import run_blender_simulation
 from .video import encode, plan_frames, probe_video, render
 from .watermark import find_backend, install_backend, render_watermark
 
@@ -198,6 +197,7 @@ def cmd_video(args) -> int:
         limit=args.limit,
         use_aspect=not args.no_aspect_stabilise,
         motion_window=args.motion_window,
+        track_mode=args.track_mode,
     )
     cfg = _compose_config(args, texture)
     rows = render(
@@ -452,6 +452,7 @@ def build_parser() -> argparse.ArgumentParser:
     video.add_argument("--limit", type=int, help="process only this many frames, for a quick look")
     video.add_argument("--no-occlusion", action="store_true", help="ignore overlapping hands; paste the whole quad")
     video.add_argument("--no-aspect-stabilise", action="store_true", help="use the raw clipped quad")
+    video.add_argument("--track-mode", choices=TRACK_MODES, default="quad", help="surface tracking method (default quad)")
     video.add_argument("--motion-window", type=int, default=11, help="odd temporal fitting window; 1 disables (default 11)")
     video.add_argument("--mask-s-min", type=int, default=150, help="saturation floor for the occlusion mask")
     video.add_argument("--mask-kernel", type=int, default=7)
