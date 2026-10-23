@@ -72,6 +72,8 @@ DEFAULT_HYPOTHESIS = {
 
 DEFAULT_POST_TEMPLATE = """# Nội dung bài đăng Facebook (Bài 1)
 
+TODO: Replace this scaffold with confirmed project copy before approval.
+
 [Câu mở đầu / hook trực diện hướng tới người có nhu cầu]
 
 [Tên thương hiệu] giới thiệu các dòng sản phẩm phục vụ nhu cầu của bạn:
@@ -130,12 +132,16 @@ def bootstrap_project(
     state_path = root / "loop/publications.json"
     loop_readme = root / "loop/README.md"
     loop_agents = root / "loop/AGENTS.md"
+    project_agents = root / "AGENTS.md"
     catalog_path = root / "product-marketing.json"
     hypo_path = root / hypotheses_file
     post_1_path = root / "posts/1/facebook-ad.md"
+    content_path = root / "posts/1/content.json"
 
     # Pre-flight config check
-    config = {"page_id": page_id, "hypotheses_file": hypotheses_file}
+    config = {"page_id": page_id, "hypotheses_file": hypotheses_file,
+              "allowed_channels": ["facebook_page"],
+              "content_policy": {"schema_version": 1}}
     if config_path.exists():
         existing_cfg = json.loads(config_path.read_text(encoding="utf-8"))
         if existing_cfg.get("page_id") != page_id:
@@ -151,9 +157,11 @@ def bootstrap_project(
         state_path,
         loop_readme,
         loop_agents,
+        project_agents,
         catalog_path,
         hypo_path,
         post_1_path,
+        content_path,
     ]
 
     if dry_run:
@@ -199,6 +207,20 @@ def bootstrap_project(
             encoding="utf-8",
         )
 
+    if not project_agents.exists():
+        project_agents.write_text(
+            "# Campaign instructions\n\n"
+            "```text\nPolicy → research → draft → visual → approval → publish → register\n```\n\n"
+            "| Scope | Rule |\n|---|---|\n"
+            "| Routing | Load social-campaign; read loop/config.json and existing project/brand facts before drafting. |\n"
+            "| Channels | Use only allowed_channels in loop/config.json; cross-platform work is opt-in. |\n"
+            "| Content | Select exact copy/media in posts/<id>/content.json; use .agents/skills/social-campaign/references/content-gates.md from repository root. |\n"
+            "| Approval | Run preflight; record approve-content only after explicit human approval of the current assets. |\n"
+            "| Publication | Pass --project and --post to facebook_agent; verify configured Page identity. Never retry uncertain submission. |\n"
+            "| Measurement | Read loop/AGENTS.md; register the confirmed URL after publication. |\n",
+            encoding="utf-8",
+        )
+
     if not catalog_path.exists():
         cat = dict(DEFAULT_PRODUCT_CATALOG)
         if marketing_goal:
@@ -211,6 +233,10 @@ def bootstrap_project(
 
     if not post_1_path.exists():
         post_1_path.write_text(DEFAULT_POST_TEMPLATE, encoding="utf-8")
+
+    if not content_path.exists():
+        storage.save(content_path, {"schema_version": 1, "channel": "facebook_page",
+                                    "copy": "facebook-ad.md", "groups": []})
 
     return {
         "status": "initialized",

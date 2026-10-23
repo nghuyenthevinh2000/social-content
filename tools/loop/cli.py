@@ -9,6 +9,7 @@ import sys
 from tools.loop import (
     checkpoints,
     collect,
+    preflight,
     project_init,
     register,
     review,
@@ -21,6 +22,17 @@ def _build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', type=Path, required=True, help='Project root containing its own loop/config.json and registry')
     commands = parser.add_subparsers(dest='command', required=True)
+
+    gate = commands.add_parser('preflight', help='Check content policy offline; never writes or publishes')
+    gate.add_argument('--post', type=int, required=True)
+    gate.add_argument('--stage', choices=preflight.STAGES, default='publish')
+    for command in ('review-research', 'approve-content'):
+        decision = commands.add_parser(command, help='Record an explicit human decision for the current artifact hashes')
+        decision.add_argument('--post', type=int, required=True)
+        decision.add_argument('--reviewer', required=True)
+        decision.add_argument('--approved', action='store_true', help='Human explicitly approved; never self-approve')
+        if command == 'approve-content':
+            decision.add_argument('--visual-reviewed', action='store_true', help='Human inspected the actual PNG, source correspondence and typography')
 
     init = commands.add_parser('init', help='Initialize project-owned configuration/state without overwriting existing files')
     init.add_argument('--page-id', required=True)
@@ -87,6 +99,28 @@ def main(argv=None):
     if args.command != 'init' and not (root / 'loop/config.json').is_file():
         parser.error('Project is not initialized; run --project PATH init --page-id ID first.')
 
+    if args.command == 'preflight':
+        result = preflight.check(root, args.post, args.stage)
+        result.pop('copy_text', None)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        if not result['ok']:
+            sys.exit(2)
+        return
+    if args.command in ('review-research', 'approve-content'):
+        try:
+            with (root / 'loop/.engine.lock').open('a') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                result = preflight.record_decision(
+                    root, args.post, kind='research' if args.command == 'review-research' else 'content',
+                    reviewer=args.reviewer, approved=args.approved,
+                    visual_reviewed=getattr(args, 'visual_reviewed', False))
+        except (ValueError, OSError) as exc:
+            print(json.dumps({'ok': False, 'errors': [{'code': getattr(exc, 'code', 'invalid_artifact'),
+                                                      'detail': str(exc)}]}, ensure_ascii=False))
+            sys.exit(2)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
+
     if args.command == 'init' and getattr(args, 'dry_run', False):
         print(json.dumps(project_init.bootstrap_project(
             root, args.page_id, hypotheses_file=args.hypotheses_file or 'posts/hypothesis.json',
@@ -143,6 +177,10 @@ def main(argv=None):
                         parser.error('Unknown hypothesis post number.')
                 writer.begin('register')
                 result = register.register(state, args.post, args.url, args.published_at)
+                if config.get('content_policy'):
+                    audit = preflight.check(root, args.post, 'publish')
+                    result['registered_content_preflight'] = {
+                        key: audit[key] for key in ('ok', 'fingerprint', 'errors') if key in audit}
                 storage.save(state_path, state)
                 writer.finish(
                     'register', state='waiting', stage_state='completed',

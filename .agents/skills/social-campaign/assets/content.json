@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "channel": "facebook_page",
+  "copy": "facebook-ad.md",
+  "visual": {
+    "source": "visual.svg",
+    "image": "visual.png"
+  },
+  "groups": []
+}

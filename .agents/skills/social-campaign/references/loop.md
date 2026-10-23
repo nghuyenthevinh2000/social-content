@@ -1,14 +1,15 @@
 # Loop Lifecycle Specification and Execution Reference
 
 ```text
-register → checkpoints (24h/7d due) → collect → normalize → eligibility → compare → review → approval
+content gates → approved publish → register → checkpoints (24h/7d due) → collect → normalize → eligibility → compare → review → approval
 ```
 
 ## Stage Architecture
 
 | Stage | Responsible Module | Input Data | Output Artifact / Transition | Invariant |
 |---|---|---|---|---|
-| 0. Scaffolding | `tools.loop.project_init` | Project path `local/<slug>`, page ID from `profiles.json` | `loop/`, `product-marketing.json`, `posts/hypothesis.json`, `sources/` | One-time non-destructive init; requires explicit user interview before populating. |
+| Pre-publication | `tools.loop.preflight` | Project policy, evidence, copy, SVG/PNG and explicit human decisions | Hash-bound research/content receipts | See [content gates](content-gates.md); shared Facebook publishing guard runs before submission. Metrics review approval is not publication approval. |
+| 0. Scaffolding | `tools.loop.project_init` | Project path `local/<slug>`, page ID from `profiles.json` | Root `AGENTS.md`, explicit channel/content policy, `loop/`, catalog/hypothesis templates, `posts/1/content.json`, `sources/` | Non-destructive init. New-project facts require confirmation; existing projects read recorded context first. |
 | 1. Registration | `tools.loop.register` | Confirmed URL, post number, publish ISO timestamp | Append entry to `loop/publications.json`; arm 24h & 7d placement timers | Never publishes or touches browser; records canonical URL only. |
 | 2. Checkpoints | `tools.loop.checkpoints` | Verified publication timestamps and age against system time | Frozen 24h & 7d due measurement worklist | Planned posts never count as published; actual age strictly retained. |
 | 3. Collection | `tools.loop.collect` | Frozen due worklist | Raw receipts in `sources/post-metrics/captures/` and `exports/` | Browser Insights collection (zero cost) or authenticated CSV exports. |
@@ -39,7 +40,7 @@ register → checkpoints (24h/7d due) → collect → normalize → eligibility 
 
 | Artifact / Path | Format / Schema | Primary Reader | Authoritative Writer | Content Description |
 |---|---|---|---|---|
-| `loop/config.json` | JSON Schema v2 | `tools.loop.storage` | `tools.loop.project_init` | Holds page ID, hypothesis file path (`posts/hypothesis.json`), and brand manifest link. |
+| `loop/config.json` | Project JSON configuration | `tools.loop.storage`, `tools.loop.preflight` | Project owner / `tools.loop.project_init` | Page ID, hypotheses, optional brand manifest; explicit `allowed_channels` and `content_policy` for guarded authoring/publication. Legacy metrics configurations remain readable. |
 | `loop/publications.json` | JSON Schema v2 | `tools.loop.workflow` | `tools.loop.register` | Registered canonical publication records, permalinks, timestamps, and placement arrays. |
 | `loop/status.json` | JSON Schema v3 | Orchestrator CLI | `tools.loop.workflow` | Non-authoritative runtime projection of active run stage, errors, and next actions. |
 | `loop/.engine.lock` | OS File Lock | All loop stages | `tools.loop.storage` | Atomic mutual exclusion lock preventing concurrent stage execution on the same project. |

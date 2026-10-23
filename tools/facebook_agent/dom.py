@@ -176,6 +176,11 @@ def post_confirmation(page):
     return page.get_by_role('status').or_(page.get_by_role('alert')).filter(has_text=SUCCESS)
 
 
+def confirmation_links(confirmation):
+    """Observed links inside one fresh success status; never profile/feed links."""
+    return confirmation.get_by_role('link')
+
+
 # Multi-group sharing (composer "Post settings"/"Reel settings" step)
 SHARE_TO_GROUPS = re.compile(r'^Share to groups', re.I)
 GROUPS_PICKER_TEXT = re.compile(r'Post in up to\s+(\d+)\s+groups', re.I)

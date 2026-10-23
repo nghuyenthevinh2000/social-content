@@ -1,5 +1,18 @@
 # Repository instructions
 
+## Routing
+
+| Trigger | Required behavior |
+|---|---|
+| Social project/brand content, posts, captions, drafting, posting, publishing, campaigns or distribution | Load `social-campaign` before authoring, including single-platform requests. Resolve the existing `local/<slug>/` project; explicitly read its root `AGENTS.md`, `loop/config.json`, loop safeguards, hypothesis and brand references. |
+| Channel selection | Use only explicitly configured `allowed_channels`; never default to cross-platform work or copy prior drafts. Ask if project identity or channel policy is ambiguous. |
+| Progression and publication | Follow the skill's content gates; do not self-approve. Use project-scoped publishing with current hash-bound approval and exact Page identity. A draft request is not publication approval. |
+| Campaign execution | Invoke public repository CLIs directly. Use `post --text-file` for saved copy and public `preflight` for validation. No inline Python/subprocess wrappers, private-helper probes, or raw CDP/Playwright/JS workarounds. Inspect `--help`; missing capabilities require stopping and reporting or an explicitly requested, tested repository-tool change. This restriction governs campaign operations, not repository development/tests. |
+
+```text
+Request → social-campaign → policy → approval → publish
+```
+
 ## Structured writing
 
 Before drafting or substantially revising guides, plans, explanations, recommendations,

@@ -1,107 +1,75 @@
 ---
-name: social-platform-orchestrator
-description: "Orchestrate social campaigns across Twitter/X, Facebook, and LinkedIn, Reddit audience discovery, and hypothesis-driven metrics cycles via tools/loop."
+name: Social Campaign
+description: "Social media, social projects, social posts, content creation, drafting, captions, publishing, posting, campaigns, scheduling, distribution, engagement, audience research, performance metrics. Use for project or brand social content on Facebook, LinkedIn, Twitter/X, and Reddit research; single-platform and cross-platform workflows."
 ---
 
-# Social Platform Orchestrator
+# Social Campaign
 
 ```text
-Loop Init -> Subagent Drafts -> Approval -> Sequential Publish -> Register -> Checkpoints -> Cycle -> Review -> Approval
+Resolve project → Load policy → Research → Draft → Visual → Preflight → Human approval → Publish → Register → Measure
 ```
 
-## Tool Inventory
+## Mandatory Project Routing
 
-| Tool Directory | Responsibility | Primary Command(s) | Operational Invariant |
-|---|---|---|---|
-| `tools/loop/` | Project campaign scaffolding, publication tracking, checkpoint scheduling (24h/7d), metrics normalization, creative comparison, and review workflows | `python -m tools.loop --project local/<SLUG> <CMD>` | Authoritative campaign engine; requires `--project local/<SLUG>`; see [`references/loop.md`](references/loop.md) for full stage spec. |
-| `tools/common/` | Dedicated Chrome browser launch, CDP connectivity diagnostics, and connection cleanup | `uv run python -m tools.common [start-browser\|doctor]` | Does not authenticate or navigate platforms; manages shared CDP endpoint (`9222`). |
-| `tools/twitter_agent/` | Terminal-operated X DOM automation for search, thread inspection, reply queuing, and approved single-image posting | `uv run python -m tools.twitter_agent <CMD>`<br/>`uv run python -m tools.twitter_agent.publish` | Publishing requires explicit `--approved` flag and exactly 1 image; strictly respects rate quotas. |
-| `tools/facebook_agent/` | Direct personal profile DOM posting for text with optional single image | `uv run python -m tools.facebook_agent post --text <T> [--image <I>]` | Personal profile (`/me`) only; invocation triggers immediate submission without prompt. |
-| `tools/linkedin_agent/` | Direct personal profile posting for text with 1 to 20 ordered images | `uv run python -m tools.linkedin_agent post --text <T> --image <I>...` | Personal profile only; requires at least 1 image (max 20); text-only posts are rejected. |
-| `tools/reddit-research-mcp/` | Semantic vector search across 20,000+ communities for niche discovery | `uv run --directory tools/reddit-research-mcp python3 -c "..."` | Discover high-affinity communities without Reddit account credentials. |
-| `tools/reddit_agent/` | Chronological discussion pagination and post extraction into local JSON | `python3 tools/reddit_agent/research.py --subreddit <S> --months <M>` | Zero-credential research CLI; extracts authentic audience phrases, pain points, and hooks. |
+| Step | Required behavior |
+|---|---|
+| Resolve | Map the requested project/brand to its existing `local/<slug>/` directory. Ask only if missing or ambiguous; never initialize an existing project again. |
+| Load | Explicitly read project `AGENTS.md`, `loop/config.json`, `loop/AGENTS.md`, product facts, selected hypothesis, brand manifest and guidelines. Do not rely on automatic nested instruction discovery. |
+| Select | Treat `allowed_channels` as authoritative. Never infer channels from old drafts, a Page ID alone, or this skill's tool inventory. Missing channel policy requires clarification before drafting. |
+| Research | Read [content gates](references/content-gates.md). Meet configured evidence requirements and obtain research review before drafting. Missing evidence blocks progression; never invent citations or cases. |
+| Compose | Load `story-engine` before writing copy. Apply project voice/style references; draft only requested, configured channels. Existing facts take precedence over scaffold placeholders. |
+| Visual | Load `infographic` or the appropriate visual skill only when needed. Read brand tokens first; inspect the actual rendered image. Do not substitute generic themes. |
+| Validate | Run `python -m tools.loop --project <PROJECT> preflight --post <ID> --stage <STAGE>`. Stages: `research`, `draft`, `visual`, `publish`. Fix failures before continuing. |
+| Approve | Present exact copy, media, destinations and limitations. Record a named human decision only after explicit confirmation. Successful preflight or a draft request does not authorize publication. |
+| Publish | Invoke the public platform CLI directly; use `--text-file` for saved Facebook copy. Verify exact approved assets, project scope and active identity. Browser actions are sequential. Never retry uncertain submission automatically. |
+| Measure | Register the confirmed URL, then follow [loop lifecycle](references/loop.md). Review-proposal approval is separate from content/publication approval. |
 
-## Configuration and Browser Control
+## Tools and Boundaries
 
-| Config Parameter | Env Variable / CLI Option | Default | Enforcement Rule |
-|---|---|---|---|
-| Profile Registry | `tools/common/local/profiles.json` | Run `tools.common profiles` | Inspect registry to map campaign to dedicated profile name, data dir, port, and page_id. |
-| CDP Endpoint | `CDP_ENDPOINT` / `--cdp` | `http://127.0.0.1:<PORT>` | Derived from profile's configured port; platform tools must receive matching `--cdp`. |
-| Chrome User Data | `CHROME_USER_DATA_DIR` / `--data-dir` | Profile `data_dir` in `profiles.json` | Use profile-specific directory (e.g. `/Users/thevinhnguyen/chrome-block-lc`). |
-| Launch Command | `uv run python -m tools.common start-browser --backend cdp -p <PORT> -d <DIR>` | Exit 0 (`ok: true`) | Reuses responsive browser without restart; never kill responsive processes. |
-| Health Diagnostic | `uv run python -m tools.common doctor --endpoint http://127.0.0.1:<PORT>` | Timeout 30000ms | Run after launch; retry transient errors max 3 times with 2-3s delay. |
-| Concurrency Lock | Strict sequential execution | No parallel CDP actions | Live browser commands across all platforms must run sequentially to avoid state corruption. |
-| Campaign Root | Mandatory directory | `local/<project-slug>/` | All social campaigns must reside in `local/`; never initialize or move campaigns into `projects/`. |
-| Strict Tooling | Existing repository tools only | No ad-hoc scripts | Prohibits writing one-off Python scripts, ad-hoc automation, or raw DOM snippets. |
+| Tool | Invocation | Invariant |
+|---|---|---|
+| Campaign loop | `python -m tools.loop --project local/<SLUG> <COMMAND>` | Project-owned state; [lifecycle reference](references/loop.md). No publishing. |
+| Browser profiles | `uv run python -m tools.common profiles` | Read profile registry to resolve Page, data directory and port. |
+| Browser launch | `uv run python -m tools.common start-browser --backend cdp -p <PORT> -d <DIR>` | Reuse responsive browsers; never kill them. |
+| Browser health | `uv run python -m tools.common doctor --endpoint <ENDPOINT>` | Retry transient errors at most three times with 2–3s delay. |
+| Facebook | `uv run python -m tools.facebook_agent --cdp <ENDPOINT> post --project <PROJECT> --post <ID> --page-id <PAGE_ID> --text-file <COPY_FILE> [--image <PNG>]` | UTF-8 file input avoids quoting/truncation workarounds. Personal profile or explicitly identified active Page; project scope requires current approval. |
+| LinkedIn | `uv run python -m tools.linkedin_agent post --text <TEXT> --image <IMAGE>` | Personal profile; 1–20 PNG/JPEG images, max 10MB each; nonblank text up to 3,000 characters. Only configured/requested channels. |
+| Twitter/X | `uv run python -m tools.twitter_agent.publish --account <ACCOUNT> --text <TEXT> --image <IMAGE> --approved` | Exactly one image; 280-character standard posts; 6/hr, 20/day, 120s intervals, 3/30m burst. Only configured/requested channels. |
+| Twitter replies | `uv run python -m tools.twitter_agent <search\|thread\|reply>` | Inspect before drafting; explicit human approval before `reply submit`. |
+| Reddit discovery | `tools/reddit-research-mcp/` | Semantic community discovery; no account credentials. |
+| Reddit extraction | `python3 tools/reddit_agent/research.py --subreddit <NAME> --months 6 --output <DIR>` | Research audience language and pain points; no Reddit publishing. |
 
-## Multi-Agent Topology
+| Operating constraint | Rule |
+|---|---|
+| Project location | Campaigns live under `local/`, never `projects/`. |
+| Tooling | During campaign execution use public repository CLIs, never inline Python/subprocess wrappers, private-helper probes or raw CDP/Playwright/JS. Repository implementation/tests are separate from campaign execution. |
+| Capability gaps | Inspect the relevant CLI `--help` and reference first. If capability is absent, stop and report it; extend repository tooling with tests only when requested. A missing flag, URL or failed gate never authorizes custom automation. |
+| Saved copy | Prefer `post --text-file <COPY_FILE>` over shell quoting. Mutually exclusive with `--text`; UTF-8, LF-normalized, terminal newlines excluded, internal whitespace preserved. |
+| Missing permalink | A confirmed post may still have `permalink: null`. Never repost or scrape with custom code. Use `content-library --page-id <PAGE_ID> --output <NEW_JSON>` on the same CDP endpoint, then verify exact content, author, time and original placement. Ambiguity requires manual inspection; never select solely by recency or fabricate a URL. |
+| Profile isolation | Resolve `tools/common/local/profiles.json`; pass matching CDP endpoint to platform commands. |
+| Facebook media | Text with optional single image or video, never both. Policy-validated visual workflow currently accepts SVG source plus PNG; do not bypass it with video. |
+| Facebook identity | Supply expected Page ID; browser must already be switched into that Page. Run Facebook doctor with the same Page ID. |
+| Sequential publishing | No concurrent CDP actions. A requested multi-platform campaign still publishes one approved destination at a time. |
+| Delegation | Run directly by default. Delegate only when explicitly requested; every worker inherits project policy. Draft workers never access the browser; browser workers remain sequential. |
+| Brand | Read `brand/brand.yaml`, guidelines and configured tokens. Reject generic dark/neon themes when project identity differs. Human inspection covers typography and rendered legibility. |
 
-| Agent Role | Specialty | CLI Target | Responsibility Boundary |
-|---|---|---|---|
-| Orchestrator (Parent) | Campaign supervisor & brand coordinator | `tools.loop`, `tools.common` | Scaffolds campaigns, coordinates branding with visual tools, sequences browser posting, audits loop. |
-| Twitter Subagent | X mechanics & short-form hooks | `tools/twitter_agent/` | Formats copy <= 280 chars, selects single image, respects quotas (6/hr, 20/day). |
-| Facebook Subagent | Authentic narrative copy | `tools/facebook_agent/` | Formats narrative copy, validates single image boundary, personal profile target. |
-| LinkedIn Subagent | Professional insight & framework carousels | `tools/linkedin_agent/` | Formats copy <= 3,000 chars, enforces mandatory 1–20 image requirement. |
-| Campaign Loop Operator | Metric analysis & iteration review | `tools/loop/` | Audits due checkpoints, runs cycles, prepares review bundles, presents iteration proposals. |
+## Workflow Selection
 
-## Platform Validation Matrix
+| Request | Procedure |
+|---|---|
+| Existing-project post | Resolve → load → research gate → story/copy → visual → preflight → review. Never create unsolicited channel variants. |
+| New campaign | Preview `init --page-id <ID> --dry-run`, then initialize only with authorization. Interview for missing goal, catalog, differentiation, personas and sales facts; never invent them. Set explicit channel and content policy. |
+| Publish approved content | Follow [content gates](references/content-gates.md), verify browser/profile, then execute only approved destinations. Commands submit without another prompt. |
+| Register | Use an observed permalink from the fresh confirmation, or verify a read-only Content Library/manual result. Then `python -m tools.loop --project <PROJECT> register --post <ID> --url <URL> --published-at <ISO_TS>`. Never guess URL or publish time. |
+| Measure | `status`, `due`, `collect-insights`, `cycle`, `compare --run <ID>`; preserve evidence and actual observation ages. |
+| Iterate | `prepare-review`, `review`, then explicit `approve-review`; this approves hypotheses/proposals, not publication. |
 
-| Constraint | Twitter / X (`tools/twitter_agent`) | Facebook (`tools/facebook_agent`) | LinkedIn (`tools/linkedin_agent`) |
-|---|---|---|---|
-| Target Destination | Configured handle (`--account`) | Personal profile only (`/me`) | Personal profile only |
-| Text Requirement | Required; <= 280 chars (unless long-form) | Non-empty text required | Required; non-blank; max 3,000 characters |
-| Image Requirement | Exactly 1 photo required for `publish.py` | Optional: 0 or 1 image (PNG, JPEG, GIF, WebP) | Mandatory: 1 to 20 images (PNG or JPEG only, max 10MB each) |
-| Text-Only Capability | Supported via reply CLI; unsupported in `publish.py` | Supported | Unsupported (fails validation without image) |
-| Multi-Image Capability | Unsupported (max 1 photo) | Unsupported (max 1 image) | Supported (1 to 20 ordered images) |
-| Approval Gate | Requires explicit `--approved` flag | Immediate publish on `post` invocation | Immediate publish on `post` invocation |
-| Rate Pacing | 6/hr, 20/day, 120s intervals, 3/30m burst | Manual pacing recommended | Manual pacing recommended |
+## Error Recovery
 
-## Standard Operating Workflows
-
-| Workflow | Phase / Step | CLI Invocation | Validation & Handoff |
-|---|---|---|---|
-| 0. Campaign Scaffolding | Pre-flight Dry-Run | `python -m tools.loop --project local/<SLUG> init --page-id <PAGE_ID> --dry-run` | Confirms planned directory creation and Schema v2 state. Full lifecycle: [`references/loop.md`](references/loop.md). |
-| 0. Campaign Scaffolding | Execution | `python -m tools.loop --project local/<SLUG> init --page-id <PAGE_ID>` | Creates `loop/`, `product-marketing.json`, `posts/hypothesis.json`, and metrics dirs. |
-| 0. Campaign Scaffolding | Discovery Interview Gate | Interview user across: 1. Goal, 2. Catalog & Unique, 3. Personas, 4. Sales/Pricing | **Strict Rule:** Never invent or guess catalog or customer facts; populate `product-marketing.json` only from user answers. |
-| 1. Cross-Platform Broadcast | Pre-Flight Health | `uv run python -m tools.common start-browser --backend cdp -p <PORT> -d <DIR>`<br/>`uv run python -m tools.common doctor --endpoint http://127.0.0.1:<PORT>`<br/>`uv run python -m tools.facebook_agent --cdp http://127.0.0.1:<PORT> doctor` | Resolve profile in `profiles.json`; verify port and session readiness sequentially before posting. |
-| 1. Cross-Platform Broadcast | Parallel Drafting | Dispatch subagents with source content and platform constraints | Collect adapted texts and image paths; do not invoke browser. |
-| 1. Cross-Platform Broadcast | User Approval Gate | Present unified review markdown with text, media paths, and platforms | Block execution until user gives explicit confirmation. |
-| 1. Cross-Platform Broadcast | Step A: Facebook Post | `uv run python -m tools.facebook_agent post --text "<TEXT>" [--image "<PATH>"]` | Verify exit code 0 and JSON `{"ok": true}` before starting LinkedIn. |
-| 1. Cross-Platform Broadcast | Step B: LinkedIn Post | `uv run python -m tools.linkedin_agent post --text "<TEXT>" --image "<PATH>"` | Verify exit code 0 and JSON `{"ok": true}` before starting Twitter. |
-| 1. Cross-Platform Broadcast | Step C: Twitter Post | `uv run python -m tools.twitter_agent.publish --account <ACC> --text "<TEXT>" --image "<PATH>" --approved` | Verify exit code 0 and JSON `{"ok": true}`. |
-| 1. Cross-Platform Broadcast | Step D: Register Post | `python -m tools.loop --project local/<SLUG> register --post <ID> --url "<URL>" --published-at "<ISO_TS>"` | Adds entry to `loop/publications.json` and arms 24h/7d checkpoints. |
-| 2. Twitter Engagement | Search & Inspect | `uv run python -m tools.twitter_agent search "<QUERY>" --limit 10`<br/>`uv run python -m tools.twitter_agent thread <TWEET_ID>` | Identify high-signal conversation targets within time window. |
-| 2. Twitter Engagement | Draft & Submit Reply | `uv run python -m tools.twitter_agent reply target <TWEET_ID>`<br/>`uv run python -m tools.twitter_agent reply draft <ID> --text "<TEXT>"`<br/>`uv run python -m tools.twitter_agent reply submit <ID>` | Draft requires human approval before invoking `reply submit`. |
-| 3. Reddit Research | Niche Discovery | `uv run --directory tools/reddit-research-mcp python3 -c "import asyncio; from src.tools.discover import discover_subreddits; print(asyncio.run(discover_subreddits(query='<Q>', limit=5)))"` | Rank candidate communities by subscriber count and match tier. |
-| 3. Reddit Research | Discussion Extraction | `python3 tools/reddit_agent/research.py --subreddit <NAME_OR_URL> --months 6 --output <DIR>` | Export JSON discussions to extract authentic vocabulary and hooks. |
-| 4. Loop Measurement | Status & Due Audit | `python -m tools.loop --project local/<SLUG> status`<br/>`python -m tools.loop --project local/<SLUG> due` | Inspect pipeline state and list mature 24h/7d windows. Stage reference: [`references/loop.md`](references/loop.md). |
-| 4. Loop Measurement | Metric Collection | `python -m tools.loop --project local/<SLUG> collect-insights`<br/>`python -m tools.loop --project local/<SLUG> cycle` | Browser captures Insights dashboards; runs normalize and eligibility stages. |
-| 4. Loop Measurement | Creative Comparison | `python -m tools.loop --project local/<SLUG> compare --run <RUN_ID>` | Generates creative matrix, outlier flags, and exclusion diagnostics. |
-| 4. Loop Measurement | Strategic Review | `python -m tools.loop --project local/<SLUG> prepare-review --run <RUN_ID>`<br/>`python -m tools.loop --project local/<SLUG> review --run <RUN_ID> --file <REVIEW.json>` | Packages observations and test suggestions into structured review log. |
-| 4. Loop Measurement | Human Approval Gate | `python -m tools.loop --project local/<SLUG> approve-review --run <RUN_ID> --proposals <IDS>` | Records approval; unlocks formulation of next post hypothesis in `posts/`. |
-
-## Error Recovery Protocol
-
-| Code | Status | Meaning | Recovery Action |
-|---|---|---|---|
-| 0 | `Success` | Post confirmed or diagnostic passed | Continue to next scheduled pipeline step. |
-| 1 | `Internal Error` | Unhandled exception or runtime crash | Check stderr logs and verify browser state before retry. |
-| 2 | `Invalid Input` | Parameter parsing, length limit, or bad image format | Fix CLI parameters; do not touch browser or repeat same arguments. |
-| 3 | `Browser / Auth Error` | CDP connection lost, unauthenticated, or challenge | Ask user to resolve manual login/challenge; verify endpoint and restart browser. |
-| 4 | `Uncertain Submission` | Submit clicked but confirmation not verified | **NEVER RETRY AUTOMATICALLY.** Preserve browser tab and request manual inspection. |
-
-## Subagent Dispatching Rules
-
-| Dispatch Mode | Allowed Operations | Forbidden Operations | Expected Output |
-|---|---|---|---|
-| Drafting Dispatch | Parallel execution; content adaptation; format checks | No Chrome launching; no CDP connections; no posting | Exact text, ordered media paths, character counts, validation status. |
-| Publishing Dispatch | Strict sequential execution; one platform worker at a time | No concurrent browser workers; no automatic retry on code 4 | Command exit code, JSON response payload, canonical published URL. |
-| Measurement Dispatch | Checkpoint auditing (`due`), cycle execution, review drafting | No automatic publication; no unapproved hypothesis promotion | Stage run ID, comparison summary, structured review proposals. |
-
-## Brand and Visual Asset Coordination
-
-| Orchestration Stage | Downstream Tool | Responsibility & Operating Protocol | Invariant Enforcement |
-|---|---|---|---|
-| 1. Token Ingestion | `branding` skill / manifest | Read `brand/brand.yaml` and `brand/guidelines.md` for exact 60-30-10 palette, typography, and SVG marks. | Prohibits guessing or assuming default dark/crypto aesthetics. |
-| 2. Visual Injection | `infographic` skill | Inject extracted CSS tokens (`--bg-page`, `--text-hero`, `--accent`) into dimensioned layout wireframe. | Prohibits selecting generic library themes when project brand exists. |
-| 3. Pre-Publish Audit | Orchestrator validation | Inspect rendered PNG against master palette before presenting to user or registering into loop. | Rejects off-brand colors and typography before user approval gate. |
+| Exit | Meaning | Response |
+|---|---|---|
+| 0 | Confirmed success | Verify returned payload before proceeding. |
+| 1 | Internal error | Inspect state and logs before retry; determine whether any external action occurred. |
+| 2 | Invalid content, arguments or policy gate | Repair input/evidence/approval before browser activity. |
+| 3 | Browser, authentication or identity problem | Ask user to resolve login/challenge/Page selection; do not bypass. |
+| 4 | Uncertain submission | Never retry automatically. Preserve tab and request manual inspection. |

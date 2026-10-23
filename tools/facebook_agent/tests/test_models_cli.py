@@ -192,6 +192,37 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result['error']['code'], 'invalid_content')
         browser.assert_not_called()
 
+    def test_text_file_preserves_unicode_quotes_and_literal_shell_text(self):
+        text = '  Tư vấn "RWA" — dòng 1\nDòng 2: \'trích dẫn\' $(touch NEVER_RUN) `literal` $HOME  '
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'approved copy.md'
+            path.write_bytes((text + '\n\n').replace('\n', '\r\n').encode('utf-8'))
+            with patch('tools.facebook_agent.cli.Browser'), patch(
+                    'tools.facebook_agent.cli.publish', return_value={'status': 'confirmed'}) as post:
+                code, _ = self.invoke(['post', '--text-file', str(path)])
+        self.assertEqual(code, 0)
+        self.assertEqual(post.call_args.args[1], text)
+
+    def test_text_input_is_required_and_mutually_exclusive(self):
+        for argv in (['post'], ['post', '--text', 'Hi', '--text-file', 'copy.md']):
+            with self.subTest(argv=argv), patch('tools.facebook_agent.cli.Browser') as browser:
+                code, _ = self.invoke(argv)
+            self.assertEqual(code, 2)
+            browser.assert_not_called()
+
+    def test_invalid_text_file_never_opens_browser(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'copy.md'
+            for value in (None, b'\xff\xfe', b'\n\n', b'\0invalid', b'a' * 63207):
+                with self.subTest(value=str(value)[:20]):
+                    if value is not None:
+                        path.write_bytes(value)
+                    with patch('tools.facebook_agent.cli.Browser') as browser:
+                        code, data = self.invoke(['post', '--text-file', str(path)])
+                    self.assertEqual(code, 2)
+                    self.assertEqual(data['error']['code'], 'invalid_content')
+                    browser.assert_not_called()
+
     def test_invalid_timeout(self):
         code, result = self.invoke(['--timeout-ms', '0', 'doctor'])
         self.assertEqual(code, 2)

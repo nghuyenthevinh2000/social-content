@@ -12,7 +12,7 @@ load_environment(include_repository=True)
 from .browser import Browser
 from .messaging import run_plan
 from .models import (
-    AgentError, load_group_names, load_message_plan, validate_content, validate_group_names, validate_video)
+    AgentError, load_group_names, load_message_plan, load_post_text, validate_content, validate_group_names, validate_video)
 from .pacing import MessagePacer
 from .posting import inspect_profile, publish
 
@@ -63,11 +63,15 @@ def build_parser():
     follow.add_argument('--approved', action='store_true', help='Authorize one Follow click; never unfollows')
     follow.add_argument('--output', required=True, help='New follow audit JSON file')
     post = commands.add_parser('post', help='Publish supplied approved content directly, without prompting')
-    post.add_argument('--text', required=True, help='Exact approved post text')
+    copy = post.add_mutually_exclusive_group(required=True)
+    copy.add_argument('--text', help='Exact approved post text')
+    copy.add_argument('--text-file', type=Path, help='UTF-8 approved copy file; terminal newlines excluded, no shell interpolation')
     post.add_argument('--image', help='Optional local PNG, JPEG, GIF, or WebP image')
     post.add_argument('--video', help='Optional local MP4/MOV/WebM/etc. video (mutually exclusive with --image)')
     post.add_argument('--page-name', help='Exact name of the already-active Fanpage (default: personal profile only)')
     post.add_argument('--page-id', help='Expected active Page ID from its profile.php?id= URL')
+    post.add_argument('--project', type=Path, help='Campaign root; required for policy-managed Pages')
+    post.add_argument('--post', type=int, help='Campaign post ID with current content approval')
     post.add_argument('--group', action='append', dest='groups', default=None,
                       help='Exact group name to also share the post to (repeatable, max 9)')
     post.add_argument('--groups-file', help="Path to a JSON array of group names to also share to (max 9)")
@@ -137,11 +141,15 @@ def main(argv=None) -> int:
         if args.command == 'post':
             if args.image and args.video:
                 raise AgentError('invalid_arguments', 'Provide either --image or --video, not both.')
-            text, image = validate_content(args.text, args.image)
+            supplied_text = load_post_text(args.text_file) if args.text_file is not None else args.text
+            text, image = validate_content(supplied_text, args.image)
             video = validate_video(args.video)
             from_file = load_group_names(args.groups_file) if args.groups_file else []
             combined = (args.groups or []) + from_file
             groups = validate_group_names(combined) if combined else None
+            from .posting import check_campaign
+            page_id = check_campaign(project=args.project, post=args.post, page_id=page_id,
+                                     text=text, image=image, video=video, groups=groups)
         elif args.command == 'message':
             recipients = load_message_plan(args.plan)
             pacer = _build_pacer(args)
@@ -173,7 +181,8 @@ def main(argv=None) -> int:
                 # Keep the visible tab for both successful posts and manual recovery.
                 browser.keep_page = True
                 data = publish(browser.page, text, image=image, video=video, timeout_ms=timeout_ms,
-                               page_name=page_name, page_id=page_id, groups=groups)
+                               page_name=page_name, page_id=page_id, groups=groups,
+                               project=args.project, post=args.post)
             else:
                 # Keep the visible tab so any uncertain send can be inspected.
                 browser.keep_page = True
@@ -186,7 +195,7 @@ def main(argv=None) -> int:
         return exc.code
     except AgentError as exc:
         emit_error(exc.code, exc.message, exc.human_action_required)
-        return 2 if exc.code in ('invalid_arguments', 'invalid_content', 'invalid_image', 'invalid_video', 'invalid_plan', 'invalid_groups') else 3
+        return 2 if exc.code in ('invalid_arguments', 'invalid_content', 'invalid_image', 'invalid_video', 'invalid_plan', 'invalid_groups', 'content_policy') else 3
     except Exception as exc:
         emit_error('internal_error', str(exc), True)
         return 1

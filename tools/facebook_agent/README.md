@@ -1,5 +1,22 @@
 # Facebook profile and Fanpage agent
 
+## Direct campaign execution
+
+| Need | Public interface / contract |
+|---|---|
+| Saved multiline copy | `uv run python -m tools.facebook_agent --cdp <ENDPOINT> post --project <PROJECT> --post <ID> --page-id <PAGE_ID> --text-file <COPY_FILE> --image <PNG>` after explicit approval. No inline subprocess wrapper needed. |
+| Text input | Exactly one of `--text` or `--text-file`. UTF-8 files normalize line endings and omit terminal newlines, matching preflight. Internal whitespace, Vietnamese characters, quotes and shell metacharacters remain literal. Missing/unreadable/invalid/empty/oversized files fail before browser connection. Direct `--text` behavior is unchanged. |
+| Returned URL | `permalink` is an unambiguous supported Facebook post link observed inside fresh success confirmations, otherwise null. Never inferred from feed order; tracking parameters removed. Offline fixtures cover this; live UI may not expose a link. |
+| Confirmed without URL | Publication stays `confirmed` (exit 0), with `registration_status: needs_permalink`. Never republish just because URL discovery failed. Uncertain submission remains exit 4. |
+| Read-only recovery | `uv run python -m tools.facebook_agent --cdp <ENDPOINT> content-library --page-id <PAGE_ID> --output <NEW_JSON>`. Verify the exact original post, author, copy and publish time before registration. No automatic newest-row selection; an Insights link is not a canonical post URL. Personal profiles without Page library access require manual inspection. |
+| Validation | `python -m tools.loop --project <PROJECT> preflight --post <ID> --stage visual`. Do not import private validators to bypass prerequisites. |
+| Capability gap | Inspect public `--help`; if unsupported, stop/report or make an explicitly requested, tested repository-tool change. During operations never write custom CDP/JS/browser scripts. |
+
+```text
+Approved copy file → public CLI → confirmed + observed URL? → register
+                                                   no → read-only recovery / manual verification
+```
+
 ## Read-only Page Insights
 
 | Action | Command / behavior |

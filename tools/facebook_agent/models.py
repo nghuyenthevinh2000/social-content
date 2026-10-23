@@ -16,6 +16,14 @@ NON_PROFILE_PATHS = {
 }
 
 
+def load_post_text(path: str | Path) -> str:
+    """Read UTF-8 copy without shell interpolation; match preflight newline rules."""
+    try:
+        return Path(path).expanduser().read_text(encoding='utf-8').rstrip('\n')
+    except (OSError, UnicodeError) as exc:
+        raise AgentError('invalid_content', f'Cannot read UTF-8 copy file: {path}') from exc
+
+
 def validate_content(text: str, image: str | Path | None = None) -> tuple[str, Path | None]:
     if not isinstance(text, str) or not text.strip() or len(text) > 63206 or '\x00' in text:
         raise AgentError('invalid_content', 'Provide nonempty text up to 63,206 characters without NUL bytes.')

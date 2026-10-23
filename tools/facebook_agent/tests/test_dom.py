@@ -4,11 +4,14 @@ import base64
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from playwright.sync_api import sync_playwright
 
 from tools.facebook_agent.models import AgentError
 from tools.facebook_agent.posting import publish, inspect_profile
+from tools.loop import preflight
+from tools.loop.tests.test_preflight import ContentFixture
 
 
 FIXTURE = '''<!doctype html><html><body>
@@ -70,6 +73,120 @@ class DomTests(unittest.TestCase):
         self.assertEqual(result['audience'], 'Friends')
         self.assertEqual(self.page.evaluate('window.clicks'), 1)
         self.assertEqual(self.page.evaluate('window.submittedText'), 'Hello 👋\nWorld')
+
+    def test_fresh_confirmation_returns_observed_permalink(self):
+        self.html = FIXTURE.replace("toast.textContent='Your post has been shared.';",
+            "toast.innerHTML='Your post has been shared. <a href=\"/alice.example/posts/pfbidNew?ref=toast\">View post</a>';" )
+        result = publish(self.page, 'Hello', timeout_ms=500)
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertEqual(result['permalink'], 'https://www.facebook.com/alice.example/posts/pfbidNew')
+        self.assertEqual(result['permalink_status'], 'observed')
+        self.assertEqual(result['registration_status'], 'ready')
+        self.assertEqual(self.page.evaluate('window.clicks'), 1)
+
+    def test_missing_permalink_does_not_make_confirmed_post_uncertain(self):
+        result = publish(self.page, 'Hello', timeout_ms=500)
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertIsNone(result['permalink'])
+        self.assertEqual(result['registration_status'], 'needs_permalink')
+        self.assertIn('Do not repost', result['next_action'])
+        self.assertEqual(self.page.evaluate('window.clicks'), 1)
+
+    def test_old_toast_and_feed_links_are_never_permalink_fallbacks(self):
+        self.html = FIXTURE.replace('<h1>', '''
+            <div role="status">Your post has been shared.
+              <a href="/alice.example/posts/111">View old post</a></div>
+            <a href="/alice.example/posts/222">Newest feed post</a><h1>''')
+        result = publish(self.page, 'Hello', timeout_ms=500)
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertIsNone(result['permalink'])
+
+    def test_ambiguous_or_external_confirmation_links_are_not_guessed(self):
+        cases = [
+            ('<a href="/alice.example/posts/111">One</a><a href="/alice.example/posts/222">Two</a>', 'ambiguous'),
+            ('<a href="https://evil.test/alice.example/posts/111">View post</a>', 'not_exposed'),
+            ('<a href="/someone.else/posts/111">View post</a>', 'not_exposed'),
+            ('<a href="/professional_dashboard/content/insights/111">Insights</a>', 'not_exposed'),
+        ]
+        for links, expected in cases:
+            with self.subTest(expected=expected):
+                self.html = FIXTURE.replace("toast.textContent='Your post has been shared.';",
+                                          'toast.innerHTML=' + repr('Your post has been shared. ' + links) + ';')
+                result = publish(self.page, 'Hello', timeout_ms=500)
+                self.assertEqual(result['status'], 'confirmed')
+                self.assertIsNone(result['permalink'])
+                self.assertEqual(result['permalink_status'], expected)
+                self.assertEqual(self.page.evaluate('window.clicks'), 1)
+
+    def test_permalink_extraction_error_preserves_confirmation(self):
+        with patch('tools.facebook_agent.posting._confirmation_permalink', side_effect=RuntimeError('Fixture DOM changed')):
+            result = publish(self.page, 'Hello', timeout_ms=500)
+        self.assertEqual(result['status'], 'confirmed')
+        self.assertIsNone(result['permalink'])
+        self.assertEqual(result['permalink_status'], 'unavailable')
+        self.assertEqual(self.page.evaluate('window.clicks'), 1)
+
+    def test_page_permalink_query_preserves_identity_and_rejects_mismatch(self):
+        self.page.unroute('**/*')
+        self.page.route('**/*', lambda route: route.fulfill(
+            body=self.html + "<script>history.replaceState(null, '', '/profile.php?id=123')</script>",
+            content_type='text/html'))
+        for actor, expected in (('123', 'observed'), ('456', 'not_exposed')):
+            with self.subTest(actor=actor):
+                links = f'<a href="/permalink.php?story_fbid=999&amp;id={actor}&amp;ref=toast">View post</a>'
+                self.html = FIXTURE.replace('<h1>', '<button>Manage Page</button><h1>').replace(
+                    "toast.textContent='Your post has been shared.';",
+                    'toast.innerHTML=' + repr('Your post has been shared. ' + links) + ';')
+                result = publish(self.page, 'Hello', page_id='123', timeout_ms=500)
+                self.assertEqual(result['permalink_status'], expected)
+                if actor == '123':
+                    self.assertEqual(result['permalink'], 'https://www.facebook.com/permalink.php?story_fbid=999&id=123')
+                else:
+                    self.assertIsNone(result['permalink'])
+
+    def test_policy_is_rechecked_immediately_before_submit(self):
+        checks = []
+
+        def guard(**kwargs):
+            checks.append(kwargs)
+            if len(checks) == 3:
+                raise AgentError('content_policy', 'Fixture approval became stale.', True)
+            return kwargs.get('page_id')
+
+        with patch('tools.facebook_agent.posting.check_campaign', side_effect=guard):
+            with self.assertRaises(AgentError) as error:
+                publish(self.page, 'Hello', timeout_ms=500)
+        self.assertEqual(error.exception.code, 'content_policy')
+        self.assertEqual(len(checks), 3)
+        self.assertEqual(self.page.evaluate('window.clicks'), 0)
+
+    def test_real_file_change_during_composer_invalidates_approval(self):
+        fixture = ContentFixture()
+        fixture.addCleanup = self.addCleanup
+        fixture.setUp()
+        fixture.config['content_policy'] = {'schema_version': 1}
+        fixture.write('loop/config.json', fixture.config)
+        del fixture.manifest['visual']
+        fixture.write('posts/2/content.json', fixture.manifest)
+        preflight.record_decision(fixture.root, 2, kind='content', reviewer='Fixture human', approved=True)
+        # Make the intercepted HTML an explicitly active Page with an exact ID.
+        self.html = FIXTURE.replace('<h1>', '<button>Manage Page</button><h1>')
+        self.html += "<script>history.replaceState(null, '', '/profile.php?id=123')</script>"
+        # Existing route appends its own history call; preserve the fixture Page URL
+        # through a locally intercepted navigation override.
+        self.page.unroute('**/*')
+        self.page.route('**/*', lambda route: route.fulfill(body=self.html, content_type='text/html'))
+        original_fill = fixture.text
+        with patch('tools.facebook_agent.posting._confirmation') as confirmation:
+            def changed_before_final_check(page):
+                fixture.write('posts/2/facebook-ad.md', original_fill + 'Changed during composer')
+                return page.locator('[role="status"]')
+            confirmation.side_effect = changed_before_final_check
+            with self.assertRaises(AgentError) as error:
+                publish(self.page, fixture.text, project=fixture.root, post=2, page_id='123',
+                        page_name='Alice Example', timeout_ms=500)
+        self.assertEqual(error.exception.code, 'content_policy')
+        self.assertEqual(self.page.evaluate('window.clicks'), 0)
 
     def test_waits_for_delayed_composer_trigger(self):
         self.html = FIXTURE.replace('<button onclick=', '<button id="composer-trigger" hidden onclick=', 1)

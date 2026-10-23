@@ -62,6 +62,11 @@ class ProjectInitTest(unittest.TestCase):
         self.assertTrue((target / 'loop/config.json').exists())
         self.assertTrue((target / 'loop/README.md').exists())
         self.assertTrue((target / 'loop/AGENTS.md').exists())
+        self.assertTrue((target / 'AGENTS.md').exists())
+        self.assertTrue((target / 'posts/1/content.json').exists())
+        config = json.loads((target / 'loop/config.json').read_text())
+        self.assertEqual(config['allowed_channels'], ['facebook_page'])
+        self.assertEqual(config['content_policy']['schema_version'], 1)
         self.assertTrue((target / 'loop/runs').exists())
         self.assertTrue((target / 'sources/post-metrics/exports').exists())
         self.assertTrue((target / 'sources/post-metrics/captures').exists())
@@ -78,11 +83,13 @@ class ProjectInitTest(unittest.TestCase):
         catalog = json.loads(catalog_path.read_text())
         catalog['marketing_goal'] = 'Customized Goal'
         catalog_path.write_text(json.dumps(catalog))
+        (target / 'AGENTS.md').write_text('Customized project rules')
 
         # Re-run
         project_init.bootstrap_project(target, self.page_id)
         reloaded = json.loads(catalog_path.read_text())
         self.assertEqual(reloaded['marketing_goal'], 'Customized Goal')
+        self.assertEqual((target / 'AGENTS.md').read_text(), 'Customized project rules')
 
     def test_conflicting_page_id_fails(self):
         target = self.root / 'conflict-target'

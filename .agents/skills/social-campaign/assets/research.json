@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "statute-1",
+      "type": "primary_statute",
+      "title": "TODO: verified official title",
+      "url": "TODO: official HTTPS URL",
+      "jurisdiction": "TODO",
+      "checked_at": "YYYY-MM-DD",
+      "effective_date": "YYYY-MM-DD",
+      "provisions": ["TODO: exact article and clause"],
+      "analysis": "TODO: applicability and interpretation"
+    },
+    {
+      "id": "case-1",
+      "type": "case_study",
+      "title": "TODO: documented empirical case",
+      "url": "TODO: original case source URL",
+      "jurisdiction": "TODO",
+      "checked_at": "YYYY-MM-DD",
+      "analysis": "TODO: observed facts, outcomes and limits"
+    }
+  ],
+  "claims": [
+    {
+      "claim": "TODO: precise claim used in copy",
+      "source_ids": ["statute-1", "case-1"],
+      "limitations": "TODO: jurisdiction, timing and applicability boundaries"
+    }
+  ]
+}

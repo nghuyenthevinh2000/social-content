@@ -1,8 +1,9 @@
 """Profile/Page navigation, composer validation, and one-click publishing."""
 
 import time
+import re
 from pathlib import Path
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urljoin, urlencode
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
@@ -135,6 +136,44 @@ def _confirmation(page):
     return selectors.visible(dom.post_confirmation(page))
 
 
+def _confirmation_permalink(page, old_count, profile_url):
+    """Read only new success toasts, never guess from the feed's newest post."""
+    urls = set()
+    confirmations = _confirmation(page)
+    owner = urlparse(profile_url)
+    owner_id = parse_qs(owner.query).get('id', [None])[0]
+    for index in range(old_count, confirmations.count()):
+        links = selectors.visible(dom.confirmation_links(confirmations.nth(index)))
+        for link in links.all():
+            parsed = urlparse(urljoin(page.url, link.get_attribute('href') or ''))
+            if (parsed.scheme != 'https' or parsed.hostname not in ('www.facebook.com', 'facebook.com')
+                    or parsed.username or parsed.password or parsed.port not in (None, 443)):
+                continue
+            path = parsed.path.rstrip('/')
+            match = re.fullmatch(r'/([^/]+)/(posts|videos)/([A-Za-z0-9]+)', path)
+            query = parse_qs(parsed.query)
+            if match:
+                actor = match[1]
+                if owner_id and actor.isdecimal() and actor != owner_id:
+                    continue
+                if not owner_id and actor != owner.path.strip('/'):
+                    continue
+                canonical = 'https://www.facebook.com' + path
+            elif re.fullmatch(r'/(reel|videos)/\d+', path):
+                canonical = 'https://www.facebook.com' + path
+            elif (path in ('/permalink.php', '/story.php')
+                  and len(query.get('story_fbid', [])) == len(query.get('id', [])) == 1
+                  and re.fullmatch(r'[A-Za-z0-9]+', query['story_fbid'][0])
+                  and query['id'][0].isascii() and query['id'][0].isdecimal()
+                  and (not owner_id or query['id'][0] == owner_id)):
+                canonical = 'https://www.facebook.com' + path + '?' + urlencode(
+                    {'story_fbid': query['story_fbid'][0], 'id': query['id'][0]})
+            else:
+                continue
+            urls.add(canonical)
+    return (next(iter(urls)), 'observed') if len(urls) == 1 else (None, 'ambiguous' if urls else 'not_exposed')
+
+
 def _groups_limit(picker) -> int:
     match = dom.GROUPS_PICKER_TEXT.search(picker.inner_text() or '')
     if not match:
@@ -211,9 +250,19 @@ def _share_to_groups(page, groups, timeout_ms: int = 15000):
     done.click(timeout=timeout_ms)
 
 
+def check_campaign(**kwargs):
+    """Translate shared policy failures into the publisher's stable error contract."""
+    from tools.loop import preflight
+    try:
+        return preflight.require_publication(**kwargs)
+    except (ValueError, OSError) as exc:
+        raise AgentError('content_policy', str(exc), True) from exc
+
+
 def publish(page, text: str, image: Path | None = None, video: Path | None = None,
             timeout_ms: int = 15000, page_name: str | None = None,
-            page_id: str | None = None, groups: list[str] | None = None) -> dict:
+            page_id: str | None = None, groups: list[str] | None = None,
+            project: Path | None = None, post: int | None = None) -> dict:
     """Publish approved content directly. Never retry a dispatched click.
 
     At most one of `image` or `video` may be supplied. When `groups` is given,
@@ -224,9 +273,15 @@ def publish(page, text: str, image: Path | None = None, video: Path | None = Non
         raise AgentError('invalid_arguments', 'Provide either an image or a video, not both.')
     text, image = validate_content(text, image)
     video = validate_video(video)
+    campaign = dict(project=project, post=post, text=text, image=image, video=video, groups=groups)
+    page_id = check_campaign(page_id=page_id, **campaign)
     media = video or image
     kind = 'video' if video else 'image'
     profile = inspect_profile(page, timeout_ms, page_name=page_name, page_id=page_id)
+    # Name-only callers must not bypass managed-Page policy. Verify observed ID
+    # before opening the composer, even when no project/Page ID was supplied.
+    observed_id = parse_qs(urlparse(profile['url']).query).get('id', [page_id])[0]
+    check_campaign(page_id=observed_id, **campaign)
     try:
         triggers = dom.composer_trigger(page)
         selectors.visible(triggers).first.wait_for(state='visible', timeout=timeout_ms)
@@ -316,6 +371,9 @@ def publish(page, text: str, image: Path | None = None, video: Path | None = Non
             page.wait_for_timeout(100)
         selectors.check_block(page)
         old_confirmations = _confirmation(page).count()
+        # Re-read hashes immediately before the irreversible click, outside the
+        # uncertain-submission handler: changed files mean nothing was submitted.
+        check_campaign(page_id=observed_id, **campaign)
     except AgentError:
         raise
     except Exception as exc:
@@ -323,6 +381,7 @@ def publish(page, text: str, image: Path | None = None, video: Path | None = Non
         raise AgentError('dom_error', f'Composer preparation failed before submission: {exc}', True) from exc
 
     result = {'status': 'uncertain', 'profile': profile, 'audience': audience,
+              'permalink': None, 'permalink_status': 'not_confirmed',
               'image': str(image) if image else None,
               'video': str(video) if video else None,
               'groups': list(groups) if groups else [],
@@ -335,6 +394,19 @@ def publish(page, text: str, image: Path | None = None, video: Path | None = Non
             selectors.check_block(page)
             if _confirmation(page).count() > old_confirmations and not active_dialog.is_visible():
                 result.update(status='confirmed', human_action_required=False, message='Facebook displayed a post-sharing confirmation.')
+                # Publication success and URL discovery are separate outcomes.
+                # Extraction failure must never invite a duplicate publish.
+                try:
+                    result['permalink'], result['permalink_status'] = _confirmation_permalink(
+                        page, old_confirmations, profile['url'])
+                except Exception:
+                    result['permalink_status'] = 'unavailable'
+                result['registration_status'] = 'ready' if result['permalink'] else 'needs_permalink'
+                if not result['permalink']:
+                    result['next_action'] = (
+                        'Do not repost. Use the read-only content-library command with --page-id and a new --output '
+                        'to inspect candidates, or inspect manually. Verify the exact original post before loop register; '
+                        'never infer its URL from recency or use ad-hoc browser scripts.')
                 return result
             page.wait_for_timeout(100)
     except Exception as exc:

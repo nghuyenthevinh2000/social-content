@@ -15,6 +15,15 @@ register → checkpoints → collect → normalize → eligibility
 
 ## Stage files
 
+| Pre-publication gate | Contract |
+|---|---|
+| `preflight.py` | Offline project/channel, research, copy, SVG/PNG and hash-bound approval checks. Never publishes. |
+| `preflight --post <ID> --stage research\|draft\|visual\|publish` | Read-only JSON report; exit 2 on failure. See [content gates](../../.agents/skills/social-campaign/references/content-gates.md). |
+| `review-research --post <ID> --reviewer <HUMAN> --approved` | Record human evidence/applicability approval; required before drafting when research policy is configured. |
+| `approve-content --post <ID> --reviewer <HUMAN> --approved --visual-reviewed` | Record final human copy/media/destination approval. Hash changes invalidate decisions; this is not `approve-review`. |
+| Facebook enforcement | `facebook_agent post --project <PATH> --post <ID>` invokes the shared guard before browser connection and before submission; exact Page, text, media and group destinations must match. |
+| Registration audit | Policy-managed projects attach registration-time preflight outcome to the publication record. Historical facts can still be registered even when current artifacts fail; registration cannot prevent prior publication. |
+
 | Stage | File | Input → output |
 | --- | --- | --- |
 | 1. Remember published posts | `register.py` | Confirmed URL, hypothesis number, verified publish time → publications and placements. Never publishes. |
@@ -33,7 +42,7 @@ register → checkpoints → collect → normalize → eligibility
 | `cli.py` | Arguments and dispatch only; no collection, normalization or ranking logic. |
 | `__main__.py` | Minimal entry point invoking `cli.main()`. |
 | `storage.py` | Project paths, config, atomic writes, locks, timestamps and evidence-hash primitives. No ranking or workflow decisions. |
-| `project_init.py` | One-time scaffolding and Schema v1→v2 migration. |
+| `project_init.py` | Non-overwriting scaffolding, project-root instructions, explicit Facebook Page content policy/manifest, and Schema v1→v2 migration. |
 | `tests/` | Stage-named offline tests plus end-to-end workflow, isolation and resume/CLI regressions. |
 
 ## Current-stage reporting
