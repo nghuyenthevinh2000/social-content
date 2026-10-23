@@ -1,9 +1,3 @@
----
-name: social-content
-summary: AI agent toolkit for audience research, storytelling, visual assets, and supervised social publishing.
-tags: [social-content, publishing, tools, agent-skills]
----
-
 # Social Content & Agent Skills
 
 > **Paste this to your agent to install:**
@@ -93,4 +87,4 @@ See **[plans/skill-selection-router-hook-guide.md](./plans/skill-selection-route
 
 ## 📁 Repository Structure
 
-Refer to [`FRONTMATTER.md`](./FRONTMATTER.md) for full directory mapping and semantic routing.
+Refer to [`local/index.json`](./local/index.json) for full directory mapping and Repomix configuration.

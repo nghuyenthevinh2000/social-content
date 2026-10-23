@@ -1,15 +1,3 @@
----
-name: ai-social-content-engine
-summary: AI Social Content Engine — Báo Cáo 1 Trang & Hồ Sơ Năng Lực. Purpose and
-  documentation for topics/ai-social-content-engine.
-tags:
-- ai-social-content-engine
-submodules:
-  README_en.md: AI Social Content Engine — Corporate One-Pager & Portfolio Dossier
-  index.html: 'Báo cáo 1 Trang: AI Social Content Engine'
-  index_en.html: 'Corporate 1-Pager: AI Social Content Engine'
----
-
 # AI Social Content Engine — Báo Cáo 1 Trang & Hồ Sơ Năng Lực
 
 Hệ sinh thái tự động hóa quy trình viết và xuất bản đa tác tử, chuyển hóa các nghiên cứu công nghệ chuyên sâu, bài học kỹ thuật và trải nghiệm khởi nghiệp thành nội dung mạng xã hội có tính lan tỏa, định hình tiếng nói chuyên gia và báo cáo tóm tắt 1 trang.

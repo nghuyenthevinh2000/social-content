@@ -1,13 +1,3 @@
----
-name: topics
-summary: JSON topic configurations and a full-field reusable template for bounded X engagement reports. Includes audience metadata, watch presets, default discovery themes, and focused Vietnam blockchain legal searches.
-tags: [twitter, x, topics, report, configuration]
-submodules:
-  template.json: Full-field single-topic configuration with audience metadata, category, date, and watch presets.
-  topics.json: Default broad discovery themes for technical builders and founders.
-  topics_vietnam_blockchain_legal.json: Focused discovery configuration for Vietnam blockchain legal and regulatory discussions.
----
-
 # How to create a topic configuration and run a report
 
 Use this workflow for agents researching a subject on X. Run commands from the

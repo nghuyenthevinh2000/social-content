@@ -1,19 +1,3 @@
----
-name: file-selector-demo
-summary: Interactive field pipeline webapp demonstrating TypeSafe Jev dual-stage skill
-  and file selection for Antigravity.
-tags:
-- demo
-- file-selector
-- skill-selector
-- jev
-submodules:
-  static/: Static web assets and live infographic visualization for the file-selector
-    demo server.
-  server.py: 'Jev Dual-Stage Router Demo Server (Skills + Files). Simulates and demonstrates
-    the complete end-to-end routing flow in Antigravity: 1. User prompt is '
----
-
 # File & Skill Selector Interactive Demo
 
 An interactive visual demonstration of how Antigravity uses TypeSafe Jev System One to route incoming requests before model execution:

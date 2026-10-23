@@ -1,24 +1,3 @@
----
-name: common
-summary: Shared platform-independent browser diagnostics, invisible stealth engine, multi-profile browser startup, and unified post format foundation for social content publishing tools.
-tags: [tools, automation, social-content, cdp, browser, invisible-playwright, stealth]
-submodules:
-  __init__.py: Social agent shared package.
-  __main__.py: Module CLI entry point.
-  cli.py: Shared CLI exposing doctor, start-browser, profiles, and post (dry-run) commands.
-  cli_support.py: Shared JSON output and argument-parser helpers; exit policies remain platform-local.
-  errors.py: Canonical structured agent error with compatibility re-exports in platform models.
-  groups.py: Canonical sharing-group validation and nine-group limit.
-  config.py: Shared endpoint, timeout, browser binary, port, profile, backend, and per-profile port configuration.
-  browser.py: Platform-independent invisible stealth browser and CDP connection with safe disconnection.
-  doctor.py: Browser and connectivity diagnostics without platform navigation, per profile.
-  launcher.py: Per-profile browser process detection, auto-port startup, and readiness check.
-  post.py: Unified platform-agnostic post schema, validation, and per-platform argument adapters.
-  profiles.py: Machine-local registry of used browser profiles, their CDP ports, and linked accounts under local/.
-  samples/: Example input files (unified post, group list, and facebook_agent message plan).
-  tests/: Unit tests for browser lifecycle, diagnostics, startup, CLI, profiles, and the unified post format.
----
-
 # Shared Social Agent Foundation
 
 `tools/common` provides a platform-independent foundation for browser automation tools in this repository. It owns browser diagnostics, browser startup, and stealth automation backed by [`tools/invisible_playwright_mcp`](../invisible_playwright_mcp), plus the shared posting format described below.

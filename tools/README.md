@@ -1,31 +1,3 @@
----
-name: tools
-summary: Local automation tools for terminal-operated X workflows and direct approved-input
-  Facebook and LinkedIn personal publishing, built on a shared unified post format.
-tags:
-- tools
-- automation
-- social-content
-submodules:
-  loop/: Project-scoped publication metrics, collection and agent review queue.
-  video_edit/: OpenCV texture compositing and static-video watermark removal.
-  facebook_agent/: Direct DOM publishing to a personal Facebook profile or explicitly
-    named active Fanpage, with optional multi-group sharing, plus planned direct
-    messaging with humanized typing, pacing, and exact content checks.
-  linkedin_agent/: Direct approved-input LinkedIn CLI supports legacy and native-dialog
-    composers with verified personal author pickers, emitted media choosers, ordered
-    previews, and guarded one-click uncertainty handling.
-  reddit-research-mcp/: Subdirectory containing reddit-research-mcp modules
-  reddit_agent/: Subdirectory containing reddit_agent modules
-  common/: Shared platform-independent browser diagnostics, invisible stealth
-    engine, and browser startup foundation, plus the unified post format and
-    example input files (samples/) for social content publishing tools.
-  twitter_agent/: Terminal-operated X DOM CLI with direct reply submission and explicitly
-    approved standalone image posting, exact content checks, attempt quotas, randomized
-    browsing delays, single-click submissions, and JSON-configured topic reporting
-    with an agent workflow.
----
-
 # Tools
 
 | Tool | Purpose |

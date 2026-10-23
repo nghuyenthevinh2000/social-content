@@ -1,0 +1,60 @@
+{
+  "output": {
+    "filePath": "local/repomix-output.json",
+    "style": "json",
+    "parsableStyle": true,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "topFilesLength": 20
+  },
+  "include": [
+    "**/*"
+  ],
+  "ignore": {
+    "useGitignore": false,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/node_modules/**",
+      "**/.venv/**",
+      "**/venv/**",
+      "**/__pycache__/**",
+      "**/.git/**",
+      "**/.gemini/**",
+      "**/brain/**",
+      "**/.system_generated/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/.cache/**",
+      "**/.obsidian/**",
+      "**/.copilot/**",
+      "**/.opencode/**",
+      "**/.vitepress/cache/**",
+      "**/*.map",
+      "**/*.blend*",
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.jpeg",
+      "**/*.gif",
+      "**/*.webp",
+      "**/*.svg",
+      "**/*.ico",
+      "**/*.pdf",
+      "**/*.mp4",
+      "**/*.mov",
+      "**/*.mkv",
+      "**/*.webm",
+      "**/*.zip",
+      "**/*.lock",
+      "local/random/**",
+      "local/paper-ink-product/*.csv",
+      "local/repomix-output.json",
+      "local/index.json",
+      "local/directory_index.json"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}

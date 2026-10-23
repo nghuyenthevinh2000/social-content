@@ -1,18 +1,3 @@
----
-name: samples
-summary: Example input files for the social content tools, including the unified
-  multi-platform post, a group list, and the facebook_agent direct-message plan.
-tags:
-- samples
-- facebook
-- messaging
-- posting
-submodules:
-  groups.json: Example list of group names to also share a facebook_agent post to.
-  leads.json: Example facebook_agent message plan with one custom message per recipient.
-  post.json: Example unified multi-platform post with per-platform overrides and posting_groups.
----
-
 # Samples
 
 Example input files for the tools in this repository.

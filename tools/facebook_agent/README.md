@@ -1,35 +1,3 @@
----
-name: facebook_agent
-summary: Direct DOM publishing to a personal Facebook profile or explicitly named
-  active Fanpage, with optional multi-group sharing, plus planned direct messaging
-  with humanized typing, pacing, and exact content checks.
-tags:
-- facebook
-- playwright
-- cdp
-- publishing
-- messaging
-- groups
-submodules:
-  tests/: Offline tests for direct Facebook publishing and messaging, exact content
-    and attachment checks, plan validation, pacing, Playwright compatibility, CLI
-    errors, and browser lifecycle.
-  __init__.py: Direct DOM publishing of approved content to a Facebook personal profile.
-  __main__.py: Entry point for python -m tools.facebook_agent.
-  browser.py: Connect to existing Chrome, preserving user tabs and the browser process.
-  cli.py: Direct publishing CLI with structured JSON output and stable exit codes.
-  dom.py: Facebook DOM identifiers, grouped by feature. Each function returns a locator,
-    not a click or a visibility/uniqueness check. Page features take a page
-  messaging.py: Direct-message navigation, humanized typing, and one-click sending.
-    Adapted from the reference messaging tool's flow (open a profile, open its message
-  models.py: Stable errors and validation before any browser interaction.
-  pacing.py: Randomized inter-recipient delays and periodic cooldowns for direct messaging.
-    Mirrors the reference tool's anti-detection intent (short jittered paus
-  posting.py: Profile/Page navigation, composer validation, and one-click publishing.
-  selectors.py: Visibility, uniqueness, and account safety checks; identifiers live
-    in dom.py.
----
-
 # Facebook profile and Fanpage agent
 
 ## Read-only Page Insights

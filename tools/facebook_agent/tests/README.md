@@ -1,24 +1,3 @@
----
-name: tests
-summary: Offline tests for direct Facebook publishing and messaging, exact content
-  and attachment checks, plan validation, pacing, Playwright compatibility, CLI errors,
-  and browser lifecycle.
-tags:
-- facebook
-- tests
-- playwright
-- unittest
-submodules:
-  test_browser.py: Lifecycle tests with an external CDP boundary double.
-  test_dom.py: Real Playwright tests against intercepted local HTML, never Facebook.
-  test_groups.py: Offline tests for composer multi-group sharing, against intercepted
-    HTML.
-  test_messaging.py: Real Playwright tests for direct messaging against intercepted
-    local HTML.
-  test_models_cli.py: Validation and CLI contracts; no live browser or Facebook calls.
-  test_pacing.py: Deterministic tests for the messaging pacer; no real sleeping.
----
-
 # Facebook agent tests
 
 From `projects/social-content`, run:

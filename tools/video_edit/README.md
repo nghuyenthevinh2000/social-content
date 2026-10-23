@@ -1,12 +1,3 @@
----
-name: video_edit
-summary: Deterministic perspective texture-swap that pastes real camera texture
-  pixels onto a proxy frame's detected product surface, keeping the proxy's
-  lighting and shadows. Visible Gemini/Veo watermark processing delegates to
-  the official calibrated allenk/VeoWatermarkRemover backend.
-tags: [opencv, texture, compositing, product-video, watermark-removal]
----
-
 # video_edit
 
 Prompting a diffusion model for a physical surface means translating dozens of

@@ -1,22 +1,3 @@
----
-name: human-cognitive-gap
-summary: Human Cognitive Gap & Vitality (Khoảng cách nhận thức & Sinh khí công nghệ).
-  Purpose and documentation for topics/human-cognitive-gap.
-tags:
-- human-cognitive-gap
-submodules:
-  do-thi-tai-dinh-nghia-thanh-cong/: Infographic đồ thị thể hiện gia tốc tái định
-    nghĩa thành công và sự bùng nổ của khủng hoảng ý nghĩa.
-  vong-lap-y-nghia/: Documentation and resources for topics/human-cognitive-gap/vong-lap-y-nghia.
-  10-nam-di-lac-trong-nhung-y-nghia-song-vay-muon.md: 10 năm đi lạc trong những ý
-    nghĩa sống vay mượn
-  human-cognitive-ultimate-tech-gap.md: Two years ago, I was the engineer people called
-    when something was too new for anyone else to touch.
-  khung-hoang-dinh-nghia-thanh-cong.md: 'Khủng hoảng định nghĩa thành công: Khi vạch
-    đích liên tục bị dời đi'
-  sinh-khi-la-nang-luong-song-cua-tri-tue.md: Khi trí tuệ cạn sinh khí
----
-
 # Human Cognitive Gap & Vitality (Khoảng cách nhận thức & Sinh khí công nghệ)
 
 Chủ đề này tập trung vào mâu thuẫn cốt lõi giữa **tốc độ gia tốc của công nghệ (đặc biệt là AI)** và **giới hạn thích ứng sinh học, nhận thức tự nhiên của con người**.

@@ -1,19 +1,3 @@
----
-name: blockchain-enterprise-stack
-summary: 'Institutional Digital Asset Stack: The Sovereign Financial Architecture.
-  Purpose and documentation for topics/blockchain/blockchain-enterprise-stack.'
-tags:
-- blockchain-enterprise-stack
-submodules:
-  01-architecture-stack.md: 'Architectural Specification: The Sovereign Financial
-    Stack'
-  02-institutional-gtm-and-sales.md: Institutional Go-To-Market & Commercial Strategy
-  index.html: 'The Sovereign Financial Stack: MPC Custody • ZK Privacy • Quant Risk
-    Curators'
-  mother-and-child-stacks.md: 'Enterprise Blockchain Financial Architecture: The 3
-    Mother Stacks'
----
-
 # Institutional Digital Asset Stack: The Sovereign Financial Architecture
 
 **A Unified Enterprise Solution: MPC Custody, ZK Privacy, and Quant-Driven Risk Curation**

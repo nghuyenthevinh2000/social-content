@@ -1,0 +1,61 @@
+# Repository index ignore rules (gitignore-style).
+# This is the single ignore policy for the index, query, hook, and README tools.
+# Patterns are relative to the repository root unless they contain no slash,
+# in which case they match any path segment.
+
+# Version control, environments, dependencies, caches
+.git/
+.hg/
+.svn/
+.venv/
+venv/
+env/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.turbo/
+.next/
+.nuxt/
+.astro/
+.output/
+coverage/
+dist/
+build/
+*.egg-info/
+*.dist-info/
+
+# Secrets and machine-local state
+.env
+.env.*
+*.sqlite3
+*.db
+*.lock
+.DS_Store
+Thumbs.db
+
+# Large or generated media and archives
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
+*.mp3
+*.wav
+*.m4a
+*.flac
+*.ogg
+*.zip
+*.tar
+*.gz
+package-lock.json
+uv.lock
+
+# Index artifacts must never index themselves.
+local/index.json
+local/directory_index.json
+local/index.overrides.json
+local/index.public.json

@@ -1,39 +1,3 @@
----
-name: twitter_agent
-summary: Terminal-operated X DOM CLI with direct reply submission and explicitly approved standalone image posting, exact content checks,
-  attempt quotas, randomized browsing delays, single-click submissions, and JSON-configured topic reporting with an agent workflow.
-tags:
-- x
-- twitter
-- playwright
-- cdp
-- terminal
-- human-in-the-loop
-submodules:
-  topics/: Reusable report topic JSON configurations, a copyable template, and an agent how-to guide.
-  tests/: Unit, pacing, DOM fixture, direct submission, topic configuration, and subprocess
-    CLI tests for the terminal-operated X agent.
-  __init__.py: Persistent state and shared models for the terminal-operated X CLI.
-  __main__.py: Entry point for python -m tools.twitter_agent.
-  AGENTS.md: Agent instructions for creating topic JSON configurations and running evidence-backed reports.
-  browser.py: Playwright CDP browser lifecycle management and paced doctor connectivity
-    checks.
-  cli.py: CLI parser, JSON output formatting, and command dispatch with a topics-folder report default.
-  dom.py: X DOM identifiers grouped by posts, composer, attachments, account, and challenges.
-  models.py: Shared values, stable errors, and exact-content approval binding.
-  pacing.py: Shared randomized browsing delays and periodic action-budget breaks.
-  posts.py: Paced post extraction and bounded read operations for timeline, search, and
-    thread.
-  publish.py: Standalone approved image-post command with account checks, shared quotas, and single-click confirmation.
-  replies.py: Paced target preparation, inspection, and submission interactions for replies.
-  report.py: Candidate selection, report orchestration, and artifact generation.
-  selectors.py: Block/challenge detection and selector waiting for X.
-  store.py: Transactional draft queue, attempt quotas, audit trail, and submission
-    lock.
-  submission.py: One-shot caller-selected reply submission with exact-content checks and no automatic retries.
-  topic_config.py: Topic JSON validation and explicit query construction.
----
-
 # Terminal-operated X DOM CLI
 
 An agent-facing CLI with visible browser operations and direct submission from the caller's terminal. No separate supervisor process or interactive approval prompt is required.

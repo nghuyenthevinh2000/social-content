@@ -1,19 +1,3 @@
----
-name: linkedin_agent
-summary: Direct approved-input LinkedIn CLI supports legacy and native-dialog composers with verified personal author pickers, emitted media choosers, ordered previews, and guarded one-click uncertainty handling.
-tags: [linkedin, automation, validation, browser]
-submodules:
-  __init__.py: Independent LinkedIn package marker.
-  __main__.py: Python module entry point for the direct CLI.
-  cli.py: Doctor and repeatable-image post commands with pre-browser validation, JSON results, and uncertainty-safe disconnect.
-  models.py: Structured errors and immutable validated text and image inputs.
-  browser.py: CDP lifecycle and feed doctor with final readiness revalidation and endpoint-free diagnostics.
-  dom.py: Feature-grouped legacy and native DOM identifiers for feed, author, composer, media, and confirmation controls.
-  selectors.py: Fail-closed readiness, uniqueness, login, and visible challenge checks using dom.py identifiers.
-  posts.py: Hydrated empty personal drafts, selected-member evidence, emitted choosers, hashed ordered files, decoded previews, and guarded trusted dispatch.
-  tests/: Offline subprocess CLI, mocked dispatch/CDP, local Chromium fixtures, and input validation tests.
----
-
 # LinkedIn agent
 
 This package is independent of the supervised Twitter agent. Input validation

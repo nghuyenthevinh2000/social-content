@@ -1,15 +1,3 @@
----
-name: tests
-summary: Offline LinkedIn tests cover legacy and native-dialog flows, hydration, personal picker evidence, emitted file choosers, decoded ordered media, trusted-click guards, and uncertainty.
-tags: [linkedin, tests, validation, browser]
-submodules:
-  test_models.py: Text limits, signatures, bounded reads, image order, and immutable snapshots.
-  test_cli.py: Module help and JSON errors, pre-browser validation, ordered dispatch, exit mapping, and preserve-before-disconnect uncertainty.
-  test_browser.py: Mocked CDP lifecycle, secret-safe diagnostics, synthetic for-you feed controls with container identity and click assertions, legacy/mixed ambiguity, blocks, and launcher help.
-  test_dom.py: Chromium fixtures for empty-media baselines, delayed uploads, payload hashes/order, overlay mutation cancellation, toast freshness, and listener cleanup.
-  test_modern_dom.py: Native-dialog fixtures with selected personal rows, body-level emitted choosers, immutable FileList checks, ordered thumbnail/attachment counts, hydration, and dispatch identity mutations.
----
-
 # LinkedIn agent tests
 
 Modern fixtures model the observed native dialog and chooser contract without
