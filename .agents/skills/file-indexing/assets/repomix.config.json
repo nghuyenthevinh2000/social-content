@@ -1,0 +1,66 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "input": {
+    "maxFileSize": 50000000
+  },
+  "output": {
+    "filePath": "local/repomix/repomix-output.json",
+    "style": "json",
+    "filePathStyle": "target-relative",
+    "parsableStyle": false,
+    "compress": false,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "topFilesLength": 5,
+    "showLineNumbers": false,
+    "truncateBase64": true,
+    "copyToClipboard": false,
+    "includeEmptyDirectories": false,
+    "splitOutput": 2000000,
+    "tokenBudget": 80000,
+    "patterns": [
+      { "pattern": "**/*.md", "compress": false },
+      { "pattern": "**/*.{py,ts,tsx,js,jsx,go,rs,sh}", "compress": true },
+      { "pattern": "**/*.{csv,tsv,parquet}", "directoryStructureOnly": true },
+      { "pattern": "**/*.min.js", "directoryStructureOnly": true },
+      { "pattern": "**/dist/**", "directoryStructureOnly": true }
+    ],
+    "git": {
+      "sortByChanges": false,
+      "sortByChangesMaxCommits": 100,
+      "includeDiffs": false,
+      "includeLogs": false,
+      "includeLogsCount": 20
+    }
+  },
+  "include": ["**/*"],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "local/repomix/**",
+      "**/node_modules/**",
+      "**/.venv/**",
+      "**/__pycache__/**",
+      "**/.env",
+      "**/.env.local",
+      "**/.env.development",
+      "**/.env.production",
+      "**/.env.test",
+      "**/*.pem",
+      "**/*.key",
+      "**/*.p12",
+      "**/*.pfx"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}

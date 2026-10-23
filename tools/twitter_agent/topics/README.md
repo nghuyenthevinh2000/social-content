@@ -57,12 +57,7 @@ PY
 
 If validation fails, correct the JSON or keywords before continuing.
 
-Update this folder's README frontmatter for the new file:
-
-```bash
-uv run --project . .agents/hooks/file-selector/sync_readme_tree.py tools/twitter_agent/topics
-uv run --project . .agents/hooks/file-selector/lint_readme_tree.py --changed-only
-```
+Update this folder's README frontmatter for the new file manually.
 
 ## 3. Check browser readiness
 

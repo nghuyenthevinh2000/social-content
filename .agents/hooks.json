@@ -9,16 +9,6 @@
       }
     ]
   },
-  "frontmatter-guard": {
-    "enabled": true,
-    "Stop": [
-      {
-        "type": "command",
-        "command": "uv run --project .. hooks/file-selector/frontmatter_guard_hook.py",
-        "timeout": 15
-      }
-    ]
-  },
   "story-engine-gate": {
     "enabled": true,
     "PreToolUse": [

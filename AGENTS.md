@@ -18,3 +18,17 @@ Apply this to both chat responses and authored documents in this repository.
 Explicit user requirements and higher-priority instructions take precedence. These
 are agent instructions, not a runtime output validator; do not claim mechanical
 enforcement or an exact word count without checking it.
+
+## File indexing
+
+Always load `file-indexing` before repo search or edit planning; pair it with `structured-writing` for prose.
+
+| Rule | Action |
+|---|---|
+| Load first | Read `.agents/skills/file-indexing/SKILL.md` or invoke the `file-indexing` skill before broad `grep`, `find`, `read`, or code search. |
+| Index first | Start from `local/repomix/index.md`; run `python3 .agents/skills/file-indexing/scripts/select.py "<task>" --mode edit` to choose one group. |
+| Search narrow | Run `python3 .agents/skills/file-indexing/scripts/search_pack.py <pack> "<pattern>"`; read only matching files or a `slice_pack.py` slice. |
+| Never bulk-load | Do not paste `local/repomix/repomix-output.json` or the full `local/repomix/index.json` into context. |
+| Refresh | Rebuild with `python3 .agents/skills/file-indexing/scripts/build_index.py` after pulls or structural changes; verify with `--check`. |
+| Privacy | Keep packs, indexes, slices, and file lists under `local/`; never commit them. |
+| Fallback | Widen to a parent or domain pack only when a group misses; use the full pack last. |

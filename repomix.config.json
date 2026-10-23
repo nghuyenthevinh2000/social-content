@@ -1,6 +1,6 @@
 {
   "output": {
-    "filePath": "local/repomix-output.json",
+    "filePath": "local/repomix/repomix-output.json",
     "style": "json",
     "parsableStyle": true,
     "fileSummary": true,
@@ -47,9 +47,16 @@
       "**/*.webm",
       "**/*.zip",
       "**/*.lock",
-      "local/random/**",
-      "local/paper-ink-product/*.csv",
-      "local/repomix-output.json",
+      "**/.env",
+      "**/.env.local",
+      "**/.env.development",
+      "**/.env.production",
+      "**/.env.test",
+      "**/*.pem",
+      "**/*.key",
+      "**/*.p12",
+      "**/*.pfx",
+      "local/repomix/**",
       "local/index.json",
       "local/directory_index.json"
     ]
