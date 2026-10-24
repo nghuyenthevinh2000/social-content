@@ -19,7 +19,7 @@ A modular agent toolkit and operating system for end-to-end social content creat
 > - **Starter Flows to Try**:
 >   1. *Authentic Storytelling & Copywriting* ([`story-engine`](./.agents/skills/story-engine/SKILL.md) ➔ [`humanizer`](./.agents/skills/humanizer/SKILL.md))
 >   2. *Executive Visual Infographic / Slides* ([`infographic`](./.agents/skills/infographic/SKILL.md) / [`beautiful-html-templates`](./.agents/skills/beautiful-html-templates/SKILL.md))
->   3. *Creator Style DNA Analysis* ([`viral-analyzer`](./.agents/skills/viral-analyzer/SKILL.md))
+>   3. *Campaign-Bound Viral & Creator Research* ([`social-campaign`](./.agents/skills/social-campaign/SKILL.md) → [viral research](./.agents/skills/social-campaign/references/viral-analyzer.md))
 > - **1,000-Point Exploration Quest**: A gamified challenge rewarding agents/users for trying all 15 skills, video tools, brand OS, and guarded publishing CLIs.
 > - **Advanced Capabilities**: End-to-end Brand OS, supervised social publishing, Reddit pain-point research, and video compositing.
 
@@ -37,12 +37,12 @@ All skills live in [`.agents/skills/`](./.agents/skills/) and can be loaded dyna
 | [`humanizer`](./.agents/skills/humanizer/SKILL.md) | Rewrites AI-sounding prose into natural, rhythmic human language without changing meaning. |
 | [`infographic`](./.agents/skills/infographic/SKILL.md) | Authors self-contained HTML visual infographics (16:9 / 9:16) with Playwright 2x Retina captures. |
 | [`ponytail`](./.agents/skills/ponytail/SKILL.md) | Minimalist development ethos: standard libraries first, shortest path, zero unnecessary code. |
-| [`social-platform-orchestrator`](./.agents/skills/social-platform-orchestrator/SKILL.md) | Orchestrates content across Twitter/X, Facebook, LinkedIn, and Reddit research. |
+| [`social-campaign`](./.agents/skills/social-campaign/SKILL.md) | Project-bound campaign workflow: research, drafting, visual assets, guarded publishing, performance loops, plus campaign-bound [viral discovery and creator Style DNA](./.agents/skills/social-campaign/references/viral-analyzer.md). |
 | [`story-engine`](./.agents/skills/story-engine/SKILL.md) | Unified storytelling engine: integrity checks + platform craft frameworks (LinkedIn, X). |
 | [`twitter-reply-strategy`](./.agents/skills/twitter-reply-strategy/SKILL.md) | Discovers, scores, and drafts high-visibility Twitter/X replies. |
 | [`typesafe-ai`](./.agents/skills/typesafe-ai/SKILL.md) | AI primitives and typed probability judgments (System One / Jev models). |
 | [`video-editing`](./.agents/skills/video-editing/SKILL.md) | ffmpeg and OpenCV face-centered circular overlays, audio mixing, and video composition. |
-| [`viral-analyzer`](./.agents/skills/viral-analyzer/SKILL.md) | Discover and analyze viral Facebook Reels and reverse-engineer creator Style DNA from real writing samples. |
+| [`viral-analyzer`](./.agents/skills/social-campaign/references/viral-analyzer.md) | Removed as a standalone skill. Its workflow now lives inside [`social-campaign`](./.agents/skills/social-campaign/SKILL.md) and requires an existing campaign. |
 | [`web-design`](./.agents/skills/web-design/SKILL.md) | Preview-first web design for landing pages, dashboards, and UI layouts. |
 
 ---
@@ -51,6 +51,7 @@ All skills live in [`.agents/skills/`](./.agents/skills/) and can be loaded dyna
 
 Deterministic local tools for supervised, human-in-the-loop social actions. Read more in [`tools/README.md`](./tools/README.md).
 
+- [`tools/loop/`](./tools/loop/): Project-agnostic metrics, review and guarded publication-state engine.
 - [`tools/linkedin_agent/`](./tools/linkedin_agent/): Direct CLI for approved personal LinkedIn text and ordered image posts.
 - [`tools/twitter_agent/`](./tools/twitter_agent/): Terminal-operated X DOM CLI for reply submission and approved image posting.
 - [`tools/facebook_agent/`](./tools/facebook_agent/): Direct publishing to personal profile or named Fanpage with optional group sharing.

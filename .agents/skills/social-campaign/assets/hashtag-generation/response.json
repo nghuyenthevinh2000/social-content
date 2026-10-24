@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "campaign": "<campaign slug>",
+  "run_id": "<campaign run id>",
+  "context_sha256": "<from context.json>",
+  "platform": "instagram",
+  "candidates": [
+    {
+      "id": "c1",
+      "kind": "hashtag",
+      "text": "#exact_term",
+      "language": "vi",
+      "application": "intended campaign application",
+      "connection": "buyer or process connection",
+       "context_sources": ["product-marketing.json"],
+      "rationale": "why this branch is plausible; no invented metrics",
+      "alternative_meanings": ["likely unrelated meaning"],
+      "priority": 1,
+      "origin": "generated_unverified",
+      "evidence_ref": null
+    }
+  ]
+}

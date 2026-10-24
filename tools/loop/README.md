@@ -3,6 +3,8 @@
 | Responsibility | Location |
 | --- | --- |
 | Reusable stage modules, tests and guidance | `tools/loop/` |
+| Hashtag vocabulary generation/verification | `tools/loop/viral_analyzer/` scripts; offline tests in `tools/loop/tests/test_hashtag_*.py` |
+| Viral analyzer context | Only `<project>/product-marketing.json` is required: nonempty `marketing_goal` and named entries in `product.catalog`. Optional past `sources/viral/` analyses and hashtag history inform proposals/review, not current product facts or fresh verification. Brand/customer/hypothesis/loop files are not prerequisites. |
 | Page identity and optional hypothesis mapping | `<project>/loop/config.json` |
 | Publications, pending reviews, lock and current stage | `<project>/loop/publications.json`, `<project>/loop/.engine.lock`, `<project>/loop/status.json` |
 | Metrics and audit evidence | `<project>/sources/post-metrics/` |
@@ -85,7 +87,10 @@ register → checkpoints → collect → normalize → eligibility
 | `python -m tools.loop --project PATH collect-insights` | Collect due dashboards through the authenticated browser; no Glasser charge. |
 | `python -m tools.loop --project PATH collect --max-cost-usd AMOUNT` | Optional paid public-metrics fallback with an explicit per-invocation ceiling. |
 | `python -m tools.loop --project PATH review --id PUBLICATION_ID --file REVIEW.json` | Legacy single-publication review. |
-| `python -m unittest discover -s tools/loop/tests` | Offline stage, status, workflow, CLI and project-isolation tests. |
+| `python3 -m tools.loop.viral_analyzer.hashtag_generate --help` | Build a campaign hashtag prompt/context and validate a saved AI response; no network or writes to history. |
+| `python3 -m tools.loop.viral_analyzer.hashtag_verify --help` | Plan, preview/collect bounded provider probes, review evidence and append campaign hashtag history. |
+| `python3 -m tools.loop.viral_analyzer.viral_scrape --help` | Collect viral candidates only for targets already marked `promising`/`limited_expand`; preview by default. |
+| `python -m unittest discover -s tools/loop/tests` | Offline stage, status, workflow, CLI, hashtag vocabulary and project-isolation tests. |
 
 | Behavior / limit | Rule |
 | --- | --- |

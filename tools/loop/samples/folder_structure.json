@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "name": "social-campaign",
+  "description": "Generic folder structure scaffold for a social campaign project: brand, customer, posts, sources, and learning loop",
+  "directories": [
+    "loop",
+    "loop/runs",
+    "brand",
+    "brand/assets",
+    "brand/preview",
+    "brand/references",
+    "customer",
+    "customer/leads",
+    "customer/research",
+    "posts",
+    "posts/1",
+    "sources",
+    "sources/post-metrics",
+    "sources/post-metrics/captures",
+    "sources/post-metrics/exports",
+    "sources/post-metrics/normalized",
+    "sources/viral"
+  ],
+  "files": {
+    "AGENTS.md": {
+      "type": "text",
+      "description": "Project-scoped operational instructions and content safeguards",
+      "content": "# Campaign instructions\n\n```text\nPolicy → research → draft → visual → approval → publish → register\n```\n\n| Scope | Rule |\n|---|---|\n| Routing | Load social-campaign; read loop/config.json and existing project/brand facts before drafting. |\n| Channels | Use only allowed_channels in loop/config.json; cross-platform work is opt-in. |\n| Content | Select exact copy/media in posts/<id>/content.json; use .agents/skills/social-campaign/references/content-gates.md from repository root. |\n| Approval | Run preflight; record approve-content only after explicit human approval of the current assets. |\n| Publication | Pass --project and --post to facebook_agent; verify configured Page identity. Never retry uncertain submission. |\n| Measurement | Read loop/AGENTS.md; register the confirmed URL after publication. |\n"
+    },
+    "README.md": {
+      "type": "text",
+      "description": "Project overview and file layout reference",
+      "content": "# Social Marketing Campaign Project\n\nScaffolded social campaign and learning loop following repository safeguards.\n\n## Structure\n- `brand/`: Brand manifest, tokens, context, and guidelines.\n- `customer/`: Customer profiles, target segments, and lead tracking.\n- `posts/`: Post hypotheses and post content packages.\n- `sources/`: Post metrics captures/exports and viral benchmarks.\n- `loop/`: Publications registry and loop workflow state.\n"
+    },
+    "product-marketing.json": {
+      "type": "json",
+      "description": "Product catalog, positioning, customer personas, and sales contact placeholders",
+      "content": {
+        "marketing_goal": "Find distribution partners and pilot customers",
+        "product": {
+          "catalog": [
+            {
+              "id": "sample-item-1",
+              "name": "Sample product 1",
+              "specification": "Standard specification / unit size",
+              "applications": [
+                "Use case 1",
+                "Use case 2"
+              ],
+              "image": "./brand/assets/logo.svg"
+            }
+          ],
+          "unique": {
+            "origin": "Clearly documented and verifiable sourcing",
+            "feature": "Key technical differentiator",
+            "positioning": "Positioned as a solution for producers and resellers",
+            "claims_note": "State only quality claims that have been verified in practice"
+          }
+        },
+        "customer_profile": [
+          {
+            "persona": "Target business owner / production site",
+            "industry": "Contract manufacturing / finished goods",
+            "region": "Nationwide",
+            "leads": []
+          }
+        ],
+        "sales_information": {
+          "phone": "0900000000",
+          "email": "contact@example.com",
+          "minimum_order": "Minimum order quantity",
+          "bulk_orders_available": true
+        }
+      }
+    },
+    "loop/config.json": {
+      "type": "json",
+      "description": "Loop configuration and guarded content policy",
+      "content": {
+        "page_id": "{{PAGE_ID}}",
+        "hypotheses_file": "{{HYPOTHESES_FILE}}",
+        "brand_manifest": "brand/brand.yaml",
+        "allowed_channels": [
+          "facebook_page"
+        ],
+        "content_policy": {
+          "schema_version": 1,
+          "guidelines_file": "brand/guidelines.md",
+          "tokens_file": "brand/tokens.json"
+        }
+      }
+    },
+    "loop/publications.json": {
+      "type": "json",
+      "description": "Schema v2 publications and placement checkpoints",
+      "content": {
+        "schema_version": 2,
+        "publications": [],
+        "placements": []
+      }
+    },
+    "loop/README.md": {
+      "type": "text",
+      "description": "Loop guide and business outcome definitions",
+      "content": "# Loop Configuration for Page {{PAGE_ID}}\n\n## Defined Business Outcomes\n- Qualified inquiries: [Define qualified inquiry criteria]\n- Target buyer role: [Define target buyer persona]\n- Conversion action: [Define expected next step]\n\n## Orchestrator Commands\nSee `tools/loop/README.md` for orchestrator reference.\n"
+    },
+    "loop/AGENTS.md": {
+      "type": "text",
+      "description": "Loop measurement safeguards and anti-pruning rules",
+      "content": "# Loop Agent Safeguards\n\n- Do not publish automatically without explicit human approval.\n- Do not prune groups without at least 3 comparable rounds.\n- Never treat pending moderation posts as failures.\n"
+    },
+    "brand/brand.yaml": {
+      "type": "text",
+      "description": "Brand manifest and artifact status",
+      "content": "schema_version: 1\nslug: \"{{PROJECT_SLUG}}\"\nname: \"{{PROJECT_NAME}}\"\none_liner: \"Reliable products and services\"\ntagline: \"Quality builds trust\"\narchetype: \"Creator / Sage\"\nstatus: active\nstage: growth\nindustry: general\nlanguages: [vi, en]\nlinks:\n  domain: \"\"\n  repo: \"\"\ncreated: \"{{CURRENT_DATE}}\"\nupdated: \"{{CURRENT_DATE}}\"\nversion: 1\nartifacts:\n  context: true\n  naming: true\n  strategy: true\n  architecture: false\n  identity: true\n  voice: true\n  messaging: true\n  positioning: true\n  story: true\n  guidelines: true\n  audit: true\n"
+    },
+    "brand/tokens.json": {
+      "type": "json",
+      "description": "Brand visual tokens (canvas, ink, accent, fonts, scale)",
+      "content": {
+        "schema_version": 1,
+        "source": "brand/guidelines.md",
+        "colors": {
+          "canvas": "#FBFBF9",
+          "ink": "#0F172A",
+          "accent": "#C25E2E",
+          "surface": "#FFFFFF",
+          "container": "#F4F3EE",
+          "accent_tint": "#FDF3ED",
+          "grid": "#E7E5DE",
+          "body": "#334155",
+          "muted": "#64748B",
+          "code_substrate": "#1E293B"
+        },
+        "fonts": [
+          "Instrument Serif",
+          "Plus Jakarta Sans",
+          "Inter",
+          "JetBrains Mono"
+        ],
+        "render_scale": 2
+      }
+    },
+    "brand/guidelines.md": {
+      "type": "text",
+      "description": "Brand styling and editorial guidelines",
+      "content": "# Master Brand Guidelines & Visual Standards\n\n**Visual Style:** Warm editorial canvas, deep slate ink, single accent color\n\n## 1. Visual System & Canvas\n- **Canvas:** `#FBFBF9` (Warm Alabaster)\n- **Primary Ink:** `#0F172A` (Midnight Slate)\n- **Accent:** `#C25E2E` (Terracotta)\n- **Borders & Dividers:** `#E7E5DE` (Grid Line)\n- **Typography:** Instrument Serif (Headlines), Plus Jakarta Sans (Subheaders/Body), JetBrains Mono (Badges/Data)\n\n## 2. Editorial Rules\n- Use clear, direct, and verifiable value propositions.\n- Maintain high legibility and balanced spacing.\n"
+    },
+    "brand/context.md": {
+      "type": "text",
+      "description": "Brand narrative and audience positioning context",
+      "content": "# Brand Context\n\n## Brand Overview\n- **Name:** {{PROJECT_NAME}}\n- **Target Audience:** Business buyers, production partners, and distributors\n- **Positioning:** Transparent quality commitments and long-term customer partnership\n\n## Goals\n- Find distribution partners and grow the pool of pilot customers\n"
+    },
+    "customer/profile.json": {
+      "type": "json",
+      "description": "Customer personas and qualification readiness",
+      "content": {
+        "schema_version": 1,
+        "kind": "customer_profile",
+        "title": "Target customer profile",
+        "target_segments": [
+          {
+            "persona": "Target business owner / production site",
+            "industry": "Contract manufacturing / finished goods",
+            "region": "Nationwide",
+            "buying_role": "Business owner / Purchasing manager",
+            "pain_points": [
+              "Hard to find a stable supply source that meets specifications",
+              "Needs predictable cost and flexible delivery terms"
+            ]
+          }
+        ]
+      }
+    },
+    "customer/leads/leads.json": {
+      "type": "json",
+      "description": "Direct outreach leads and engagement status",
+      "content": [
+        {
+          "url": "https://www.facebook.com/sample.lead.1",
+          "label": "Sample partner account 1",
+          "message": "Hello, I represent a supplier of [product/service category]. We offer options that may fit your production or business needs. If you would like pricing details or a sample, reply here or get in touch."
+        }
+      ]
+    },
+    "posts/hypothesis.json": {
+      "type": "json",
+      "description": "Hypothesis testing sequence and hook definitions",
+      "content": {
+        "goal": "Find distribution partners and pilot customers, measured by qualified inquiries",
+        "research": {
+          "workflow": "Reference sources → Product hypothesis → Opening test → Measure qualified inquiries"
+        },
+        "hypotheses": [
+          {
+            "post": 1,
+            "status": "planned",
+            "angle": "Introduce the product range by customer use case",
+            "hook": {
+              "opening": "Does the opening line name the target customer's problem or need directly?",
+              "rationale": "A direct opening filters for customers with a real need"
+            },
+            "hypothesis": "Naming categories, applications, and purchase terms helps the right customers recognize a fit and reach out.",
+            "audience": "Business buyers, production sites, or resellers in the target segment",
+            "format": "Facebook post with product image or video",
+            "cta": "Contact by phone for pricing or to request a sample.",
+            "primary_metric": "Number of qualified inquiries or sample requests",
+            "metrics": []
+          }
+        ]
+      }
+    }
+  }
+}

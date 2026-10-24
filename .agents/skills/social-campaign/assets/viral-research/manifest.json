@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "run_id": "<run-id>",
+  "campaign": "<campaign-slug>",
+  "mode": "discovery",
+  "brief_version": "<v1>",
+  "brief_sha256": "<sha256-of-brief.md>",
+  "brief": {
+    "campaign_path": "local/<campaign-slug>",
+    "objective": "<buyer_research|audience_growth|creative_inspiration>",
+    "hypothesis": {
+      "reference": null,
+      "status": null
+    },
+    "context": [
+      "product-marketing.json"
+    ],
+    "market": "<country or region>",
+    "language": "<language>",
+    "industry": "<industry>",
+    "buyer": "<role and problem>",
+    "query_families": [
+      "<local-language problem or application>"
+    ],
+    "seeds": [
+      "<user-confirmed creator, community or business>"
+    ],
+    "publication_window": {
+      "start": null,
+      "end": null
+    },
+    "limits": {
+      "max_results": 50,
+      "max_pages": 5
+    },
+    "stopping_rule": "<stop at N candidates, N empty query families, or the spend limit>"
+  },
+  "sources": [
+    {
+      "id": "<source-id>",
+      "type": "<free_search|supplied_link|paid_api|feed>",
+      "locator": {
+        "url": null,
+        "query": "<query or null>",
+        "seed": null
+      },
+      "filters": {
+        "requested": [],
+        "supported": []
+      },
+      "collected_at": null,
+      "raw_path": "<raw/observations.json>",
+      "provider": null
+    }
+  ],
+  "files": [
+    {
+      "path": "brief.md",
+      "sha256": "<sha256-of-file>"
+    }
+  ],
+  "budget": {
+    "currency": "USD",
+    "approved_ceiling": "0.00",
+    "actual_charge": null,
+    "approval_ref": null
+  },
+  "timing": {
+    "collection": {
+      "started_at": null,
+      "ended_at": null
+    },
+    "review": {
+      "started_at": null,
+      "ended_at": null
+    }
+  }
+}

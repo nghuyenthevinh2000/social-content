@@ -1,0 +1,26 @@
+{
+  "provider": "scrapecreators",
+  "currency": "USD",
+  "endpoints": [
+    {
+      "platform": "instagram",
+      "kind": "hashtag",
+      "endpoint": "/v1/instagram/search/hashtag",
+      "method_field": "hashtag",
+      "fixed": { "limit": 3 },
+      "max_results": 3,
+      "price_usd": "0.0019",
+      "ranking_filter": "reels"
+    },
+    {
+      "platform": "tiktok",
+      "kind": "keyword",
+      "endpoint": "/v1/tiktok/search/keyword",
+      "method_field": "query",
+      "fixed": { "limit": 3 },
+      "max_results": 3,
+      "price_usd": "0.0019",
+      "ranking_filter": "most-liked"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "campaign": "<campaign slug>",
+  "run_id": "<campaign run id>",
+  "phase": "probe",
+  "reviewer": "<name>",
+  "reviewer_type": "agent",
+  "checked_at": "<ISO timestamp with timezone>",
+  "prompt_version": "hashtag-prompt-v1",
+  "model": null,
+  "evaluations": [
+    {
+      "call_id": "call-instagram-hashtag-01",
+      "reason": "overall sample-level reason",
+      "samples": [
+        {
+          "sample_id": "call-instagram-hashtag-01-s01",
+          "label": "direct_application",
+          "reason": "what the inspected evidence shows",
+          "evidence": ["exact caption quote or URL"],
+          "observed": {
+            "meaning": "usage observed in this sample",
+            "application": "substrate/application observed",
+            "process": "process observed",
+            "role": "workshop/buyer role evidence",
+            "language": "vi",
+            "tag_present": true
+          }
+        }
+      ]
+    }
+  ]
+}

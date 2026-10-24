@@ -37,6 +37,7 @@ def _build_parser():
     init = commands.add_parser('init', help='Initialize project-owned configuration/state without overwriting existing files')
     init.add_argument('--page-id', required=True)
     init.add_argument('--hypotheses-file', help='Optional project-relative JSON with a hypotheses array')
+    init.add_argument('--sample-file', type=Path, help='Optional path to custom folder structure sample JSON')
     init.add_argument('--dry-run', action='store_true', help='Validate inputs without writing to disk')
 
     mig = commands.add_parser('migrate', help='Migrate publications.json to Schema v2 with byte backup')
@@ -124,6 +125,7 @@ def main(argv=None):
     if args.command == 'init' and getattr(args, 'dry_run', False):
         print(json.dumps(project_init.bootstrap_project(
             root, args.page_id, hypotheses_file=args.hypotheses_file or 'posts/hypothesis.json',
+            sample_file=getattr(args, 'sample_file', None),
             dry_run=True), indent=2))
         return
 
@@ -139,6 +141,7 @@ def main(argv=None):
             print(json.dumps(project_init.bootstrap_project(
                 root, args.page_id,
                 hypotheses_file=args.hypotheses_file or 'posts/hypothesis.json',
+                sample_file=getattr(args, 'sample_file', None),
                 dry_run=args.dry_run), indent=2))
             return
         if args.command == 'migrate':

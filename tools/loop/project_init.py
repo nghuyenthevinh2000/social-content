@@ -4,12 +4,28 @@ Standard library only.
 """
 
 import argparse
-from datetime import timedelta
+from datetime import date, timedelta
 import json
 from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional
 
+# Ensure repository root is in sys.path when script is executed directly
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 from tools.loop import storage
+
+DEFAULT_SAMPLE_PATH = Path(__file__).parent / "samples" / "folder_structure.json"
+
+
+def load_sample_structure(sample_path: Optional[Path] = None) -> Dict[str, Any]:
+    """Load folder structure sample JSON from file or default sample location."""
+    target = Path(sample_path) if sample_path else DEFAULT_SAMPLE_PATH
+    if target.is_file():
+        return json.loads(target.read_text(encoding="utf-8"))
+    return {}
 
 
 DEFAULT_PRODUCT_CATALOG = {
@@ -70,30 +86,129 @@ DEFAULT_HYPOTHESIS = {
     ]
 }
 
-DEFAULT_POST_TEMPLATE = """# Nội dung bài đăng Facebook (Bài 1)
+DEFAULT_POST_TEMPLATE = """# Facebook post copy
 
 TODO: Replace this scaffold with confirmed project copy before approval.
 
-[Câu mở đầu / hook trực diện hướng tới người có nhu cầu]
+[Opening hook aimed at readers with the target need]
 
-[Tên thương hiệu] giới thiệu các dòng sản phẩm phục vụ nhu cầu của bạn:
+[Brand name] offers product lines that fit your needs:
 
-1. [Tên sản phẩm 1] — [Ứng dụng chính]
-2. [Tên sản phẩm 2] — [Ứng dụng chính]
+1. [Product name 1] — [Primary use case]
+2. [Product name 2] — [Primary use case]
 
-📦 Quy cách và điều kiện mua:
-- Đơn hàng tối thiểu: [Số lượng tối thiểu]
-- Giao hàng: Toàn quốc
+📦 Purchase terms:
+- Minimum order: [Minimum quantity]
+- Delivery: Nationwide
 
-📞 Liên hệ [Số điện thoại] để nhận báo giá hoặc trao đổi điều kiện thử mẫu!
+📞 Contact [Phone number] for pricing or to discuss sample terms.
 
 ---
 
-## Ghi chú đăng bài
-- Ảnh/video đính kèm trong thư mục này.
-- Giữ nguyên số điện thoại và thông tin giao hàng đã xác nhận.
-- Đăng xong cần ghi nhận canonical permalink và thời điểm đăng vào loop registry.
+## Publishing notes
+- Attach the image/video from this folder.
+- Keep the confirmed phone number and delivery details unchanged.
+- After publishing, record the canonical permalink and publish time in the loop registry.
 """
+
+DEFAULT_POST_CONTENT = {
+    "schema_version": 1,
+    "channel": "facebook_page",
+    "copy": "facebook-ad.md",
+    "visual": {"source": "visual.svg", "image": "visual.png"},
+    "groups": [],
+}
+
+DEFAULT_POST_RESEARCH_MD = """# Research & Evidence Dossier
+
+## 1. Objective and Hypothesis
+- **Objective**: Establish the verified evidence and source basis for the campaign message.
+- **Hypothesis**: Concrete evidence increases trust and drives inquiry actions.
+
+## 2. Primary References
+- [Source 1 name]: Technical basis / applicable standard.
+- [Source 2 name]: Empirical study / representative precedent.
+"""
+
+DEFAULT_POST_RESEARCH = {
+    "schema_version": 1,
+    "sources": [
+        {
+            "id": "source-1",
+            "type": "primary_statute",
+            "title": "TODO: verified official title",
+            "url": "https://example.com/source-1",
+            "jurisdiction": "VN",
+            "checked_at": "2026-01-01",
+            "effective_date": "2026-01-01",
+            "provisions": ["TODO: exact article and clause"],
+            "analysis": "TODO: applicability and interpretation",
+        },
+        {
+            "id": "case-1",
+            "type": "case_study",
+            "title": "TODO: documented empirical case",
+            "url": "https://example.com/case-1",
+            "jurisdiction": "VN",
+            "checked_at": "2026-01-01",
+            "analysis": "TODO: observed facts, outcomes and limits",
+        },
+    ],
+    "claims": [
+        {
+            "claim": "TODO: precise claim used in copy",
+            "source_ids": ["source-1", "case-1"],
+            "limitations": "TODO: jurisdiction, timing and applicability boundaries",
+        }
+    ],
+}
+
+DEFAULT_POST_VISUAL = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675">
+  <rect x="0" y="0" width="1200" height="675" fill="#FBFBF9"/>
+  <line x1="60" y1="36" x2="1140" y2="36" stroke="#E7E5DE" stroke-width="1"/>
+  <text x="60" y="70" font-family="JetBrains Mono" font-size="13" font-weight="600" fill="#C25E2E">CAMPAIGN TITLE — BRAND INTELLIGENCE</text>
+  <text x="60" y="112" font-family="Instrument Serif" font-size="36" fill="#0F172A">Main Post Headline</text>
+  <text x="60" y="140" font-family="Plus Jakarta Sans" font-size="14" fill="#64748B">Positioning message and verified evidence</text>
+
+  <rect x="60" y="175" width="340" height="270" rx="8" fill="#FFFFFF" stroke="#E7E5DE" stroke-width="1"/>
+  <rect x="80" y="195" width="210" height="26" rx="4" fill="#F4F3EE"/>
+  <text x="90" y="213" font-family="JetBrains Mono" font-size="11" fill="#334155" font-weight="600">FEATURE / VALUE 1</text>
+  <text x="80" y="270" font-family="Plus Jakarta Sans" font-size="34" font-weight="700" fill="#0F172A">01</text>
+  <text x="135" y="266" font-family="Plus Jakarta Sans" font-size="13" fill="#64748B">Quality standard</text>
+  <line x1="80" y1="290" x2="380" y2="290" stroke="#E7E5DE" stroke-width="1"/>
+  <text x="80" y="320" font-family="Plus Jakarta Sans" font-size="13" fill="#334155" font-weight="600">↳ Primary use case:</text>
+  <text x="80" y="340" font-family="Plus Jakarta Sans" font-size="12" fill="#64748B">Fits the customer's real needs</text>
+
+  <rect x="430" y="175" width="340" height="270" rx="8" fill="#FDF3ED" stroke="#C25E2E" stroke-width="1"/>
+  <rect x="450" y="195" width="220" height="26" rx="4" fill="#C25E2E"/>
+  <text x="460" y="213" font-family="JetBrains Mono" font-size="11" fill="#FFFFFF" font-weight="600">COMPETITIVE EDGE</text>
+  <text x="450" y="270" font-family="Plus Jakarta Sans" font-size="34" font-weight="700" fill="#C25E2E">02</text>
+  <text x="545" y="266" font-family="Plus Jakarta Sans" font-size="13" fill="#334155">Clear differentiation</text>
+  <line x1="450" y1="290" x2="750" y2="290" stroke="#E7E5DE" stroke-width="1"/>
+  <text x="450" y="320" font-family="Plus Jakarta Sans" font-size="13" fill="#334155" font-weight="600">↳ Transparent sourcing:</text>
+  <text x="450" y="340" font-family="Plus Jakarta Sans" font-size="12" fill="#64748B">Verifiable commitments</text>
+
+  <rect x="800" y="175" width="340" height="270" rx="8" fill="#FFFFFF" stroke="#E7E5DE" stroke-width="1"/>
+  <rect x="820" y="195" width="220" height="26" rx="4" fill="#F4F3EE"/>
+  <text x="830" y="213" font-family="JetBrains Mono" font-size="11" fill="#334155" font-weight="600">SUPPLY TERMS</text>
+  <text x="820" y="270" font-family="Plus Jakarta Sans" font-size="34" font-weight="700" fill="#0F172A">03</text>
+  <text x="900" y="266" font-family="Plus Jakarta Sans" font-size="13" fill="#64748B">Nationwide</text>
+  <line x1="820" y1="290" x2="1120" y2="290" stroke="#E7E5DE" stroke-width="1"/>
+  <text x="820" y="320" font-family="Plus Jakarta Sans" font-size="13" fill="#334155" font-weight="600">↳ Customer support:</text>
+  <text x="820" y="340" font-family="Plus Jakarta Sans" font-size="12" fill="#64748B">Advisory and delivery on schedule</text>
+
+  <line x1="60" y1="605" x2="1140" y2="605" stroke="#E7E5DE" stroke-width="1"/>
+  <text x="60" y="635" font-family="JetBrains Mono" font-size="12" fill="#64748B">CONTACT: [Phone / Hotline] | [Email]</text>
+</svg>"""
+
+# Post package files: the scaffold always creates these, independent of any sample.
+DEFAULT_POST_FILES = {
+    "facebook-ad.md": ("text", DEFAULT_POST_TEMPLATE),
+    "content.json": ("json", DEFAULT_POST_CONTENT),
+    "research.md": ("text", DEFAULT_POST_RESEARCH_MD),
+    "research.json": ("json", DEFAULT_POST_RESEARCH),
+    "visual.svg": ("text", DEFAULT_POST_VISUAL),
+}
 
 
 def validate_page_id(value: str) -> str:
@@ -102,46 +217,85 @@ def validate_page_id(value: str) -> str:
     return value
 
 
+def _render_sample_file(
+    rel_path: str,
+    spec: Dict[str, Any],
+    root: Path,
+    page_id: str,
+    hypotheses_file: str,
+    marketing_goal: Optional[str] = None,
+) -> str:
+    file_type = spec.get("type", "text")
+    if file_type == "json":
+        data = spec.get("content", {})
+        if rel_path == "loop/config.json":
+            cfg = dict(data)
+            cfg["page_id"] = page_id
+            cfg["hypotheses_file"] = hypotheses_file
+            return json.dumps(cfg, indent=2, ensure_ascii=False) + "\n"
+        if rel_path == "product-marketing.json":
+            cat = dict(data)
+            if marketing_goal:
+                cat["marketing_goal"] = marketing_goal
+            return json.dumps(cat, indent=2, ensure_ascii=False) + "\n"
+        if rel_path == "loop/publications.json":
+            return json.dumps({"schema_version": 2, "publications": [], "placements": []}, indent=2, ensure_ascii=False) + "\n"
+        return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+
+    # Text content
+    text = spec.get("content", "")
+    text = text.replace("{{PAGE_ID}}", page_id)
+    text = text.replace("{{HYPOTHESES_FILE}}", hypotheses_file)
+    text = text.replace("{{PROJECT_SLUG}}", root.name)
+    project_name = root.name.replace("-", " ").title()
+    text = text.replace("{{PROJECT_NAME}}", project_name)
+    text = text.replace("{{CURRENT_DATE}}", date.today().isoformat())
+    return text
+
+
 def bootstrap_project(
     root: Path,
     page_id: str,
     *,
     hypotheses_file: str = "posts/hypothesis.json",
     marketing_goal: Optional[str] = None,
+    sample_file: Optional[Path] = None,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
     """Bootstrap complete project scaffold without overwriting existing files."""
     root = Path(root).resolve()
     validate_page_id(page_id)
 
-    # Directories
-    dirs_to_create = [
-        root / "loop",
-        root / "loop/runs",
-        root / "sources/post-metrics/exports",
-        root / "sources/post-metrics/captures",
-        root / "sources/post-metrics/normalized",
-        root / "posts",
-        root / "posts/1",
-        root / "brand-assets",
-        root / "customer",
-    ]
+    sample = load_sample_structure(sample_file)
+    sample_dirs = sample.get("directories", [])
+    if sample_dirs:
+        dirs_to_create = [root / d for d in sample_dirs]
+    else:
+        dirs_to_create = [
+            root / "loop",
+            root / "loop/runs",
+            root / "sources/post-metrics/exports",
+            root / "sources/post-metrics/captures",
+            root / "sources/post-metrics/normalized",
+            root / "sources/viral",
+            root / "posts",
+            root / "posts/1",
+            root / "brand",
+            root / "brand/assets",
+            root / "brand/preview",
+            root / "brand-assets",
+            root / "customer",
+            root / "customer/leads",
+            root / "customer/research",
+        ]
 
-    # File targets
     config_path = root / "loop/config.json"
     state_path = root / "loop/publications.json"
-    loop_readme = root / "loop/README.md"
-    loop_agents = root / "loop/AGENTS.md"
-    project_agents = root / "AGENTS.md"
     catalog_path = root / "product-marketing.json"
     hypo_path = root / hypotheses_file
     post_1_path = root / "posts/1/facebook-ad.md"
-    content_path = root / "posts/1/content.json"
 
     # Pre-flight config check
-    config = {"page_id": page_id, "hypotheses_file": hypotheses_file,
-              "allowed_channels": ["facebook_page"],
-              "content_policy": {"schema_version": 1}}
     if config_path.exists():
         existing_cfg = json.loads(config_path.read_text(encoding="utf-8"))
         if existing_cfg.get("page_id") != page_id:
@@ -152,17 +306,62 @@ def bootstrap_project(
         if not isinstance(state.get("publications"), list):
             raise ValueError("Existing loop/publications.json is invalid; nothing changed.")
 
-    files_plan = [
-        config_path,
-        state_path,
-        loop_readme,
-        loop_agents,
-        project_agents,
-        catalog_path,
-        hypo_path,
-        post_1_path,
-        content_path,
-    ]
+    sample_files = sample.get("files", {})
+    files_plan = []
+    file_renderers = {}
+
+    if sample_files:
+        for rel_str, spec in sample_files.items():
+            actual_rel = hypotheses_file if rel_str == "posts/hypothesis.json" else rel_str
+            target_path = root / actual_rel
+            files_plan.append(target_path)
+            file_renderers[target_path] = (lambda s=spec, r=rel_str: _render_sample_file(
+                r, s, root, page_id, hypotheses_file, marketing_goal
+            ))
+    else:
+        loop_readme = root / "loop/README.md"
+        loop_agents = root / "loop/AGENTS.md"
+        project_agents = root / "AGENTS.md"
+        content_path = root / "posts/1/content.json"
+        config = {
+            "page_id": page_id,
+            "hypotheses_file": hypotheses_file,
+            "allowed_channels": ["facebook_page"],
+            "content_policy": {"schema_version": 1},
+        }
+        files_plan = [
+            config_path,
+            state_path,
+            loop_readme,
+            loop_agents,
+            project_agents,
+            catalog_path,
+            hypo_path,
+            post_1_path,
+            content_path,
+        ]
+        file_renderers = {
+            config_path: lambda: json.dumps(config, indent=2, ensure_ascii=False) + "\n",
+            state_path: lambda: json.dumps({"schema_version": 2, "publications": [], "placements": []}, indent=2, ensure_ascii=False) + "\n",
+            loop_readme: lambda: f"# Loop Configuration for Page {page_id}\n\n## Defined Business Outcomes\n- Qualified inquiries: [Define qualified inquiry criteria]\n- Target buyer role: [Define target buyer persona]\n- Conversion action: [Define expected next step]\n\n## Orchestrator Commands\nSee `tools/loop/README.md` for orchestrator reference.\n",
+            loop_agents: lambda: "# Loop Agent Safeguards\n\n- Do not publish automatically without explicit human approval.\n- Do not prune groups without at least 3 comparable rounds.\n- Never treat pending moderation posts as failures.\n",
+            project_agents: lambda: "# Campaign instructions\n\n```text\nPolicy → research → draft → visual → approval → publish → register\n```\n\n| Scope | Rule |\n|---|---|\n| Routing | Load social-campaign; read loop/config.json and existing project/brand facts before drafting. |\n| Channels | Use only allowed_channels in loop/config.json; cross-platform work is opt-in. |\n| Content | Select exact copy/media in posts/<id>/content.json; use .agents/skills/social-campaign/references/content-gates.md from repository root. |\n| Approval | Run preflight; record approve-content only after explicit human approval of the current assets. |\n| Publication | Pass --project and --post to facebook_agent; verify configured Page identity. Never retry uncertain submission. |\n| Measurement | Read loop/AGENTS.md; register the confirmed URL after publication. |\n",
+            catalog_path: lambda: json.dumps({**DEFAULT_PRODUCT_CATALOG, **({"marketing_goal": marketing_goal} if marketing_goal else {})}, indent=2, ensure_ascii=False) + "\n",
+            hypo_path: lambda: json.dumps(DEFAULT_HYPOTHESIS, indent=2, ensure_ascii=False) + "\n",
+            post_1_path: lambda: DEFAULT_POST_TEMPLATE,
+            content_path: lambda: json.dumps(DEFAULT_POST_CONTENT, indent=2, ensure_ascii=False) + "\n",
+        }
+
+    # Post package files are built-in defaults: samples describe posts/1, not its contents.
+    for name, (kind, content) in DEFAULT_POST_FILES.items():
+        default_path = root / "posts/1" / name
+        if default_path in file_renderers:
+            continue
+        files_plan.append(default_path)
+        if kind == "json":
+            file_renderers[default_path] = lambda c=content: json.dumps(c, indent=2, ensure_ascii=False) + "\n"
+        else:
+            file_renderers[default_path] = lambda c=content: c
 
     if dry_run:
         return {
@@ -179,64 +378,10 @@ def bootstrap_project(
         d.mkdir(parents=True, exist_ok=True)
 
     # Write files atomically if missing
-    if not config_path.exists():
-        config_path.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-    if not state_path.exists():
-        state_payload = {"schema_version": 2, "publications": [], "placements": []}
-        state_path.write_text(json.dumps(state_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-    if not loop_readme.exists():
-        loop_readme.write_text(
-            f"# Loop Configuration for Page {page_id}\n\n"
-            "## Defined Business Outcomes\n"
-            "- Qualified inquiries: [Define qualified inquiry criteria]\n"
-            "- Target buyer role: [Define target buyer persona]\n"
-            "- Conversion action: [Define expected next step]\n\n"
-            "## Orchestrator Commands\n"
-            "See `tools/loop/README.md` for orchestrator reference.\n",
-            encoding="utf-8",
-        )
-
-    if not loop_agents.exists():
-        loop_agents.write_text(
-            "# Loop Agent Safeguards\n\n"
-            "- Do not publish automatically without explicit human approval.\n"
-            "- Do not prune groups without at least 3 comparable rounds.\n"
-            "- Never treat pending moderation posts as failures.\n",
-            encoding="utf-8",
-        )
-
-    if not project_agents.exists():
-        project_agents.write_text(
-            "# Campaign instructions\n\n"
-            "```text\nPolicy → research → draft → visual → approval → publish → register\n```\n\n"
-            "| Scope | Rule |\n|---|---|\n"
-            "| Routing | Load social-campaign; read loop/config.json and existing project/brand facts before drafting. |\n"
-            "| Channels | Use only allowed_channels in loop/config.json; cross-platform work is opt-in. |\n"
-            "| Content | Select exact copy/media in posts/<id>/content.json; use .agents/skills/social-campaign/references/content-gates.md from repository root. |\n"
-            "| Approval | Run preflight; record approve-content only after explicit human approval of the current assets. |\n"
-            "| Publication | Pass --project and --post to facebook_agent; verify configured Page identity. Never retry uncertain submission. |\n"
-            "| Measurement | Read loop/AGENTS.md; register the confirmed URL after publication. |\n",
-            encoding="utf-8",
-        )
-
-    if not catalog_path.exists():
-        cat = dict(DEFAULT_PRODUCT_CATALOG)
-        if marketing_goal:
-            cat["marketing_goal"] = marketing_goal
-        catalog_path.write_text(json.dumps(cat, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-    if not hypo_path.exists():
-        hypo_path.parent.mkdir(parents=True, exist_ok=True)
-        hypo_path.write_text(json.dumps(DEFAULT_HYPOTHESIS, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-    if not post_1_path.exists():
-        post_1_path.write_text(DEFAULT_POST_TEMPLATE, encoding="utf-8")
-
-    if not content_path.exists():
-        storage.save(content_path, {"schema_version": 1, "channel": "facebook_page",
-                                    "copy": "facebook-ad.md", "groups": []})
+    for target_path, renderer in file_renderers.items():
+        if not target_path.exists():
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.write_text(renderer(), encoding="utf-8")
 
     return {
         "status": "initialized",
@@ -384,6 +529,7 @@ def main(argv=None):
     parser.add_argument("--page-id", required=True, help="Facebook Page ID (digits only)")
     parser.add_argument("--hypotheses-file", default="posts/hypothesis.json", help="Relative path for hypotheses JSON")
     parser.add_argument("--marketing-goal", help="Optional custom marketing goal string")
+    parser.add_argument("--sample-file", type=Path, help="Optional path to custom folder structure sample JSON")
     parser.add_argument("--dry-run", action="store_true", help="Preview would-create paths without writing to disk")
     args = parser.parse_args(argv)
 
@@ -392,10 +538,14 @@ def main(argv=None):
         args.page_id,
         hypotheses_file=args.hypotheses_file,
         marketing_goal=args.marketing_goal,
+        sample_file=args.sample_file,
         dry_run=args.dry_run,
     )
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
+    if __package__ is None:
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
     main()

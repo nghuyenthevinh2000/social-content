@@ -49,7 +49,7 @@ class ProjectInitTest(unittest.TestCase):
 
         post_1_path = target / 'posts/1/facebook-ad.md'
         self.assertTrue(post_1_path.exists())
-        self.assertIn('Bài 1', post_1_path.read_text())
+        self.assertIn('# Facebook post copy', post_1_path.read_text())
 
         # 3. Loop state & guides
         state_path = target / 'loop/publications.json'
@@ -71,8 +71,45 @@ class ProjectInitTest(unittest.TestCase):
         self.assertTrue((target / 'sources/post-metrics/exports').exists())
         self.assertTrue((target / 'sources/post-metrics/captures').exists())
         self.assertTrue((target / 'sources/post-metrics/normalized').exists())
+        self.assertTrue((target / 'sources/viral').exists())
         self.assertTrue((target / 'brand-assets').exists())
+        self.assertTrue((target / 'brand/assets').exists())
+        self.assertTrue((target / 'brand/preview').exists())
+        self.assertTrue((target / 'brand/tokens.json').exists())
+        self.assertTrue((target / 'brand/guidelines.md').exists())
+        self.assertTrue((target / 'brand/brand.yaml').exists())
         self.assertTrue((target / 'customer').exists())
+        self.assertTrue((target / 'customer/leads/leads.json').exists())
+        self.assertTrue((target / 'customer/profile.json').exists())
+        self.assertTrue((target / 'posts/1/research.md').exists())
+        self.assertTrue((target / 'posts/1/research.json').exists())
+        self.assertTrue((target / 'posts/1/visual.svg').exists())
+
+    def test_bootstrap_with_custom_sample(self):
+        target = self.root / 'custom-sample-target'
+        sample_path = self.root / 'custom_sample.json'
+        sample_data = {
+            'schema_version': 1,
+            'directories': ['custom_dir', 'custom_dir/sub'],
+            'files': {
+                'custom_dir/file.txt': {
+                    'type': 'text',
+                    'content': 'Hello from custom sample: {{PAGE_ID}} - {{PROJECT_SLUG}}'
+                },
+                'custom_dir/data.json': {
+                    'type': 'json',
+                    'content': {'status': 'custom_ok'}
+                }
+            }
+        }
+        sample_path.write_text(json.dumps(sample_data), encoding='utf-8')
+        res = project_init.bootstrap_project(target, self.page_id, sample_file=sample_path)
+        self.assertEqual(res['status'], 'initialized')
+        self.assertTrue((target / 'custom_dir/sub').exists())
+        self.assertTrue((target / 'custom_dir/file.txt').exists())
+        self.assertIn(self.page_id, (target / 'custom_dir/file.txt').read_text())
+        self.assertIn('custom-sample-target', (target / 'custom_dir/file.txt').read_text())
+        self.assertEqual(json.loads((target / 'custom_dir/data.json').read_text()), {'status': 'custom_ok'})
 
     def test_idempotent_rerun_preserves_custom_edits(self):
         target = self.root / 'rerun-target'

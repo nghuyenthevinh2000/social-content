@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "run_id": "<run-id>",
+  "campaign": "<campaign-slug>",
+  "brief_version": "<v1>",
+  "records": [
+    {
+      "id": "<record-id>",
+      "url": "<https://www.facebook.com/reel/000000000000000>",
+      "platform": "facebook",
+      "source_id": "<source-id>",
+      "source_path": "<raw/observations.json>",
+      "source_order": 1,
+      "original_record": {
+        "path": "<raw/observations.json>",
+        "index": 0
+      },
+      "publication_at": null,
+      "collected_at": "<2026-01-01T00:00:00+00:00>",
+      "limitations": [
+        "<missing audio, truncated caption, unverified publication date>"
+      ],
+      "metrics": {
+        "views": null,
+        "likes": null,
+        "comments": null,
+        "shares": null
+      },
+      "evidence": {
+        "medium": "<caption|transcript|audio|video|mixed>",
+        "quotes": [
+          "<exact observed caption or transcript excerpt>"
+        ],
+        "timestamps": []
+      },
+      "promotion": {
+        "decision": "<allow|exclude>",
+        "promoted_offer": "<named offer, unknown, or none observed>",
+        "reason": "<why the default allowance applies or why the offer is unrelated>"
+      },
+      "relevance": {
+        "market_language": "<observed language or provenance evidence>",
+        "industry_buyer": "<observed problem/application link to the brief>",
+        "outcome": "<audience_shortlist|inspiration_only|not_shortlisted>"
+      },
+      "qualification": {
+        "criterion_source": "<campaign policy path, or none configured>",
+        "claim": "popularity",
+        "metric": null,
+        "operator": null,
+        "threshold": null,
+        "observed": null,
+        "result": "unknown",
+        "baseline": {
+          "status": "unknown"
+        }
+      }
+    }
+  ]
+}

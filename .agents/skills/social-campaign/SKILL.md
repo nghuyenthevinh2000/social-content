@@ -1,6 +1,6 @@
 ---
 name: Social Campaign
-description: "Social media, social projects, social posts, content creation, drafting, captions, publishing, posting, campaigns, scheduling, distribution, engagement, audience research, performance metrics. Use for project or brand social content on Facebook, LinkedIn, Twitter/X, and Reddit research; single-platform and cross-platform workflows."
+description: "Social media, social projects, social posts, content creation, drafting, captions, publishing, posting, campaigns, scheduling, distribution, engagement, audience research, performance metrics, viral content discovery, hashtag and keyword vocabulary validation, Reels recommendations, creator style analysis. Use for project or brand social content on Facebook, LinkedIn, Twitter/X, and Reddit research; single-platform and cross-platform workflows."
 ---
 
 # Social Campaign
@@ -14,9 +14,9 @@ Resolve project → Load policy → Research → Draft → Visual → Preflight 
 | Step | Required behavior |
 |---|---|
 | Resolve | Map the requested project/brand to its existing `local/<slug>/` directory. Ask only if missing or ambiguous; never initialize an existing project again. |
-| Load | Explicitly read project `AGENTS.md`, `loop/config.json`, `loop/AGENTS.md`, product facts, selected hypothesis, brand manifest and guidelines. Do not rely on automatic nested instruction discovery. |
-| Select | Treat `allowed_channels` as authoritative. Never infer channels from old drafts, a Page ID alone, or this skill's tool inventory. Missing channel policy requires clarification before drafting. |
-| Research | Read [content gates](references/content-gates.md). Meet configured evidence requirements and obtain research review before drafting. Missing evidence blocks progression; never invent citations or cases. |
+| Load | Explicitly read project `AGENTS.md`, `loop/config.json`, `loop/AGENTS.md`, product facts, selected hypothesis, brand manifest and guidelines for drafting/publication. For viral/hashtag research, require only `product-marketing.json` (`marketing_goal`, `product.catalog`), plus optional past `sources/viral/` analyses for historical feedback. No brand, customer-profile, hypothesis, loop or scaffold dependency. |
+| Select | Treat `allowed_channels` as authoritative for drafting/publication. Research platforms come from the explicit request and do not require publishing-channel setup. Never infer channels from old drafts, a Page ID alone, or this skill's tool inventory. |
+| Research | Read [content gates](references/content-gates.md). Meet configured evidence requirements and obtain research review before drafting. Missing evidence blocks progression; never invent citations or cases. Audience, viral, creator-style or hashtag/keyword vocabulary research follows [viral research](references/viral-analyzer.md) and [hashtag validation](references/hashtag-validation.md), and stays bound to this campaign. |
 | Compose | Load `story-engine` before writing copy. Apply project voice/style references; draft only requested, configured channels. Existing facts take precedence over scaffold placeholders. |
 | Visual | Load `infographic` or the appropriate visual skill only when needed. Read brand tokens first; inspect the actual rendered image. Do not substitute generic themes. |
 | Validate | Run `python -m tools.loop --project <PROJECT> preflight --post <ID> --stage <STAGE>`. Stages: `research`, `draft`, `visual`, `publish`. Fix failures before continuing. |
@@ -38,12 +38,20 @@ Resolve project → Load policy → Research → Draft → Visual → Preflight 
 | Twitter replies | `uv run python -m tools.twitter_agent <search\|thread\|reply>` | Inspect before drafting; explicit human approval before `reply submit`. |
 | Reddit discovery | `tools/reddit-research-mcp/` | Semantic community discovery; no account credentials. |
 | Reddit extraction | `python3 tools/reddit_agent/research.py --subreddit <NAME> --months 6 --output <DIR>` | Research audience language and pain points; no Reddit publishing. |
+| Facebook Reels | `uv run python -m tools.facebook_agent --cdp <ENDPOINT> reels --page-id <PAGE_ID> --limit <1-50> --output <NEW_JSON>` | Read-only visible personalized recommendations; output path must not exist; Page ID from the resolved campaign. No query, region or date filters. |
+| Hashtag prompt | `python3 -m tools.loop.viral_analyzer.hashtag_generate build-prompt --project local/<SLUG> --run <ID> --platform <P> --market-language <L> --application "<NEED>"` | Campaign-scoped, no network. Only product goal/catalog are required context; history is optional. Import only a saved JSON response with `import-response`; never hand-edit candidates. [Hashtag validation](references/hashtag-validation.md). |
+| Hashtag verification | `python3 -m tools.loop.viral_analyzer.hashtag_verify <plan\|collect\|build-review-prompt\|record-review\|history> --project local/<SLUG> --run <ID>` | `collect` previews without `--execute`; spend requires `--execute --ceiling <USD>` and an inspected schema/price file. `history` is read-only; labels remain agent evidence judgments. [Hashtag validation](references/hashtag-validation.md). |
+| Hashtag expansion | `python3 -m tools.loop.viral_analyzer.viral_scrape --project local/<SLUG> --run <ID> --schema <JSON> [--execute --ceiling <USD>]` | Refuses targets whose latest history decision is not `promising`/`limited_expand`. Preview by default; `--execute` writes `expansion/viral-candidates.json`. No untargeted trending. |
 
 | Operating constraint | Rule |
 |---|---|
 | Project location | Campaigns live under `local/`, never `projects/`. |
 | Tooling | During campaign execution use public repository CLIs, never inline Python/subprocess wrappers, private-helper probes or raw CDP/Playwright/JS. Repository implementation/tests are separate from campaign execution. |
 | Capability gaps | Inspect the relevant CLI `--help` and reference first. If capability is absent, stop and report it; extend repository tooling with tests only when requested. A missing flag, URL or failed gate never authorizes custom automation. |
+| Hashtag evidence | Use only public `hashtag_generate`/`hashtag_verify` CLIs. Labels are agent judgments over inspected samples; report usage observed in the sample, never a platform-wide definition, popularity or approval. |
+| Hashtag spend | `collect` and `viral_scrape` preview by default. Paid execution requires `--execute --ceiling <USD>`, an inspected schema/price file and explicit human spend approval. Never assume account balance. |
+| Hashtag history | `sources/viral/hashtag-performance.json` is campaign-local and append-only through `record-review`. Never copy evaluations across campaigns or fabricate counts from old prose; identical retries no-op. |
+| Viral result handoff | Every returned video must have its observed direct video permalink in both `report.md` and the final chat response, with platform/creator, observed metrics/time, relevance and access/evidence limitations. IDs, concepts, hashtags, search/profile links and local artifact paths are not substitutes. No permalink means no verified-video result; report a partial/blocked outcome rather than invent links or pad the requested count. Follow the [verifiable handoff contract](references/viral-analyzer.md#verifiable-video-handoff). |
 | Saved copy | Prefer `post --text-file <COPY_FILE>` over shell quoting. Mutually exclusive with `--text`; UTF-8, LF-normalized, terminal newlines excluded, internal whitespace preserved. |
 | Missing permalink | A confirmed post may still have `permalink: null`. Never repost or scrape with custom code. Use `content-library --page-id <PAGE_ID> --output <NEW_JSON>` on the same CDP endpoint, then verify exact content, author, time and original placement. Ambiguity requires manual inspection; never select solely by recency or fabricate a URL. |
 | Profile isolation | Resolve `tools/common/local/profiles.json`; pass matching CDP endpoint to platform commands. |
@@ -51,7 +59,7 @@ Resolve project → Load policy → Research → Draft → Visual → Preflight 
 | Facebook identity | Supply expected Page ID; browser must already be switched into that Page. Run Facebook doctor with the same Page ID. |
 | Sequential publishing | No concurrent CDP actions. A requested multi-platform campaign still publishes one approved destination at a time. |
 | Delegation | Run directly by default. Delegate only when explicitly requested; every worker inherits project policy. Draft workers never access the browser; browser workers remain sequential. |
-| Brand | Read `brand/brand.yaml`, guidelines and configured tokens. Reject generic dark/neon themes when project identity differs. Human inspection covers typography and rendered legibility. |
+| Brand | For content/visual production, read `brand/brand.yaml`, guidelines and configured tokens. Not a viral-research prerequisite. Reject generic dark/neon themes when project identity differs. Human inspection covers typography and rendered legibility. |
 
 ## Workflow Selection
 
@@ -59,6 +67,10 @@ Resolve project → Load policy → Research → Draft → Visual → Preflight 
 |---|---|
 | Existing-project post | Resolve → load → research gate → story/copy → visual → preflight → review. Never create unsolicited channel variants. |
 | New campaign | Preview `init --page-id <ID> --dry-run`, then initialize only with authorization. Interview for missing goal, catalog, differentiation, personas and sales facts; never invent them. Set explicit channel and content policy. |
+| Viral discovery (Reels, trends) | Resolve the existing campaign and requested research platforms first; never add platforms. Write the brief from the [viral templates](assets/viral-research/). For topic/hashtag discovery, start with offline `hashtag_generate build-prompt` → agent JSON → `import-response`, then the verification workflow below; absent history means generate new `generated_unverified` candidates, not search for a replacement database. No preliminary web-search loops. Missing context blocks collection, not offline proposals; report gaps after saving candidates. Follow [viral research](references/viral-analyzer.md) and [Reels selection](references/reels-selection.md) for review/shortlisting. |
+| Hashtag validation | Resolve the campaign and read only `product-marketing.json` for goal/catalog. `hashtag_generate build-prompt` → agent JSON → `import-response` → `hashtag_verify plan` with a saved schema/price file → `collect` (preview; `--execute --ceiling` only after explicit spend approval) → `build-review-prompt` → agent labels → `record-review`. Follow [hashtag validation](references/hashtag-validation.md). Missing/invalid product goal/catalog blocks collection; missing brand/loop/customer/hypothesis files do not. |
+| Hashtag expansion | Only after `record-review` marks targets `promising` or `limited_expand`: run `viral_scrape` in preview, then `--execute --ceiling` with approval. It refuses untested targets and writes `sources/viral/<RUN>/expansion/viral-candidates.json`; feed those candidates into viral relevance review. |
+| Creator style analysis | Same campaign resolution as viral research; require a campaign-relevant reason. Save `creator-style-<slug>.md` in the run folder. Creator records cannot be reused as viral references. |
 | Publish approved content | Follow [content gates](references/content-gates.md), verify browser/profile, then execute only approved destinations. Commands submit without another prompt. |
 | Register | Use an observed permalink from the fresh confirmation, or verify a read-only Content Library/manual result. Then `python -m tools.loop --project <PROJECT> register --post <ID> --url <URL> --published-at <ISO_TS>`. Never guess URL or publish time. |
 | Measure | `status`, `due`, `collect-insights`, `cycle`, `compare --run <ID>`; preserve evidence and actual observation ages. |
