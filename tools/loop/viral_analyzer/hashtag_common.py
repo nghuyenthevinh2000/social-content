@@ -84,7 +84,65 @@ def campaign_root(project):
 
 def run_directory(root, run_id):
     storage.validate_run_id(run_id)
-    return Path(root).resolve() / 'sources/viral' / run_id
+    return storage.project_file(root, f'sources/viral/{run_id}')
+
+
+def artifact_directory(root, run_id):
+    """New runs are tidy; resume flat legacy runs without moving evidence."""
+    run = run_directory(root, run_id)
+    legacy = any((run / name).exists() for name in (
+        'context.json', 'candidates.json', 'plan.json', 'manifest.json',
+        'relevance.json', 'calls', 'expansion'))
+    if legacy and (run / 'artifacts').exists():
+        raise ValueError('ambiguous run layout: both flat and artifacts/ data exist')
+    if legacy:
+        return run
+    return storage.project_file(root, f'sources/viral/{run_id}/artifacts')
+
+
+def write_run_report(root, run_id, context, *, state='pending', rows=(), detail=None):
+    """Keep an honest collection handoff even when no samples can be reviewed."""
+    run = run_directory(root, run_id)
+    run.mkdir(parents=True, exist_ok=True)
+    def cell(value):
+        return str(value if value is not None else 'unknown').replace('|', '\\|').replace('\n', ' ')
+
+    brief = storage.project_file(root, f'sources/viral/{run_id}/brief.md')
+    if not brief.exists():
+        brief.write_text(
+            f'# Viral research brief: {run_id}\n\n'
+            '| Field | Value |\n|---|---|\n'
+            f'| Campaign | {cell(root.name)} |\n'
+            f'| Platform | {cell(context.get("platform"))} |\n'
+            f'| Market language | {cell(context.get("market_language"))} |\n'
+            f'| Application | {cell(context.get("application"))} |\n'
+            f'| Goal | {cell((context.get("context") or {}).get("goal"))} |\n'
+            '| Scope | Product goal/catalog; optional past analyses. No spend authorization. |\n')
+    report = storage.project_file(root, f'sources/viral/{run_id}/report.md')
+    marker = '<!-- viral-analyzer: automatic collection report -->'
+    if report.exists() and not report.read_text().startswith(marker):
+        return report  # Never overwrite an agent/human-authored analysis.
+    lines = [marker, f'# Viral research report: {run_id}', '',
+             '```text', 'Brief → Collection → Evidence review → Final shortlist', '```', '',
+             '| Field | Observation |', '|---|---|',
+             f'| Outcome | {cell(state)} |',
+             f'| Platform / market language | {cell(context.get("platform"))} / {cell(context.get("market_language"))} |',
+             f'| Application | {cell(context.get("application"))} |',
+             f'| Updated | {utc_now()} |',
+             f'| Finding | {cell(detail or "Collection/review pending; no verified-video result claimed.")} |',
+             '| Qualification | Not assessed by this collection report. Complete the linked-video report after evidence review. |', '',
+             '| Query | Provider / endpoint | Outcome | Receipt charge | Evidence |',
+             '|---|---|---|---|---|']
+    lines.extend('| ' + ' | '.join(cell(value) for value in row) + ' |' for row in rows)
+    next_action = ('Deprioritize this tested provider/query route for this campaign pending new evidence; do not repeat paid probes without approval.'
+                   if state in ('no_results', 'failed') else
+                   'Complete the current stage and review evidence before claiming a qualified shortlist.')
+    lines.extend(['', '| Decision | Scope / next action |', '|---|---|',
+                  f'| Recommendation | {next_action} |',
+                  '| Limits | Empty/error responses do not prove the platform has no Vietnam audience or cannot support marketing. No buyer/sales effectiveness was measured. |',
+                  '| Handoff | Agent must finalize this report, even for zero results, with query coverage, costs, failures, market-specific recommendation and uncertainty. |', ''])
+    report.write_text('\n'.join(lines))
+    return report
 
 
 def load_json(path, label):

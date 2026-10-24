@@ -35,7 +35,7 @@ def build_args(root, run='run-1', **overrides):
 
 
 def response_for(root, run, candidates, **overrides):
-    context = json.loads((root / 'sources/viral' / run / 'context.json').read_text())
+    context = json.loads((hc.artifact_directory(root, run) / 'context.json').read_text())
     envelope = {
         'schema_version': 1, 'campaign': context['campaign'], 'run_id': run,
         'context_sha256': context['context_sha256'], 'platform': context['platform'],
@@ -87,6 +87,42 @@ class GenerateTests(unittest.TestCase):
                          ['product-marketing.json'])
         self.assertEqual(set(context['context']),
                          {'campaign', 'goal', 'product', 'history', 'seed_evidence', 'prior_analysis'})
+
+    def test_new_run_has_only_brief_report_and_artifacts_at_top_level(self):
+        result, _ = hg.build_prompt(build_args(self.root))
+        run = hc.run_directory(self.root, 'run-1')
+        self.assertEqual({path.name for path in run.iterdir()},
+                         {'brief.md', 'report.md', 'artifacts'})
+        self.assertTrue(result['context_path'].endswith('/artifacts/context.json'))
+        self.assertTrue(result['prompt_path'].endswith('/artifacts/prompt.md'))
+        self.assertIn('pending', (run / 'report.md').read_text())
+
+    def test_legacy_flat_runs_resume_without_moving_evidence(self):
+        result, _ = hg.build_prompt(build_args(self.root))
+        run = hc.run_directory(self.root, 'run-1')
+        for path in (run / 'artifacts').iterdir():
+            path.rename(run / path.name)
+        (run / 'artifacts').rmdir()
+        repeated, _ = hg.build_prompt(build_args(self.root))
+        self.assertEqual(result['context_sha256'], repeated['context_sha256'])
+        self.assertEqual(hc.artifact_directory(self.root, 'run-1'), run)
+        response = self.write_response([candidate()])
+        imported, _ = hg.import_response(SimpleNamespace(
+            project=str(self.root), run='run-1', response=str(response)))
+        self.assertTrue(imported['ok'], imported)
+        self.assertTrue((run / 'candidates.json').exists())
+
+    def test_ambiguous_layout_is_rejected(self):
+        hg.build_prompt(build_args(self.root))
+        run = hc.run_directory(self.root, 'run-1')
+        (run / 'context.json').write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'ambiguous run layout'):
+            hc.artifact_directory(self.root, 'run-1')
+
+    def test_legacy_expansion_only_run_keeps_receipt_location(self):
+        run = hc.run_directory(self.root, 'old-expansion')
+        (run / 'expansion/calls').mkdir(parents=True)
+        self.assertEqual(hc.artifact_directory(self.root, 'old-expansion'), run)
 
     def test_prior_analysis_is_optional_bounded_context_not_fresh_evidence(self):
         base = self.root / 'sources/viral'

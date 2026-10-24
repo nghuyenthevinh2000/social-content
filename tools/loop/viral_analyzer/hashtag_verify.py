@@ -65,7 +65,7 @@ def _result(ok, **payload):
 
 
 def _generation(root, run_id):
-    run_dir = hc.run_directory(root, run_id)
+    run_dir = hc.artifact_directory(root, run_id)
     context = hc.load_json(run_dir / 'context.json', 'generation context')
     candidates = hc.load_json(run_dir / 'candidates.json', 'validated candidates')
     if context.get('schema_version') != 1 or candidates.get('schema_version') != 1:
@@ -601,9 +601,43 @@ def collect_probes(args):
             hc.write_json(run_dir / 'calls' / f"{call['call_id']}.samples.json", samples)
         outcomes.append({'call_id': call['call_id'], 'action': 'dispatched',
                          'outcome': outcome, 'charge_usd': charge})
+    report_path = _collection_report(root, args.run, run_dir, context, calls, outcomes)
     return _result(True, command='collect', mode='execute',
-                   outcomes=outcomes, currency=plan.get('currency'),
-                   errors=[], warnings=[]), problems
+                    outcomes=outcomes, currency=plan.get('currency'),
+                    report_path=str(report_path.relative_to(root)),
+                    errors=[], warnings=[]), problems
+
+
+def _collection_report(root, run_id, run_dir, context, calls, outcomes):
+    empty = all(item.get('outcome') == 'empty_response' for item in outcomes)
+    successes = sum(item.get('outcome') == 'success' for item in outcomes)
+    pending = all(item.get('outcome') == 'not_collected' for item in outcomes)
+    state = ('no_results' if empty else 'review_pending' if successes else
+             'pending' if pending else 'failed')
+    detail = (f'{len(outcomes)} planned query outcomes: {successes} successful; '
+              'empty/error responses are collection outcomes, not semantic misses or market-size evidence.')
+    rows = []
+    for call, outcome in zip(calls, outcomes):
+        status_path = _status_path(run_dir, call)
+        status = _read_status(run_dir, call) or {}
+        evidence = (f'[receipt]({status_path.relative_to(hc.run_directory(root, run_id)).as_posix()})'
+                    if status_path.exists() else 'not dispatched; no receipt')
+        rows.append((call['query'], f'{call["provider"]} / {call["endpoint"]}',
+                     outcome.get('outcome'), status.get('charge_usd'), evidence))
+    return hc.write_run_report(root, run_id, context, state=state, rows=rows, detail=detail)
+
+
+def report_collection(args):
+    """Summarize saved receipts only; no provider calls or history judgments."""
+    root = hc.campaign_root(args.project)
+    run_dir, context, _ = _generation(root, args.run)
+    plan = _load_plan(run_dir, context)
+    outcomes = [{'call_id': call['call_id'],
+                 'outcome': (_read_status(run_dir, call) or {}).get('outcome', 'not_collected')}
+                for call in plan['calls']]
+    path = _collection_report(root, args.run, run_dir, context, plan['calls'], outcomes)
+    return _result(True, command='report', report_path=str(path.relative_to(root)),
+                   errors=[], warnings=[]), hc.Problems()
 
 
 def _run_id(response):
@@ -992,6 +1026,9 @@ def _parser():
     collect.add_argument('--resume', action='store_true',
                          help='Reuse the same idempotency key after an unconfirmed attempt')
     collect.set_defaults(command_func=collect_probes, run_func=run_provider)
+
+    report = generation('report', 'Write report.md from saved collection receipts, including zero results; no network')
+    report.set_defaults(command_func=report_collection)
 
     review = generation('build-review-prompt', 'Package collected samples for agent evidence review')
     review.add_argument('--plan', help='Plan path; defaults to the run plan.json')

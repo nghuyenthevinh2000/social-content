@@ -94,7 +94,7 @@ class ViralScrapeTests(unittest.TestCase):
         self.assertTrue(result['ok'], result)
         self.assertEqual(result['mode'], 'preview')
         self.assertEqual(len(result['calls']), 1)
-        self.assertFalse((self.root / 'sources/viral/run-1/expansion').exists())
+        self.assertFalse((hc.artifact_directory(self.root, 'run-1') / 'expansion').exists())
 
     def test_execute_writes_captures_and_keeps_missing_metrics_null(self):
         add_evaluation(self.root, 'instagram', 'thiepcuoi', 'promising')
@@ -114,7 +114,7 @@ class ViralScrapeTests(unittest.TestCase):
                                             'comments': 2, 'shares': None})
         self.assertIsNone(second['metrics']['views'])
         self.assertEqual(first['gate_decision'], 'promising')
-        calls = self.root / 'sources/viral/run-1/expansion/calls'
+        calls = hc.artifact_directory(self.root, 'run-1') / 'expansion/calls'
         for suffix in ('request.json', 'response.json', 'status.json', 'items.json'):
             self.assertTrue((calls / f'scrape-instagram-hashtag-01.{suffix}').is_file())
 

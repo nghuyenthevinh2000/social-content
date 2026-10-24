@@ -154,7 +154,7 @@ def build_prompt(args):
         'context': context,
     })
 
-    run_dir = hc.run_directory(root, args.run)
+    run_dir = hc.artifact_directory(root, args.run)
     run_dir.mkdir(parents=True, exist_ok=True)
     context_doc = {
         'schema_version': 1,
@@ -177,6 +177,8 @@ def build_prompt(args):
     context_path = run_dir / 'context.json'
     hc.write_json(context_path, context_doc)
     prompt_path = _write_prompt(context_doc, run_dir)
+    report_path = hc.write_run_report(root, args.run, context_doc,
+                                     state='blocked' if blocked else 'pending')
 
     if history_warning:
         problems.warn(f'hashtag history ignored for feedback: {history_warning}')
@@ -193,6 +195,7 @@ def build_prompt(args):
         run_id=args.run,
         context_path=str(context_path.relative_to(root)),
         prompt_path=str(prompt_path.relative_to(root)),
+        report_path=str(report_path.relative_to(root)),
         context_sha256=context_sha,
         sources=len(sources),
         gaps=gaps,
@@ -314,7 +317,7 @@ def import_response(args):
     problems = hc.Problems()
     try:
         root = hc.campaign_root(args.project)
-        run_dir = hc.run_directory(root, args.run)
+        run_dir = hc.artifact_directory(root, args.run)
         context_doc = hc.load_json(run_dir / 'context.json', 'generation context')
     except ValueError as exc:
         return _result(False, command='import-response', errors=[str(exc)], warnings=[]), problems

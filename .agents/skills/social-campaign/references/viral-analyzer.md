@@ -28,6 +28,29 @@ Existing campaign → Brief → Validated brief → Sources → Promotion gate
 | Tools | `python3 -m tools.loop.viral_analyzer.hashtag_generate`, `…hashtag_verify` and `…viral_scrape`; templates in [assets/hashtag-generation](../assets/hashtag-generation/). |
 | Boundary | Generation is offline; collection spends only with `--execute --ceiling` plus approval. Labels are agent judgments over inspected samples; history is campaign-local. |
 
+## Per-run sub-agent contract
+
+```text
+Parent: bind campaign, platform runs, scope and approved budget
+       ├── Worker A → viral/run-A/ → TikTok: all relevant tags → Report/artifacts
+       └── Worker B → viral/run-B/ → Instagram: all relevant tags → Report/artifacts
+Parent: check each handoff → Compare evidence and limitations → Return all run links
+```
+
+| Responsibility | Requirement |
+|---|---|
+| Delegation unit | Each `sources/viral/run-*/` directory is one run and gets exactly one dedicated sub-agent, even for a single-run request. One run targets one platform and queries its full relevant hashtag/keyword set within the agreed scope/budget. Hashtags are candidates/calls inside that run, not separate runs or workers. |
+| End-to-end ownership | The same worker handles the run's candidate generation/import, verification planning/collection/review, approved expansion, analysis and report. Do not create workers per hashtag, query, product or workflow stage. Separate platform run directories get separate workers; the parent coordinates and checks handoffs, never substitutes its own research for a missing worker. No nested delegation. |
+| Worker brief | Pass exact campaign/run/output paths, requested platform, objective, application, market/language, product goal/catalog, optional past analyses, relevant skill/reference/template paths, stopping limits and the current spend-approval state. Missing brand/customer/hypothesis files are not new prerequisites. |
+| Ownership and isolation | Write only the assigned run's `brief.md`, `report.md` and `artifacts/`. Other run reports are read-only historical/comparison context, never fresh evidence. Do not modify sibling artifacts or copy successful results into a failed run. Record the worker identity/session reference in the run manifest; worker identity is not human approval. |
+| Safe scheduling | Offline work may run in parallel. Allocate bounded per-run provider budgets within the explicitly approved total before any paid dispatch; no worker independently reuses the full shared ceiling. Without a clear allocation/approval, workers stop at preview. Serialize shared campaign-history writes and browser work through parent-coordinated turns. No publication authority is delegated. |
+| Same completion checklist | Every worker delivers a populated brief and report plus `artifacts/manifest.json` and `artifacts/relevance.json`, with valid paths/hashes. Supporting prompts, plans, receipts and reviews exist only for stages actually reached. No-video runs may have `records: []`; insufficient leads retain unknown qualification. Explain absent stages instead of fabricating receipts, results or reviews. |
+| Reporting depth parity | Use the full report template for every outcome: scope/product mapping; per-query coverage and receipts; attempted/empty/error/returned/deduplicated/qualified counts; linked videos or explicit zero; evidence/access limits; qualification/baseline; costs/approval provenance; observed timing; recommendation, stopping reason and revisit conditions. Unknown/not-applicable entries need reasons, not omitted sections. Equal completeness does not mean equal word counts or video counts. |
+| Failed/low-yield runs | Investigate saved evidence enough to distinguish provider failure, empty retrieval and weak semantic evidence. Include query-level diagnostics, available leads with direct links, spend and a scoped platform/market recommendation. A short generic failure summary or automatic collection starter is not a finished worker report. No new calls beyond the approved scope/budget to pad it. |
+| Worker handoff | Return run ID, owner reference, outcome, brief/report/manifest/relevance paths, actual cost or unknown, qualified/lead counts and unresolved limitations. Report blocked/interrupted/cancelled work too. Resume with the same owner when possible; handoffs to a replacement keep only one active writer and preserve saved evidence. |
+| Parent acceptance | Check each worker's artifacts against the same checklist, source links, counts and hashes before comparison. Return omissions to that run's worker for completion, including zero-result runs; do not accept the richer run while silently dropping the poorer one. Surface missing/incomplete handoffs explicitly. Agent acceptance checks do not replace human research/content approval. |
+| No sub-agent capability | Report the execution limitation and ask how to proceed. Do not silently fall back to parent-run execution or claim a worker ran when none did. |
+
 ## Topic-discovery routing
 
 ```text
@@ -52,13 +75,25 @@ Resolved campaign + requested platforms → Offline candidates → Import
 
 Every run lives in `local/<slug>/sources/viral/<run-id>/` and is instantiated from the templates below. `schema_version: 1` applies to new runs only; historical runs are not rewritten or validated.
 
+```text
+<run-id>/
+├── brief.md
+├── report.md
+└── artifacts/
+    ├── manifest.json, relevance.json, context.json, candidates.json, plan.json
+    ├── prompt.md, response.json, response.raw.json, schema.json, reviews
+    └── raw/, calls/, expansion/, creator-style analyses
+```
+
 | Artifact | Content | Template |
 |---|---|---|
 | `brief.md` | Human-readable brief; exact bytes are hashed into the manifest. | [brief](../assets/viral-research/brief.md) |
-| `manifest.json` | Run identity, mode, structured brief mirror, sources, files with hashes, budget, timing. | [manifest](../assets/viral-research/manifest.json) |
-| `relevance.json` | Per-observation evidence, promotion decision, relevance outcome, qualification. | [relevance](../assets/viral-research/relevance.json) |
-| `report.md` | Coverage, shortlist, cohort limits, timing, costs, adaptation worksheet. | [report](../assets/viral-research/report.md) |
-| `creator-style-<slug>.md` | Style DNA report when creator mode runs. | Free-form |
+| `artifacts/manifest.json` | Run identity, mode, structured brief mirror, sources, files with hashes, budget, timing. All embedded file paths remain relative to the run root, not this file's parent. | [manifest](../assets/viral-research/manifest.json) |
+| `artifacts/relevance.json` | Per-observation evidence, promotion decision, relevance outcome, qualification; paths relative to the run root. | [relevance](../assets/viral-research/relevance.json) |
+| `report.md` | Required for every outcome/platform: coverage, shortlist or no-result finding, costs, failures and marketing recommendation. | [report](../assets/viral-research/report.md) |
+| `artifacts/creator-style-<slug>.md` | Style DNA analysis when creator mode runs; root report links it. | Free-form |
+| Supporting files | Save all agent JSON responses, schemas, prompts, raw/call receipts, reviews and expansion outputs inside `artifacts/`; only brief/report are root files. | Public CLIs return their exact output paths. |
+| Legacy runs | Flat context/plan/manifest/call/expansion data resumes in place; never manually move receipts, change hashes or break provenance. Mixed flat/nested artifact layouts are rejected. Campaign-wide `hashtag-performance.json` remains outside individual runs. | No automatic migration. |
 
 | Field group | Required content |
 |---|---|
@@ -129,6 +164,17 @@ Observed video permalink + saved source evidence
 | Partial outcome | If fewer than the requested number have traceable links and the required qualification, return the actual count and links, list missing evidence separately, and state `partial`/`blocked`/`unverified`. Zero verifiable results means say so; never turn ten concepts into ten found videos. Stop at existing source/spend limits and request approval before further paid collection. |
 | Prior analyses | Historical claims without video links, source traces or metrics remain unverified ideas. Do not promote them into observed seeds, verified counts or product facts merely because they appear in past `sources/viral/` reports. |
 | Final self-check | Before claiming completion, compare each delivered URL/ID with its source and `relevance.json`, confirm report/chat contain the links, recount deduplicated qualified results, and disclose unknowns. This is an agent obligation, not a mechanically enforced tool gate. |
+
+## Zero-result and failed-platform reports
+
+| Requirement | Rule |
+|---|---|
+| Always close | Create/update root `report.md` before handoff on success, partial, no-results, blocked, failed, cancelled or interrupted work. Every requested platform/run gets its own report; another platform's success never erases a failed attempt. If no query ran, state that explicitly. |
+| Automatic fallback | `build-prompt` creates brief/report starters; executed `collect` updates its automatic report from receipts. `hashtag_verify report --project <PROJECT> --run <RUN>` regenerates missing/automatic reports from saved context/plan/receipts without network. Authored reports are preserved. The agent must finalize the report; preview commands remain read-only, and an exception/interrupt may leave a pending starter until reconciled. |
+| Evidence | List platform, intended Vietnam market and language, exact queries, provider/endpoint/filters, observed collection dates, attempted/empty/error/usable counts, receipt links, actual reported charges versus approved budget, and unknowns. No returned videos means no video links; link the query receipts instead. |
+| Separate failure types | Distinguish empty successful responses from authentication/login walls, unsupported filters/endpoints, timeouts, provider errors, budget stops and semantically irrelevant videos. Technical collection failure is not evidence that Vietnamese buyers are absent. |
+| Useful decision | State a practical campaign recommendation such as “deprioritize Instagram hashtag discovery for this Vietnam paper/printing campaign with the tested provider/queries; no usable videos found.” Record the next evidence that would justify revisiting it. No automatic repeated probes, extra spend or switch of platform. |
+| Market limits | A bounded query/provider sample cannot establish that Instagram is a dead market or that marketing cannot work across Vietnam. Do not turn retrieval yield into platform-wide audience size, demand, buyer-conversion or sales conclusions. Preserve the negative result for future runs with its scope and uncertainty. |
 
 ## Qualification and baselines
 

@@ -7,7 +7,8 @@ Brief → sources → promotion gate → relevance review → qualification → 
 | Coverage | Recorded value |
 |---|---|
 | Campaign, brief version | `<local/slug>`, `<v1>` |
-| Outcome / requested count | `<complete / partial / blocked / unverified>` / `<requested number>`; complete only with traceable links and required qualification |
+| Outcome / requested count | `<complete / partial / no_results / blocked / failed / interrupted / cancelled / unverified>` / `<requested number>`; complete only with traceable links and required qualification |
+| Platform / market / language | `<requested platform>` / `<intended country or region>` / `<language>`; distinguish requested targeting from provider-supported filters |
 | Sources attempted / useful | `<n>` / `<n>`, with per-source yield |
 | Unique useful yield | `<n>` deduplicated observations |
 | Unknown-demographic or unknown-date rate | `<n>/<n>` |
@@ -15,6 +16,18 @@ Brief → sources → promotion gate → relevance review → qualification → 
 | Collection timing | `<elapsed>` measured with `/usr/bin/time -p` |
 | Review timing | `<elapsed>` and `<active work>` if measured separately |
 | Human review status | `<not reviewed \| reviewed by NAME on DATE>` |
+
+## Query outcomes and platform recommendation
+
+| Query / provider / endpoint | Collection time / supported filters | Outcome / usable count | Actual charge / receipt |
+|---|---|---|---|
+| `<exact query, provider, endpoint>` | `<observed time; supported filters only>` | `<not run / empty / auth error / timeout / provider error / irrelevant / useful>` / `<count or unknown>` | `<reported charge or unknown>` / `<link to artifacts/calls/... receipt, or none>` |
+
+| Decision | Evidence and scope |
+|---|---|
+| Campaign recommendation | `<prioritize / deprioritize / inconclusive for this platform, Vietnam market, application and tested retrieval route>` |
+| Failure / stopping reason | `<what actually happened; why collection stopped; no automatic retry/spend>` |
+| Uncertainty / revisit condition | `<provider/query/targeting limits; evidence needed before reconsidering>`; empty retrieval does not prove the platform is a dead marketing market |
 
 ## Inspectable video results
 
@@ -47,6 +60,7 @@ Brief → sources → promotion gate → relevance review → qualification → 
 
 | Boundary | Rule |
 |---|---|
+| Always deliver | Keep this root report for every requested platform, even if zero videos, blocked, failed or interrupted. Report zero links honestly and link saved receipts; remove unused placeholder video/adaptation rows. Supporting files belong in `artifacts/`; only brief/report are root files. |
 | User handoff | Repeat the actual video links, metrics, relevance and limitations in the final chat response. Local file links and record IDs alone do not let the user verify the videos. |
 | No links / insufficient evidence | State the actual qualified count and a partial/blocked/unverified outcome. Never invent URLs, treat a concept as a found video, claim unknown metrics passed, or cite this analysis as raw source evidence. |
 | Evidence scope | Captions support caption analysis; transcripts support speech; only inspected video supports visual claims. |

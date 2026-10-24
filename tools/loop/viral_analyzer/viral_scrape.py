@@ -219,7 +219,7 @@ def scrape(args):
         history = hc.load_history(root)
     except ValueError as exc:
         return _result(False, command='viral-scrape', errors=[str(exc)]), problems
-    run_dir = hc.run_directory(root, args.run)
+    run_dir = hc.artifact_directory(root, args.run)
     context = hc.load_optional_json(run_dir / 'context.json')
     if isinstance(context, dict) and context.get('collection_blocked'):
         problems.error('campaign context is missing or conflicting; collection is blocked')

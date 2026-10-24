@@ -9,10 +9,10 @@
       "url": "<https://www.facebook.com/reel/000000000000000>",
       "platform": "facebook",
       "source_id": "<source-id>",
-      "source_path": "<raw/observations.json>",
+      "source_path": "<artifacts/raw/observations.json>",
       "source_order": 1,
       "original_record": {
-        "path": "<raw/observations.json>",
+        "path": "<artifacts/raw/observations.json>",
         "index": 0
       },
       "publication_at": null,

@@ -84,11 +84,11 @@ def failure(returncode, stderr):
 
 
 def review_document(root, run, phase='probe', labels=None):
-    context = json.loads((root / 'sources/viral' / run / 'context.json').read_text())
-    plan_doc = json.loads((root / 'sources/viral' / run / 'plan.json').read_text())
+    context = json.loads((hc.artifact_directory(root, run) / 'context.json').read_text())
+    plan_doc = json.loads((hc.artifact_directory(root, run) / 'plan.json').read_text())
     evaluations = []
     for call in plan_doc['calls']:
-        samples = json.loads((root / 'sources/viral' / run / 'calls'
+        samples = json.loads((hc.artifact_directory(root, run) / 'calls'
                               / f"{call['call_id']}.samples.json").read_text())
         chosen = labels or ['direct_application', 'direct_application', 'adjacent_process']
         evaluations.append({
@@ -146,6 +146,32 @@ class VerifyTests(unittest.TestCase):
                          {'limit': 3, 'query': 'in ấn thiệp cưới'})
         self.assertNotEqual(by_kind['hashtag']['endpoint'], by_kind['keyword']['endpoint'])
 
+    def test_empty_collection_writes_report_with_receipts_and_scoped_conclusion(self):
+        self.assertTrue(plan(self.root, self.run, self.schema)['ok'])
+        result = collect(self.root, self.run, FakeProvider(provider_response([])))
+        report = self.root / result['report_path']
+        text = report.read_text()
+        self.assertIn('no_results', text)
+        self.assertIn('empty_response', text)
+        self.assertIn('thiepcuoi', text)
+        self.assertIn('0.0019', text)
+        self.assertIn('artifacts/calls/', text)
+        self.assertIn('do not prove the platform has no Vietnam audience', text)
+        report.unlink()
+        regenerated, _ = hv.report_collection(SimpleNamespace(project=str(self.root), run=self.run))
+        self.assertTrue(regenerated['ok'], regenerated)
+        self.assertTrue(report.exists())
+
+    def test_failed_collection_report_and_authored_report_preservation(self):
+        self.assertTrue(plan(self.root, self.run, self.schema)['ok'])
+        result = collect(self.root, self.run, FakeProvider(failure(1, 'provider unavailable')))
+        report = self.root / result['report_path']
+        self.assertIn('failed', report.read_text())
+        self.assertIn('provider_error', report.read_text())
+        report.write_text('# Human-reviewed analysis\nDo not overwrite.\n')
+        hv.report_collection(SimpleNamespace(project=str(self.root), run=self.run))
+        self.assertEqual(report.read_text(), '# Human-reviewed analysis\nDo not overwrite.\n')
+
     def test_plan_blocks_on_missing_context(self):
         run = 'blocked-run'
         (self.root / 'product-marketing.json').write_text('{}')
@@ -173,7 +199,7 @@ class VerifyTests(unittest.TestCase):
         result = collect(self.root, self.run, explode, execute=False)
         self.assertTrue(result['ok'], result)
         self.assertEqual(result['calls'][0]['action'], 'would_run')
-        self.assertFalse((self.root / 'sources/viral' / self.run
+        self.assertFalse((hc.artifact_directory(self.root, self.run)
                           / 'calls').exists())
 
     def test_budget_stops_before_dispatch(self):
@@ -183,7 +209,7 @@ class VerifyTests(unittest.TestCase):
         self.assertTrue(result['ok'], result)
         self.assertEqual(result['outcomes'][0]['outcome'], 'budget_exceeded')
         self.assertEqual(fake.calls, [])
-        self.assertFalse((self.root / 'sources/viral' / self.run
+        self.assertFalse((hc.artifact_directory(self.root, self.run)
                           / 'calls/call-instagram-hashtag-01.status.json').exists())
 
     def test_collect_keeps_first_three_unique_and_retains_skips(self):
@@ -194,14 +220,14 @@ class VerifyTests(unittest.TestCase):
             item(1), duplicate, inaccessible, item(2), item(3), item(4)]))
         result = collect(self.root, self.run, fake)
         self.assertEqual(result['outcomes'][0]['outcome'], 'success', result)
-        samples = json.loads((self.root / 'sources/viral' / self.run / 'calls'
+        samples = json.loads((hc.artifact_directory(self.root, self.run) / 'calls'
                               / 'call-instagram-hashtag-01.samples.json').read_text())
         self.assertEqual([entry['video_id'] for entry in samples['reviewed']],
                          ['video-1', 'video-2', 'video-3'])
         reasons = [entry['reason'] for entry in samples['skipped']]
         self.assertIn('duplicate', reasons)
         self.assertIn('inaccessible', reasons)
-        status = json.loads((self.root / 'sources/viral' / self.run / 'calls'
+        status = json.loads((hc.artifact_directory(self.root, self.run) / 'calls'
                              / 'call-instagram-hashtag-01.status.json').read_text())
         self.assertEqual(status['charge_usd'], '0.0019')
         self.assertTrue(status['idempotency_key'])
@@ -224,7 +250,7 @@ class VerifyTests(unittest.TestCase):
             fake = FakeProvider(response)
             result = collect(self.root, run, fake)
             self.assertEqual(result['outcomes'][0]['outcome'], expected, run)
-            self.assertFalse((self.root / 'sources/viral' / run / 'calls'
+            self.assertFalse((hc.artifact_directory(self.root, run) / 'calls'
                               / 'call-instagram-hashtag-01.samples.json').exists(), run)
 
     def test_successful_retry_is_a_noop(self):
@@ -239,7 +265,7 @@ class VerifyTests(unittest.TestCase):
         self.assertTrue(plan(self.root, self.run, self.schema)['ok'])
         first = FakeProvider(failure(1, 'boom'))
         collect(self.root, self.run, first)
-        status_path = (self.root / 'sources/viral' / self.run / 'calls'
+        status_path = (hc.artifact_directory(self.root, self.run) / 'calls'
                        / 'call-instagram-hashtag-01.status.json')
         first_key = json.loads(status_path.read_text())['idempotency_key']
         second = FakeProvider(provider_response([item(1), item(2), item(3)]))

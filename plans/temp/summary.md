@@ -23,7 +23,7 @@ Khởi tạo chiến dịch → Đề xuất hashtag → Lập kế hoạch tr�
 | 5. Thu thập API có phí | Chạy thu thập chính thức qua API ScrapeCreators | `hashtag_verify collect --execute --ceiling 0.02` (chạy background tasks) | TikTok: 8/8 lệnh thành công, thu 159 video có đầy đủ chỉ số; Instagram: 8 lệnh rỗng |
 | 6. Phân tích đối chứng | Xác định phân phối baseline của nhóm đối chứng (cohort) | Script Python xử lý 159 video TikTok ngành in ấn bao bì | Min: 23, Median: 1,200, Max: 611,054 views; Ngưỡng viral outlier: >= 10,000 views |
 | 7. Chọn lọc 10 video viral | Lọc 10 video viral tiêu biểu phủ đủ 3 nhóm sản phẩm và xưởng in | Script lọc theo độ tương quan sản phẩm và views | 10 video xác minh link permalink, view từ 15k đến 611k views, đầy đủ like/share/date |
-| 8. Đóng gói hồ sơ | Tạo các file theo chuẩn viral research | Ghi file JSON và Markdown | `brief.md`, `relevance.json`, `report.md`, `manifest.json` |
+| 8. Đóng gói hồ sơ | Tạo các file theo chuẩn viral research | Ghi file JSON và Markdown | `brief.md`, `report.md`, `artifacts/relevance.json`, `artifacts/manifest.json` |
 
 ## Danh sách 10 video viral tiêu biểu được xác minh
 
@@ -45,7 +45,7 @@ Khởi tạo chiến dịch → Đề xuất hashtag → Lập kế hoạch tr�
 | Tên file / Đường dẫn | Mô tả nội dung |
 |---|---|
 | [`local/paper-ink-product/sources/viral/run-20261024-discovery-01/report.md`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/local/paper-ink-product/sources/viral/run-20261024-discovery-01/report.md) | Báo cáo đầy đủ theo mẫu chuẩn: chỉ số 10 video, cohort baseline, worksheet thích ứng nội dung |
-| [`local/paper-ink-product/sources/viral/run-20261024-discovery-01/relevance.json`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/local/paper-ink-product/sources/viral/run-20261024-discovery-01/relevance.json) | Bản ghi đánh giá chi tiết mức độ phù hợp sản phẩm, tiêu chuẩn định lượng và trích dẫn bằng chứng |
-| [`local/paper-ink-product/sources/viral/run-20261024-discovery-01/manifest.json`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/local/paper-ink-product/sources/viral/run-20261024-discovery-01/manifest.json) | Bảng kê hash SHA-256 các file, nguồn dữ liệu và chi phí thực tế |
-| [`local/paper-ink-product/sources/viral/run-20261024-discovery-01/calls/`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/local/paper-ink-product/sources/viral/run-20261024-discovery-01/calls/) | Chứa toàn bộ raw responses từ 8 cuộc gọi TikTok với 159 bản ghi video gốc |
+| [`local/paper-ink-product/sources/viral/run-20261024-discovery-01/artifacts/relevance.json`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/local/paper-ink-product/sources/viral/run-20261024-discovery-01/artifacts/relevance.json) | Bản ghi đánh giá chi tiết mức độ phù hợp sản phẩm, tiêu chuẩn định lượng và trích dẫn bằng chứng |
+| [`local/paper-ink-product/sources/viral/run-20261024-discovery-01/artifacts/manifest.json`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/local/paper-ink-product/sources/viral/run-20261024-discovery-01/artifacts/manifest.json) | Bảng kê hash SHA-256 các file, nguồn dữ liệu và chi phí thực tế |
+| [`local/paper-ink-product/sources/viral/run-20261024-discovery-01/artifacts/calls/`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/local/paper-ink-product/sources/viral/run-20261024-discovery-01/artifacts/calls/) | Chứa toàn bộ raw responses từ 8 cuộc gọi TikTok với 159 bản ghi video gốc |
 | [`plans/temp/README.md`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/plans/temp/README.md) & [`plans/temp/summary.md`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/plans/temp/summary.md) | Bản tổng hợp tiến trình làm việc dành cho người dùng |

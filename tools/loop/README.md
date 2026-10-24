@@ -5,6 +5,8 @@
 | Reusable stage modules, tests and guidance | `tools/loop/` |
 | Hashtag vocabulary generation/verification | `tools/loop/viral_analyzer/` scripts; offline tests in `tools/loop/tests/test_hashtag_*.py` |
 | Viral analyzer context | Only `<project>/product-marketing.json` is required: nonempty `marketing_goal` and named entries in `product.catalog`. Optional past `sources/viral/` analyses and hashtag history inform proposals/review, not current product facts or fresh verification. Brand/customer/hypothesis/loop files are not prerequisites. |
+| Viral analyzer run layout | New `sources/viral/<RUN>/` roots contain only `brief.md`, `report.md` and `artifacts/`. Context, prompts, plans, receipts, reviews, raw evidence and expansion outputs live under `artifacts/`; flat legacy runs resume in place without migration. |
+| Failed/empty viral discovery | Executed hashtag collection also writes a root report from receipts. Recover with `hashtag_verify report --project <PROJECT> --run <RUN>` without network. Agent finalizes every platform report, separating zero retrieval yield from unproven platform-wide marketing conclusions. |
 | Page identity and optional hypothesis mapping | `<project>/loop/config.json` |
 | Publications, pending reviews, lock and current stage | `<project>/loop/publications.json`, `<project>/loop/.engine.lock`, `<project>/loop/status.json` |
 | Metrics and audit evidence | `<project>/sources/post-metrics/` |
