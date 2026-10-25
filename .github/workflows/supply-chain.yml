@@ -97,8 +97,10 @@ jobs:
             echo "actions_desc=Workflow vulnerabilities flagged by zizmor" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Update README with supply chain results
+      - name: Commit and push scan results to README
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PY_EXIT: ${{ steps.py_scan.outputs.py_exit }}
           NPM_EXIT: ${{ steps.npm_scan.outputs.npm_exit }}
           ACTIONS_EXIT: ${{ steps.actions_scan.outputs.actions_exit }}
@@ -110,34 +112,29 @@ jobs:
             STATUS="Threats Detected"
             DETAILS="Supply chain audit failure (Py: $PY_EXIT, npm: $NPM_EXIT, actions: $ACTIONS_EXIT)"
           fi
-          python3 scripts/update_security_status.py \
-            --target supply-chain \
-            --status "$STATUS" \
-            --details "$DETAILS" \
-            --readme README.md
 
-      - name: Commit and push scan results to README
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          if ! git diff --cached --quiet; then
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            git checkout -f origin/main
+            python3 scripts/update_security_status.py \
+              --target supply-chain \
+              --status "$STATUS" \
+              --details "$DETAILS" \
+              --readme README.md
+            git add README.md
+            if git diff --cached --quiet; then
+              echo "No changes to README.md"
+              break
+            fi
             git commit -m "chore(ci): update supply chain scan results in README [skip ci]"
-            for i in 1 2 3; do
-              git fetch origin main
-              git pull --rebase origin main || true
-              if git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main; then
-                echo "Successfully pushed README update."
-                break
-              fi
-              sleep 2
-            done
-          else
-            echo "No changes to README.md"
-          fi
+            if git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main; then
+              echo "Successfully pushed README update."
+              break
+            fi
+            sleep $((i * 2))
+          done
 
       - name: Enforce Supply Chain Gates
         env:

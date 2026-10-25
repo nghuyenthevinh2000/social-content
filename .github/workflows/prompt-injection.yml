@@ -49,39 +49,35 @@ jobs:
             echo "scan_details=Prompt injection or adversarial token smuggling detected" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Update README with prompt injection results
-        env:
-          STATUS: ${{ steps.prompt_scan.outputs.scan_status }}
-          DETAILS: ${{ steps.prompt_scan.outputs.scan_details }}
-        run: |
-          python3 scripts/update_security_status.py \
-            --target prompt-injection \
-            --status "$STATUS" \
-            --details "$DETAILS" \
-            --readme README.md
-
       - name: Commit and push scan results to README
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS: ${{ steps.prompt_scan.outputs.scan_status }}
+          DETAILS: ${{ steps.prompt_scan.outputs.scan_details }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          if ! git diff --cached --quiet; then
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            git checkout -f origin/main
+            python3 scripts/update_security_status.py \
+              --target prompt-injection \
+              --status "$STATUS" \
+              --details "$DETAILS" \
+              --readme README.md
+            git add README.md
+            if git diff --cached --quiet; then
+              echo "No changes to README.md"
+              break
+            fi
             git commit -m "chore(ci): update prompt injection scan results in README [skip ci]"
-            for i in 1 2 3; do
-              git fetch origin main
-              git pull --rebase origin main || true
-              if git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main; then
-                echo "Successfully pushed README update."
-                break
-              fi
-              sleep 2
-            done
-          else
-            echo "No changes to README.md"
-          fi
+            if git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main; then
+              echo "Successfully pushed README update."
+              break
+            fi
+            sleep $((i * 2))
+          done
 
       - name: Enforce Prompt Injection Gate
         env:
