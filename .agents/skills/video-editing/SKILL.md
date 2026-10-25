@@ -1,6 +1,6 @@
 ---
 name: video-editing
-description: "Edit videos using the repository's tools/video_edit CLI first for deterministic product-surface texture replacement, proxy frames, corner detection, and static watermark processing. Use ffmpeg fallback for unsupported composition, face overlays, audio mixing, frame extraction, and encoding tasks."
+description: "Edit videos using the repository's tools/video_edit CLI first for deterministic product-surface texture replacement, proxy frames, corner detection, and static watermark processing. Use yt-dlp for downloading online source media from supported platforms. Use ffmpeg fallback for unsupported composition, face overlays, audio mixing, frame extraction, and encoding tasks."
 ---
 
 # Video editing
@@ -14,6 +14,7 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 | Source of truth | Read `tools/video_edit/README.md` and the relevant subcommand's `--help` before choosing parameters. Paths in this table are relative to the repository root. |
 | Environment | Use the repository's uv-managed environment. OpenCV and NumPy are required; ffmpeg and ffprobe are needed for video processing. Do not install into system Python. |
 | Capability boundary | This CLI is not a general nonlinear editor. It does not implement talking-head overlays, audio denoising, music mixing, or arbitrary cuts. |
+| Video download | Use `uv run yt-dlp` to download source videos from URLs (Facebook, TikTok, YouTube, Instagram, X). Probe with `-F` and transcode to standard H.264 MP4 if needed. |
 | Fallback | For unsupported operations, read `references/ffmpeg-compositing.md` relative to this skill. Keep its face helper at the skill-root path `scripts/detect_face_crop.py`. Use a repository-local or approved temporary workspace instead of the reference's legacy `/tmp` examples. |
 
 ## Commands
@@ -22,6 +23,8 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 |---|---|
 | Check environment | `uv run python -m tools.video_edit doctor` |
 | Inspect available commands | `uv run python -m tools.video_edit --help` |
+| Download video from URL | `uv run yt-dlp -o "<OUT_PATH>" -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" "<URL>"` |
+| Inspect video formats & info | `uv run yt-dlp -F "<URL>"` or `uv run yt-dlp --dump-json "<URL>"` |
 | Inspect parameters | `uv run python -m tools.video_edit video --help` or `uv run python -m tools.video_edit watermark --help` |
 | Generate a test proxy | `uv run python -m tools.video_edit proxy --mode card --width 1080 --height 1350 --out local/video-edit/proxy.png --quad-out local/video-edit/proxy_quad.json` |
 | Smooth an existing photo | `uv run python -m tools.video_edit proxy --mode smooth --src PHOTO --out local/video-edit/proxy.png` |

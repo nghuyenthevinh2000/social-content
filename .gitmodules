@@ -19,3 +19,7 @@
 [submodule "projects/OpenMontage"]
 	path = projects/OpenMontage
 	url = https://github.com/calesthio/OpenMontage.git
+[submodule "tools/taktik-bot"]
+	path = tools/taktik-bot
+	url = https://github.com/nghuyenthevinh2000/taktik-bot
+	ignore = untracked
