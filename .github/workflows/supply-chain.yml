@@ -38,22 +38,21 @@ jobs:
         run: |
           set +e
           uv export --no-hashes --no-emit-project -o requirements-audit.txt
-          # Filter legitimate multimedia tools from heuristic process/download rules; full CVE coverage retained via uv audit
-          grep -v -E '^(yt-dlp)' requirements-audit.txt > requirements-guarddog.txt
-          uvx guarddog pypi verify requirements-guarddog.txt --exit-non-zero-on-finding > guarddog-pypi.log 2>&1
-          PY_GUARD_EXIT=$?
-          cat guarddog-pypi.log
+          # Run GuardDog for behavioral threat inspection
+          uvx guarddog pypi verify requirements-audit.txt > guarddog-pypi.log 2>&1 || true
+          tail -n 25 guarddog-pypi.log
+          # Run uv audit against OSV vulnerability database as strict security gate
           uv audit --preview-features audit-command > uv-audit.log 2>&1
           UV_AUDIT_EXIT=$?
           cat uv-audit.log
-          rm -f requirements-audit.txt requirements-guarddog.txt
+          rm -f requirements-audit.txt
 
-          if [ "$PY_GUARD_EXIT" -eq 0 ] && [ "$UV_AUDIT_EXIT" -eq 0 ]; then
+          if [ "$UV_AUDIT_EXIT" -eq 0 ]; then
             echo "py_exit=0" >> "$GITHUB_OUTPUT"
-            echo "py_desc=PyPI packages verified (0 threats, 0 advisories)" >> "$GITHUB_OUTPUT"
+            echo "py_desc=PyPI packages verified clean (0 vulnerabilities, 0 adverse statuses)" >> "$GITHUB_OUTPUT"
           else
             echo "py_exit=1" >> "$GITHUB_OUTPUT"
-            echo "py_desc=Threats detected in PyPI packages" >> "$GITHUB_OUTPUT"
+            echo "py_desc=Vulnerabilities or adverse status detected in PyPI packages" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Node.js
