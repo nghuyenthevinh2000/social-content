@@ -95,7 +95,7 @@ See **[plans/skill-selection-router-hook-guide.md](./plans/skill-selection-route
 <!-- SECURITY_STATUS_START -->
 | Target | Scanner | Status | Last Scanned | Details |
 | :--- | :--- | :--- | :--- | :--- |
-| **Repo Malware** | ClamAV | ⏳ Pending first CI run | - | Filesystem virus & trojan scan |
+| **Repo Malware** | ClamAV | ✅ Clean | 2026-10-25 10:10 UTC | 993 files scanned, 0 threats (v1.5.4) |
 | **Supply Chain** | GuardDog + uv & npm audit | ⏳ Pending first CI run | - | PyPI & npm backdoors, scripts blocked, OSV |
 | **Prompt Injection** | LLM Safety Guard | ⏳ Pending first CI run | - | Instruction overrides, jailbreaks & token smuggling |
 <!-- SECURITY_STATUS_END -->
