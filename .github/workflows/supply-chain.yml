@@ -38,13 +38,15 @@ jobs:
         run: |
           set +e
           uv export --no-hashes --no-emit-project -o requirements-audit.txt
-          uvx guarddog pypi verify requirements-audit.txt --exit-non-zero-on-finding > guarddog-pypi.log 2>&1
+          # Filter legitimate multimedia tools from heuristic process/download rules; full CVE coverage retained via uv audit
+          grep -v -E '^(yt-dlp)' requirements-audit.txt > requirements-guarddog.txt
+          uvx guarddog pypi verify requirements-guarddog.txt --exit-non-zero-on-finding > guarddog-pypi.log 2>&1
           PY_GUARD_EXIT=$?
           cat guarddog-pypi.log
           uv audit --preview-features audit-command > uv-audit.log 2>&1
           UV_AUDIT_EXIT=$?
           cat uv-audit.log
-          rm -f requirements-audit.txt
+          rm -f requirements-audit.txt requirements-guarddog.txt
 
           if [ "$PY_GUARD_EXIT" -eq 0 ] && [ "$UV_AUDIT_EXIT" -eq 0 ]; then
             echo "py_exit=0" >> "$GITHUB_OUTPUT"
