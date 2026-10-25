@@ -1,5 +1,9 @@
 # Social Content & Agent Skills
 
+[![Malware Scan](https://github.com/nghuyenthevinh2000/social-content/actions/workflows/malware-scan.yml/badge.svg)](https://github.com/nghuyenthevinh2000/social-content/actions/workflows/malware-scan.yml)
+[![Supply Chain Scan](https://github.com/nghuyenthevinh2000/social-content/actions/workflows/supply-chain.yml/badge.svg)](https://github.com/nghuyenthevinh2000/social-content/actions/workflows/supply-chain.yml)
+[![Prompt Injection Scan](https://github.com/nghuyenthevinh2000/social-content/actions/workflows/prompt-injection.yml/badge.svg)](https://github.com/nghuyenthevinh2000/social-content/actions/workflows/prompt-injection.yml)
+
 > **Paste this to your agent to install:**
 >
 > ```text
@@ -83,6 +87,18 @@ uv run --project . python scripts/skill-selector-demo/server.py
 ```
 
 See **[plans/skill-selection-router-hook-guide.md](./plans/skill-selection-router-hook-guide.md)** for detailed setup and architecture.
+
+---
+
+## 🛡️ Security, Supply Chain & AI Safety
+
+<!-- SECURITY_STATUS_START -->
+| Target | Scanner | Status | Last Scanned | Details |
+| :--- | :--- | :--- | :--- | :--- |
+| **Repo Malware** | ClamAV | ⏳ Pending first CI run | - | Filesystem virus & trojan scan |
+| **Supply Chain** | GuardDog + uv & npm audit | ⏳ Pending first CI run | - | PyPI & npm backdoors, scripts blocked, OSV |
+| **Prompt Injection** | LLM Safety Guard | ⏳ Pending first CI run | - | Instruction overrides, jailbreaks & token smuggling |
+<!-- SECURITY_STATUS_END -->
 
 ---
 

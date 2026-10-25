@@ -1,0 +1,94 @@
+name: Prompt Injection Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 02:00 UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: prompt-injection-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  prompt-injection-scan:
+    name: Prompt Injection & LLM Safety Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b4995efb4923dcbc2f # v5.4.0
+        with:
+          python-version: '3.11'
+
+      - name: Run Prompt Injection Scanner
+        id: prompt_scan
+        run: |
+          set +e
+          python3 scripts/scan_prompt_injection.py --output-json prompt-injection.json
+          SCAN_EXIT=$?
+          echo "scan_exit=$SCAN_EXIT" >> "$GITHUB_OUTPUT"
+
+          if [ "$SCAN_EXIT" -eq 0 ]; then
+            echo "scan_status=Passed" >> "$GITHUB_OUTPUT"
+            echo "scan_details=All prompts, skills & files verified clean (0 injection findings)" >> "$GITHUB_OUTPUT"
+          else
+            echo "scan_status=Threats Detected" >> "$GITHUB_OUTPUT"
+            echo "scan_details=Prompt injection or adversarial token smuggling detected" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update README with prompt injection results
+        env:
+          STATUS: ${{ steps.prompt_scan.outputs.scan_status }}
+          DETAILS: ${{ steps.prompt_scan.outputs.scan_details }}
+        run: |
+          python3 scripts/update_security_status.py \
+            --target prompt-injection \
+            --status "$STATUS" \
+            --details "$DETAILS" \
+            --readme README.md
+
+      - name: Commit and push scan results to README
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(ci): update prompt injection scan results in README [skip ci]"
+            for i in 1 2 3; do
+              git fetch origin main
+              git pull --rebase origin main || true
+              if git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main; then
+                echo "Successfully pushed README update."
+                break
+              fi
+              sleep 2
+            done
+          else
+            echo "No changes to README.md"
+          fi
+
+      - name: Enforce Prompt Injection Gate
+        env:
+          SCAN_EXIT: ${{ steps.prompt_scan.outputs.scan_exit }}
+        run: |
+          if [ "$SCAN_EXIT" -ne 0 ]; then
+            echo "::error::Prompt injection or adversarial smuggling pattern detected!"
+            exit 1
+          fi
+          echo "All prompts and repository files passed prompt injection security check."

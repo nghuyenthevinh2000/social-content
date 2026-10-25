@@ -1,0 +1,163 @@
+name: Supply Chain Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 01:00 UTC
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: supply-chain-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  supply-chain-scan:
+    name: Supply Chain Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1edb52594c85742503433387b3001473ae805096 # v5.3.0
+        with:
+          enable-cache: true
+
+      - name: Python Supply Chain Scan (GuardDog + uv audit)
+        id: py_scan
+        run: |
+          set +e
+          uv export --no-hashes --no-emit-project -o requirements-audit.txt
+          uvx guarddog pypi verify requirements-audit.txt --exit-non-zero-on-finding > guarddog-pypi.log 2>&1
+          PY_GUARD_EXIT=$?
+          cat guarddog-pypi.log
+          uv audit --preview-features audit-command > uv-audit.log 2>&1
+          UV_AUDIT_EXIT=$?
+          cat uv-audit.log
+          rm -f requirements-audit.txt
+
+          if [ "$PY_GUARD_EXIT" -eq 0 ] && [ "$UV_AUDIT_EXIT" -eq 0 ]; then
+            echo "py_exit=0" >> "$GITHUB_OUTPUT"
+            echo "py_desc=PyPI packages verified (0 threats, 0 advisories)" >> "$GITHUB_OUTPUT"
+          else
+            echo "py_exit=1" >> "$GITHUB_OUTPUT"
+            echo "py_desc=Threats detected in PyPI packages" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44825de2a # v4.2.0
+        with:
+          node-version: '20'
+
+      - name: Node.js Supply Chain Scan (GuardDog + npm audit)
+        id: npm_scan
+        run: |
+          set +e
+          # Block preinstall/postinstall execution attacks during install
+          npm ci --ignore-scripts
+          uvx guarddog npm verify package.json --exit-non-zero-on-finding > guarddog-npm.log 2>&1
+          NPM_GUARD_EXIT=$?
+          cat guarddog-npm.log
+          npm audit --omit=dev > npm-audit.log 2>&1
+          NPM_AUDIT_EXIT=$?
+          cat npm-audit.log
+
+          if [ "$NPM_GUARD_EXIT" -eq 0 ] && [ "$NPM_AUDIT_EXIT" -eq 0 ]; then
+            echo "npm_exit=0" >> "$GITHUB_OUTPUT"
+            echo "npm_desc=npm dependencies clean (scripts blocked, 0 prod advisories)" >> "$GITHUB_OUTPUT"
+          else
+            echo "npm_exit=1" >> "$GITHUB_OUTPUT"
+            echo "npm_desc=npm threats detected" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: GitHub Actions Workflow Security (zizmor)
+        id: actions_scan
+        run: |
+          set +e
+          uvx zizmor --min-severity high .github/workflows/ > zizmor.log 2>&1
+          ZIZMOR_EXIT=$?
+          cat zizmor.log
+
+          if [ "$ZIZMOR_EXIT" -eq 0 ]; then
+            echo "actions_exit=0" >> "$GITHUB_OUTPUT"
+            echo "actions_desc=Workflows adhere to high-severity policy" >> "$GITHUB_OUTPUT"
+          else
+            echo "actions_exit=1" >> "$GITHUB_OUTPUT"
+            echo "actions_desc=Workflow vulnerabilities flagged by zizmor" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update README with supply chain results
+        env:
+          PY_EXIT: ${{ steps.py_scan.outputs.py_exit }}
+          NPM_EXIT: ${{ steps.npm_scan.outputs.npm_exit }}
+          ACTIONS_EXIT: ${{ steps.actions_scan.outputs.actions_exit }}
+        run: |
+          if [ "$PY_EXIT" -eq 0 ] && [ "$NPM_EXIT" -eq 0 ] && [ "$ACTIONS_EXIT" -eq 0 ]; then
+            STATUS="Passed"
+            DETAILS="Python, npm & workflows verified clean"
+          else
+            STATUS="Threats Detected"
+            DETAILS="Supply chain audit failure (Py: $PY_EXIT, npm: $NPM_EXIT, actions: $ACTIONS_EXIT)"
+          fi
+          python3 scripts/update_security_status.py \
+            --target supply-chain \
+            --status "$STATUS" \
+            --details "$DETAILS" \
+            --readme README.md
+
+      - name: Commit and push scan results to README
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(ci): update supply chain scan results in README [skip ci]"
+            for i in 1 2 3; do
+              git fetch origin main
+              git pull --rebase origin main || true
+              if git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main; then
+                echo "Successfully pushed README update."
+                break
+              fi
+              sleep 2
+            done
+          else
+            echo "No changes to README.md"
+          fi
+
+      - name: Enforce Supply Chain Gates
+        env:
+          PY_EXIT: ${{ steps.py_scan.outputs.py_exit }}
+          NPM_EXIT: ${{ steps.npm_scan.outputs.npm_exit }}
+          ACTIONS_EXIT: ${{ steps.actions_scan.outputs.actions_exit }}
+        run: |
+          FAILED=0
+          if [ "$PY_EXIT" -ne 0 ]; then
+            echo "::error::Python supply chain scan failed"
+            FAILED=1
+          fi
+          if [ "$NPM_EXIT" -ne 0 ]; then
+            echo "::error::npm supply chain scan failed"
+            FAILED=1
+          fi
+          if [ "$ACTIONS_EXIT" -ne 0 ]; then
+            echo "::error::GitHub Actions workflow audit failed"
+            FAILED=1
+          fi
+          if [ "$FAILED" -ne 0 ]; then
+            exit 1
+          fi
+          echo "All supply chain gates passed!"
