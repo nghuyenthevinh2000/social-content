@@ -166,6 +166,14 @@ def post_button(scope):
     return scope.get_by_role('button', name='Post', exact=True)
 
 
+NOT_NOW = re.compile(r'^(?:Not now|Maybe later|Don\'t add|Skip|Không phải bây giờ)$', re.I)
+
+
+def dismiss_button(scope):
+    """Optional prompt dismiss buttons (e.g. 'Not now' for Add button prompts)."""
+    return scope.get_by_role('button', name=NOT_NOW)
+
+
 def submission_dialog(page, submit):
     """Dialog containing the final Post button after Next."""
     return page.get_by_role('dialog').filter(has=submit)

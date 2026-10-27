@@ -466,3 +466,8 @@ class DomTests(unittest.TestCase):
                 Locator, 'is_enabled', side_effect=RuntimeError('Broken in Playwright 1.50')):
             result = publish(self.page, 'Hello', timeout_ms=500)
         self.assertEqual(result['status'], 'confirmed')
+
+    def test_dismiss_button_handles_composer_popup(self):
+        self.html = FIXTURE.replace('<button id="post"', '<button>Not now</button><button id="post"')
+        result = publish(self.page, 'Hello', timeout_ms=500)
+        self.assertEqual(result['status'], 'confirmed')

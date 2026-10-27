@@ -374,6 +374,12 @@ def publish(page, text: str, image: Path | None = None, video: Path | None = Non
         # Re-read hashes immediately before the irreversible click, outside the
         # uncertain-submission handler: changed files mean nothing was submitted.
         check_campaign(page_id=observed_id, **campaign)
+        for btn in selectors.visible(dom.dismiss_button(page)).all():
+            try:
+                btn.click(timeout=1000)
+                page.wait_for_timeout(300)
+            except Exception:
+                pass
     except AgentError:
         raise
     except Exception as exc:
@@ -388,10 +394,16 @@ def publish(page, text: str, image: Path | None = None, video: Path | None = Non
               'human_action_required': True, 'message': 'Check the open Facebook tab before attempting this post again.'}
     # From this point forward every failure is uncertain, including click timeouts.
     try:
-        submit.click(timeout=timeout_ms, no_wait_after=True)
+        submit.click(timeout=timeout_ms, no_wait_after=True, force=True)
         deadline = time.monotonic() + timeout_ms / 1000
         while time.monotonic() < deadline:
             selectors.check_block(page)
+            for btn in selectors.visible(dom.dismiss_button(page)).all():
+                try:
+                    btn.click(timeout=1000)
+                    page.wait_for_timeout(300)
+                except Exception:
+                    pass
             if _confirmation(page).count() > old_confirmations and not active_dialog.is_visible():
                 result.update(status='confirmed', human_action_required=False, message='Facebook displayed a post-sharing confirmation.')
                 # Publication success and URL discovery are separate outcomes.
