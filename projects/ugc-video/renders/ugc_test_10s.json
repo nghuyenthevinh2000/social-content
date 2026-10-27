@@ -1,0 +1,10 @@
+{
+  "model": "gemini-omni-flash-preview",
+  "interaction_id": "ChBiNDc3MThhNWYwMDU2NWQ5EAgaAmM3KgRtYWlu",
+  "prompt": "In a single continuous vertical 9:16 shot with authentic UGC smartphone vlog framing and natural warm room lighting. The presenter is the young East Asian woman with short black bob hair shown in <IMAGE_REF_0> wearing the casual loungewear top from <IMAGE_REF_1>. [0-3s] She stands at a wooden work table in a design studio, holding up a sheet of premium textured art paper (gi\u1ea5y m\u1ef9 thu\u1eadt) towards the camera, smiling naturally as she introduces it to the viewer. [3-7s] She places the paper on the table and picks up a finished red envelope (bao l\u00ec x\u00ec), demonstrating its crisp folds and luxurious matte paper texture under the light. [7-10s] She tilts the red envelope towards the lens with a friendly smile, speaking directly into the smartphone camera. Handheld mobile camera movement with slight natural sway. Audio includes clear, natural conversational speaking in a warm room setting.",
+  "aspect_ratio": "9:16",
+  "duration_target": "10s",
+  "output_path": "/Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/renders/ugc_test_10s.mp4",
+  "elapsed_seconds": 38.85,
+  "created_at": "2026-10-27T02:59:40Z"
+}
