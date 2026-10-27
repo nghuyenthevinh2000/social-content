@@ -17,8 +17,9 @@ flowchart TD
 | **Workspace Init** | Setup canonical workspace under `projects/` | [`projects/ugc-video/`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video), [`project.json`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/project.json) | Created canonical layout; symlinked to OpenMontage Backlot board. |
 | **Asset Ingestion** | Acquire reference video & creator photo assets | [`local/In bao lì xì...mp4`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/local/In%20bao%20l%C3%AC%20x%C3%AC%20gi%E1%BA%A5y%20m%E1%BB%B9%20thu%E1%BA%ADt%20%23locxuongin%20%20%23inbaolixi%20%20%23baolixidep%20_7577647857663102215.mp4), `assets/images/*.jpg` | Downloaded TikTok video via `yt-dlp`; unpacked creator photo turnaround pack. |
 | **Vision Analysis** | Deconstruct reference video structure | `local/ref_start/`, `ref_audio.wav` | Identified 3-beat structure: hook sheet intro, table texture review, red envelope presentation. |
-| **Video Generation** | Generate 10s UGC video using Google Omni Flash | [`ugc_test_10s.mp4`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/renders/ugc_test_10s.mp4), [`generate_test_video.py`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/local/generate_test_video.py) | Successfully generated 10.03s 720p H.264 video with native audio in 38.9s. |
-| **Billing Audit** | Query authoritative GCP cost for run | GCP Billing Catalog Service `C7E2-9256-1C43` | Extracted exact SKU rates; total cost was **$1.0171 USD** (~25,885 VND). |
+| **Video Generation (v1)** | Initial test using unstructured paragraph prompt | [`ugc_test_10s.mp4`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/renders/ugc_test_10s.mp4) | Produced static eye-level domestic studio talking head with English narration. Did not match raw workshop reference. |
+| **Video Generation (v2)** | Structured director-prompt framework | [`ugc_test_10s.mp4`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/renders/ugc_test_10s.mp4) | Achieved high-angle BTS workshop view, authentic paper ream unwrapping, spoken Vietnamese dialogue, and Tết red envelope sheet display. |
+| **Billing Audit** | Query authoritative GCP cost for run | GCP Billing Catalog Service `C7E2-9256-1C43` | Extracted exact SKU rates; total cost was **$1.0171 USD** (~25,885 VND) per 10s run. |
 
 ---
 
@@ -48,7 +49,8 @@ flowchart TD
 | **Output Target Duration** | `10s` (Actual: `10.03s`) | Specified via `response_format.duration`. |
 | **Bound Reference 0** | [`assets/images/face.jpg`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/assets/images/face.jpg) | Persona face anchor (`<IMAGE_REF_0>`). |
 | **Bound Reference 1** | [`assets/images/front.jpg`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/assets/images/front.jpg) | Creator outfit and framing anchor (`<IMAGE_REF_1>`). |
-| **Interaction ID** | `ChBiNDc3MThhNWYwMDU2NWQ5EAgaAmM3KgRtYWlu` | Stored server-side (`store=true`) for conversational delta editing. |
+| **Interaction ID (v1)** | `ChBiNDc3MThhNWYwMDU2NWQ5EAgaAmM3KgRtYWlu` | Initial test generation (studio talking head). |
+| **Interaction ID (v2)** | `ChA5OGZiMWUyZmNkYzlmMThmEAgaAjAxKgRtYWlu` | Structured director-prompt run matching reference workshop video. |
 
 ---
 
