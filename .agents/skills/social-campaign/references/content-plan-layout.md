@@ -64,9 +64,9 @@ Inside `#canvas` (720px wide with 18px left/right padding), the table fills exac
 
 ---
 
-## 5. Rendering Procedure with Playwright
+## 5. Rendering Procedure with Playwright (PNG & PDF)
 
-To capture a pixel-perfect 2× Retina PNG (`1440 × 2560px`):
+To capture a pixel-perfect 2× Retina PNG (`1440 × 2560px`) and a crisp vector PDF (`output.pdf`):
 
 ```bash
 .venv/bin/python -c "
@@ -75,6 +75,7 @@ from playwright.sync_api import sync_playwright
 
 html_path = os.path.abspath('local/<SLUG>/brand/content-plan-infographic/index.html')
 png_path = os.path.abspath('local/<SLUG>/brand/content-plan-infographic/output.png')
+pdf_path = os.path.abspath('local/<SLUG>/brand/content-plan-infographic/output.pdf')
 
 with sync_playwright() as p:
     browser = p.chromium.launch()
@@ -83,6 +84,22 @@ with sync_playwright() as p:
         device_scale_factor=2
     )
     page.goto(f'file://{html_path}')
+    page.wait_for_timeout(1000)
+    
+    # Render 2x Retina PNG
+    page.screenshot(path=png_path)
+    
+    # Render Vector Single-Page PDF (selectable, scalable text)
+    page.pdf(
+        path=pdf_path,
+        width='720px',
+        height='1280px',
+        print_background=True,
+        margin={'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px'}
+    )
+    browser.close()
+"
+```
     page.wait_for_timeout(1000)
     page.screenshot(path=png_path)
     browser.close()
