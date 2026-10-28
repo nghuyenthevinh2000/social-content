@@ -22,6 +22,8 @@ register → checkpoints → collect → normalize → eligibility
 | Pre-publication gate | Contract |
 |---|---|
 | `preflight.py` | Offline project/channel, research, copy, SVG/PNG and hash-bound approval checks. Never publishes. |
+| `validate/` | Package validating project file structure, brand tokens, channel isolation, and hook database alignment without aliases. |
+| `validate-campaign [--json]` | Holistic project health check: root config, instructions, brand tokens, marketing catalog, post artifacts, and hook alignment. |
 | `preflight --post <ID> --stage research\|draft\|visual\|publish` | Read-only JSON report; exit 2 on failure. See [content gates](../../.agents/skills/social-campaign/references/content-gates.md). |
 | `review-research --post <ID> --reviewer <HUMAN> --approved` | Record human evidence/applicability approval; required before drafting when research policy is configured. |
 | `approve-content --post <ID> --reviewer <HUMAN> --approved --visual-reviewed` | Record final human copy/media/destination approval. Hash changes invalidate decisions; this is not `approve-review`. |

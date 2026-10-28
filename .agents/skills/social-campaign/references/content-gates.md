@@ -20,6 +20,7 @@ Evidence → research review → draft → rendered visual → content approval 
 
 | Step | Command from repository root | Gate |
 |---|---|---|
+| Campaign alignment | `python -m tools.loop --project <PROJECT> validate-campaign [--json]` | Holistic project health check: root config, instructions, brand tokens, marketing catalog, post artifacts, and hook database alignment. |
 | Evidence | `python -m tools.loop --project <PROJECT> preflight --post <ID> --stage research` | Validate artifacts and source metadata offline. Does not fetch or legally verify sources. |
 | Research decision | `python -m tools.loop --project <PROJECT> review-research --post <ID> --reviewer <HUMAN> --approved` | Run only after explicit human research approval; writes `research-review.json`. |
 | Draft | `python -m tools.loop --project <PROJECT> preflight --post <ID> --stage draft` | Requires current research review when configured, allowed channel and exact CTA. Run research gate before drafting, then draft gate afterward. |

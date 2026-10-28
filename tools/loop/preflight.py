@@ -91,8 +91,16 @@ def _base(root, post):
     directory = post_directory(root, post)
     hypotheses = storage.load_hypotheses(root, config)
     if config.get('hypotheses_file'):
-        require(any(item.get('post') == post for item in hypotheses.get('hypotheses', [])),
-                'unknown_post', 'Post is not in the configured hypotheses file.')
+        active_item = next((item for item in hypotheses.get('hypotheses', []) if item.get('post') == post), None)
+        require(active_item is not None, 'unknown_post', 'Post is not in the configured hypotheses file.')
+        hook_obj = active_item.get('hook') if active_item else None
+        if isinstance(hook_obj, dict) and hook_obj.get('type'):
+            from tools.loop import validate
+            db_path = validate.find_database(root)
+            if db_path and db_path.is_file():
+                valid_ids, slug_to_id, _ = validate.load_canonical_hooks(db_path)
+                valid, err = validate.check_single_hook(hook_obj['type'], valid_ids, slug_to_id)
+                require(valid, 'invalid_hook_type', err)
     files = {}
     for relative in ('loop/config.json', 'AGENTS.md', config.get('hypotheses_file'),
                      config.get('brand_manifest'), policy.get('guidelines_file'), policy.get('tokens_file')):

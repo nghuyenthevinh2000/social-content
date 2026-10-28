@@ -77,6 +77,9 @@ def _build_parser():
     learn.add_argument('--id', help='Legacy publication ID')
     learn.add_argument('--run', dest='run_id', help='Run ID to attach review to')
     learn.add_argument('--file', type=Path, required=True)
+
+    val_campaign = commands.add_parser('validate-campaign', help='Validate whole project file structure alignment, policies, and hook consistency')
+    val_campaign.add_argument('--json', action='store_true', help='Output raw JSON report')
     return parser
 
 
@@ -107,6 +110,18 @@ def main(argv=None):
         if not result['ok']:
             sys.exit(2)
         return
+
+    if args.command == 'validate-campaign':
+        from tools.loop.validate import print_campaign_summary, validate_campaign
+        ok, report = validate_campaign(root)
+        if getattr(args, 'json', False):
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+        else:
+            print_campaign_summary(report)
+        if not ok:
+            sys.exit(2)
+        return
+
     if args.command in ('review-research', 'approve-content'):
         try:
             with (root / 'loop/.engine.lock').open('a') as lock:
