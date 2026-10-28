@@ -96,7 +96,7 @@ See **[plans/skill-selection-router-hook-guide.md](./plans/skill-selection-route
 | Target | Scanner | Status | Last Scanned | Details |
 | :--- | :--- | :--- | :--- | :--- |
 | **Repo Malware** | ClamAV | ✅ Clean | 2026-10-28 05:30 UTC | 1164 files scanned, 0 threats (v1.5.4) |
-| **Supply Chain** | GuardDog + uv & npm audit | ✅ Clean | 2026-10-27 05:53 UTC | Python, npm & workflows verified clean |
+| **Supply Chain** | GuardDog + uv & npm audit | ❌ Threats Detected | 2026-10-28 05:34 UTC | Supply chain audit failure (Py: 0, npm: 1, actions: 0) |
 | **Prompt Injection** | LLM Safety Guard | ✅ Clean | 2026-10-28 05:29 UTC | All prompts, skills & files verified clean (0 injection findings) |
 <!-- SECURITY_STATUS_END -->
 
