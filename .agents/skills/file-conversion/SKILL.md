@@ -1,8 +1,8 @@
 ---
 name: file-conversion
-description: "Convert documents and files between formats, supporting bidirectional conversions including PDF to Markdown, Markdown to PDF, and HTML to vector PDF with custom canvas dimensions. The agent must confirm first which file conversion the user wants before proceeding."
+description: "Convert documents and files between formats: Markdown to PDF (with Mermaid support), HTML to vector PDF (with custom canvas dimensions and web fonts), PDF to Markdown (via MarkItDown & OCR), and Word (.docx), PowerPoint (.pptx), Excel (.xlsx, .csv), or HTML to Markdown. The agent must confirm first which file conversion the user wants before proceeding."
 metadata:
-  tags: file-conversion, pdf-to-markdown, md-to-pdf, html-to-pdf, markitdown, pandoc, chromium, playwright, mermaid, document-parsing, ocr, markdown
+  tags: file-conversion, pdf-to-markdown, md-to-pdf, html-to-pdf, docx-to-md, pptx-to-md, xlsx-to-md, csv-to-md, html-to-md, markitdown, pandoc, chromium, playwright, mermaid, document-parsing, ocr, markdown
 ---
 
 # File Conversion Skill: PDF to Markdown, Markdown to PDF & HTML to PDF
@@ -211,9 +211,21 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 # Convert HTML to Vector PDF (Infographics / Slides)
 python3 "$REPO_ROOT/.agents/skills/file-conversion/scripts/html-to-pdf.py" "index.html" -o "output.pdf" --width 720px --height 1280px
 
-# Convert Markdown to PDF
+# Convert Markdown to PDF (with Mermaid & Math support)
 python3 "$REPO_ROOT/.agents/skills/file-conversion/scripts/md-to-pdf.py" "document.md"
 
 # Convert PDF to Markdown
 markitdown "document.pdf" -o "document.md"
+
+# Convert Word (.docx) to Markdown
+markitdown "document.docx" -o "document.md"
+
+# Convert PowerPoint (.pptx) to Markdown
+markitdown "presentation.pptx" -o "presentation.md"
+
+# Convert Excel (.xlsx, .csv) to Markdown
+markitdown "sheet.xlsx" -o "sheet.md"
+
+# Convert HTML to Markdown
+markitdown "page.html" -o "page.md"
 ```
