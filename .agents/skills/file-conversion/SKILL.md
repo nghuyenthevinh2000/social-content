@@ -1,15 +1,16 @@
 ---
 name: file-conversion
-description: "Convert documents and files between formats, supporting bidirectional conversions including PDF to Markdown (via MarkItDown) and Markdown to PDF (via scripts/md-to-pdf.py with Mermaid support). The agent must confirm first which file conversion the user wants before proceeding."
+description: "Convert documents and files between formats, supporting bidirectional conversions including PDF to Markdown, Markdown to PDF, and HTML to vector PDF with custom canvas dimensions. The agent must confirm first which file conversion the user wants before proceeding."
 metadata:
-  tags: file-conversion, pdf-to-markdown, md-to-pdf, markitdown, pandoc, chromium, mermaid, document-parsing, ocr, markdown
+  tags: file-conversion, pdf-to-markdown, md-to-pdf, html-to-pdf, markitdown, pandoc, chromium, playwright, mermaid, document-parsing, ocr, markdown
 ---
 
-# File Conversion Skill: PDF to Markdown & Markdown to PDF
+# File Conversion Skill: PDF to Markdown, Markdown to PDF & HTML to PDF
 
-This skill provides an end-to-end operational playbook for converting documents across formats. It features two primary pipelines:
+This skill provides an end-to-end operational playbook for converting documents across formats. It features three primary pipelines:
 1. **PDF to Markdown** (using Microsoft MarkItDown with layout reflow and artifact cleaning)
 2. **Markdown to PDF** (using the bundled `scripts/md-to-pdf.py` with Pandoc, Chrome/Chromium, and high-contrast Mermaid diagram compilation)
+3. **HTML to PDF** (using the bundled `scripts/html-to-pdf.py` with Playwright Chromium or Chrome CLI, supporting custom canvas dimensions, web font rendering, and full-bleed zero margins)
 
 ---
 
@@ -158,10 +159,41 @@ When raw extraction flattens section headers or splits words:
 
 ---
 
+## Pipeline 3: HTML to Vector PDF (via `html-to-pdf.py`)
+
+For converting HTML files (single pages, infographics, presentation slides, or reports) into vector PDFs with exact canvas dimensions and high-fidelity web font loading:
+
+- **Script Path:** `.agents/skills/file-conversion/scripts/html-to-pdf.py`
+
+### Features
+- **Custom Canvas Sizing:** Supports exact width and height units (e.g., `--width 720px --height 1280px` for 9:16 portrait mobile infographics, or `1920px x 1080px` for 16:9 widescreen presentation decks).
+- **Web Font & Asset Preloading:** Configurable wait period (`--wait <ms>`, default: 1000ms) to ensure Google Fonts (Instrument Serif, Plus Jakarta Sans, Inter, etc.) and CDN assets finish loading before vector generation.
+- **Zero-Margin / Full-Bleed Layouts:** Defaults to `0px` margins to avoid page overflow and accidental blank pages.
+- **Engine Support:** Uses Playwright Chromium if available in the virtual environment, with automatic fallback to headless system Chrome/Chromium CLI.
+
+### Usage Commands
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+SCRIPT="$REPO_ROOT/.agents/skills/file-conversion/scripts/html-to-pdf.py"
+
+# 1. Convert an infographic HTML to single-page 9:16 portrait PDF
+python3 "$SCRIPT" "path/to/index.html" -o "path/to/output.pdf" --width 720px --height 1280px --wait 1000
+
+# 2. Convert a presentation deck HTML to 16:9 widescreen PDF
+python3 "$SCRIPT" "slides.html" --width 1920px --height 1080px
+
+# 3. Convert all HTML files in a directory
+python3 "$SCRIPT" "path/to/html-folder" --width 720px --height 1280px
+```
+
+---
+
 ## Supported Conversions Matrix
 
 | Conversion | Primary Tool / Script | Fallback / Alternative | Notes |
 | :--- | :--- | :--- | :--- |
+| **HTML $\rightarrow$ PDF** | `scripts/html-to-pdf.py` | Headless Chrome CLI | Supports custom dimensions (e.g. 720x1280 9:16), zero margins, web fonts. |
 | **Markdown $\rightarrow$ PDF** | `scripts/md-to-pdf.py` | `pandoc input.md -o output.pdf` | Supports high-contrast Mermaid diagrams, emoji, wide tables, Chrome/Chromium. |
 | **PDF $\rightarrow$ Markdown** | `markitdown input.pdf -o output.md` | `pdftotext` / `pandoc` | Reflow wrapped lines and fix page boundaries. |
 | **Word (`.docx`) $\rightarrow$ MD** | `markitdown input.docx -o output.md` | `pandoc -f docx -t markdown` | Preserves headings, bold, tables cleanly. |
@@ -175,6 +207,9 @@ When raw extraction flattens section headers or splits words:
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# Convert HTML to Vector PDF (Infographics / Slides)
+python3 "$REPO_ROOT/.agents/skills/file-conversion/scripts/html-to-pdf.py" "index.html" -o "output.pdf" --width 720px --height 1280px
 
 # Convert Markdown to PDF
 python3 "$REPO_ROOT/.agents/skills/file-conversion/scripts/md-to-pdf.py" "document.md"
