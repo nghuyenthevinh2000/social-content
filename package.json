@@ -1,13 +1,18 @@
 {
   "name": "social-content",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "Social content creation, storytelling, and skill workflows",
   "scripts": {
     "lint:md": "markdownlint \"**/*.md\"",
-    "lint:md:fix": "markdownlint --fix \"**/*.md\""
+    "lint:md:fix": "markdownlint --fix \"**/*.md\"",
+    "voice:clone": "node --env-file=.env projects/ugc-video/scripts/elevenlabs_clone_and_speak.js"
   },
   "devDependencies": {
     "markdownlint-cli": "^0.49.1"
+  },
+  "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.74.0"
   }
 }

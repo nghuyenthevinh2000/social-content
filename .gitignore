@@ -29,6 +29,7 @@
 
 # Music formats
 *.mp3
+*.wav
 
 # OS metadata
 .DS_Store
@@ -41,3 +42,5 @@ __pycache__/
 
 # Local supervised X draft database, audit data, and screenshots
 .twitter-agent/
+# Local secrets written by `elevenlabs onboard`
+/.env.local
