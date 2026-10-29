@@ -15,6 +15,7 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 | Environment | Use the repository's uv-managed environment. OpenCV and NumPy are required; ffmpeg and ffprobe are needed for video processing. Do not install into system Python. |
 | Capability boundary | This CLI is not a general nonlinear editor. It does not implement talking-head overlays, audio denoising, music mixing, or arbitrary cuts. |
 | Video download | Use `uv run yt-dlp` to download source videos from URLs (Facebook, TikTok, YouTube, Instagram, X). Probe with `-F` and transcode to standard H.264 MP4 if needed. |
+| Video translation & subtitle overlay | For translating foreign on-screen subtitles into Vietnamese with ASS vector masking, follow `workflows/vietnamese-video-translation.md` using `scripts/sub_scanner.py` and `scripts/ass_builder.py`. |
 | Fallback | For unsupported operations, read `references/ffmpeg-compositing.md` relative to this skill. Keep its face helper at the skill-root path `scripts/detect_face_crop.py`. Use a repository-local or approved temporary workspace instead of the reference's legacy `/tmp` examples. |
 
 ## Commands
@@ -33,6 +34,9 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 | Preview video texture replacement | `uv run python -m tools.video_edit video --video INPUT --texture TEXTURE --out-dir local/video-edit/texture-preview --limit 24` |
 | Install watermark backend | `uv run python -m tools.video_edit watermark-install` — downloads the pinned official Veo backend and verifies its SHA256. |
 | Watermark processing | `uv run python -m tools.video_edit watermark --video INPUT --out-dir local/video-edit/watermark-clean` — official calibrated backend only; use a new directory. |
+| Scan subtitle segments | `uv run python .agents/skills/video-editing/scripts/sub_scanner.py --video INPUT --out-dir OUT_DIR --roi YMIN:YMAX,XMIN:XMAX` |
+| Build ASS subtitle overlay | `uv run python .agents/skills/video-editing/scripts/ass_builder.py --segments SEGMENTS.json --translations TRANSLATIONS.json --out OUT.ass` |
+| Burn ASS subtitles & delogo | `ffmpeg -y -i INPUT -vf "delogo=x:y:w:h:enable='between(t,t1,t2)',subtitles='OVERLAY.ass'" -c:v libx264 -crf 18 -preset fast -pix_fmt yuv420p -c:a copy -movflags +faststart OUTPUT.mp4` |
 
 ## Workflow
 
