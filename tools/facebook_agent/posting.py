@@ -352,7 +352,7 @@ def publish(page, text: str, image: Path | None = None, video: Path | None = Non
                 break
             nxt = selectors.visible(dom.next_button(page))
             if nxt.count() == 1:
-                nxt.first.click(timeout=timeout_ms)
+                nxt.first.click(timeout=timeout_ms, force=True)
                 page.wait_for_timeout(300)
                 continue
             if time.monotonic() > step_deadline:

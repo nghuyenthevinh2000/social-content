@@ -1,7 +1,11 @@
 {
-  "version": "1.0",
+  "version": "3.1",
+  "updated_at": "2026-10-29T12:35:00+07:00",
   "created_at": "2026-10-27T02:16:48.321914+00:00",
   "project_id": "ugc-video",
   "title": "UGC Video",
-  "pipeline_type": "avatar-spokesperson"
+  "pipeline_type": "avatar-spokesperson",
+  "canonical_deliverable": "renders/version_3_web_optimized.mp4",
+  "active_voice_id": "4pDfNAFSqZdVnr5Xfufk",
+  "live_post_url": "https://www.facebook.com/61595289277974/posts/122111179869509642"
 }

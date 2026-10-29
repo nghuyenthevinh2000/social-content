@@ -30,6 +30,8 @@
 # Music formats
 *.mp3
 *.wav
+*.m4a
+*.aac
 
 # OS metadata
 .DS_Store

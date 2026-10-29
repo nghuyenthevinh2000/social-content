@@ -1,5 +1,8 @@
 # Prompt Calibration & Video Generation Report
 
+> **Architecture Layer: Layers 1 & 2 (`v1.0` & `v2.0`) — Core Video Synthesis & Director Prompt Calibration**  
+> Foundational milestone establishing Gemini Omni Flash video capabilities, prompt grammar, industrial workshop setting, and dual image anchors.
+
 ```mermaid
 flowchart TD
     A["Raw Reference Video<br/>('In bao lì xì...mp4')"] --> B["Discrepancy Diagnostics<br/>(Camera Angle, Factory Setting, Props, Language)"]

@@ -1,5 +1,8 @@
 # Voice Cloning & Lip-Sync Calibration Report
 
+> **Architecture Layer: Layer 3 (`v3.0`) — Acoustic Identity & Speech-to-Speech Lip-Sync**  
+> Foundational milestone establishing ElevenLabs Instant Voice Cloning (`4pDfNAFSqZdVnr5Xfufk`) and Speech-to-Speech cadence locking.
+
 ```mermaid
 flowchart TD
     A["Raw Audio & Images<br/>(actor_voice.wav + clothes.jpg)"] --> B["Video Generation (Omni Flash)<br/>(version_3.mp4 @ 10.03s)"]
