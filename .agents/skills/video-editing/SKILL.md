@@ -17,6 +17,7 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 | Video download | Use `uv run yt-dlp` to download source videos from URLs (Facebook, TikTok, YouTube, Instagram, X). Probe with `-F` and transcode to standard H.264 MP4 if needed. |
 | Video translation & subtitle overlay | For translating foreign on-screen subtitles into Vietnamese with ASS vector masking, follow `workflows/vietnamese-video-translation.md` using `scripts/sub_scanner.py` and `scripts/ass_builder.py`. |
 | Avatar UGC video synthesis | For synthesizing realistic avatar UGC videos mimicking real people (photo, voice, pose) with Vertex AI, ElevenLabs `eleven_v3` timestamp-aligned voice synthesis (`FXJGVNPXC71BGT9PjlMX`), and social web normalization, follow `workflows/avatar-ugc-synthesis.md`. |
+| Long-form multi-clip UGC editing & seam masking | For masking jump lag, stitch seams, and pose resets across multi-clip generative UGC avatar sequences, follow the multi-sensory editing framework in `references/long-form-video.md` and the post-production pipeline in `workflows/effect-editing-workflow.md`. |
 | Fallback | For unsupported operations, read `references/ffmpeg-compositing.md` relative to this skill. Keep its face helper at the skill-root path `scripts/detect_face_crop.py`. Use a repository-local or approved temporary workspace instead of the reference's legacy `/tmp` examples. |
 
 ## Commands

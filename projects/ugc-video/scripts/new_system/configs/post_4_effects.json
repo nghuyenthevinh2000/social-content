@@ -1,0 +1,69 @@
+{
+  "slug": "post_4_wedding_paper",
+  "input_video": "renders/post_4_wedding_paper/post_4_omni11_20s_web_optimized.mp4",
+  "alignment_json": "renders/post_4_wedding_paper/tts_v3_alignment.json",
+  "output_video": "renders/post_4_wedding_paper/post_4_engaged_effect.mp4",
+  "clause_bounds": [
+    [0.00, 0.80, 0.21, 0.86],
+    [0.83, 3.76, 1.04, 3.41],
+    [4.00, 8.00, 3.59, 6.82],
+    [8.03, 9.04, 7.00, 7.82],
+    [9.10, 11.36, 8.00, 9.83],
+    [11.49, 15.28, 10.11, 13.36],
+    [15.33, 17.68, 13.65, 15.60],
+    [17.78, 20.16, 15.97, 17.65],
+    [20.27, 22.40, 18.05, 19.75]
+  ],
+  "bgm": {
+    "file": "assets/zephiramusic-lofi-focus-606303.mp3",
+    "volume": 0.09,
+    "fade_in": 0.5,
+    "fade_out": 1.5
+  },
+  "hook_banner": {
+    "text": "MẪU GIẤY IN THIỆP CƯỚI\\NVỪA SANG VỪA KINH TẾ?",
+    "start": 0.0,
+    "end": 3.41,
+    "style": "pill_yellow"
+  },
+  "punch_zooms": [
+    {"start": 0.0, "end": 3.41, "zoom": 1.08, "y_focus": 0.35},
+    {"start": 3.41, "end": 7.00, "zoom": 1.00, "y_focus": 0.50},
+    {"start": 7.00, "end": 9.96, "zoom": 1.10, "y_focus": 0.55},
+    {"start": 9.96, "end": 13.65, "zoom": 1.00, "y_focus": 0.50},
+    {"start": 13.65, "end": 17.65, "zoom": 1.12, "y_focus": 0.45},
+    {"start": 17.65, "end": 19.92, "zoom": 1.06, "y_focus": 0.38}
+  ],
+  "scene_transitions": [
+    {"time": 9.96, "duration": 0.12, "type": "flash"}
+  ],
+  "badges": [
+    {"text": "GIẤY ÁNH KIM 180", "subtext": "Bề mặt nhũ xà cừ cực mịn", "start": 3.59, "end": 6.82, "pos": "top"},
+    {"text": "ĂN MỰC SẮC NÉT", "subtext": "Lên máy bế hay gấp nếp không lo nứt gãy", "start": 7.00, "end": 9.83, "pos": "top"},
+    {"text": "KHỔ TIÊU CHUẨN 79×109", "subtext": "Luôn sẵn tại kho xưởng", "start": 10.11, "end": 13.36, "pos": "top"},
+    {"text": "NHẬN ĐƠN TỪ 2 GAM", "subtext": "Cho xưởng in test máy", "start": 13.65, "end": 15.60, "pos": "top"},
+    {"text": "LÊN THIỆP IN CỰC KỲ SẮC NÉT", "subtext": "Phôi thiệp cưới cao cấp", "start": 15.97, "end": 17.65, "pos": "top"},
+    {"text": "NHẮN TIN XƯỞNG GỬI MẪU MIỄN PHÍ", "subtext": "Hotline / Zalo: 0904.642.276", "start": 17.80, "end": 19.92, "pos": "bottom"}
+  ],
+  "sfx_events": [
+    {"time": 0.05, "file": "whoosh-short.mp3", "volume": 0.50},
+    {"time": 1.04, "file": "pop.mp3", "volume": 0.45},
+    {"time": 3.60, "file": "sparkle.mp3", "volume": 0.45},
+    {"time": 7.00, "file": "ping.mp3", "volume": 0.45},
+    {"time": 9.96, "file": "whoosh.mp3", "volume": 0.55},
+    {"time": 10.11, "file": "pop.mp3", "volume": 0.45},
+    {"time": 13.65, "file": "pop.mp3", "volume": 0.45},
+    {"time": 16.00, "file": "sparkle.mp3", "volume": 0.45},
+    {"time": 18.05, "file": "chime.mp3", "volume": 0.55}
+  ],
+  "color_grade": {
+    "contrast": 1.06,
+    "saturation": 1.10,
+    "brightness": 0.01
+  },
+  "progress_bar": {
+    "enabled": true,
+    "color": "#FFE600",
+    "height": 6
+  }
+}
