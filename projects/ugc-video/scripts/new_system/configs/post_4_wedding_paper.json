@@ -1,0 +1,48 @@
+{
+  "slug": "post_4_omni11_20s",
+  "product_id": "anh-kim-180",
+  "product_catalog": "local/paper-ink-product/product-marketing.json",
+  "video_model": "gemini-omni-1.1-flash-preview",
+  "voice_id": "FXJGVNPXC71BGT9PjlMX",
+  "face_image": "assets/images/face.jpg",
+  "clothes_image": "assets/images/clothes.jpg",
+  "product_image": "local/paper-ink-product/paper_anh_kim.jpg",
+  "work_dir": "renders/post_4_wedding_paper",
+  "output_path": "renders/post_4_wedding_paper/post_4_omni11_20s_web_optimized.mp4",
+  "mirror_outputs": [
+    "renders/post_4_20s_web_optimized.mp4",
+    "assets/video/post_4_20s_web_optimized.mp4"
+  ],
+  "camera": "Vertical 9:16 mobile POV. High-angle perspective (35-degree downward tilt) filmed beside workshop workbench, looking down across the table. Natural handheld camera breathing and responsive motion tracking presenter's hands, raw behind-the-scenes (BTS) workshop documentary style. Pristine clean camera footage, absolutely no watermarks, no logos, no text overlays, no usernames, no social media icons.",
+  "environment": "Active paper workshop (xưởng sản xuất và gia công giấy mỹ thuật). In background: commercial guillotine paper cutting machine, neatly stacked pallets of paper reams under bright overhead workshop lighting. On the sturdy wooden workbench: large flat 79x109cm sheets of cream-white specialty metallic pearlescent paper (giấy ánh kim 180gsm matching <IMAGE_REF_2>) shimmering with a fine pearlescent sheen under light on the center and right, and two small printed floral wedding invitation cards resting on the left side of the wooden workbench.",
+  "subject_first_scene": "Adult 30-year-old female artisan matching <IMAGE_REF_0> wearing the muted pale lavender relaxed short-sleeved top with tonal floral embroidery on the chest in <IMAGE_REF_1>, presenting the cream-white pearlescent paper sheets matching <IMAGE_REF_2>. Standing beside workbench, leaning forward energetically over pearlescent paper sheets, smiling warmly and engaging directly with camera.",
+  "subject_continuation": "The adult 30-year-old female print shop owner in the muted pale lavender short-sleeved top stands in her exact position beside the workbench, smiling warmly at the camera.",
+  "scenes": [
+    {
+      "scene_id": 1,
+      "actions": [
+        "00:00 - 00:03: She enthusiastically uncovers and fans out the large flat sheets of cream-white lustrous metallic pearlescent paper (<IMAGE_REF_2>) on the table, tilting a sheet slightly under the workshop light to catch the fine pearlescent shimmer, smiling welcomingly into the camera.",
+        "00:03 - 00:07: She lifts the corner of one cream-white pearlescent paper sheet (<IMAGE_REF_2>), gently flexing it to demonstrate its 180gsm thickness and smooth pearlescent surface without creasing or cracking while speaking enthusiastically.",
+        "00:07 - 00:10: She places the sheet flat back down onto the stack, smiling warmly, nodding and resting her right hand lightly on the paper stack."
+      ],
+      "clauses": [
+        "Xưởng ơi, có mẫu giấy in thiệp cưới nào vừa sang vừa kinh tế không?",
+        "Dòng Giấy Ánh Kim một trăm tám mươi bên em bề mặt nhũ xà cừ cực mịn, ăn mực sắc nét, lên máy bế hay gấp nếp không lo nứt gãy."
+      ]
+    },
+    {
+      "scene_id": 2,
+      "actions": [
+        "00:00 - 00:04: Continuing smoothly from her exact pose in the starting frame, she keeps her right hand resting lightly on the large flat 79x109cm pearlescent paper stack while gesturing naturally with her left hand toward the paper stack as she speaks.",
+        "00:04 - 00:07: Her left hand reaches over to the left side of the workbench and picks up the small printed floral wedding invitation card already lying there, holding the small card up slightly to show its sharp print quality.",
+        "00:07 - 00:10: She places the small wedding card back down on the left side of the table, smiles warmly at the camera, and gives a friendly wave goodbye."
+      ],
+      "clauses": [
+        "Khổ tiêu chuẩn bảy mươi chín nhân một trăm linh chín luôn sẵn tại kho xưởng,",
+        "nhận đơn từ hai gam cho xưởng in test máy.",
+        "Đặc biệt lên thiệp in cực kỳ sắc nét.",
+        "Nhắn tin xưởng em gửi mẫu miễn phí nhé!"
+      ]
+    }
+  ]
+}

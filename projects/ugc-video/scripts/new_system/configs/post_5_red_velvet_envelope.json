@@ -1,0 +1,43 @@
+{
+  "slug": "post_5_red_velvet_20s",
+  "product_id": "nhung-do-120",
+  "product_catalog": "local/paper-ink-product/product-marketing.json",
+  "video_model": "gemini-omni-1.1-flash-preview",
+  "voice_id": "FXJGVNPXC71BGT9PjlMX",
+  "face_image": "assets/images/face.jpg",
+  "clothes_image": "assets/images/clothes.jpg",
+  "product_image": "local/paper-ink-product/paper_do_nhung.jpg",
+  "work_dir": "renders/post_5_red_velvet",
+  "output_path": "renders/post_5_red_velvet/post_5_red_velvet_20s_web_optimized.mp4",
+  "mirror_outputs": [],
+  "camera": "Vertical 9:16 mobile POV. High-angle perspective (35-degree downward tilt) filmed beside workshop workbench, looking down across the table. Natural handheld camera breathing and responsive motion tracking presenter's hands, raw behind-the-scenes (BTS) workshop documentary style. Pristine clean camera footage, absolutely no watermarks, no logos, no text overlays, no usernames, no social media icons.",
+  "environment": "Active paper workshop (xưởng sản xuất và gia công giấy mỹ thuật). In background: commercial guillotine paper cutting machine, neatly stacked pallets of paper reams under bright overhead workshop lighting. On the sturdy wooden workbench: deep crimson red velvet specialty paper sheets (giấy nhung đỏ 120gsm matching <IMAGE_REF_2>) on the center of the table and two gold-foil stamped red envelopes (bao lì xì ép kim) resting on the left side of the table.",
+  "subject_first_scene": "Adult 30-year-old female artisan matching <IMAGE_REF_0> wearing the muted pale lavender relaxed short-sleeved top with tonal floral embroidery on the chest in <IMAGE_REF_1>, presenting the deep red velvet paper sheets matching <IMAGE_REF_2>. Standing beside workbench, smiling warmly and engaging directly with camera.",
+  "subject_continuation": "The adult 30-year-old female print shop owner in the muted pale lavender short-sleeved top stands in her exact position beside the workbench, smiling warmly at the camera.",
+  "scenes": [
+    {
+      "scene_id": 1,
+      "actions": [
+        "00:00 - 00:03: She gently strokes the surface of the deep crimson red velvet paper sheets (<IMAGE_REF_2>) on the workbench to showcase its plush matte texture.",
+        "00:03 - 00:07: She lifts the corner of a red velvet sheet (<IMAGE_REF_2>) under the workshop light, flexing it slightly to show its 120gsm thickness without creasing.",
+        "00:07 - 00:10: She rests the red velvet sheet flat back onto the stack, keeping her right hand resting lightly on the stack while smiling at the camera."
+      ],
+      "clauses": [
+        "Xưởng nào đang tìm phôi giấy nhung đỏ làm bao lì xì, quạt Tết và giấy thư pháp thì xem ngay mẫu này nhé!",
+        "Bề mặt nhung đỏ thẫm mịn mượt, định lượng một trăm hai mươi gam dẻo dai, bám mực cực tốt."
+      ]
+    },
+    {
+      "scene_id": 2,
+      "actions": [
+        "00:00 - 00:04: Continuing smoothly from her exact pose in the starting frame, she keeps her right hand on the red paper stack and gestures naturally with her left hand.",
+        "00:04 - 00:07: Her left hand picks up one small gold-foil stamped red envelope already resting on the left side of the workbench, tilting it slightly so the gold foil catches the light.",
+        "00:07 - 00:10: She places the red envelope back on the left side of the workbench and waves warmly to the camera."
+      ],
+      "clauses": [
+        "Khổ tiêu chuẩn bảy mươi chín nhân một trăm linh chín luôn sẵn tại kho xưởng, nhận đơn từ hai gam.",
+        "Nhắn tin xưởng em gửi mẫu thử máy miễn phí ngay hôm nay nhé!"
+      ]
+    }
+  ]
+}
