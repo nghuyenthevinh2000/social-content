@@ -305,9 +305,9 @@ def run_effect_pipeline(config_path: Path) -> Path:
     br = cg.get("brightness", 0.01)
     v_chain.append(f"eq=contrast={cont:.2f}:saturation={sat:.2f}:brightness={br:.2f}")
 
-    # Progress bar
+    # Progress bar (disabled by default; YAGNI)
     pb = cfg.get("progress_bar", {})
-    if pb.get("enabled", True):
+    if pb.get("enabled", False):
         pb_h = pb.get("height", 6)
         pb_col = pb.get("color", "#FFE600")
         v_chain.append(f"drawbox=x=0:y={h - pb_h}:w='{w}*t/{dur:.3f}':h={pb_h}:color={pb_col}@0.95:t=fill")

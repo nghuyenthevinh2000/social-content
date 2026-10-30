@@ -31,7 +31,7 @@ flowchart TD
 | **2. Audio Layering** | `loudnorm=I=-16:TP=-1.5:LRA=11` on amix composite | Ducked BGM bed (-21dB) + timed punch SFX cues | Provides sensory feedback; maintains brisk video momentum. |
 | **3. Kinetic Subtitles** | ASS word-level karaoke with micro-bounce scaling | Active word highlight with distinct secondary color | Maximizes silent feed comprehension; focuses viewer gaze. |
 | **4. Context Badges** | Styled ASS dialog cards pinned to top and bottom bounds | Top card (`MarginV=150`); CTA card (`MarginV=320`) | Delivers hook in opening seconds; highlights core specifications. |
-| **5. Visual Polish** | Isolated segment white flash + contrast/saturation grade | Seam flash (`0.12s`) + 6px dynamic progress bar | Smooths AI scene transitions; gamifies video completion rate. |
+| **5. Visual Polish** | Isolated segment white flash + subtle color grade | Seam flash (`0.12s`) on cuts (no footer bars) | Smooths generative scene cuts without cluttering native UI. |
 
 ## Safe Zones & Visual Layout Contract
 
@@ -50,6 +50,7 @@ flowchart TD
 | **Low Contrast / Empty Box** | Matching foreground text and box outline colors in ASS box mode. | Script enforces contrasting foreground and background color definitions. | Non-background text pixels are detected inside card bounding areas. |
 | **Solid White Video Start** | Global fade filters holding start color across preceding frames. | Scene transition filters are strictly scoped within individual segment sub-chains. | Opening frames render natural footage immediately without color freeze. |
 | **Catalog Spec Drift** | Authoring unverified industry jargon instead of catalog facts. | Configs strictly bind to `product-marketing.json` catalog definitions. | Script terms match catalog names, units, and minimum order values. |
+| **Unrequested Footer Strips** | Speculative progress bars collide with native platform players (TikTok/Reels). | Strict YAGNI: disable progress bars by default; do not burn footer lines. | Frame footer check (bottom 20px) confirms zero artificial strip pixels. |
 
 ## Automated Verification Protocol
 

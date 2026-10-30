@@ -60,10 +60,5 @@
     "contrast": 1.06,
     "saturation": 1.10,
     "brightness": 0.01
-  },
-  "progress_bar": {
-    "enabled": true,
-    "color": "#FFE600",
-    "height": 6
   }
 }
