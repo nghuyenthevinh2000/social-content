@@ -1,0 +1,15 @@
+{
+  "model": "gemini-omni-flash-preview",
+  "interaction_id": "ChBiNTUxY2FlN2YwMGVkM2RiEAgaAjAyKgRtYWlu",
+  "prompt": "[CAMERA & COMPOSITION]\nVertical 9:16 mobile POV. High-angle perspective (35-degree downward tilt) filmed beside workshop workbench, looking down across the table. Natural handheld camera breathing and responsive motion tracking presenter's hands, raw behind-the-scenes (BTS) workshop documentary style. Pristine clean camera footage, absolutely no watermarks, no logos, no text overlays, no usernames, no social media icons.\n\n[ENVIRONMENT & ATMOSPHERE]\nActive paper workshop (x\u01b0\u1edfng s\u1ea3n xu\u1ea5t v\u00e0 gia c\u00f4ng gi\u1ea5y m\u1ef9 thu\u1eadt). In background: commercial guillotine paper cutting machine, neatly stacked pallets of paper reams under bright overhead workshop lighting. On the sturdy wooden workbench: gleaming sheets of specialty metallic pearlescent paper (gi\u1ea5y \u00e1nh kim 180gsm) shimmering under light, accompanied by sample wedding invitation cards.\n\n[SUBJECT & APPEARANCE]\nYoung East Asian female artisan matching <IMAGE_REF_0> wearing the muted pale lavender / soft lilac relaxed short-sleeved top with tonal floral embroidery on the chest in <IMAGE_REF_1>. Standing beside workbench, leaning forward energetically over pearlescent paper sheets, smiling warmly and engaging directly with camera.\n\n[ACTION & TIMECODE]\n00:00 - 00:03: She enthusiastically uncovers and fans out large sheets of lustrous metallic pearlescent paper (gi\u1ea5y \u00e1nh kim) on table, tilting under light to catch pearlescent shimmer, smiling welcomingly into camera.\n00:03 - 00:07: She lifts one sheet of metallic paper, gently curling it to demonstrate crisp flexibility and smooth texture, showing fold edge without cracking while speaking enthusiastically.\n00:07 - 00:10: She places paper down alongside reams, smiling warmly, nodding and making a welcoming gesture toward camera as she concludes her invitation to collaborate.\n\n[AUDIO & DIALOGUE]\nLively spoken Vietnamese dialogue delivered with enthusiastic artisan cadence matching her recorded voice: \"X\u01b0\u1edfng \u01a1i, c\u00f3 m\u1eabu gi\u1ea5y in thi\u1ec7p c\u01b0\u1edbi n\u00e0o v\u1eeba sang v\u1eeba kinh t\u1ebf kh\u00f4ng? D\u00f2ng Gi\u1ea5y \u00c1nh Kim 180 b\u00ean em b\u1ec1 m\u1eb7t nh\u0169 x\u00e0 c\u1eeb c\u1ef1c m\u1ecbn, \u0103n m\u1ef1c s\u1eafc n\u00e9t, l\u00ean m\u00e1y b\u1ebf hay g\u1ea5p n\u1ebfp kh\u00f4ng lo n\u1ee9t g\u00e3y. Kh\u1ed5 ti\u00eau chu\u1ea9n 79\u00d7109 c\u00f3 s\u1eb5n t\u1eadn x\u01b0\u1edfng, nh\u1eadn \u0111\u01a1n t\u1eeb 2 gam. Nh\u1eafn tin x\u01b0\u1edfng em g\u1eedi m\u1eabu test m\u00e1y li\u1ec1n nha!\". Ambient print shop background.",
+  "aspect_ratio": "9:16",
+  "duration_target": "10s",
+  "output_path": "/Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/renders/post_4.mp4",
+  "asset_path": "/Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/assets/video/post_4.mp4",
+  "post_aliases": [
+    "post_4",
+    "post_5"
+  ],
+  "elapsed_seconds": 45.32,
+  "created_at": "2026-10-29T09:52:24Z"
+}

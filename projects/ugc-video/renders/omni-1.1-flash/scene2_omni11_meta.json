@@ -1,0 +1,7 @@
+{
+  "model": "gemini-omni-1.1-flash-preview",
+  "task": "image_to_video",
+  "interaction_id": "ChA3ZjcwYjU3MjkyNmExOGYyEAgaAmVlKgRtYWlu",
+  "elapsed_seconds": 40.68,
+  "prompt": "[CAMERA & COMPOSITION]\nVertical 9:16 mobile POV. High-angle perspective (35-degree downward tilt) filmed beside workshop workbench. Natural handheld camera breathing, raw behind-the-scenes workshop documentary style. Pristine clean footage, no watermarks, no logos, no subtitles, no text overlays.\n\n[ACTION & TIMECODE]\nStarting from <FIRST_FRAME>, the adult female artisan in the pale lavender floral embroidered top continues speaking warmly to the camera. 00:00 - 00:04: She gently rests her right hand on the stack of large pearlescent paper sheets in front of her while gesturing with her left hand toward the two printed floral wedding invitation cards on the left side of the wooden workbench.\n00:04 - 00:07: She picks up one of the small printed floral wedding invitation cards from the left side of the table to show the sharp ink print quality on the pearlescent paper.\n00:07 - 00:10: She places the small card back down on the left, smiles warmly at the camera, and gives a friendly welcoming wave.\n\n[AUDIO & DIALOGUE]\nLively spoken Vietnamese dialogue delivered with enthusiastic artisan cadence: \"Khổ tiêu chuẩn 79 nhân 109 luôn sẵn tại kho xưởng, nhận đơn từ 2 gam cho xưởng in test máy. Đặc biệt lên thiệp in cực kỳ sắc nét. Nhắn tin xưởng em gửi mẫu miễn phí nhé!\". Ambient print workshop sound."
+}

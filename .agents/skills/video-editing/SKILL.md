@@ -16,6 +16,7 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 | Capability boundary | This CLI is not a general nonlinear editor. It does not implement talking-head overlays, audio denoising, music mixing, or arbitrary cuts. |
 | Video download | Use `uv run yt-dlp` to download source videos from URLs (Facebook, TikTok, YouTube, Instagram, X). Probe with `-F` and transcode to standard H.264 MP4 if needed. |
 | Video translation & subtitle overlay | For translating foreign on-screen subtitles into Vietnamese with ASS vector masking, follow `workflows/vietnamese-video-translation.md` using `scripts/sub_scanner.py` and `scripts/ass_builder.py`. |
+| Avatar UGC video synthesis | For synthesizing realistic avatar UGC videos mimicking real people (photo, voice, pose) with Vertex AI, ElevenLabs `eleven_v3` timestamp-aligned voice synthesis (`FXJGVNPXC71BGT9PjlMX`), and social web normalization, follow `workflows/avatar-ugc-synthesis.md`. |
 | Fallback | For unsupported operations, read `references/ffmpeg-compositing.md` relative to this skill. Keep its face helper at the skill-root path `scripts/detect_face_crop.py`. Use a repository-local or approved temporary workspace instead of the reference's legacy `/tmp` examples. |
 
 ## Commands
@@ -71,6 +72,8 @@ Inspect inputs -> Supported by tools/video_edit?
 | Watermark repair | Inspect reported skipped frames; success is not a quality guarantee. Use `watermark --image FRAME.png --legacy --region x,y,w,h --alpha VALUE --sigma VALUE --force --out-dir NEW_DIRECTORY` for calibrated PNG repair, then reassemble with original audio. Do not assume the Tet clip's calibration applies to every input. |
 | Recovery claim | Never promise restoration of never-visible detail or an invisible watermark. Document actual visual results. |
 | Fallback correctness | Confirm decoded portrait dimensions, normalize time bases/frame rates for overlays, map audio explicitly, and handle HDR-to-SDR conversion deliberately. Pixel-format conversion alone is not tone mapping. |
+| Avatar UGC prompt hygiene | Never include platform brand names ('TikTok', 'Instagram', 'Reels') in visual style prompts. Doing so triggers latent training associations and causes generative video models to hallucinate fake watermarks and handles (e.g. @documentars). Always specify clean raw footage with explicit negative constraints: 'no watermarks, no logos, no text overlays, no usernames'. Follow `workflows/avatar-ugc-synthesis.md`. |
+| Voice synthesis & lip-sync | Use ElevenLabs `textToSpeech.convertWithTimestamps("FXJGVNPXC71BGT9PjlMX", { modelId: "eleven_v3" })` with clause-level `atempo` window alignment instead of `eleven_multilingual_sts_v2` (which has `vi: false` and copies random guide dialects). |
 
 ## Outputs
 
