@@ -14,7 +14,7 @@ Style: CaptionBase,Arial,34,&H00FFFFFF,&H00000000,&H00000000,&H80000000,-1,0,0,0
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 1,0:00:00.00,0:00:03.41,HookBanner,,0,0,0,,{\fade(100,100)} MẪU GIẤY IN THIỆP CƯỚI\NVỪA SANG VỪA KINH TẾ? 
+Dialogue: 1,0:00:00.00,0:00:03.41,HookBanner,,0,0,0,,{\fade(100,100)} XƯỞNG ƠI, CÓ MẪU GIẤY IN THIỆP CƯỚI\NVỪA SANG VỪA KINH TẾ KHÔNG? 
 Dialogue: 1,0:00:03.59,0:00:06.82,BadgeCard,,0,0,0,,{\fade(120,120)} GIẤY ÁNH KIM 180\N{\fs21\c&H0000E6FF&}Bề mặt nhũ xà cừ cực mịn 
 Dialogue: 1,0:00:07.00,0:00:09.83,BadgeCard,,0,0,0,,{\fade(120,120)} ĂN MỰC SẮC NÉT\N{\fs21\c&H0000E6FF&}Lên máy bế hay gấp nếp không lo nứt gãy 
 Dialogue: 1,0:00:10.11,0:00:13.36,BadgeCard,,0,0,0,,{\fade(120,120)} KHỔ TIÊU CHUẨN 79×109\N{\fs21\c&H0000E6FF&}Luôn sẵn tại kho xưởng 

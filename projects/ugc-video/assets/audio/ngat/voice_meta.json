@@ -1,0 +1,33 @@
+{
+  "speaker": "Ngat Bui (Bùi Thị Ngát)",
+  "source_reel_url": "https://www.facebook.com/reel/1573352667335480",
+  "source_reel_id": "1573352667335480",
+  "audio_specs": {
+    "sample_rate_hz": 44100,
+    "bit_depth": 16,
+    "channels": 2,
+    "channel_layout": "stereo",
+    "format": "PCM WAV / MP3",
+    "duration_seconds": 219.82,
+    "duration_formatted": "03:39.82"
+  },
+  "loudness_measurements": {
+    "integrated_lufs": -14.14,
+    "true_peak_db": -3.45,
+    "loudness_range_lra": 1.7,
+    "threshold_lufs": -24.32,
+    "speech_consistency": "High (steady volume and minimal background noise)"
+  },
+  "voice_files": {
+    "full_master_wav": "projects/ugc-video/assets/audio/ngat/voice_full.wav",
+    "full_mp3": "projects/ugc-video/assets/audio/ngat/voice_full.mp3",
+    "sample_30s_wav": "projects/ugc-video/assets/audio/ngat/voice_sample_30s.wav",
+    "sample_30s_mp3": "projects/ugc-video/assets/audio/ngat/voice_sample_30s.mp3",
+    "sample_60s_wav": "projects/ugc-video/assets/audio/ngat/voice_sample_60s.wav"
+  },
+  "cloning_recommendations": {
+    "primary_training_sample": "voice_sample_30s.wav (timecode: 10s-40s)",
+    "target_normalization": "atempo window alignment with loudnorm=-16 LUFS",
+    "dialect": "Northern Vietnamese (vi-northern)"
+  }
+}
