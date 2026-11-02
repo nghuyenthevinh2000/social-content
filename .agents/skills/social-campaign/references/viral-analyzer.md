@@ -241,3 +241,42 @@ Observed video permalink + saved source evidence
 | Resolved campaign | Read its product goal/catalog before collection; artifacts land only in that campaign. |
 | Campaign missing research context | Ask only for missing product goal/catalog or request-level platform/market decisions; do not invent them or demand brand setup. |
 | Creator style with no campaign reason | Refuse until the reason is supplied. |
+
+## 5-Pool Viral Analyzer Engine (tools.loop.viral_analyzer)
+
+Standardized operational engine executing automated 48-hour short-form video discovery, 5-pool traffic classification, 7-day video retention management, and speech-to-text transcription via Apple Silicon Metal GPU.
+
+### Failure Mental Traps vs. Practical Solutions
+
+| Failure Mental Trap | Practical Solution |
+|---|---|
+| **1. Glue Script Sprawl**<br>Writing one-off runner scripts (`crawl_*.py`, `run_*.py`) in `local/` to handle collection, batching, or custom targets. | **Engine-Alone Execution:**<br>Invoke `python3 -m tools.loop.viral_analyzer --config <path> [--max-videos N]` exclusively. The engine reads targets, manages quotas, and outputs directly without glue code. |
+| **2. Whisper Base Hallucination**<br>Assuming Whisper Base (74M) is adequate for Vietnamese speech, causing hallucinated text (e.g. "đủ răng tiện cơm" instead of "đổ xăng tiện cầm"). | **Qwen3-ASR 0.6B on MLX Metal GPU:**<br>Deploy `Qwen/Qwen3-ASR-0.6B` via `mlx-qwen3-asr`. Runs natively on Apple Silicon GPU in ~1–2s per clip with ground-truth Vietnamese accuracy. Set `language=None` to allow auto-detection. |
+| **3. Stream OOM / PyAV Exit Code 137**<br>Decoding multi-hour broadcast livestreams (e.g. 841 MB Gala videos) directly in Python, exhausting host RAM. | **FFmpeg Pre-Extraction & Stream Capping:**<br>Stream videos capped at 80 MB. Extract lightweight 16kHz mono audio via FFmpeg (`-vn -ar 16000 -ac 1 -t 180`), strictly capped at 180s before transcription. |
+| **4. Probing Inactive/Vanity Pages**<br>Targeting news outlets or vanity handles that lack a public Facebook Reels tab, yielding 0 reels per query. | **Verified Active Creator Selection:**<br>Target verified creator and brand pages with active public Reels tabs (e.g. `thegioididongcom`, `yeah1music`, `rapviet.viechannel`, `tiin.vn`, `dienquan.comedy`, `LazadaVietnam`). |
+| **5. Immediate Media Discard**<br>Deleting downloaded video files immediately after transcription, losing raw media needed for multimodal inspection or re-analysis. | **7-Day Retention Manifest:**<br>Store MP4s in `cache/videos/` registered in `retention_manifest.json` with 7-day TTL (`downloaded_at + 7 days`). Expired files are swept by `purge_expired_videos()`; transcripts persist in SQLite. |
+
+### Operational Pipeline Sequence
+
+```text
+Config JSON -> Retention Sweep (Purge > 7d) -> Glasser v2 Ingestion (48h Window)
+                    │
+                    ├── 5-Pool View Classification (P1-P5)
+                    ├── Direct CDN / yt-dlp Video Stream Download (< 80MB)
+                    ├── 7-Day Video Retention Manifest Registration
+                    ├── FFmpeg 16kHz Mono Audio Capping (180s max)
+                    ├── Apple Silicon Metal GPU Qwen3-ASR (0.6B) Transcription
+                    └── Database Upsert (traffic_pools.db) & Multi-Pool JSON Artifact
+```
+
+### Engine Specification & CLI Contract
+
+| Component | Standard Path / Command | Contract & Requirements |
+|---|---|---|
+| **CLI Execution** | `python3 -m tools.loop.viral_analyzer --config <path> [--max-videos N] [--dry-run]` | Standard entrypoint in `tools/loop/viral_analyzer/__main__.py`. No custom runner scripts permitted. |
+| **Configuration** | `tools/loop/viral_analyzer/config.py` | Configures `window_hours` (48), `retention_days` (7), `pools` (1–5), `storage`, `transcription`, `targets` or `creators_file`, and optional `max_videos`. |
+| **Traffic Pools** | `tools/loop/viral_analyzer/pipeline.py` | P1 Sandbox (0–500), P2 Testing (500–5k), P3 Niche (5k–50k), P4 Surge (50k–500k), P5 Mega Breakout (≥500k). |
+| **Video Retention** | `tools/loop/viral_analyzer/retention.py` | Manifest-driven 7-day TTL in `cache/videos/retention_manifest.json`. `purge_expired_videos()` sweeps expired media before each ingestion. |
+| **Speech-to-Text** | `tools/loop/viral_analyzer/transcription.py` | `UnifiedTranscriber` utilizing `mlx-qwen3-asr` on Apple Silicon Metal GPU with automatic fallback to `faster-whisper`. |
+| **Data Persistence** | `tools/loop/viral_analyzer/pipeline.py` | Persists metadata and transcripts into SQLite (`videos`, `metric_snapshots`) and outputs consolidated multi-pool JSON. Reuses existing DB transcripts to skip redundant GPU cycles. |
+

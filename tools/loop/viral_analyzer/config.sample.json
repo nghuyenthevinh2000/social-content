@@ -1,0 +1,89 @@
+{
+  "window_hours": 48,
+  "retention_days": 7,
+  "max_videos": 100,
+  "pools": {
+    "1": {
+      "name": "sandbox",
+      "min_views": 0,
+      "max_views": 500
+    },
+    "2": {
+      "name": "testing",
+      "min_views": 500,
+      "max_views": 5000
+    },
+    "3": {
+      "name": "niche",
+      "min_views": 5000,
+      "max_views": 50000
+    },
+    "4": {
+      "name": "surge",
+      "min_views": 50000,
+      "max_views": 500000
+    },
+    "5": {
+      "name": "mega_breakout",
+      "min_views": 500000,
+      "max_views": null
+    }
+  },
+  "storage": {
+    "db_path": "local/social-listening-test/traffic_pools.db",
+    "video_dir": "local/social-listening-test/cache/videos",
+    "output_file": "local/social-listening-test/viral_reels_48h.json"
+  },
+  "transcription": {
+    "engine": "qwen3",
+    "model": "Qwen/Qwen3-ASR-0.6B",
+    "language": null,
+    "max_audio_duration_sec": 180
+  },
+  "glasser_provider": "scrapecreators",
+  "glasser_endpoint": "/v1/facebook/profile/reels",
+  "glasser_endpoint_version": 2,
+  "budget_ceiling_usd": 1.0,
+  "targets": [
+    {
+      "handle": "Theanh28",
+      "url": "https://www.facebook.com/Theanh28",
+      "name": "Theanh28 Entertainment",
+      "category": "tin_tuc_media",
+      "tier": "tier1_alpha",
+      "median_views": 580000
+    },
+    {
+      "handle": "tintucvtv24",
+      "url": "https://www.facebook.com/tintucvtv24",
+      "name": "VTV24 - Trung tâm Tin tức VTV24",
+      "category": "tin_tuc_media",
+      "tier": "tier1_alpha",
+      "median_views": 650000
+    },
+    {
+      "handle": "beatvn.network",
+      "url": "https://www.facebook.com/beatvn.network",
+      "name": "Beatvn",
+      "category": "tin_tuc_media",
+      "tier": "tier1_alpha",
+      "median_views": 520000
+    },
+    {
+      "handle": "thongtinchinhphu",
+      "url": "https://www.facebook.com/thongtinchinhphu",
+      "name": "Thông tin Chính phủ",
+      "category": "tin_tuc_media",
+      "tier": "tier1_alpha",
+      "median_views": 520000
+    },
+    {
+      "handle": "schannel.vn",
+      "url": "https://www.facebook.com/schannel.vn",
+      "name": "Schannel",
+      "category": "cong_nghe",
+      "tier": "tier1_alpha",
+      "median_views": 320000
+    }
+  ]
+}

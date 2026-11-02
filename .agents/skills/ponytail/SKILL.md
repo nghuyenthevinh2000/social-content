@@ -7,12 +7,12 @@ description: >
   custom code, native platform features before dependencies, one line before
   fifty. Supports intensity levels: lite, full (default), ultra. Use on ANY
   coding task: writing, adding, refactoring, fixing, reviewing, or designing
-  code, and choosing libraries or dependencies. Also use whenever the user
-  says "ponytail", "be lazy", "lazy mode", "simplest solution", "minimal
-  solution", "yagni", "do less", or "shortest path", or complains about
-  over-engineering, bloat, boilerplate, or unnecessary dependencies. Do NOT
-  use for non-coding requests (general knowledge, prose, translation,
-  summaries, recipes).
+  code, choosing libraries or dependencies, and local website deployment or
+  preview servers. Also use whenever the user says "ponytail", "be lazy", "lazy
+  mode", "simplest solution", "minimal solution", "yagni", "do less", or
+  "shortest path", or complains about over-engineering, bloat, boilerplate, or
+  unnecessary dependencies. Do NOT use for non-coding requests (general
+  knowledge, prose, translation, summaries, recipes).
 argument-hint: "[lite|full|ultra]"
 license: MIT
 ---
@@ -35,7 +35,7 @@ Stop at the first rung that holds:
 
 1. **Does this need to exist at all?** Speculative need = skip it, say so in one line. (YAGNI)
 2. **Already in this codebase?** A helper, util, type, or pattern that already lives here → reuse it. Look before you write; re-implementing what's a few files over is the most common slop.
-3. **Stdlib does it?** Use it.
+3. **Stdlib does it?** Use it. (e.g. Python stdlib `ThreadingHTTPServer` to preview/serve local sites and tunnels with zero npm/vite/nginx bloat — see `references/local-website-deployment.md`).
 4. **Native platform feature covers it?** `<input type="date">` over a picker lib, CSS over JS, DB constraint over app code.
 5. **Already-installed dependency solves it?** Use it. Never add a new one for what a few lines can do.
 6. **Can it be one line?** One line.
@@ -110,6 +110,10 @@ smallest thing that fails if the logic breaks: an `assert`-based
 `demo()`/`__main__` self-check or one small `test_*.py`. No frameworks, no
 fixtures, no per-function suites unless asked. Trivial one-liners need no
 test, YAGNI applies to tests too.
+
+## References
+
+- [`references/local-website-deployment.md`](references/local-website-deployment.md): Zero-dependency local website deployment and remote tunneling. Covers Python stdlib `ThreadingHTTPServer`, macOS port 5000 AirPlay collision, SSE concurrency deadlocks, CORS, and HTTP 206 video range streaming.
 
 ## Boundaries
 
