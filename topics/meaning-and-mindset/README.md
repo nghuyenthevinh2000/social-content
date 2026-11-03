@@ -23,6 +23,7 @@ Chuỗi bài viết trong chủ đề này được cấu trúc theo 3 chặng t
 | :--- | :--- | :--- | :--- |
 | **Chặng 1: Bẫy đo lường & máy móc** | `tech_career_meaning.md` | - | Vượt qua cảm giác là "bánh răng nhận lương"; chọn trường phái cống hiến (EA, e/acc, d/acc) |
 | | `reflective_founder_exit.md` | `reflective_founder_moment.jpg` | Đạt exit startup thứ 2 ở tuổi 26 nhưng trống rỗng; chuyển từ khai thác giá trị sang nuôi dưỡng cuộc sống không thể đo đếm |
+| | `dung-dot-goc-cay-vi-mot-chiec-la.md` | - | Ẩn dụ lá và gốc cây: Khung 3 nhánh rễ sâu (Vốn tích luỹ - Kinh nghiệm - Đồng đội giác ngộ) để sống sót qua mùa đông thị trường |
 | | `meaning-economy-story-vi.md` | - | Nền kinh tế ý nghĩa: Thế hệ trước cần của cải, thế hệ sau cần trải nghiệm, Gen Z cần lý do để sống sâu |
 | **Chặng 2: Hành động đẩy lùi trì trệ** | `tam-giay-phep-cam-xuc.md` | - | Bài học người thợ mộc: Hành động không cần giấy phép cảm xúc; vượt bẫy Vedanā–Taṇhā–Upādāna |
 | | `y-nghia-khong-tu-den.md` | `y-nghia-khong-tu-den-canonical.jpg` | Lợp mái nhà trong mưa cùng ông lão thợ mộc: Ý nghĩa không phải danh từ đi tìm mà là động từ tạo ra |
