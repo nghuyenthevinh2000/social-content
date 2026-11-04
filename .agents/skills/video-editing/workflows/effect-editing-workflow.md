@@ -18,9 +18,9 @@ flowchart TD
 | Stage | Command / Invocation Pattern | Primary Input | Produced Artifact | Verification Standard |
 |---|---|---|---|---|
 | **1. Grounding** | Inspect `product-marketing.json` & `<slug>.json` | Source catalog & TTS script | Factual parameters | Zero foreign jargon; exact catalog model names & selling units. |
-| **2. Self-Check** | `python3 projects/ugc-video/scripts/new_system/effect_editor.py --check` | Subtitle & chunking logic | Terminal check pass | Timecode math, word grouping, and multiline formatting verified. |
+| **2. Self-Check** | `.venv/bin/python projects/ugc-video/scripts/new_system/effect_editor.py --check` | Subtitle & chunking logic | Terminal check pass | Timecode math, word grouping, and multiline formatting verified. |
 | **3. Config Authoring** | Author `projects/ugc-video/scripts/new_system/configs/<slug>_effects.json` | Clause timing & SFX cues | Effects specification | Zoom coordinates, audio timing, card texts, and visual cues. |
-| **4. Rendering** | `python3 projects/ugc-video/scripts/new_system/effect_editor.py <config>` | Video + BGM + SFX + ASS | Composite MP4 | Single-pass FFmpeg; BT.709 tags; AAC stereo 44.1kHz. |
+| **4. Rendering** | `.venv/bin/python projects/ugc-video/scripts/new_system/effect_editor.py <config>` | Video + BGM + SFX + ASS | Composite MP4 | Single-pass FFmpeg; BT.709 tags; AAC stereo 44.1kHz. |
 | **5. Layout Audit** | Run verification checks on rendered frames | Extracted keyframe JPGs | Bounding metrics | Elements stay within portrait safe margins; high text contrast. |
 
 ## Core Effect Pillars
@@ -56,7 +56,7 @@ flowchart TD
 
 | Verification Step | Command / Tool | Success Standard | Failure Remedy |
 |---|---|---|---|
-| **1. Script Unit Logic** | `python3 projects/ugc-video/scripts/new_system/effect_editor.py --check` | `self_test passed.` | Fix string formatting, line break logic, or timecode conversion. |
+| **1. Script Unit Logic** | `.venv/bin/python projects/ugc-video/scripts/new_system/effect_editor.py --check` | `self_test passed.` | Fix string formatting, line break logic, or timecode conversion. |
 | **2. Video Container** | `ffprobe -v quiet -show_streams -of json <output.mp4>` | 720×1280, 24fps, BT.709, AAC stereo | Verify transcode arguments and aspect ratio scale filters. |
 | **3. Audio Loudness** | `ffmpeg -i <output.mp4> -filter:a ebur128 -f null -` | Integrated loudness between -16 and -14 LUFS | Adjust composite audio normalization target or BGM ducking volume. |
 | **4. Visual Layout** | Frame extraction at key moments (`ffmpeg -ss ... -vframes 1`) | All cards and captions centered within margins | Adjust script typography scaling or explicit line break tokens. |

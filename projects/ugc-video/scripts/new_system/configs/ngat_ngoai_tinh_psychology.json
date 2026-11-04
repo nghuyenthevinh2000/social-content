@@ -1,0 +1,45 @@
+{
+  "slug": "ngat_ngoai_tinh_psychology",
+  "topic": "Tâm lý ngoại tình & Nỗi sợ của kẻ phản bội",
+  "source_reference_reel": "https://www.facebook.com/reel/1024009640720391",
+  "creator": "ngat",
+  "video_model": "gemini-omni-1.1-flash-preview",
+  "voice_id": "a95xm5oG7Gvnxoyv5jeJ",
+  "face_image": "assets/images/ngat/face.jpg",
+  "clothes_image": "assets/images/ngat/clothes.jpg",
+  "work_dir": "renders/ngat_ngoai_tinh",
+  "output_path": "renders/ngat_ngoai_tinh/ngat_ngoai_tinh_20s_web_optimized.mp4",
+  "mirror_outputs": [
+    "assets/video/ngat_ngoai_tinh_20s_web_optimized.mp4"
+  ],
+  "camera": "Vertical 9:16 mobile POV. Authentic eye-level front-facing camera framing, gentle organic handheld camera breathing and natural micro-movements. Pristine clean camera footage, absolutely no watermarks, no logos, no text overlays, no usernames, no social media icons.",
+  "environment": "Warm cozy modern interior room with soft beige curtains and gentle warm indoor lighting in the background, creating an intimate, honest personal storytelling atmosphere.",
+  "subject_first_scene": "Adult 30-year-old East Asian female speaker matching <IMAGE_REF_0> wearing the white casual crewneck t-shirt and soft pink headband in <IMAGE_REF_1>. Looking directly into camera, speaking with earnest, grounded, reflective emotion, natural head tilts and subtle hand gestures.",
+  "subject_continuation": "The adult 30-year-old female speaker in the white t-shirt and pink headband continues speaking directly into camera from her exact position, maintaining intense reflective sincerity and thoughtful emotional resonance.",
+  "scenes": [
+    {
+      "scene_id": 1,
+      "actions": [
+        "00:00 - 00:03: She looks straight into the camera lens with a steady gaze, speaking with measured gravity as she begins sharing a meaningful life reflection.",
+        "00:03 - 00:07: She tilts her head slightly and raises one hand gently to emphasize the importance of honesty, trust, and peace in life.",
+        "00:07 - 00:10: She lowers her hand naturally, looking intently at the viewer with an earnest, thoughtful expression."
+      ],
+      "clauses": [
+        "Đêm nào người phản bội cũng rất sợ điều này.",
+        "Họ luôn sống trong lo âu: tin nhắn phải xóa, cuộc gọi phải giấu, thót tim khi điện thoại rung."
+      ]
+    },
+    {
+      "scene_id": 2,
+      "actions": [
+        "00:00 - 00:04: Continuing smoothly from her exact posture, she speaks with deep empathy and conviction, nodding gently as she unpacks the consequences of our choices.",
+        "00:04 - 00:07: Her expression softens with genuine reflection, expressing the deep emotional value of family and integrity.",
+        "00:07 - 00:10: She closes with a calm, impactful gaze directly into the camera, leaving a lingering moment of contemplative stillness."
+      ],
+      "clauses": [
+        "Càng nói dối lâu, càng phải bịa thêm trăm lời nói dối khác.",
+        "Đắt giá nhất là đánh mất niềm tin của con, và sự bình yên của chính mình."
+      ]
+    }
+  ]
+}

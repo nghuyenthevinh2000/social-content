@@ -78,15 +78,15 @@ projects/ugc-video/
 | **1. Prepare Payload** | Multipart `FormData` | Attach `name`, `description`, and `files` containing `voice_sample_30s.wav` |
 | **2. API Endpoint** | `POST https://api.elevenlabs.io/v1/voices/add` | Header `xi-api-key: process.env.ELEVENLABS_API_KEY` |
 | **3. Capture Voice ID** | Response JSON | Store `voice_id` (e.g. `a95xm5oG7Gvnxoyv5jeJ`) in `voice_meta.json` |
-| **4. Synthesis Tier Safety** | Use `outputFormat: 'mp3_44100_128'` | Note: `mp3_44100_192` triggers HTTP 403 on Standard/Starter subscriptions |
-| **5. Model Configuration** | `eleven_v3` (`vi: true`) | Stability: 0.50, similarityBoost: 0.85, style: 0.00 |
+| **4. Synthesis Tier Safety** | Use `output_format="mp3_44100_128"` in [`synthesize_eleven_v3.py`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/scripts/new_system/synthesize_eleven_v3.py) | Note: `mp3_44100_192` triggers HTTP 403 on Standard/Starter subscriptions |
+| **5. Model Configuration** | `eleven_v3` (`vi: true`) via `elevenlabs` Python SDK | `VoiceSettings(stability=0.50, similarity_boost=0.85, style=0.0, use_speaker_boost=True)` |
 
 ## Traps, failure modes & mitigations
 
 | Trap / Defect | Root Cause | Prevention & Mitigation |
 |---|---|---|
 | **Banner & Title Pollution** | Creator burns top/middle banners ("Lớp 1 ngày miễn phí...") into video stream | Inspect multi-second samples; choose reels without burned banners, or shift spatial crop boundary below banner line ($y > 350$) |
-| **ElevenLabs 403 Tier Error** | Requesting 192k audio on Starter/Standard tier (`output_format_not_allowed`) | Hardcode `outputFormat: 'mp3_44100_128'` for all programmatic calls |
+| **ElevenLabs 403 Tier Error** | Requesting 192k audio on Starter/Standard tier (`output_format_not_allowed`) | Hardcode `output_format="mp3_44100_128"` in [`synthesize_eleven_v3.py`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/scripts/new_system/synthesize_eleven_v3.py) |
 | **Closed-Eye / Blinking Crop** | Naive time-based extraction grabs in-between blink frames | Score frames with YuNet eye openness proxy and symmetry ($|\text{nose}_x - \text{eye\_mid}_x| / \text{eye\_dist} < 0.12$) |
 | **Watermark Hallucination** | Including platform names ('TikTok', 'Facebook') in visual prompts | Enforce prompt hygiene: *"Pristine clean video, absolutely no watermarks, no logos, no text overlays, no usernames"* |
-| **Mouth-Speech Desynchronization** | Raw TTS audio duration does not match speaker mouth opening | Run `silencedetect` on Omni video, delay TTS start to match initial speech window, and scale with `atempo` |
+| **Mouth-Speech Desynchronization** | Raw TTS audio plays across internal closed-mouth pauses or mismatches `visual_dialogue` visemes | Keep Gemini Omni dialogue identical to `clauses`, detect mouth-open intervals with `detect_scene_speech_windows()`, and align words strictly via `partition_words_to_windows_dp()` in [`engine.py`](file:///Users/thevinhnguyen/Documents/computer-science/projects/social-content/projects/ugc-video/scripts/new_system/engine.py) |
