@@ -1,0 +1,142 @@
+{
+  "slug": "diep_10_loi_khuyen_lam_giau_30s",
+  "input_video": "diep_10_loi_khuyen_lam_giau_30s_web_optimized.mp4",
+  "alignment_json": "tts_v3_alignment.json",
+  "clause_bounds": "clause_bounds.json",
+  "output_video": "diep_10_loi_khuyen_lam_giau_30s_viral_edited.mp4",
+  "bgm": {
+    "file": "diep/assets/audio/nhac_nen_cln69music_7378048100847422209.mp3",
+    "volume": 0.045,
+    "fade_in": 0.5,
+    "fade_out": 1.5
+  },
+  "hook_card": {
+    "enabled": true,
+    "lines": [
+      "Muốn giàu bền vững",
+      "Nhớ kỹ 10 điều",
+      "Thực tế này"
+    ],
+    "start": 0.00,
+    "end": 3.35,
+    "bg_color": "#D3403A",
+    "font_size": 48,
+    "radius": 32,
+    "pos_y": 570,
+    "suppress_captions": true
+  },
+  "punch_zooms": [
+    {"start": 0.00, "end": 3.40, "zoom": 1.08, "y_focus": 0.35},
+    {"start": 3.40, "end": 7.60, "zoom": 1.00, "y_focus": 0.50},
+    {"start": 7.60, "end": 9.96, "zoom": 1.08, "y_focus": 0.55},
+    {"start": 9.96, "end": 15.40, "zoom": 1.00, "y_focus": 0.50},
+    {"start": 15.40, "end": 19.92, "zoom": 1.10, "y_focus": 0.45},
+    {"start": 19.92, "end": 24.40, "zoom": 1.00, "y_focus": 0.50},
+    {"start": 24.40, "end": 30.00, "zoom": 1.08, "y_focus": 0.40}
+  ],
+  "scene_transitions": [
+    {"time": 9.96, "duration": 0.12, "type": "flash"},
+    {"time": 19.92, "duration": 0.12, "type": "flash"}
+  ],
+  "badges": [
+    {
+      "text": "ĐIỀU 1: BỚT CHI TIÊU",
+      "subtext": "Kiểm soát dòng tiền ngay từ việc nhỏ nhất",
+      "start": 3.50,
+      "end": 5.30,
+      "pos": "top"
+    },
+    {
+      "text": "ĐIỀU 2: NÂNG KỸ NĂNG",
+      "subtext": "Nâng giá trị bản thân trước khi đòi hỏi thu nhập",
+      "start": 5.35,
+      "end": 7.50,
+      "pos": "top"
+    },
+    {
+      "text": "ĐIỀU 3: ĐẦU TƯ SỚM",
+      "subtext": "Tận dụng sức mạnh lãi kép theo thời gian",
+      "start": 7.70,
+      "end": 9.80,
+      "pos": "top"
+    },
+    {
+      "text": "ĐIỀU 4: CHỌN BẠN MÀ CHƠI",
+      "subtext": "Môi trường quyết định tư duy và cơ hội",
+      "start": 10.10,
+      "end": 12.10,
+      "pos": "top"
+    },
+    {
+      "text": "ĐIỀU 5: ĐÀO SÂU CHUYÊN MÔN",
+      "subtext": "Trở thành người giỏi nhất trong lĩnh vực",
+      "start": 12.20,
+      "end": 15.40,
+      "pos": "top"
+    },
+    {
+      "text": "ĐIỀU 6: KIỂM SOÁT NỢ XẤU",
+      "subtext": "Nói không với nợ tiêu sản và phô trương",
+      "start": 15.50,
+      "end": 17.50,
+      "pos": "top"
+    },
+    {
+      "text": "ĐIỀU 7: TUYỆT ĐỐI GIỮ CHỮ TÍN",
+      "subtext": "Chữ tín là vốn liếng lớn nhất trong làm ăn",
+      "start": 17.55,
+      "end": 19.80,
+      "pos": "top"
+    },
+    {
+      "text": "ĐIỀU 8: TÍCH LŨY TÀI SẢN",
+      "subtext": "Biến dòng tiền kiếm được thành tài sản sinh lời",
+      "start": 20.00,
+      "end": 22.20,
+      "pos": "top"
+    },
+    {
+      "text": "ĐIỀU 9: BẢO VỆ SỨC KHỎE",
+      "subtext": "Có sức khỏe mới có năng lượng gầy dựng sự nghiệp",
+      "start": 22.30,
+      "end": 24.30,
+      "pos": "top"
+    },
+    {
+      "text": "ĐIỀU 10: KỶ LUẬT HÀNH ĐỘNG",
+      "subtext": "Hành động bền bỉ, kiên định tới cùng",
+      "start": 24.40,
+      "end": 27.00,
+      "pos": "top"
+    },
+    {
+      "text": "LƯU LẠI & RÈN LUYỆN MỖI NGÀY",
+      "subtext": "Chia sẻ cho người thân cùng phát triển",
+      "start": 27.10,
+      "end": 29.90,
+      "pos": "bottom"
+    }
+  ],
+  "sfx_events": [
+    {"time": 0.05, "file": "whoosh-short.mp3", "volume": 0.50},
+    {"time": 1.60, "file": "pop.mp3", "volume": 0.40},
+    {"time": 3.50, "file": "pop.mp3", "volume": 0.45},
+    {"time": 5.35, "file": "pop.mp3", "volume": 0.45},
+    {"time": 7.70, "file": "sparkle.mp3", "volume": 0.45},
+    {"time": 9.96, "file": "whoosh.mp3", "volume": 0.55},
+    {"time": 10.10, "file": "pop.mp3", "volume": 0.45},
+    {"time": 12.20, "file": "pop.mp3", "volume": 0.45},
+    {"time": 15.50, "file": "ping.mp3", "volume": 0.45},
+    {"time": 17.55, "file": "sparkle.mp3", "volume": 0.45},
+    {"time": 19.92, "file": "whoosh.mp3", "volume": 0.55},
+    {"time": 20.00, "file": "pop.mp3", "volume": 0.45},
+    {"time": 22.30, "file": "pop.mp3", "volume": 0.45},
+    {"time": 24.40, "file": "ping.mp3", "volume": 0.45},
+    {"time": 27.10, "file": "chime.mp3", "volume": 0.55}
+  ],
+  "color_grade": {
+    "contrast": 1.05,
+    "saturation": 1.08,
+    "brightness": 0.01
+  }
+}
