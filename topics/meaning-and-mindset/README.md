@@ -30,6 +30,7 @@ Chuỗi bài viết trong chủ đề này được cấu trúc theo 3 chặng t
 | | `nguoi-doc-khong-buoc-ra-ngoai.md` | `nguoi-doc-khong-buoc-ra-ngoai-canonical.png` | Cậu bé đọc vạn cuốn sách nhưng chưa từng dám bước ra ngoài sống thực; đối thoại bên bờ sông |
 | | `chu-trinh-quyet-dinh-tu-diem-khong/ly-tri-luon-dua-ra-quyet-dinh-vo-nghia.md` | `chu-trinh-quyet-dinh-tu-diem-khong/output.png` | Bài học 5 năm cạn kiệt vì duy lý; chu trình ra quyết định từ Điểm Không và sự đồng thuận Thân–Tâm–Trí |
 | **Chặng 3: Kết nối & Trở về** | `nghich-ly-khat-ket-noi.md` | - | Cơn khát nước ngọt của sự gắn kết nhưng chỉ dám ôm bình nước mặn công việc vì sợ bị tổn thương |
+| | `be-tac-tinh-yeu.md` | `be-tac-tinh-yeu-canonical.jpg` | Trải nghiệm ngộ nhận chiếc cốc thứ ba: Lời tự thú của kẻ kiệt sức vì săn tìm tình yêu có sẵn; chuyển dịch sang tự tay kiến tạo |
 | | `odyssey-return-home.md` | - | 10 năm công phá thành Troy (danh vọng), 8 năm mê muội ở đảo ăn sen (vùng an toàn); hành trình thức tỉnh trở về nhà |
 
 ---
