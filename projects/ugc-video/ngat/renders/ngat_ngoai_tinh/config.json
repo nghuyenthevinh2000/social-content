@@ -1,21 +1,13 @@
 {
-  "slug": "ngat_ngoai_tinh_psychology",
+  "slug": "ngat_ngoai_tinh",
+  "creator": "ngat",
   "topic": "Tâm lý ngoại tình & Nỗi sợ của kẻ phản bội",
   "source_reference_reel": "https://www.facebook.com/reel/1024009640720391",
-  "creator": "ngat",
-  "video_model": "gemini-omni-1.1-flash-preview",
-  "voice_id": "a95xm5oG7Gvnxoyv5jeJ",
-  "face_image": "assets/images/ngat/face.jpg",
-  "clothes_image": "assets/images/ngat/clothes.jpg",
   "work_dir": "renders/ngat_ngoai_tinh",
   "output_path": "renders/ngat_ngoai_tinh/ngat_ngoai_tinh_20s_web_optimized.mp4",
   "mirror_outputs": [
     "assets/video/ngat_ngoai_tinh_20s_web_optimized.mp4"
   ],
-  "camera": "Vertical 9:16 mobile POV. Authentic eye-level front-facing camera framing, gentle organic handheld camera breathing and natural micro-movements. Pristine clean camera footage, absolutely no watermarks, no logos, no text overlays, no usernames, no social media icons.",
-  "environment": "Warm cozy modern interior room with soft beige curtains and gentle warm indoor lighting in the background, creating an intimate, honest personal storytelling atmosphere.",
-  "subject_first_scene": "Adult 30-year-old East Asian female speaker matching <IMAGE_REF_0> wearing the white casual crewneck t-shirt and soft pink headband in <IMAGE_REF_1>. Looking directly into camera, speaking with earnest, grounded, reflective emotion, natural head tilts and subtle hand gestures.",
-  "subject_continuation": "The adult 30-year-old female speaker in the white t-shirt and pink headband continues speaking directly into camera from her exact position, maintaining intense reflective sincerity and thoughtful emotional resonance.",
   "scenes": [
     {
       "scene_id": 1,

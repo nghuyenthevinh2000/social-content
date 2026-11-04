@@ -1,0 +1,57 @@
+{
+  "creator": "diep",
+  "speaker": "Diệp (Print Shop Artisan)",
+  "voice_id": "FXJGVNPXC71BGT9PjlMX",
+  "dialect": "Northern Vietnamese (vi-northern)",
+  "gcp_project": "gen-lang-client-0582170752",
+  "gcp_location": "global",
+  "video_model": "gemini-omni-1.1-flash-preview",
+  "analysis_model": "gemini-3.8-flash",
+  "aspect_ratio": "9:16",
+  "scene_duration": "10s",
+  "quality": "360p",
+  "tts_model": "eleven_v3",
+  "tts_output_format": "mp3_44100_128",
+  "voice_settings": {
+    "stability": 0.5,
+    "similarity_boost": 0.85,
+    "style": 0.0,
+    "use_speaker_boost": true
+  },
+  "audio_mix": {
+    "room_tone_start": 0.02,
+    "room_tone_end": 0.18,
+    "room_tone_volume": 0.05,
+    "target_lufs": -16.0,
+    "true_peak": -1.5,
+    "lra": 11.0
+  },
+  "lip_sync": {
+    "burst_rms_threshold": 0.018,
+    "jaw_open_threshold": 0.12,
+    "tts_trim_rms_threshold": 0.015,
+    "min_tempo": 0.88,
+    "max_tempo": 1.20
+  },
+  "lighting": {
+    "feature_weights": [0.75, 0.15, 0.10],
+    "reg_lambda": 0.01,
+    "skin_patch_radius": 8
+  },
+  "face_image": "assets/images/face.jpg",
+  "clothes_image": "assets/images/clothes.jpg",
+  "renders_dir": "renders",
+  "camera": "Vertical 9:16 mobile POV. High-angle perspective (35-degree downward tilt) filmed beside workshop workbench, looking down across the table. Natural handheld camera breathing and responsive motion tracking presenter's hands, raw behind-the-scenes (BTS) workshop documentary style. Pristine clean camera footage, absolutely no watermarks, no logos, no text overlays, no usernames, no social media icons.",
+  "environment": "Active paper workshop (xưởng in và gia công giấy mỹ thuật). In background: commercial guillotine paper cutting machine, neatly stacked pallets of paper reams under bright overhead workshop lighting. On the sturdy wooden workbench: clean sample paper sheets and stationery.",
+  "subject_first_scene": "Adult 30-year-old female artisan matching <IMAGE_REF_0> wearing the casual outfit in <IMAGE_REF_1>. Standing beside workbench, leaning forward naturally, smiling warmly and engaging directly with camera.",
+  "subject_continuation": "The adult 30-year-old female artisan in the casual outfit stands in her exact position beside the workbench, smiling warmly at the camera.",
+  "audio_description_template": "Clear spoken Vietnamese dialogue with natural northern artisan cadence: \"{dialogue}\". Ambient room tone.",
+  "safe_fallback": {
+    "actions": [
+      "00:00 - 00:03: She looks straight into the camera lens with a warm, confident smile beside the workbench.",
+      "00:03 - 00:07: She gestures naturally with her hands while sharing practical workshop and craft advice.",
+      "00:07 - 00:10: She rests her hands lightly on the workbench, maintaining warm eye contact with the viewer."
+    ],
+    "dialogue": "Mọi người cùng lưu lại những kinh nghiệm thực tế này để áp dụng vào công việc mỗi ngày nhé."
+  }
+}

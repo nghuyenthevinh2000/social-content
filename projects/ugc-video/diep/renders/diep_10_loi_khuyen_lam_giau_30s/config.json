@@ -1,0 +1,64 @@
+{
+  "slug": "diep_10_loi_khuyen_lam_giau_30s",
+  "creator": "diep",
+  "topic": "10 lời khuyên làm giàu thực tế",
+  "source_reference_reel": "https://www.facebook.com/reel/1553694523227905",
+  "work_dir": "renders/diep_10_loi_khuyen_lam_giau_30s",
+  "output_path": "renders/diep_10_loi_khuyen_lam_giau_30s/diep_10_loi_khuyen_lam_giau_30s_web_optimized.mp4",
+  "scenes": [
+    {
+      "scene_id": 1,
+      "actions": [
+        "00:00 - 00:03: She looks straight into the camera lens with a confident, friendly smile, leaning forward slightly over the workbench as she introduces her message.",
+        "00:03 - 00:07: She gestures naturally with both hands counting the first practical points, speaking with calm conviction and artisan warmth.",
+        "00:07 - 00:10: She lowers her hands naturally back toward the table, maintaining steady, warm eye contact with the viewer."
+      ],
+      "clauses": [
+        {
+          "text": "Muốn giàu bền vững, nhớ kỹ mười điều thực tế này.",
+          "window": [0.45, 3.65]
+        },
+        {
+          "text": "Một, bớt chi tiêu; hai, nâng kỹ năng; ba, đầu tư sớm.",
+          "window": [4.15, 8.95]
+        }
+      ]
+    },
+    {
+      "scene_id": 2,
+      "actions": [
+        "00:00 - 00:04: Continuing smoothly from her exact pose in the starting frame, she keeps her stance beside the workbench, gesturing with her right hand to emphasize core life principles.",
+        "00:04 - 00:07: She tilts her head slightly, speaking earnestly with expressive, natural hand gestures about integrity and professional focus.",
+        "00:07 - 00:10: She rests her hands gently on the edge of the workbench, looking directly into the camera with an encouraging expression."
+      ],
+      "clauses": [
+        {
+          "text": "Bốn, chọn bạn mà chơi; năm, đào sâu chuyên môn;",
+          "window": [0.60, 4.20]
+        },
+        {
+          "text": "sáu, kiểm soát nợ xấu; bảy, tuyệt đối giữ chữ tín.",
+          "window": [4.80, 8.80]
+        }
+      ]
+    },
+    {
+      "scene_id": 3,
+      "actions": [
+        "00:00 - 00:04: Continuing seamlessly from her exact position at the workbench, she smiles warmly and raises one hand counting the final key habits.",
+        "00:04 - 00:07: She gestures warmly toward the camera, speaking with sincere energy about health and daily discipline.",
+        "00:07 - 00:10: She smiles brightly, gives a friendly encouraging nod and small wave, engaging the viewer to take action."
+      ],
+      "clauses": [
+        {
+          "text": "Tám, tích lũy tài sản; chín, bảo vệ sức khỏe;",
+          "window": [0.60, 4.00]
+        },
+        {
+          "text": "mười, kỷ luật hành động, nhớ lưu lại rèn luyện mỗi ngày nhé!",
+          "window": [4.50, 8.40]
+        }
+      ]
+    }
+  ]
+}

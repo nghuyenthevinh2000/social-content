@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from match_lighting import compute_ml_scene_luts
 from normalize_video import normalize_video
 from synthesize_eleven_v3 import load_env, synthesize_eleven_v3
 
@@ -18,39 +19,68 @@ PROJECT_DIR = Path(__file__).resolve().parents[2]
 SEAM_OVERLAP_SEC = 1.0 / 24.0  # 1-frame (0.0417s) blend merges duplicate anchor [s1_end, s2_frame0] without ghosting
 
 
-def resolve_path(rel_or_abs: str) -> Path:
+def resolve_config_path(path_or_persona: str | Path) -> Path:
+    p = Path(path_or_persona)
+    for cand in (
+        p,
+        p / "config.json",
+        PROJECT_DIR / p,
+        PROJECT_DIR / p / "config.json",
+        REPO_ROOT / p,
+        REPO_ROOT / p / "config.json",
+    ):
+        if cand.is_file():
+            return cand.resolve()
+    return p.resolve()
+
+
+def resolve_path(rel_or_abs: str | Path, persona_dir: Path | None = None) -> Path:
     p = Path(rel_or_abs)
     if p.is_absolute() and p.exists():
         return p
-    for base in (PROJECT_DIR, REPO_ROOT):
+    bases = ([persona_dir] if persona_dir else []) + [PROJECT_DIR, REPO_ROOT]
+    for base in bases:
         cand = (base / p).resolve()
         if cand.exists():
             return cand
-    return (PROJECT_DIR / p).resolve()
+    return ((persona_dir or PROJECT_DIR) / p).resolve()
 
 
-def resolve_creator_defaults(cfg: dict) -> dict:
+def resolve_creator_defaults(cfg: dict, config_path: Path | None = None) -> dict:
     creator = cfg.get("creator")
-    if not creator and cfg.get("face_image"):
-        parts = Path(cfg["face_image"]).parts
-        if "images" in parts:
-            idx = parts.index("images")
-            if idx + 1 < len(parts) - 1:
-                creator = parts[idx + 1]
+    if not creator and config_path is not None:
+        for parent in [config_path.resolve().parent, *config_path.resolve().parents]:
+            if parent.parent == PROJECT_DIR and (PROJECT_DIR / parent.name).is_dir():
+                creator = parent.name
+                break
+    persona_dir = (
+        (PROJECT_DIR / creator).resolve()
+        if creator and (PROJECT_DIR / creator).is_dir()
+        else (config_path.resolve().parent if config_path else PROJECT_DIR)
+    )
+    persona_cfg_path = persona_dir / "config.json"
+    if persona_cfg_path.is_file():
+        persona_cfg = json.loads(persona_cfg_path.read_text(encoding="utf-8"))
+        cfg = {**persona_cfg, **cfg}
+    cfg["_persona_dir"] = str(persona_dir)
     if creator:
         cfg["creator"] = creator
-        cfg.setdefault("face_image", f"assets/images/{creator}/face.jpg")
-        cfg.setdefault("clothes_image", f"assets/images/{creator}/clothes.jpg")
-        meta_path = PROJECT_DIR / f"assets/audio/{creator}/voice_meta.json"
-        if "voice_id" not in cfg and meta_path.exists():
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            if meta.get("voice_id"):
-                cfg["voice_id"] = meta["voice_id"]
+        cfg.setdefault("face_image", "assets/images/face.jpg")
+        cfg.setdefault("clothes_image", "assets/images/clothes.jpg")
+        for meta_cand in (
+            persona_dir / "assets/audio/voice_meta.json",
+            PROJECT_DIR / creator / "assets/audio/voice_meta.json",
+        ):
+            if "voice_id" not in cfg and meta_cand.exists():
+                meta = json.loads(meta_cand.read_text(encoding="utf-8"))
+                if meta.get("voice_id"):
+                    cfg["voice_id"] = meta["voice_id"]
+                break
     return cfg
 
 
 def build_prompt(cfg: dict, scene: dict, is_first_scene: bool, safe_fallback: bool = False) -> str:
-    cam = cfg["camera"]
+    cam = scene.get("camera") or cfg["camera"]
     env = scene.get("environment") or cfg["environment"]
     subj = (
         cfg["subject_first_scene"]
@@ -58,19 +88,14 @@ def build_prompt(cfg: dict, scene: dict, is_first_scene: bool, safe_fallback: bo
         else "Exact continuation from the starting frame. " + cfg["subject_continuation"]
     )
     if safe_fallback:
-        actions = (
-            "00:00 - 00:03: She looks straight into the camera lens with a warm, steady gaze, speaking naturally.\n"
-            "00:03 - 00:07: She tilts her head slightly and raises one hand gently to emphasize her life reflection.\n"
-            "00:07 - 00:10: She lowers her hand naturally, looking earnestly at the viewer with a calm expression."
-        )
-        dialogue = "Mọi người có bao giờ nghĩ về sự bình yên và niềm tin trong cuộc sống gia đình mỗi ngày chưa?"
+        fb = cfg["safe_fallback"]
+        actions = "\n".join(fb["actions"])
+        dialogue = fb["dialogue"]
     else:
         actions = "\n".join(scene.get("visual_actions") or scene["actions"])
         dialogue = scene.get("visual_dialogue") or " ".join(c["text"] if isinstance(c, dict) else c for c in scene["clauses"])
-    audio_desc = scene.get("audio_description") or cfg.get(
-        "audio_description",
-        f'Clear spoken Vietnamese dialogue with natural northern artisan cadence: "{dialogue}". Ambient room tone.'
-    )
+    tmpl = cfg.get("audio_description_template", "{dialogue}")
+    audio_desc = scene.get("audio_description") or cfg.get("audio_description") or tmpl.format(dialogue=dialogue)
     return (
         f"[CAMERA & COMPOSITION]\n{cam}\n\n"
         f"[ENVIRONMENT & ATMOSPHERE]\n{env}\n\n"
@@ -80,7 +105,16 @@ def build_prompt(cfg: dict, scene: dict, is_first_scene: bool, safe_fallback: bo
     )
 
 
-def render_scene(cfg: dict, scene: dict, idx: int, prev_video: Path | None, work_dir: Path) -> Path:
+def resolve_resolution(val: str | int | None = None) -> str:
+    s = str(val or "360p").strip().lower().removesuffix("p")
+    if s not in ("360", "720"):
+        raise ValueError(f"Unsupported quality/resolution '{val}'. Allowed: 360p, 720p.")
+    return f"{s}p"
+
+
+def render_scene(
+    cfg: dict, scene: dict, idx: int, prev_video: Path | None, work_dir: Path, quality: str | None = None
+) -> Path:
     for candidate in (work_dir / f"scene{idx}_raw.mp4", work_dir / f"scene{idx}_omni11_raw.mp4"):
         if candidate.exists() and candidate.stat().st_size > 0:
             print(f"  [Scene {idx}] Reusing cached raw video: {candidate.name}")
@@ -94,19 +128,28 @@ def render_scene(cfg: dict, scene: dict, idx: int, prev_video: Path | None, work
             os.execv(str(venv_py), [str(venv_py), *sys.argv])
         raise
 
-    client = genai.Client(vertexai=True, project=cfg.get("gcp_project", "gen-lang-client-0582170752"), location="global")
-    model = cfg.get("video_model", "gemini-omni-1.1-flash-preview")
+    load_env()
+    gcp_project = cfg.get("gcp_project") or os.environ.get("GOOGLE_CLOUD_PROJECT")
+    gcp_location = cfg.get("gcp_location", "global")
+    client = genai.Client(vertexai=True, project=gcp_project, location=gcp_location)
+    model = cfg["video_model"]
+    aspect_ratio = scene.get("aspect_ratio") or cfg.get("aspect_ratio", "9:16")
+    scene_duration = scene.get("duration") or cfg.get("scene_duration", "10s")
+    resolution = resolve_resolution(
+        quality or scene.get("quality") or scene.get("resolution") or cfg.get("quality") or cfg.get("resolution") or "360p"
+    )
     prompt = build_prompt(cfg, scene, is_first_scene=(idx == 1))
 
+    persona_dir = Path(cfg.get("_persona_dir", PROJECT_DIR))
     if idx == 1:
-        face_b64 = base64.b64encode(resolve_path(cfg["face_image"]).read_bytes()).decode("utf-8")
-        clothes_b64 = base64.b64encode(resolve_path(cfg["clothes_image"]).read_bytes()).decode("utf-8")
+        face_b64 = base64.b64encode(resolve_path(cfg["face_image"], persona_dir).read_bytes()).decode("utf-8")
+        clothes_b64 = base64.b64encode(resolve_path(cfg["clothes_image"], persona_dir).read_bytes()).decode("utf-8")
         inputs = [
             {"type": "image", "data": face_b64, "mime_type": "image/jpeg"},
             {"type": "image", "data": clothes_b64, "mime_type": "image/jpeg"},
         ]
         if cfg.get("product_image"):
-            prod_path = resolve_path(cfg["product_image"])
+            prod_path = resolve_path(cfg["product_image"], persona_dir)
             prod_b64 = base64.b64encode(prod_path.read_bytes()).decode("utf-8")
             inputs.append({"type": "image", "data": prod_b64, "mime_type": "image/jpeg"})
             print(f"  [Scene 1] Anchoring face + clothes + product image ({prod_path.name} as <IMAGE_REF_2>)...")
@@ -126,11 +169,11 @@ def render_scene(cfg: dict, scene: dict, idx: int, prev_video: Path | None, work
         ]
         gen_cfg = {"video_config": {"task": "image_to_video"}}
 
-    print(f"  [Scene {idx}] Generating 10s clip on {model} (task={'reference_to_video' if idx == 1 else 'image_to_video'})...")
+    print(f"  [Scene {idx}] Generating {scene_duration} clip on {model} ({resolution}, task={'reference_to_video' if idx == 1 else 'image_to_video'})...")
     kwargs = {
         "model": model,
         "input": inputs,
-        "response_format": {"type": "video", "aspect_ratio": "9:16", "duration": "10s", "resolution": "720p"},
+        "response_format": {"type": "video", "aspect_ratio": aspect_ratio, "duration": scene_duration, "resolution": resolution},
         "store": True,
     }
     if gen_cfg:
@@ -334,77 +377,27 @@ def parse_tts_clause_bounds(align_path: Path, clauses: list[str]) -> list[tuple[
     return bounds
 
 
-def compute_rgb_lut_filter(prev_video: Path, next_video: Path, work_dir: Path, idx: int) -> str:
-    """Compute per-channel affine RGB LUT matching next_video Frame 0 to prev_video Last Frame."""
-    f_prev = work_dir / f"_seam_prev_{idx}.ppm"
-    f_next = work_dir / f"_seam_next_{idx}.ppm"
-    subprocess.run(["ffmpeg", "-y", "-sseof", "-0.08", "-i", str(prev_video), "-update", "1", str(f_prev), "-loglevel", "error"], check=True)
-    subprocess.run(["ffmpeg", "-y", "-i", str(next_video), "-vframes", "1", str(f_next), "-loglevel", "error"], check=True)
-
-    def read_ppm_stats(p: Path) -> tuple[list[float], list[float]]:
-        data = p.read_bytes()
-        # Skip 3 header lines (P6, W H, 255)
-        offset = 0
-        for _ in range(3):
-            offset = data.index(b"\n", offset) + 1
-        rgb = memoryview(data)[offset:]
-        n_px = len(rgb) // 3
-        means, stds = [], []
-        for c in range(3):
-            ch = rgb[c::3]
-            m = sum(ch) / n_px
-            v = sum((x - m) ** 2 for x in ch) / n_px
-            means.append(m)
-            stds.append(max(v ** 0.5, 1e-6))
-        return means, stds
-
-    m1, s1 = read_ppm_stats(f_prev)
-    m2, s2 = read_ppm_stats(f_next)
-    f_prev.unlink(missing_ok=True)
-    f_next.unlink(missing_ok=True)
-
-    exprs = []
-    for c_name, mu1, sd1, mu2, sd2 in zip(("r", "g", "b"), m1, s1, m2, s2):
-        gain = sd1 / sd2
-        bias = mu1 - mu2 * gain
-        exprs.append(f"{c_name}='clip(val*{gain:.4f}+{bias:.2f},0,255)'")
-    return "lutrgb=" + ":".join(exprs)
+def build_seamless_video_filter(scene_videos: list[Path], lighting_cfg: dict | None = None) -> str:
+    """Build FFmpeg filtergraph with ML Face+BG RGB color harmonization across N scenes."""
+    luts = compute_ml_scene_luts(scene_videos, lighting_cfg=lighting_cfg)
+    chains = [f"[{i}:v]fps=24,settb=AVTB,setpts=PTS-STARTPTS{lut}[v{i}]" for i, lut in enumerate(luts)]
+    labels = "".join(f"[v{i}]" for i in range(len(scene_videos)))
+    return f"{';'.join(chains)};{labels}concat=n={len(scene_videos)}:v=1:a=0[vout]"
 
 
-def build_seamless_video_filter(scene_videos: list[Path], work_dir: Path) -> str:
-    """Build FFmpeg filtergraph with per-seam RGB color equalization + 1-frame duplicate-eliminating xfade."""
-    if len(scene_videos) == 1:
-        return "[0:v]fps=24,settb=AVTB[vout]"
-
-    parts = ["[0:v]fps=24,settb=AVTB[v0]"]
-    prev_label = "[v0]"
-    cum_offset = get_video_duration(scene_videos[0]) - SEAM_OVERLAP_SEC
-
-    for i in range(1, len(scene_videos)):
-        lut_str = compute_rgb_lut_filter(scene_videos[i - 1], scene_videos[i], work_dir, i)
-        col_label = f"[v{i}c]"
-        out_label = "[vout]" if i == len(scene_videos) - 1 else f"[vx{i}]"
-        parts.append(f"[{i}:v]fps=24,settb=AVTB,{lut_str}{col_label}")
-        parts.append(
-            f"{prev_label}{col_label}xfade=transition=fade:duration={SEAM_OVERLAP_SEC:.4f}:offset={cum_offset:.4f}{out_label}"
-        )
-        prev_label = out_label
-        cum_offset += get_video_duration(scene_videos[i]) - SEAM_OVERLAP_SEC
-
-    return ";".join(parts)
-
-
-def run_pipeline(config_path: Path) -> Path:
-    cfg = resolve_creator_defaults(json.loads(config_path.read_text(encoding="utf-8")))
+def run_pipeline(config_path: Path, quality: str | None = None) -> Path:
+    config_path = resolve_config_path(config_path)
+    cfg = resolve_creator_defaults(json.loads(config_path.read_text(encoding="utf-8")), config_path)
+    persona_dir = Path(cfg["_persona_dir"])
     slug = cfg["slug"]
-    work_dir = PROJECT_DIR / cfg.get("work_dir", f"renders/{slug}")
+    work_dir = resolve_path(cfg.get("work_dir", f"renders/{slug}"), persona_dir)
     work_dir.mkdir(parents=True, exist_ok=True)
     scenes = cfg["scenes"]
 
     scene_videos: list[Path] = []
     prev_video: Path | None = None
     for idx, scene in enumerate(scenes, start=1):
-        prev_video = render_scene(cfg, scene, idx, prev_video, work_dir)
+        prev_video = render_scene(cfg, scene, idx, prev_video, work_dir, quality=quality)
         scene_videos.append(prev_video)
 
     total_dur = sum(get_video_duration(v) for v in scene_videos) - max(0, len(scenes) - 1) * SEAM_OVERLAP_SEC
@@ -413,13 +406,21 @@ def run_pipeline(config_path: Path) -> Path:
     all_clause_texts = [
         (c["text"] if isinstance(c, dict) else c) for s in scenes for c in s["clauses"]
     ]
-    voice_id = cfg.get("voice_id", "FXJGVNPXC71BGT9PjlMX")
-    raw_mp3, align_json = synthesize_eleven_v3(voice_id, all_clause_texts, work_dir)
+    voice_id = cfg["voice_id"]
+    raw_mp3, align_json = synthesize_eleven_v3(voice_id, all_clause_texts, work_dir, cfg=cfg)
 
     mapped_bounds = resolve_clause_windows(scenes, scene_videos, align_json)
     (work_dir / "clause_bounds.json").write_text(
         json.dumps([list(b) for b in mapped_bounds], indent=2), encoding="utf-8"
     )
+
+    am = cfg.get("audio_mix", {})
+    rt_s = float(am.get("room_tone_start", 0.02))
+    rt_e = float(am.get("room_tone_end", 0.18))
+    rt_vol = float(am.get("room_tone_volume", 0.05))
+    lufs = float(am.get("target_lufs", -16.0))
+    tp = float(am.get("true_peak", -1.5))
+    lra = float(am.get("lra", 11.0))
 
     aligned_wav = work_dir / f"tts_v3_{len(scenes)*10}s_aligned.wav"
     filter_parts, mix_inputs = [], []
@@ -437,15 +438,14 @@ def run_pipeline(config_path: Path) -> Path:
         )
         mix_inputs.append(f"[c{i}]")
 
-    # Extract subtle continuous workshop room tone from first 0.18s of Scene 1 so pauses never drop to dead digital zero
     filter_parts.append(
-        f"[1:a]atrim=0.02:0.18,asetpts=PTS-STARTPTS,aloop=loop=-1:size=8000,atrim=0:{total_dur:.2f},volume=0.06[amb]"
+        f"[1:a]atrim={rt_s:.2f}:{rt_e:.2f},asetpts=PTS-STARTPTS,aloop=loop=-1:size=8000,atrim=0:{total_dur:.2f},volume={rt_vol:.3f}[amb]"
     )
     mix_inputs.append("[amb]")
 
     filter_parts.append(
         f"{''.join(mix_inputs)}amix=inputs={len(mix_inputs)}:normalize=0,"
-        f"loudnorm=I=-16:TP=-1.5:LRA=11,apad=whole_dur={total_dur:.2f},atrim=0:{total_dur:.2f}[aout]"
+        f"loudnorm=I={lufs}:TP={tp}:LRA={lra},apad=whole_dur={total_dur:.2f},atrim=0:{total_dur:.2f}[aout]"
     )
     subprocess.run(
         [
@@ -456,10 +456,10 @@ def run_pipeline(config_path: Path) -> Path:
         check=True,
     )
 
-    print("  [Seam Editor] Applying per-channel RGB equalization + 1-frame duplicate-anchor fusion...")
+    print("  [Seam Editor] Applying ML per-channel RGB equalization...")
     raw_muxed = work_dir / f"{slug}_raw_muxed.mp4"
     v_inputs = [arg for v in scene_videos for arg in ("-i", str(v))]
-    v_filter = build_seamless_video_filter(scene_videos, work_dir)
+    v_filter = build_seamless_video_filter(scene_videos, cfg.get("lighting"))
     subprocess.run(
         [
             "ffmpeg", "-y", *v_inputs, "-i", str(aligned_wav),
@@ -470,18 +470,18 @@ def run_pipeline(config_path: Path) -> Path:
         check=True,
     )
 
-    final_out = PROJECT_DIR / cfg.get("output_path", f"renders/{slug}_web_optimized.mp4")
+    final_out = resolve_path(cfg.get("output_path", f"renders/{slug}/{slug}_web_optimized.mp4"), persona_dir)
     normalize_video(raw_muxed, final_out)
     raw_muxed.unlink(missing_ok=True)
     for copy_target in cfg.get("mirror_outputs", []):
-        dst = PROJECT_DIR / copy_target
+        dst = resolve_path(copy_target, persona_dir)
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(final_out, dst)
     print(f"=== Completed: {final_out} ===")
     return final_out
 
 
-def analyze_reference_reel(url_or_path: str) -> str:
+def analyze_reference_reel(url_or_path: str, config_path: Path | None = None) -> str:
     try:
         from google import genai
         from google.genai import types
@@ -490,6 +490,12 @@ def analyze_reference_reel(url_or_path: str) -> str:
         if venv_py.exists() and Path(sys.executable) != venv_py:
             os.execv(str(venv_py), [str(venv_py), *sys.argv])
         raise
+
+    load_env()
+    cfg = resolve_creator_defaults({}, resolve_config_path(config_path)) if config_path else {}
+    gcp_project = cfg.get("gcp_project") or os.environ.get("GOOGLE_CLOUD_PROJECT")
+    gcp_location = cfg.get("gcp_location", "global")
+    analysis_model = cfg.get("analysis_model", "gemini-3.8-flash")
 
     local_dir = PROJECT_DIR / "local"
     local_dir.mkdir(parents=True, exist_ok=True)
@@ -513,35 +519,48 @@ def analyze_reference_reel(url_or_path: str) -> str:
             check=True,
         )
 
-    client = genai.Client(enterprise=True, project="gen-lang-client-0582170752", location="global")
+    client = genai.Client(enterprise=True, project=gcp_project, location=gcp_location)
     part = types.Part.from_bytes(data=audio_mp3.read_bytes(), mime_type="audio/mp3")
     prompt = (
-        "Phân tích video/audio này để clone sang kịch bản UGC ngắn 20s (2 cảnh x 10s):\n"
+        "Phân tích video/audio này để clone sang kịch bản UGC ngắn:\n"
         "1. Chép lại transcript chính xác.\n"
         "2. Tóm tắt chủ đề, nỗi đau (pain point), cấu trúc Hook - Body - Kết.\n"
-        "3. Đề xuất 2 scenes (mỗi scene đúng 2 câu ngắn, tổng 18-22 chữ tiếng Việt mỗi scene để tốc độ đọc 1.0x-1.15x)."
+        "3. Đề xuất các phân cảnh 10s (mỗi cảnh tổng 18-24 chữ tiếng Việt để tốc độ đọc 1.0x-1.15x)."
     )
-    res = client.models.generate_content(model="gemini-3.8-flash", contents=[part, prompt])
+    res = client.models.generate_content(model=analysis_model, contents=[part, prompt])
     print(res.text)
     return res.text
 
 
 def run_self_check() -> None:
     cfg = resolve_creator_defaults({"slug": "test", "creator": "ngat", "camera": "cam", "environment": "env", "subject_first_scene": "s1", "subject_continuation": "s2"})
-    assert cfg["face_image"] == "assets/images/ngat/face.jpg", cfg
+    assert cfg["face_image"] == "assets/images/face.jpg", cfg
     assert cfg["voice_id"] == "a95xm5oG7Gvnxoyv5jeJ", cfg
+    assert resolve_config_path("ngat") == (PROJECT_DIR / "ngat/config.json").resolve()
+    assert resolve_config_path("diep") == (PROJECT_DIR / "diep/config.json").resolve()
     sc = {"actions": ["act"], "clauses": ["sensitive text"]}
     p_safe = build_prompt(cfg, sc, is_first_scene=True, safe_fallback=True)
     assert "sensitive text" not in p_safe and "sự bình yên" in p_safe
     words = [("Câu", 0.0, 0.5), ("một.", 0.6, 1.2), ("Câu", 1.5, 2.0), ("hai.", 2.1, 2.8)]
     wins = partition_words_to_windows_dp(words, [(0.5, 1.8), (2.5, 4.0)])
     assert wins == [(0.0, 1.2, 0.5, 1.8), (1.5, 2.8, 2.5, 4.0)], wins
+    assert resolve_resolution() == "360p"
+    assert resolve_resolution("360") == "360p" and resolve_resolution("360p") == "360p"
+    assert resolve_resolution("720") == "720p" and resolve_resolution("720p") == "720p"
     print("engine.py self_check passed.")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Multi-Scene UGC Video Engine")
     parser.add_argument("config", nargs="?", type=Path, help="Path to scene config JSON")
+    parser.add_argument(
+        "--quality",
+        "--resolution",
+        dest="quality",
+        choices=["360", "360p", "720", "720p"],
+        default=None,
+        help="Video generation quality for gemini-omni-1.1-flash-preview: 360p (default) or 720p",
+    )
     parser.add_argument("--analyze-reel", type=str, help="Download and analyze reference reel URL or local MP4")
     parser.add_argument("--check", action="store_true", help="Run fast self-check")
     args = parser.parse_args()
@@ -553,7 +572,7 @@ def main() -> None:
         return
     if not args.config:
         parser.error("Provide a config JSON path, --analyze-reel <URL>, or --check")
-    out = run_pipeline(args.config)
+    out = run_pipeline(args.config, quality=args.quality)
     assert out.exists() and out.stat().st_size > 100_000, f"Output check failed: {out}"
 
 

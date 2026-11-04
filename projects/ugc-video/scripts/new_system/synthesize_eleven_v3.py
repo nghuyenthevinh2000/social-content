@@ -31,7 +31,10 @@ def load_env() -> None:
                     os.environ.setdefault(k.strip(), v.strip().strip("'\""))
 
 
-def synthesize_eleven_v3(voice_id: str, clauses: list[str], work_dir: Path) -> tuple[Path, Path]:
+def synthesize_eleven_v3(
+    voice_id: str, clauses: list[str], work_dir: Path, cfg: dict | None = None
+) -> tuple[Path, Path]:
+    cfg = cfg or {}
     work_dir = Path(work_dir)
     work_dir.mkdir(parents=True, exist_ok=True)
     raw_mp3 = work_dir / "tts_v3_raw.mp3"
@@ -48,18 +51,21 @@ def synthesize_eleven_v3(voice_id: str, clauses: list[str], work_dir: Path) -> t
     api_key = os.environ.get("ELEVENLABS_API_KEY")
     assert api_key, "Missing ELEVENLABS_API_KEY in environment or .env"
 
-    print(f"  [Voice] Synthesizing single-pass eleven_v3 TTS for {len(clauses)} clauses (Voice ID: {voice_id})...")
+    vs = cfg.get("voice_settings", {})
+    tts_model = cfg.get("tts_model", "eleven_v3")
+    out_fmt = cfg.get("tts_output_format", "mp3_44100_128")
+    print(f"  [Voice] Synthesizing single-pass {tts_model} TTS for {len(clauses)} clauses (Voice ID: {voice_id})...")
     client = ElevenLabs(api_key=api_key)
     res = client.text_to_speech.convert_with_timestamps(
         voice_id=voice_id,
         text=full_text,
-        model_id="eleven_v3",
-        output_format="mp3_44100_128",
+        model_id=tts_model,
+        output_format=out_fmt,
         voice_settings=VoiceSettings(
-            stability=0.5,
-            similarity_boost=0.85,
-            style=0.0,
-            use_speaker_boost=True,
+            stability=float(vs.get("stability", 0.5)),
+            similarity_boost=float(vs.get("similarity_boost", 0.85)),
+            style=float(vs.get("style", 0.0)),
+            use_speaker_boost=bool(vs.get("use_speaker_boost", True)),
         ),
     )
 
@@ -86,7 +92,8 @@ def run_self_check() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="ElevenLabs eleven_v3 TTS with timestamps")
-    parser.add_argument("--voice-id", default="FXJGVNPXC71BGT9PjlMX", help="ElevenLabs Voice ID")
+    parser.add_argument("--config", type=Path, default=None, help="Path to persona/render config JSON")
+    parser.add_argument("--voice-id", default=None, help="ElevenLabs Voice ID (overrides config)")
     parser.add_argument("--text", help="Text to synthesize")
     parser.add_argument("--work-dir", type=Path, default=Path("."), help="Output directory")
     parser.add_argument("--check", action="store_true", help="Run fast self-check")
@@ -94,9 +101,11 @@ def main() -> None:
     if args.check:
         run_self_check()
         return
-    if not args.text:
-        parser.error("Provide --text or --check")
-    mp3_path, json_path = synthesize_eleven_v3(args.voice_id, [args.text], args.work_dir)
+    cfg = json.loads(args.config.read_text(encoding="utf-8")) if args.config else {}
+    voice_id = args.voice_id or cfg.get("voice_id")
+    if not args.text or not voice_id:
+        parser.error("Provide --text and either --voice-id or --config <persona/config.json>, or --check")
+    mp3_path, json_path = synthesize_eleven_v3(voice_id, [args.text], args.work_dir, cfg=cfg)
     print(f"Saved: {mp3_path} and {json_path}")
 
 

@@ -1,0 +1,57 @@
+{
+  "creator": "ngat",
+  "speaker": "Ngat Bui (Bùi Thị Ngát)",
+  "voice_id": "a95xm5oG7Gvnxoyv5jeJ",
+  "dialect": "Northern Vietnamese (vi-northern)",
+  "gcp_project": "gen-lang-client-0582170752",
+  "gcp_location": "global",
+  "video_model": "gemini-omni-1.1-flash-preview",
+  "analysis_model": "gemini-3.8-flash",
+  "aspect_ratio": "9:16",
+  "scene_duration": "10s",
+  "quality": "360p",
+  "tts_model": "eleven_v3",
+  "tts_output_format": "mp3_44100_128",
+  "voice_settings": {
+    "stability": 0.5,
+    "similarity_boost": 0.85,
+    "style": 0.0,
+    "use_speaker_boost": true
+  },
+  "audio_mix": {
+    "room_tone_start": 0.02,
+    "room_tone_end": 0.18,
+    "room_tone_volume": 0.05,
+    "target_lufs": -16.0,
+    "true_peak": -1.5,
+    "lra": 11.0
+  },
+  "lip_sync": {
+    "burst_rms_threshold": 0.018,
+    "jaw_open_threshold": 0.12,
+    "tts_trim_rms_threshold": 0.015,
+    "min_tempo": 0.88,
+    "max_tempo": 1.20
+  },
+  "lighting": {
+    "feature_weights": [0.75, 0.15, 0.10],
+    "reg_lambda": 0.01,
+    "skin_patch_radius": 8
+  },
+  "face_image": "assets/images/face.jpg",
+  "clothes_image": "assets/images/clothes.jpg",
+  "renders_dir": "renders",
+  "camera": "Vertical 9:16 mobile POV. Authentic eye-level front-facing camera framing, gentle organic handheld camera breathing and natural micro-movements. Pristine clean camera footage, absolutely no watermarks, no logos, no text overlays, no usernames, no social media icons.",
+  "environment": "Warm cozy modern interior room with soft beige curtains and gentle warm indoor lighting in the background, creating an intimate, honest personal storytelling atmosphere.",
+  "subject_first_scene": "Adult 30-year-old East Asian female speaker matching <IMAGE_REF_0> wearing the white casual crewneck t-shirt and soft pink headband in <IMAGE_REF_1>. Looking directly into camera, speaking with earnest, grounded, reflective emotion, natural head tilts and subtle hand gestures.",
+  "subject_continuation": "The adult 30-year-old female speaker in the white t-shirt and pink headband continues speaking directly into camera from her exact position, maintaining intense reflective sincerity and thoughtful emotional resonance.",
+  "audio_description_template": "Clear spoken Vietnamese dialogue with natural northern cadence: \"{dialogue}\". Ambient room tone.",
+  "safe_fallback": {
+    "actions": [
+      "00:00 - 00:03: She looks straight into the camera lens with a warm, steady gaze, speaking naturally.",
+      "00:03 - 00:07: She tilts her head slightly and raises one hand gently to emphasize her life reflection.",
+      "00:07 - 00:10: She lowers her hand naturally, looking earnestly at the viewer with a calm expression."
+    ],
+    "dialogue": "Mọi người có bao giờ nghĩ về sự bình yên và niềm tin trong cuộc sống gia đình mỗi ngày chưa?"
+  }
+}
