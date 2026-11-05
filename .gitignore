@@ -22,6 +22,8 @@
 *.3gp
 *.3g2
 *.ts
+!tools/app/*.ts
+!tools/app/src/*.ts
 *.mts
 *.m2ts
 *.vob

@@ -20,7 +20,7 @@ import sys
 import tempfile
 import time
 import urllib.request
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 CURRENT_DIR = Path(__file__).parent
 sys.path.append(str(CURRENT_DIR.parent.parent.parent))
@@ -44,6 +44,7 @@ def fetch_target_reels(
     target: Dict[str, Any],
     config: ViralAnalyzerConfig,
     cache_dir: Optional[Path] = None,
+    legacy_cache: bool = True,
 ) -> List[Dict[str, Any]]:
     """Fetch profile reels via Glasser ScrapeCreators or cached responses."""
     profile_url = target.get("url") or f"https://www.facebook.com/{target.get('handle')}"
@@ -51,7 +52,9 @@ def fetch_target_reels(
     slug = handle.replace(".", "_")
 
     # Check local cache first
-    search_dirs = [cache_dir, Path("local/social-listening-test"), CURRENT_DIR]
+    search_dirs = [cache_dir, config.storage.output_file.parent]
+    if legacy_cache:
+        search_dirs += [Path("local/social-listening-test"), CURRENT_DIR]
     for d in search_dirs:
         if not d:
             continue
@@ -126,12 +129,26 @@ def download_video_stream(url_or_cdn: str, target_path: Path, is_reel_page: bool
         except Exception:
             pass
 
+    try:
+        from yt_dlp import YoutubeDL
+
+        with YoutubeDL({
+            "outtmpl": str(target_path),
+            "format": "best[ext=mp4]/best",
+            "quiet": True,
+            "noplaylist": True,
+        }) as ydl:
+            ydl.download([url_or_cdn])
+        if target_path.exists() and target_path.stat().st_size > 1000:
+            return True
+    except Exception:
+        pass
+
     cmd = [
         "uv", "run", "yt-dlp",
         "--skip-download", "false",
         "-f", "best[ext=mp4]/best",
         "-o", str(target_path),
-        "--js-runtimes", "node:/opt/homebrew/bin/node",
         "--quiet",
         url_or_cdn,
     ]
@@ -257,8 +274,17 @@ def run_analyzer_pipeline(
     dry_run: bool = False,
     limit_targets: Optional[int] = None,
     max_videos: Optional[int] = None,
+    cache_dir: Optional[Path] = None,
+    media: bool = True,
+    legacy_cache: bool = True,
+    progress_cb: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
     """Execute the full end-to-end viral analyzer pipeline."""
+    def report(message: str) -> None:
+        print(message)
+        if progress_cb:
+            progress_cb(message)
+
     now = datetime.now(timezone.utc)
     cutoff_time = now - timedelta(hours=config.window_hours)
     effective_max = max_videos or config.max_videos
@@ -278,7 +304,7 @@ def run_analyzer_pipeline(
     config.storage.video_dir.mkdir(parents=True, exist_ok=True)
     purged, retained = purge_expired_videos(config.storage.video_dir, retention_days=config.retention_days, now=now)
     print(f"[*] Retention sweep completed: {purged} expired video(s) purged, {retained} video(s) within 1-week window retained.")
-
+    progress_cb and progress_cb(f"Retention sweep: {purged} purged, {retained} retained.")
     if dry_run:
         print("[*] Dry run mode enabled; skipping network ingestion and transcription.")
         return {"status": "dry_run", "purged_videos": purged, "retained_videos": retained}
@@ -290,7 +316,8 @@ def run_analyzer_pipeline(
     for idx, target in enumerate(targets_to_scan, 1):
         handle = target.get("handle", "unknown")
         print(f"[{idx}/{len(targets_to_scan)}] Querying {handle}...")
-        raw_items = fetch_target_reels(target, config, cache_dir=config.storage.output_file.parent)
+        progress_cb and progress_cb(f"[{idx}/{len(targets_to_scan)}] Querying {handle}...")
+        raw_items = fetch_target_reels(target, config, cache_dir=cache_dir or config.storage.output_file.parent, legacy_cache=legacy_cache)
         count_for_target = 0
 
         for r in raw_items:
@@ -344,17 +371,24 @@ def run_analyzer_pipeline(
             count_for_target += 1
 
         print(f"    -> Extracted {count_for_target} reels in 48h window.")
+        progress_cb and progress_cb(f"    -> {handle}: {count_for_target} reel(s) trong 48h.")
 
     print(f"\n[+] Total 48h viral candidates harvested: {len(extracted_reels)}")
+    progress_cb and progress_cb(f"[+] Tổng cộng {len(extracted_reels)} reel ứng viên trong 48h.")
 
     # 3. Download & Audio Transcription
-    transcriber = UnifiedTranscriber(
-        engine=config.transcription.engine,
-        model_name=config.transcription.model,
-        language=config.transcription.language,
-    )
+    transcriber = None
+    if media:
+        try:
+            transcriber = UnifiedTranscriber(
+                engine=config.transcription.engine,
+                model_name=config.transcription.model,
+                language=config.transcription.language,
+            )
+        except Exception as exc:
+            report(f"[!] Transcription unavailable ({exc}); continuing without transcripts.")
 
-    for idx, reel in enumerate(extracted_reels, 1):
+    for idx, reel in enumerate(extracted_reels if transcriber else [], 1):
         vid = reel["video_id"]
         v_cdn = reel.get("video_url")
         v_url = v_cdn if v_cdn else reel["url"]
@@ -364,6 +398,7 @@ def run_analyzer_pipeline(
         temp_audio = Path(tempfile.gettempdir()) / f"audio_{vid}.wav"
 
         print(f"\n[{idx}/{len(extracted_reels)}] Pool {reel['current_pool']} ({reel['views']:,} views) - {reel['author_handle']}: {reel['title'][:50]}...")
+        progress_cb and progress_cb(f"[{idx}/{len(extracted_reels)}] Đang xử lý {reel['author_handle']}: {reel['title'][:60]}")
 
         # Check target quota
         if effective_max:
@@ -473,6 +508,7 @@ def run_analyzer_pipeline(
     print(f"Database Target : {config.storage.db_path}")
     print(f"Cached Videos   : {len(list(config.storage.video_dir.glob('*.mp4')))} stored in {config.storage.video_dir} (1-week retention)")
     print("=" * 80)
+    progress_cb and progress_cb(f"Hoàn tất: {len(extracted_reels)} reel, {len(list(config.storage.video_dir.glob('*.mp4')))} video trong cache.")
 
     return summary_payload
 

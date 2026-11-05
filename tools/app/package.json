@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "build:sidecar": "node build_sidecar.mjs",
+    "backend": "python3 server.py",
+    "app": "npm run build && python3 server.py",
     "tauri": "tauri"
   },
   "dependencies": {
