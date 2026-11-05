@@ -31,7 +31,7 @@ elif getattr(sys, "frozen", False):
         base = Path.home() / "Library" / "Application Support"
     else:
         base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
-    RUNS_ROOT = base / "Viral Lab" / "runs"
+    RUNS_ROOT = base / "AIBrand" / "runs"
 else:
     RUNS_ROOT = WORKSPACE / "local" / "app-runs"
 

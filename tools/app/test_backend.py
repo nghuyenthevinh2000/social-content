@@ -110,6 +110,15 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(payload["all_reels"][0]["current_pool"], 4)
             self.assertTrue((root / "out.json").exists())
 
+    def test_log_collection(self):
+        from tools.app.server import _log_line, LOG_PATH
+        import uuid
+        marker = f"TEST_LOG_{uuid.uuid4().hex}"
+        _log_line(marker)
+        self.assertTrue(LOG_PATH.exists())
+        content = LOG_PATH.read_text(encoding="utf-8")
+        self.assertIn(marker, content)
+
 
 if __name__ == "__main__":
     unittest.main()

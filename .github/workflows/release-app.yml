@@ -1,0 +1,134 @@
+name: Release App
+
+"on":
+  push:
+    branches:
+      - releases
+    paths:
+      - "tools/app/**"
+      - "tools/loop/viral_analyzer/**"
+      - ".github/workflows/release-app.yml"
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag (e.g. v0.1.0; defaults to v<version> from package.json)"
+        required: false
+        type: string
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macos
+            artifact-path: |
+              tools/app/src-tauri/target/release/bundle/dmg/*.dmg
+              tools/app/src-tauri/target/release/bundle/dmg/*.zip
+          - os: windows-latest
+            name: windows
+            artifact-path: |
+              tools/app/src-tauri/target/release/bundle/msi/*.msi
+              tools/app/src-tauri/target/release/bundle/nsis/*.exe
+    defaults:
+      run:
+        working-directory: tools/app
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/app/package-lock.json
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: tools/app/src-tauri
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tauri app and sidecar
+        run: npm run tauri build
+
+      - name: Archive macOS .app
+        if: matrix.os == 'macos-latest'
+        run: |
+          ditto -c -k --keepParent "src-tauri/target/release/bundle/macos/AIBrand.app" "src-tauri/target/release/bundle/dmg/AIBrand_macos_aarch64.zip"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aibrand-${{ matrix.name }}
+          path: ${{ matrix.artifact-path }}
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all bundles
+        uses: actions/download-artifact@v4
+        with:
+          pattern: aibrand-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: List downloaded bundles
+        run: ls -la release-assets
+
+      - name: Publish to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION=$(jq -r .version tools/app/package.json)
+            TAG="v$VERSION"
+          fi
+
+          echo "Target tag: $TAG"
+
+          shopt -s nullglob
+          ASSETS=(release-assets/*)
+          if [ ${#ASSETS[@]} -eq 0 ]; then
+            echo "::error::No release assets found in release-assets/"
+            exit 1
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists. Uploading and updating assets..."
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+          else
+            echo "Creating new release $TAG..."
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --title "AIBrand $TAG" \
+              --generate-notes
+          fi

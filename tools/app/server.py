@@ -17,7 +17,9 @@ import json
 import mimetypes
 import os
 from pathlib import Path
+import platform
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -38,21 +40,26 @@ from tools.app.backend.research import (  # noqa: E402
 DIST_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)) / "dist"
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 if os.name == "nt":
-    LOG_PATH = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "Viral Lab" / "logs" / "viral-lab.log"
+    LOG_PATH = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "AIBrand" / "logs" / "aibrand.log"
 elif sys.platform == "darwin":
-    LOG_PATH = Path.home() / "Library" / "Logs" / "Viral Lab.log"
+    LOG_PATH = Path.home() / "Library" / "Logs" / "AIBrand.log"
 else:
-    LOG_PATH = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "viral-lab" / "viral-lab.log"
+    LOG_PATH = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "aibrand" / "aibrand.log"
 _LOG_LOCK = threading.Lock()
 
 
 def _log_line(line: str) -> None:
+    formatted = f"{datetime.now().isoformat(timespec='seconds')} {line}\n"
     if not getattr(sys, "frozen", False):
-        return
+        try:
+            sys.stderr.write(formatted)
+            sys.stderr.flush()
+        except Exception:
+            pass
     try:
         LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
         with _LOG_LOCK, open(LOG_PATH, "a", encoding="utf-8") as handle:
-            handle.write(f"{datetime.now().isoformat(timespec='seconds')} {line}\n")
+            handle.write(formatted)
     except Exception:
         pass
 
@@ -107,9 +114,27 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/health":
             _json(self, 200, {
                 "ok": True,
-                "app": "viral-lab",
+                "app": "aibrand",
                 "desktop": bool(getattr(sys, "frozen", False)),
                 "transcription": _transcription_status(),
+            })
+            return
+        if parsed.path == "/api/logs":
+            logs = ""
+            if LOG_PATH.exists():
+                try:
+                    with _LOG_LOCK, open(LOG_PATH, "r", encoding="utf-8", errors="replace") as handle:
+                        content = handle.read()
+                    logs = content[-65536:] if len(content) > 65536 else content
+                except Exception as exc:
+                    logs = f"Error reading log file: {exc}"
+            _json(self, 200, {
+                "path": str(LOG_PATH),
+                "logs": logs,
+                "os": sys.platform,
+                "platform": platform.platform(),
+                "python": platform.python_version(),
+                "desktop": bool(getattr(sys, "frozen", False)),
             })
             return
         match = re.fullmatch(r"/api/jobs/([a-f0-9]+)", parsed.path)
@@ -143,6 +168,33 @@ class Handler(BaseHTTPRequestHandler):
         if match:
             ok = STORE.cancel(match.group(1))
             _json(self, 200 if ok else 404, {"cancelled": ok})
+            return
+        if parsed.path == "/api/logs/client":
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                msg = body.get("message", "Unknown client error")
+                stack = body.get("stack", "")
+                source = body.get("source", "client")
+                _log_line(f"[CLIENT-ERROR] [{source}] {msg}\n{stack}".strip())
+                _json(self, 200, {"ok": True})
+            except Exception as exc:
+                _json(self, 400, {"error": str(exc)})
+            return
+        if parsed.path == "/api/logs/reveal":
+            try:
+                LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+                if not LOG_PATH.exists():
+                    LOG_PATH.write_text(f"[{datetime.now().isoformat()}] Log initialized.\n", encoding="utf-8")
+                if sys.platform == "darwin":
+                    subprocess.Popen(["open", "-R", str(LOG_PATH)])
+                elif os.name == "nt":
+                    subprocess.Popen(["explorer", f"/select,{LOG_PATH}"])
+                else:
+                    subprocess.Popen(["xdg-open", str(LOG_PATH.parent)])
+                _json(self, 200, {"ok": True})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
             return
         if parsed.path == "/api/shutdown":
             _json(self, 200, {"ok": True})

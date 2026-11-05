@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Viral Lab",
+  "productName": "AIBrand",
   "version": "0.1.0",
-  "identifier": "com.thevinhnguyen.virallab",
+  "identifier": "com.thevinhnguyen.aibrand",
   "build": {
     "beforeDevCommand": "npm run build:sidecar && npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Viral Lab",
+        "title": "AIBrand",
         "width": 1440,
         "height": 920,
         "minWidth": 1000,

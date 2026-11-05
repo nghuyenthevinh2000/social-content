@@ -1,4 +1,4 @@
-# Viral Lab — Excel → viral research → 3 topics per sheet
+# AIBrand — Excel → viral research → 3 topics per sheet
 
 | Question | Answer |
 |---|---|
@@ -6,7 +6,7 @@
 | App | Tauri v2 desktop window (React frontend + Rust shell). |
 | Backend | Python API server bundled as a Tauri sidecar with PyInstaller; no Python install needed. |
 | Runs on | macOS (Apple Silicon) and Windows 10/11, local only (`127.0.0.1`). No cloud upload. |
-| Output | Per-sheet topic cards in the window, plus platform-specific `Viral Lab/runs/<job>/sheets/<sheet>/result.json`. |
+| Output | Per-sheet topic cards in the window, plus platform-specific `AIBrand/runs/<job>/sheets/<sheet>/result.json`. |
 
 ```text
 Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
@@ -27,13 +27,13 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 | Step | Command |
 |---|---|
 | **Build the app** | `cd tools/app && npm run tauri build` |
-| **Open the app (macOS)** | Double-click `tools/app/Viral Lab.app` (symlink to the Tauri bundle). |
-| Build output (macOS) | `tools/app/src-tauri/target/release/bundle/macos/Viral Lab.app` |
-| DMG | `tools/app/src-tauri/target/release/bundle/dmg/Viral Lab_0.1.0_aarch64.dmg` |
+| **Open the app (macOS)** | Double-click `tools/app/AIBrand.app` (symlink to the Tauri bundle). |
+| Build output (macOS) | `tools/app/src-tauri/target/release/bundle/macos/AIBrand.app` |
+| DMG | `tools/app/src-tauri/target/release/bundle/dmg/AIBrand_0.1.0_aarch64.dmg` |
 | Dev with hot reload | `cd tools/app && npm run tauri dev` |
 | Rebuild sidecar only | `cd tools/app && npm run build:sidecar` |
 | Backend tests | `python3 -m unittest tools.app.test_backend -v` |
-| App log (macOS) | `~/Library/Logs/Viral Lab.log` |
+| App log (macOS) | `~/Library/Logs/AIBrand.log` |
 
 ## Windows build
 
@@ -44,9 +44,9 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 | Build | `npm run tauri build` |
 | Sidecar | `build_sidecar.mjs` creates `src-tauri\binaries\viral-server-x86_64-pc-windows-msvc.exe`. |
 | Installers | `src-tauri\target\release\bundle\msi\*.msi` and `...\nsis\*-setup.exe`. |
-| Log | `%LOCALAPPDATA%\Viral Lab\logs\viral-lab.log` |
-| Data | `%LOCALAPPDATA%\Viral Lab\runs` |
-| CI | `.github/workflows/build-windows.yml` builds both installers on `windows-latest`. |
+| Log | `%LOCALAPPDATA%\AIBrand\logs\aibrand.log` |
+| Data | `%LOCALAPPDATA%\AIBrand\runs` |
+| CI | `.github/workflows/release-app.yml` builds macOS (DMG, ZIP) + Windows (MSI, NSIS) and creates GitHub releases on the `releases` branch. |
 
 | Packaging detail | Behaviour |
 |---|---|
@@ -54,7 +54,7 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 | Rust bridge | `api_base` command gives the WebView the sidecar URL; all API calls use that base. |
 | Lifecycle | Closing the window or quitting kills the sidecar; the sidecar also exits if the Tauri process disappears. |
 | Frontend | Loaded from `frontendDist`; no browser window and no separate web server for the UI. |
-| Data (macOS) | `~/Library/Application Support/Viral Lab/runs`; dev server mode keeps `local/app-runs/`. |
+| Data (macOS) | `~/Library/Application Support/AIBrand/runs`; dev server mode keeps `local/app-runs/`. |
 | PATH | The sidecar augments PATH with Homebrew / Windows npm / `~/.local/bin` / `~/.opencode/bin` / Cargo / Volta / Bun / nvm locations before detecting harnesses. |
 | Gatekeeper | Built locally, so it opens normally. A distributed copy needs signing/notarisation. |
 

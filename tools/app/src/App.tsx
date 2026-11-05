@@ -85,6 +85,111 @@ export default function App() {
   const [agentsTick, setAgentsTick] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Error reporting & logs modal
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportLogs, setReportLogs] = useState("");
+  const [reportPath, setReportPath] = useState("");
+  const [reportSys, setReportSys] = useState<any>({});
+  const [userNote, setUserNote] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  const reportClientLog = (message: string, stack?: string, source = "client") => {
+    apiFetch("/api/logs/client", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, stack, source }),
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    const handleError = (e: ErrorEvent) => {
+      reportClientLog(e.message, e.error?.stack || `${e.filename}:${e.lineno}`, "window.error");
+    };
+    const handleRejection = (e: PromiseRejectionEvent) => {
+      reportClientLog(String(e.reason?.message || e.reason), e.reason?.stack, "unhandledrejection");
+    };
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleRejection);
+    return () => {
+      window.removeEventListener("error", handleError);
+      window.removeEventListener("unhandledrejection", handleRejection);
+    };
+  }, []);
+
+  const openReportModal = async () => {
+    setShowReportModal(true);
+    setLoadingLogs(true);
+    try {
+      const res = await apiFetch("/api/logs");
+      if (res.ok) {
+        const data = await res.json();
+        setReportLogs(data.logs || "");
+        setReportPath(data.path || "");
+        setReportSys(data);
+      }
+    } catch {
+      // keep whatever was loaded
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const sendEmailReport = (viaGmail = false) => {
+    const recipient = "nghuyenthevinh@gmail.com";
+    const subjectText = `[AIBrand Error Report] ${userNote ? userNote.slice(0, 40) : error || "Client Log Report"}`;
+    const subject = encodeURIComponent(subjectText);
+    const bodyText = [
+      "Xin chào Vinh,",
+      "",
+      "Mô tả sự cố:",
+      userNote || error || "Gặp sự cố khi chạy AIBrand.",
+      "",
+      "----------------------------------------",
+      "THÔNG TIN HỆ THỐNG:",
+      `App: AIBrand v0.1.0`,
+      `Platform: ${reportSys.platform || navigator.userAgent}`,
+      `OS: ${reportSys.os || "desktop"}`,
+      `File log máy: ${reportPath || "unknown"}`,
+      `Thời gian: ${new Date().toISOString()}`,
+      "----------------------------------------",
+      "NHẬT KÝ LỖI GẦN NHẤT (LOG):",
+      reportLogs ? reportLogs.slice(-2500) : "(Chưa có log)",
+    ].join("\n");
+    const body = encodeURIComponent(bodyText);
+
+    if (viaGmail) {
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${recipient}&su=${subject}&body=${body}`;
+      openExternal(gmailUrl);
+    } else {
+      const mailtoUrl = `mailto:${recipient}?subject=${subject}&body=${body}`;
+      openExternal(mailtoUrl);
+    }
+  };
+
+  const copyFullLog = async () => {
+    const full = [
+      `=== AIBrand Error Report ===`,
+      `Date: ${new Date().toISOString()}`,
+      `Platform: ${reportSys.platform || navigator.userAgent}`,
+      `Path: ${reportPath}`,
+      `Note: ${userNote || error || "None"}`,
+      `\n=== Logs ===\n`,
+      reportLogs,
+    ].join("\n");
+    await navigator.clipboard.writeText(full);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const revealLogOnDisk = async () => {
+    try {
+      await apiFetch("/api/logs/reveal", { method: "POST" });
+    } catch {
+      alert(`Đường dẫn file log: ${reportPath}`);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     apiBase().then((base) => {
@@ -134,7 +239,7 @@ export default function App() {
           timer = window.setTimeout(() => load(attempt + 1), 500);
         } else if (!cancelled) {
           setError(
-            "Không kết nối được backend. Nếu dùng bản app, hãy mở lại “Viral Lab”; nếu chạy dev, chạy python3 tools/app/server.py.",
+            "Không kết nối được backend. Nếu dùng bản app, hãy mở lại “AIBrand”; nếu chạy dev, chạy python3 tools/app/server.py.",
           );
         }
       }
@@ -225,21 +330,21 @@ export default function App() {
   }
 
   async function quit() {
-    if (!window.confirm("Thoát Viral Lab? Các job đang chạy sẽ dừng.")) return;
+    if (!window.confirm("Thoát AIBrand? Các job đang chạy sẽ dừng.")) return;
     try {
       await apiFetch("/api/shutdown", { method: "POST" });
     } catch {
       // the server may already be gone
     }
-    setError("Đã thoát Viral Lab. Bạn có thể đóng tab này.");
+    setError("Đã thoát AIBrand. Bạn có thể đóng tab này.");
   }
 
   return (
     <div className="page">
       <header className="hero">
         <div className="brand">
-          <span className="brand-mark">VL</span>
-          <span>Viral Lab</span>
+          <span className="brand-mark">AB</span>
+          <span>AIBrand</span>
         </div>
         <h1>Spy đối thủ → 3 chủ đề viral mỗi sheet</h1>
         <p className="lede">
@@ -332,7 +437,18 @@ export default function App() {
           <button className="primary" type="button" onClick={start} disabled={starting || running}>
             {starting ? "Đang tạo job..." : running ? "Đang chạy..." : "Chạy phân tích"}
           </button>
-          {error && <div className="alert">{error}</div>}
+          {error && (
+            <div className="alert">
+              <div>{error}</div>
+              <button
+                type="button"
+                className="alert-link-btn"
+                onClick={openReportModal}
+              >
+                Gửi log lỗi tới nghuyenthevinh@gmail.com ✉
+              </button>
+            </div>
+          )}
         </section>
 
         <section className="panel results">
@@ -409,7 +525,18 @@ export default function App() {
                           ))}
                         </div>
                       )}
-                      {sheet.error && <div className="alert slim">{sheet.error}</div>}
+                      {sheet.error && (
+                        <div className="alert slim">
+                          <div>{sheet.error}</div>
+                          <button
+                            type="button"
+                            className="alert-link-btn"
+                            onClick={openReportModal}
+                          >
+                            Báo cáo lỗi qua email ✉
+                          </button>
+                        </div>
+                      )}
                       {sheet.status === "pending" && <p className="muted">Đang chờ tới lượt…</p>}
                       {sheet.status === "running" && <p className="muted">Đang crawl, phân pool và hỏi agent…</p>}
                       <div className="topic-grid">
@@ -489,14 +616,105 @@ export default function App() {
         <span>
           Pipeline: Glasser 48h → 5 traffic pools → tải video/transcribe → ACP agent → 3 chủ đề.
           Dữ liệu và cache nằm trong{" "}
-          <code>{IS_TAURI || desktop ? "~/Library/Application Support/Viral Lab/runs" : "local/app-runs/"}</code>.
+          <code>{IS_TAURI || desktop ? "~/Library/Application Support/AIBrand/runs" : "local/app-runs/"}</code>.
         </span>
-        {desktop && (
-          <button className="ghost" type="button" onClick={quit}>
-            Thoát ứng dụng
+        <div className="footer-actions">
+          <button
+            className="ghost"
+            type="button"
+            onClick={openReportModal}
+          >
+            Báo cáo lỗi (nghuyenthevinh@gmail.com)
           </button>
-        )}
+          {desktop && (
+            <button className="ghost" type="button" onClick={quit}>
+              Thoát ứng dụng
+            </button>
+          )}
+        </div>
       </footer>
+
+      {showReportModal && (
+        <div className="modal-backdrop" onClick={() => setShowReportModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Báo cáo lỗi & Gửi nhật ký (Log)</h3>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setShowReportModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-info-row">
+                <span className="modal-info-badge">Người nhận: <strong>nghuyenthevinh@gmail.com</strong></span>
+                <span className="modal-info-badge">HĐH: {reportSys.platform || navigator.userAgent.slice(0, 30)}</span>
+                {reportPath && <span className="modal-info-badge">File log: {reportPath}</span>}
+              </div>
+              <label>
+                <span className="muted" style={{ fontSize: "12px", display: "block", marginBottom: "4px" }}>
+                  Mô tả lỗi hoặc triệu chứng bạn gặp:
+                </span>
+                <textarea
+                  className="modal-note-input"
+                  placeholder="Ví dụ: Gặp lỗi khi xử lý sheet 2, agent không phản hồi..."
+                  value={userNote}
+                  onChange={(e) => setUserNote(e.target.value)}
+                />
+              </label>
+              <div>
+                <span className="muted" style={{ fontSize: "12px", display: "block", marginBottom: "4px" }}>
+                  Nhật ký máy khách gần nhất (Log):
+                </span>
+                <pre className="modal-logs-box">
+                  {loadingLogs ? "Đang tải log..." : reportLogs || "(Chưa có dữ liệu log ghi nhận)"}
+                </pre>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => sendEmailReport(false)}
+                >
+                  ✉ Gửi qua Email App
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => sendEmailReport(true)}
+                >
+                  Gửi qua Gmail Web
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={copyFullLog}
+                >
+                  {copied ? "✓ Đã copy log!" : "📋 Copy Log"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={revealLogOnDisk}
+                >
+                  📁 Mở file Log
+                </button>
+              </div>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setShowReportModal(false)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
