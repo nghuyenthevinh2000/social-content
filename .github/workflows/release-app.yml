@@ -40,27 +40,23 @@ jobs:
         working-directory: tools/app
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        # zizmor: ignore[cache-poisoning]
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: tools/app/package-lock.json
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
-          workspaces: tools/app/src-tauri
+          toolchain: stable
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@1edb52594c857e2b5b13128931090f0640537287 # v5.3.0
         with:
-          enable-cache: true
+          enable-cache: false
           python-version: "3.12"
 
       - name: Install dependencies
@@ -75,7 +71,7 @@ jobs:
           ditto -c -k --keepParent "src-tauri/target/release/bundle/macos/AIBrand.app" "src-tauri/target/release/bundle/dmg/AIBrand_macos_aarch64.zip"
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: aibrand-${{ matrix.name }}
           path: ${{ matrix.artifact-path }}
@@ -89,10 +85,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Download all bundles
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           pattern: aibrand-*
           path: release-assets
@@ -104,9 +100,10 @@ jobs:
       - name: Publish to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_INPUT: ${{ inputs.tag_name }}
         run: |
-          if [ -n "${{ inputs.tag_name }}" ]; then
-            TAG="${{ inputs.tag_name }}"
+          if [ -n "$TAG_INPUT" ]; then
+            TAG="$TAG_INPUT"
           elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
@@ -116,12 +113,25 @@ jobs:
 
           echo "Target tag: $TAG"
 
+          # Flatten nested directories (e.g. msi/, nsis/) into release-assets/
+          find release-assets -mindepth 2 -type f -exec mv -t release-assets/ {} + 2>/dev/null || find release-assets -mindepth 2 -type f -exec mv {} release-assets/ \;
+          find release-assets -mindepth 1 -type d -exec rm -rf {} +
+
           shopt -s nullglob
-          ASSETS=(release-assets/*)
+          ASSETS=()
+          for f in release-assets/*; do
+            if [ -f "$f" ]; then
+              ASSETS+=("$f")
+            fi
+          done
+
           if [ ${#ASSETS[@]} -eq 0 ]; then
             echo "::error::No release assets found in release-assets/"
             exit 1
           fi
+
+          echo "Files to upload:"
+          printf ' - %s\n' "${ASSETS[@]}"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG exists. Uploading and updating assets..."
