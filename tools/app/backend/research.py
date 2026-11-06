@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
 import re
 import shutil
 import sys
-import threading
 import unicodedata
 import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -18,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 import openpyxl
 
 from tools.app.backend.acp import ACPClient, ACPError
+from tools.app.backend.store import JobStore, now_iso
 from tools.loop.viral_analyzer.config import load_config
 from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
 
@@ -71,13 +71,15 @@ AGENT_PRESETS: List[Dict[str, Any]] = [
 ]
 
 
-def available_agents() -> List[Dict[str, Any]]:
-    agents = []
+def configured_agent() -> Dict[str, Any]:
+    """Harness from VIRAL_APP_AGENT, else the first installed preset."""
+    agent_id = os.environ.get("VIRAL_APP_AGENT")
+    if agent_id:
+        return resolve_agent(agent_id)
     for preset in AGENT_PRESETS:
-        item = {k: v for k, v in preset.items() if k != "command"}
-        item["available"] = shutil.which(preset["detect"]) is not None
-        agents.append(item)
-    return agents
+        if shutil.which(preset["detect"]):
+            return preset
+    raise ACPError("Không tìm thấy harness nào trên máy (agy, opencode, claude, codex).")
 
 
 def resolve_agent(agent_id: str) -> Dict[str, Any]:
@@ -386,90 +388,61 @@ def suggest_topics(
         log("Không thu được reel nào; dùng gợi ý dự phòng từ tên nhóm.")
     prompt = build_topic_prompt(sheet_name, targets, reels)
     client = None
+    with _harness_lock(log):
+        try:
+            preset = resolve_agent(agent_id)
+            log(f"Gọi harness {preset['label']} qua ACP...")
+            client = ACPClient(preset["command"], cwd=cwd, timeout_sec=timeout_sec, log=log)
+            client.initialize()
+            session_id = client.new_session()
+            text = client.prompt(session_id, prompt)
+            if not text.strip():
+                raise ACPError("Agent trả về nội dung rỗng.")
+            topics = parse_topics(text, fallback)
+            if topics and topics[0].get("generated_by") == "agent":
+                log("Agent đã trả về 3 chủ đề.")
+            else:
+                log("Không parse được JSON từ agent; dùng gợi ý dự phòng.")
+            return topics, None
+        except Exception as exc:
+            detail = str(exc)
+            if client is not None and client.stderr_tail:
+                detail = f"{detail} | stderr: {client.stderr_tail}"
+            if "auth" in detail.lower():
+                detail = f"{detail} | Gợi ý đăng nhập harness rồi thử lại."
+            log(f"ACP thất bại: {detail}")
+            return fallback, detail
+        finally:
+            if client is not None:
+                client.close()
+
+
+@contextmanager
+def _harness_lock(log: Callable[[str], None]):
+    """One harness session per machine: concurrent CLIs (e.g. opencode) lock their shared local state DB."""
     try:
-        preset = resolve_agent(agent_id)
-        log(f"Gọi harness {preset['label']} qua ACP...")
-        client = ACPClient(preset["command"], cwd=cwd, timeout_sec=timeout_sec, log=log)
-        client.initialize()
-        session_id = client.new_session()
-        text = client.prompt(session_id, prompt)
-        if not text.strip():
-            raise ACPError("Agent trả về nội dung rỗng.")
-        topics = parse_topics(text, fallback)
-        if topics and topics[0].get("generated_by") == "agent":
-            log("Agent đã trả về 3 chủ đề.")
-        else:
-            log("Không parse được JSON từ agent; dùng gợi ý dự phòng.")
-        return topics, None
-    except Exception as exc:
-        detail = str(exc)
-        if client is not None and client.stderr_tail:
-            detail = f"{detail} | stderr: {client.stderr_tail}"
-        if "auth" in detail.lower():
-            detail = f"{detail} | Gợi ý đăng nhập harness rồi thử lại."
-        log(f"ACP thất bại: {detail}")
-        return fallback, detail
-    finally:
-        if client is not None:
-            client.close()
+        import fcntl
+    except ImportError:  # ponytail: no lock on Windows; the desktop app runs one job at a time anyway
+        yield
+        return
+    with open(RUNS_ROOT / "harness.lock", "w") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            log("Harness đang bận với job khác; chờ tới lượt...")
+            fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
 
 
 # -- Jobs --------------------------------------------------------------------
-class JobStore:
-    def __init__(self) -> None:
-        self._jobs: Dict[str, Dict[str, Any]] = {}
-        self._lock = threading.Lock()
-
-    def put(self, job: Dict[str, Any]) -> None:
-        with self._lock:
-            self._jobs[job["id"]] = job
-
-    def get(self, job_id: str) -> Optional[Dict[str, Any]]:
-        with self._lock:
-            job = self._jobs.get(job_id)
-            return json.loads(json.dumps(job)) if job else None
-
-    def update(self, job_id: str, **changes: Any) -> None:
-        with self._lock:
-            if job_id in self._jobs:
-                self._jobs[job_id].update(changes)
-
-    def log(self, job_id: str, message: str, sheet: Optional[str] = None) -> None:
-        entry = {"at": now_iso(), "sheet": sheet, "message": message}
-        with self._lock:
-            job = self._jobs.get(job_id)
-            if not job:
-                return
-            job["logs"].append(entry)
-            del job["logs"][:-400]
-
-    def cancel(self, job_id: str) -> bool:
-        with self._lock:
-            job = self._jobs.get(job_id)
-            if not job:
-                return False
-            job["cancel_requested"] = True
-            return True
-
-    def snapshot(self, job_id: str) -> Optional[Dict[str, Any]]:
-        with self._lock:
-            job = self._jobs.get(job_id)
-            if not job:
-                return None
-            return json.loads(json.dumps(job))
-
-
-STORE = JobStore()
-
-
-def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+STORE = JobStore(RUNS_ROOT / "jobs.db")
 
 
 def create_job(
     xlsx_bytes: bytes,
     filename: str,
     options: Dict[str, Any],
+    client_id: str,
 ) -> Dict[str, Any]:
     job_id = uuid.uuid4().hex[:12]
     run_dir = RUNS_ROOT / job_id
@@ -479,6 +452,7 @@ def create_job(
     sheets = parse_workbook(input_path)
     job = {
         "id": job_id,
+        "client_id": client_id,
         "status": "queued",
         "filename": filename,
         "agent": options.get("agent"),
@@ -507,13 +481,14 @@ def create_job(
     }
     STORE.put(job)
     STORE.log(job_id, f"Đã đọc {len(sheets)} sheet từ {filename}.")
-    threading.Thread(target=_run_job, args=(job_id, sheets, run_dir, options), daemon=True).start()
     return STORE.snapshot(job_id) or job
 
 
-def _run_job(job_id: str, sheets: List[Dict[str, Any]], run_dir: Path, options: Dict[str, Any]) -> None:
-    STORE.update(job_id, status="running")
+def run_job(job: Dict[str, Any]) -> None:
+    job_id, options = job["id"], job["options"]
+    run_dir = Path(job["run_dir"])
     try:
+        sheets = parse_workbook(run_dir / "input.xlsx")
         for index, sheet in enumerate(sheets, 1):
             job = STORE.snapshot(job_id)
             if not job or job.get("cancel_requested"):
@@ -538,7 +513,7 @@ def _process_sheet(
 ) -> None:
     sheet_name = sheet["name"]
     STORE.update(job_id, current_sheet=sheet_name)
-    _patch_sheet(job_id, sheet["slug"], status="running", started_at=now_iso())
+    STORE.patch_sheet(job_id, sheet["slug"], status="running", started_at=now_iso())
     STORE.log(job_id, f"[{index}/{total}] Bắt đầu sheet '{sheet_name}' ({len(sheet['targets'])} kênh).", sheet_name)
 
     def log(message: str) -> None:
@@ -574,7 +549,7 @@ def _process_sheet(
                 progress_cb=log,
             )
             reels = payload.get("all_reels", [])
-            _patch_sheet(
+            STORE.patch_sheet(
                 job_id,
                 sheet["slug"],
                 reels=len(reels),
@@ -609,7 +584,7 @@ def _process_sheet(
     result_path.parent.mkdir(parents=True, exist_ok=True)
     result_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    _patch_sheet(
+    STORE.patch_sheet(
         job_id,
         sheet["slug"],
         status="failed" if error else "completed",
@@ -618,14 +593,3 @@ def _process_sheet(
         finished_at=now_iso(),
     )
     STORE.log(job_id, f"Xong sheet '{sheet_name}': {len(reels)} reel, 3 chủ đề.", sheet_name)
-
-
-def _patch_sheet(job_id: str, slug: str, **changes: Any) -> None:
-    with STORE._lock:
-        job = STORE._jobs.get(job_id)
-        if not job:
-            return
-        for sheet in job["sheets"]:
-            if sheet["slug"] == slug:
-                sheet.update(changes)
-                return

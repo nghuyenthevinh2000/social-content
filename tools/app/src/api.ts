@@ -15,9 +15,21 @@ export function apiBase(): Promise<string> {
   return basePromise;
 }
 
+/** Stable per-browser id so the backend can queue and limit jobs per client. */
+function clientId(): string {
+  let id = localStorage.getItem("aibrand-client-id");
+  if (!id) {
+    id = crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem("aibrand-client-id", id);
+  }
+  return id;
+}
+
 export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   const base = await apiBase();
-  return fetch(`${base}${input}`, init);
+  const headers = new Headers(init?.headers);
+  headers.set("X-Client-Id", clientId());
+  return fetch(`${base}${input}`, { ...init, headers });
 }
 
 /** Open a URL in the default browser, not inside the Tauri webview. */

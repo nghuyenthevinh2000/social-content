@@ -15,6 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import json
 import mimetypes
+import multiprocessing
 import os
 from pathlib import Path
 import platform
@@ -31,10 +32,10 @@ APP_DIR = Path(__file__).resolve().parent
 WORKSPACE = APP_DIR.parents[1]
 sys.path.insert(0, str(WORKSPACE))
 
+from tools.app.backend.handler import run_worker  # noqa: E402
 from tools.app.backend.research import (  # noqa: E402
-    available_agents,
+    configured_agent,
     create_job,
-    resolve_agent,
     STORE,
 )
 
@@ -105,13 +106,17 @@ class Handler(BaseHTTPRequestHandler):
     def _cors(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Filename")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Filename, X-Client-Id")
+
+    def _client_id(self) -> str:
+        """Per-browser id from the frontend; falls back to the caller's IP. Not authentication."""
+        value = self.headers.get("X-Client-Id") or ""
+        if re.fullmatch(r"[A-Za-z0-9-]{8,64}", value):
+            return value
+        return f"ip-{self.client_address[0]}"
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path == "/api/agents":
-            _json(self, 200, {"agents": available_agents()})
-            return
         if parsed.path == "/api/health":
             _json(self, 200, {
                 "ok": True,
@@ -120,6 +125,7 @@ class Handler(BaseHTTPRequestHandler):
                 "transcription": _transcription_status(),
                 "ffmpeg": _ffmpeg_status(),
                 "glasser": _glasser_status(),
+                "agent": _agent_status(),
             })
             return
         if parsed.path == "/api/logs":
@@ -218,9 +224,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         raw = self.rfile.read(length)
         filename = unquote(self.headers.get("X-Filename") or "upload.xlsx")
-        agent_id = (query.get("agent") or ["agy"])[0]
         try:
-            resolve_agent(agent_id)
+            agent_id = configured_agent()["id"]
         except Exception as exc:
             _json(self, 400, {"error": str(exc)})
             return
@@ -236,7 +241,7 @@ class Handler(BaseHTTPRequestHandler):
             _json(self, 400, {"error": f"Tuỳ chọn không hợp lệ: {exc}"})
             return
         try:
-            job = create_job(raw, filename, options)
+            job = create_job(raw, filename, options, self._client_id())
         except Exception as exc:
             _json(self, 400, {"error": f"Không đọc được Excel: {exc}"})
             return
@@ -297,6 +302,13 @@ def _glasser_status() -> bool:
     return shutil.which("glasser") is not None
 
 
+def _agent_status() -> Optional[str]:
+    try:
+        return configured_agent()["label"]
+    except Exception:
+        return None
+
+
 def _augment_path() -> None:
     """Finder-launched apps get a minimal PATH; add the user's tool locations."""
     home = Path.home()
@@ -337,12 +349,19 @@ def _augment_path() -> None:
 
 
 def main() -> None:
+    multiprocessing.freeze_support()  # job processes re-launch the PyInstaller binary
     _augment_path()
     parser = argparse.ArgumentParser(description="Viral research web app")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--parent-pid", type=int, default=0, help="Exit when this process disappears")
     parser.add_argument("--check-asr", action="store_true", help="Load the transcriber and exit")
+    parser.add_argument(
+        "--role",
+        choices=["all", "api", "worker"],
+        default="all",
+        help="all: API + in-process worker (desktop); api: HTTP only; worker: run queued jobs only",
+    )
     args = parser.parse_args()
 
     if args.check_asr:
@@ -381,6 +400,16 @@ def main() -> None:
                     os._exit(0)
 
         threading.Thread(target=watch_parent, daemon=True).start()
+
+    if args.role == "worker":
+        print("Viral Research worker: waiting for queued jobs")
+        try:
+            run_worker()
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.role == "all":
+        threading.Thread(target=run_worker, daemon=True).start()
 
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Viral Research app: http://{args.host}:{args.port}")

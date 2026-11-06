@@ -62,7 +62,7 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 
 | UI option | Default | Effect |
 |---|---:|---|
-| Harness ACP | `agy` | Agent that writes the 3 topics. If it is not logged in, the app falls back to data-driven suggestions. |
+| Harness ACP | `VIRAL_APP_AGENT` env (`agy`, `opencode`, `claude`, `codex`); unset = first installed | Backend-only config for the agent that writes the 3 topics. If it is not logged in, the app falls back to data-driven suggestions. |
 | Video tối đa / sheet | `5` | Caps downloads per sheet. `0` means no cap. |
 | Tải video + transcribe | on | Runs download + speech-to-text. If ASR is not installed, the pipeline continues without transcripts. |
 

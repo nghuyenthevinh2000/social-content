@@ -1,0 +1,7 @@
+*
+!tools/loop
+!tools/app/server.py
+!tools/app/backend
+**/__pycache__
+tools/loop/tests
+tools/app/backend/.env

@@ -110,6 +110,41 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(payload["all_reels"][0]["current_pool"], 4)
             self.assertTrue((root / "out.json").exists())
 
+    def test_job_store_queue(self):
+        from tools.app.backend.store import JobStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = JobStore(Path(tmp) / "jobs.db")
+            for job_id, created in (("b", "2026-01-02"), ("a", "2026-01-01")):
+                store.put({"id": job_id, "status": "queued", "created_at": created, "sheets": [{"slug": "s", "status": "pending"}], "logs": []})
+            self.assertEqual(store.claim(2)["id"], "a")
+            self.assertEqual(store.snapshot("a")["status"], "running")
+            store.patch_sheet("a", "s", status="completed")
+            store.log("a", "hello", "s")
+            self.assertTrue(store.cancel("b"))
+            self.assertFalse(store.cancel("missing"))
+            snap = JobStore(Path(tmp) / "jobs.db").snapshot("a")  # survives a new process/store
+            self.assertEqual(snap["sheets"][0]["status"], "completed")
+            self.assertEqual(snap["logs"][0]["message"], "hello")
+            self.assertTrue(store.snapshot("b")["cancel_requested"])
+            self.assertEqual(store.claim(2)["id"], "b")
+            self.assertIsNone(store.claim(2))
+
+    def test_claim_is_fair_across_clients(self):
+        from tools.app.backend.store import JobStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = JobStore(Path(tmp) / "jobs.db")
+            for job_id, client, created in (("a1", "A", "1"), ("a2", "A", "2"), ("b1", "B", "3")):
+                store.put({"id": job_id, "client_id": client, "status": "queued", "created_at": created, "sheets": []})
+            self.assertEqual(store.claim(1)["id"], "a1")
+            self.assertEqual(store.claim(1)["id"], "b1")  # A is at its limit, so B jumps ahead of a2
+            self.assertIsNone(store.claim(1))
+            store.update("a1", status="completed")
+            self.assertEqual(store.claim(1)["id"], "a2")
+            self.assertEqual(store.stale_running(60), [])
+            self.assertEqual(sorted(store.stale_running(-1)), ["a2", "b1"])  # no recent heartbeat => worker lost
+
     def test_log_collection(self):
         from tools.app.server import _log_line, LOG_PATH
         import uuid

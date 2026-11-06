@@ -2,14 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { apiBase, apiFetch, IS_TAURI, openExternal } from "./api";
 import "./App.css";
 
-type Agent = {
-  id: string;
-  label: string;
-  available: boolean;
-  note?: string;
-  login_hint?: string;
-};
-
 type Topic = {
   title: string;
   hook: string;
@@ -70,8 +62,6 @@ function topicSource(topic: Topic) {
 }
 
 export default function App() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [agent, setAgent] = useState("agy");
   const [file, setFile] = useState<File | null>(null);
   const [maxVideos, setMaxVideos] = useState(5);
   const [media, setMedia] = useState(true);
@@ -82,7 +72,6 @@ export default function App() {
   const [showLogs, setShowLogs] = useState(false);
   const [desktop, setDesktop] = useState(false);
   const [apiRoot, setApiRoot] = useState("");
-  const [agentsTick, setAgentsTick] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Installer / System Setup state
@@ -95,7 +84,7 @@ export default function App() {
     backend: false,
     ffmpeg: false,
     transcription: false,
-    agentsCount: 0,
+    agent: null as string | null,
   });
 
   // Error reporting & logs modal
@@ -274,25 +263,10 @@ export default function App() {
       setInstallerDetails((prev) => ({ ...prev, transcription: hasAIspeech }));
       setInstallerProgress(80);
 
-      // Step 4: Scan AI Agent Harnesses (80 -> 100%)
+      // Step 4: Harness configured on the backend (80 -> 100%)
       setInstallerStep(4);
-      setInstallerStatusText("Quét các AI Agent Harness (agy, opencode, claude, codex)...");
-      try {
-        const res = await apiFetch("/api/agents");
-        if (res.ok) {
-          const data = (await res.json()) as { agents: Agent[] };
-          const agentList = data.agents || [];
-          setAgents(agentList);
-          const avail = agentList.filter((a) => a.available).length;
-          setInstallerDetails((prev) => ({ ...prev, agentsCount: avail }));
-          const preferred =
-            agentList.find((item) => item.id === "agy" && item.available) ||
-            agentList.find((item) => item.available);
-          if (preferred) setAgent(preferred.id);
-        }
-      } catch {
-        // Fallback
-      }
+      setInstallerStatusText("Kiểm tra AI Agent Harness của backend...");
+      setInstallerDetails((prev) => ({ ...prev, agent: healthData.agent ?? null }));
 
       if (cancelled) return;
       setInstallerStep(5);
@@ -311,20 +285,6 @@ export default function App() {
       window.clearTimeout(timer);
     };
   }, []);
-
-  useEffect(() => {
-    if (agentsTick === 0) return;
-    apiFetch("/api/agents")
-      .then((res) => res.json())
-      .then((data: { agents: Agent[] }) => {
-        setAgents(data.agents || []);
-        const preferred =
-          data.agents?.find((item) => item.id === "agy" && item.available) ||
-          data.agents?.find((item) => item.available);
-        if (preferred) setAgent(preferred.id);
-      })
-      .catch(() => {});
-  }, [agentsTick]);
 
   useEffect(() => {
     if (!jobId) return;
@@ -376,7 +336,6 @@ export default function App() {
     setJob(null);
     try {
       const params = new URLSearchParams({
-        agent,
         max_videos: String(maxVideos),
         media: media ? "1" : "0",
       });
@@ -476,13 +435,13 @@ export default function App() {
 
             <li className="installer-check-item">
               <div className="installer-check-label">
-                <span className={`installer-icon-dot ${installerStep >= 4 ? (installerDetails.agentsCount > 0 ? "done" : "warn") : "waiting"}`}>
-                  {installerStep >= 4 ? (installerDetails.agentsCount > 0 ? "✓" : "ℹ") : "4"}
+                <span className={`installer-icon-dot ${installerStep >= 4 ? (installerDetails.agent ? "done" : "warn") : "waiting"}`}>
+                  {installerStep >= 4 ? (installerDetails.agent ? "✓" : "ℹ") : "4"}
                 </span>
-                <span>AI Agent Harnesses (ACP)</span>
+                <span>AI Agent Harness (ACP)</span>
               </div>
-              <span className={`installer-check-badge ${installerStep >= 4 ? (installerDetails.agentsCount > 0 ? "done" : "warn") : "waiting"}`}>
-                {installerStep >= 4 ? (installerDetails.agentsCount > 0 ? `${installerDetails.agentsCount} agent sẵn sàng` : "Chế độ Heuristic") : "Chờ"}
+              <span className={`installer-check-badge ${installerStep >= 4 ? (installerDetails.agent ? "done" : "warn") : "waiting"}`}>
+                {installerStep >= 4 ? (installerDetails.agent ?? "Chưa cấu hình") : "Chờ"}
               </span>
             </li>
           </ul>
@@ -537,7 +496,7 @@ export default function App() {
         <h1>Spy đối thủ → 3 chủ đề viral mỗi sheet</h1>
         <p className="lede">
           Upload file Excel, hệ thống chạy toàn bộ pipeline 48h cho từng sheet rồi để harness
-          agent bạn chọn (qua ACP) chốt 3 chủ đề đáng làm nhất.
+          agent (qua ACP) chốt 3 chủ đề đáng làm nhất.
         </p>
       </header>
 
@@ -569,41 +528,7 @@ export default function App() {
             </span>
           </button>
 
-          <h2>2. Harness agent (ACP)</h2>
-          <div className="agents">
-            {agents.map((item) => (
-              <label
-                key={item.id}
-                className={`agent-card ${agent === item.id ? "selected" : ""} ${item.available ? "" : "disabled"}`}
-              >
-                <input
-                  type="radio"
-                  name="agent"
-                  value={item.id}
-                  checked={agent === item.id}
-                  disabled={!item.available}
-                  onChange={() => setAgent(item.id)}
-                />
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.available ? item.note : "Chưa cài trên máy"}</small>
-                </span>
-                <span className={`dot ${item.available ? "on" : ""}`} />
-              </label>
-            ))}
-          </div>
-          <div className="agent-actions">
-            <button className="ghost" type="button" onClick={() => setAgentsTick((value) => value + 1)}>
-              Làm mới danh sách
-            </button>
-            <span className="muted">Cài harness xong thì bấm làm mới.</span>
-          </div>
-          <p className="hint">
-            Agent chỉ nhận dữ liệu reel và trả JSON 3 chủ đề. Nếu harness chưa đăng nhập, app tự
-            dùng gợi ý dự phòng từ số liệu.
-          </p>
-
-          <h2>3. Tuỳ chọn chạy</h2>
+          <h2>2. Tuỳ chọn chạy</h2>
           <div className="options">
             <label>
               <span>Video tối đa / sheet</span>
