@@ -35,6 +35,16 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 | Backend tests | `python3 -m unittest tools.app.test_backend -v` |
 | App log (macOS) | `~/Library/Logs/AIBrand.log` |
 
+## Docker deployment (backend)
+
+| Step | Command |
+|---|---|
+| **Configure** | `cp tools/app/backend/.env.example tools/app/backend/.env` |
+| **Pre-download ASR weights** | `docker compose -f tools/app/backend/docker-compose.yml run --rm download-models` |
+| **Start backend** | `docker compose -f tools/app/backend/docker-compose.yml up -d` |
+| **Check logs** | `docker compose -f tools/app/backend/docker-compose.yml logs -f` |
+| **Stop** | `docker compose -f tools/app/backend/docker-compose.yml down` |
+
 ## Windows build
 
 | Step | Command / requirement |
@@ -98,6 +108,8 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 | Path | Purpose |
 |---|---|
 | `tools/app/server.py` | Python API server, bundled as the Tauri sidecar. |
+| `tools/app/backend/docker-compose.yml` | Docker Compose spec for containerized backend and worker. |
+| `tools/app/backend/download_models.py` | Pre-downloads Qwen3-ASR model weights into Hugging Face cache. |
 | `tools/app/backend/research.py` | Excel parsing, per-sheet jobs, topic prompt/parse/fallback. |
 | `tools/app/backend/acp.py` | Minimal ACP stdio client. |
 | `tools/app/src/api.ts` | Resolves the sidecar URL inside Tauri; relative `/api` in browser dev. |

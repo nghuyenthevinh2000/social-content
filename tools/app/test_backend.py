@@ -154,6 +154,17 @@ class BackendTests(unittest.TestCase):
         content = LOG_PATH.read_text(encoding="utf-8")
         self.assertIn(marker, content)
 
+    def test_download_models_snapshot(self):
+        from unittest.mock import MagicMock, patch
+        from tools.app.backend.download_models import download_model
+
+        mock_hub = MagicMock()
+        mock_hub.snapshot_download.return_value = "/tmp/fake_model"
+        with patch.dict("sys.modules", {"huggingface_hub": mock_hub}):
+            res = download_model("test/repo-model", cache_dir=Path("/tmp/cache"))
+            self.assertEqual(res, Path("/tmp/fake_model"))
+            mock_hub.snapshot_download.assert_called_once_with(repo_id="test/repo-model", cache_dir="/tmp/cache")
+
 
 if __name__ == "__main__":
     unittest.main()

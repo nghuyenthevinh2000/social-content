@@ -1,0 +1,44 @@
+services:
+  backend:
+    build:
+      context: ../../../
+      dockerfile: tools/app/backend/Dockerfile
+    container_name: aibrand-backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8765}:8765"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PORT=8765
+      - ROLE=${ROLE:-all}
+      - VIRAL_APP_RUNS=/data/runs
+      - VIRAL_APP_AGENT=${VIRAL_APP_AGENT:-opencode}
+      - GLASSER_API_KEY=${GLASSER_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - aibrand-data:/data
+      - aibrand-hf:/home/app/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  download-models:
+    build:
+      context: ../../../
+      dockerfile: tools/app/backend/Dockerfile
+    container_name: aibrand-download-models
+    command: ["python", "tools/app/backend/download_models.py"]
+    volumes:
+      - aibrand-hf:/home/app/.cache/huggingface
+    profiles:
+      - tools
+
+volumes:
+  aibrand-data:
+  aibrand-hf:
