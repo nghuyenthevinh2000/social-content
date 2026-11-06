@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -117,6 +118,8 @@ class Handler(BaseHTTPRequestHandler):
                 "app": "aibrand",
                 "desktop": bool(getattr(sys, "frozen", False)),
                 "transcription": _transcription_status(),
+                "ffmpeg": _ffmpeg_status(),
+                "glasser": _glasser_status(),
             })
             return
         if parsed.path == "/api/logs":
@@ -277,6 +280,21 @@ def _transcription_status() -> Dict[str, bool]:
         and importlib.util.find_spec("torch") is not None,
         "whisper": importlib.util.find_spec("faster_whisper") is not None,
     }
+
+
+def _ffmpeg_status() -> bool:
+    if shutil.which("ffmpeg") or Path("/opt/homebrew/bin/ffmpeg").exists():
+        return True
+    try:
+        import imageio_ffmpeg
+
+        return True
+    except Exception:
+        return False
+
+
+def _glasser_status() -> bool:
+    return shutil.which("glasser") is not None
 
 
 def _augment_path() -> None:

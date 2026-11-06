@@ -1,0 +1,4 @@
+# Ignore binary packages downloaded for testing
+*
+!.gitignore
+!README.md

@@ -16,6 +16,7 @@ const args = [
   "--with", "pyinstaller",
   "--with", "openpyxl",
   "--with", "yt-dlp",
+  "--with", "imageio-ffmpeg",
 ];
 
 if (process.platform === "darwin") {

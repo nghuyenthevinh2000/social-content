@@ -1,0 +1,15 @@
+services:
+  wine:
+    image: windows-wine-test
+    build:
+      context: .
+      dockerfile: Dockerfile.wine
+    platform: linux/amd64
+    container_name: windows-wine-tester
+    volumes:
+      - ./binaries:/workspace/binaries
+    environment:
+      - WINEDEBUG=-all
+    working_dir: /workspace
+    stdin_open: true
+    tty: true

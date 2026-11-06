@@ -85,6 +85,19 @@ export default function App() {
   const [agentsTick, setAgentsTick] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Installer / System Setup state
+  const [installerDone, setInstallerDone] = useState(false);
+  const [installerStep, setInstallerStep] = useState(1);
+  const [installerProgress, setInstallerProgress] = useState(12);
+  const [installerStatusText, setInstallerStatusText] = useState("Đang kết nối backend...");
+  const [installerError, setInstallerError] = useState<string | null>(null);
+  const [installerDetails, setInstallerDetails] = useState({
+    backend: false,
+    ffmpeg: false,
+    transcription: false,
+    agentsCount: 0,
+  });
+
   // Error reporting & logs modal
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportLogs, setReportLogs] = useState("");
@@ -203,18 +216,96 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     let timer = 0;
-    const check = async (attempt = 0) => {
-      try {
-        const res = await apiFetch("/api/health");
-        const data = (await res.json()) as { desktop?: boolean };
-        if (!cancelled) setDesktop(Boolean(data.desktop) && !IS_TAURI);
-      } catch {
-        if (!cancelled && attempt < 120) {
-          timer = window.setTimeout(() => check(attempt + 1), 500);
+
+    const runSetup = async () => {
+      // Step 1: Connect to Core Backend (10 -> 35%)
+      setInstallerStep(1);
+      setInstallerStatusText("Đang kết nối tới Core Backend & Sidecar...");
+      setInstallerProgress(15);
+
+      let healthData: any = null;
+      for (let attempt = 0; attempt < 60; attempt++) {
+        if (cancelled) return;
+        try {
+          const res = await apiFetch("/api/health");
+          if (res.ok) {
+            healthData = await res.json();
+            break;
+          }
+        } catch {
+          // Backend is launching
         }
+        await new Promise((r) => setTimeout(r, 400));
       }
+
+      if (cancelled) return;
+      if (!healthData) {
+        setInstallerError(
+          "Không thể kết nối tới Backend sau 25 giây. Vui lòng thử lại hoặc mở lại AIBrand.",
+        );
+        return;
+      }
+
+      if (healthData.desktop) setDesktop(Boolean(healthData.desktop) && !IS_TAURI);
+      setInstallerDetails((prev) => ({ ...prev, backend: true }));
+      setInstallerProgress(35);
+
+      // Step 2: Check Media Tools / FFmpeg (35 -> 60%)
+      setInstallerStep(2);
+      setInstallerStatusText("Kiểm tra bộ xử lý Media & FFmpeg...");
+      await new Promise((r) => setTimeout(r, 350));
+      if (cancelled) return;
+
+      const hasFfmpeg = Boolean(healthData.ffmpeg);
+      setInstallerDetails((prev) => ({ ...prev, ffmpeg: hasFfmpeg }));
+      setInstallerProgress(60);
+
+      // Step 3: Check AI Transcription (60 -> 80%)
+      setInstallerStep(3);
+      setInstallerStatusText("Kiểm tra động cơ nhận diện giọng nói (Qwen3-ASR / Whisper)...");
+      await new Promise((r) => setTimeout(r, 350));
+      if (cancelled) return;
+
+      const hasAIspeech = Boolean(
+        healthData.transcription?.mlx ||
+        healthData.transcription?.transformers ||
+        healthData.transcription?.whisper,
+      );
+      setInstallerDetails((prev) => ({ ...prev, transcription: hasAIspeech }));
+      setInstallerProgress(80);
+
+      // Step 4: Scan AI Agent Harnesses (80 -> 100%)
+      setInstallerStep(4);
+      setInstallerStatusText("Quét các AI Agent Harness (agy, opencode, claude, codex)...");
+      try {
+        const res = await apiFetch("/api/agents");
+        if (res.ok) {
+          const data = (await res.json()) as { agents: Agent[] };
+          const agentList = data.agents || [];
+          setAgents(agentList);
+          const avail = agentList.filter((a) => a.available).length;
+          setInstallerDetails((prev) => ({ ...prev, agentsCount: avail }));
+          const preferred =
+            agentList.find((item) => item.id === "agy" && item.available) ||
+            agentList.find((item) => item.available);
+          if (preferred) setAgent(preferred.id);
+        }
+      } catch {
+        // Fallback
+      }
+
+      if (cancelled) return;
+      setInstallerStep(5);
+      setInstallerProgress(100);
+      setInstallerStatusText("Thiết lập hệ thống hoàn tất! Đang vào bảng điều khiển...");
+
+      timer = window.setTimeout(() => {
+        if (!cancelled) setInstallerDone(true);
+      }, 700);
     };
-    check();
+
+    runSetup();
+
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
@@ -222,33 +313,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    let timer = 0;
-    const load = async (attempt = 0) => {
-      try {
-        const res = await apiFetch("/api/agents");
-        const data = (await res.json()) as { agents: Agent[] };
-        if (cancelled) return;
+    if (agentsTick === 0) return;
+    apiFetch("/api/agents")
+      .then((res) => res.json())
+      .then((data: { agents: Agent[] }) => {
         setAgents(data.agents || []);
         const preferred =
           data.agents?.find((item) => item.id === "agy" && item.available) ||
           data.agents?.find((item) => item.available);
         if (preferred) setAgent(preferred.id);
-      } catch {
-        if (!cancelled && attempt < 120) {
-          timer = window.setTimeout(() => load(attempt + 1), 500);
-        } else if (!cancelled) {
-          setError(
-            "Không kết nối được backend. Nếu dùng bản app, hãy mở lại “AIBrand”; nếu chạy dev, chạy python3 tools/app/server.py.",
-          );
-        }
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
+      })
+      .catch(() => {});
   }, [agentsTick]);
 
   useEffect(() => {
@@ -339,12 +414,125 @@ export default function App() {
     setError("Đã thoát AIBrand. Bạn có thể đóng tab này.");
   }
 
+  if (!installerDone) {
+    return (
+      <div className="installer-overlay">
+        <div className="installer-card">
+          <div className="installer-header">
+            <div className="brand-mark">AB</div>
+            <h1>Thiết lập hệ thống AIBrand</h1>
+            <p>Kiểm tra môi trường và các công cụ trên máy trước khi vào bảng điều khiển.</p>
+          </div>
+
+          <div className="installer-progress-section">
+            <div className="installer-progress-bar-wrap">
+              <div
+                className="installer-progress-bar-fill"
+                style={{ width: `${installerProgress}%` }}
+              />
+            </div>
+            <div className="installer-progress-meta">
+              <span>{installerStatusText}</span>
+              <span className="installer-progress-pct">{installerProgress}%</span>
+            </div>
+          </div>
+
+          <ul className="installer-checklist">
+            <li className="installer-check-item">
+              <div className="installer-check-label">
+                <span className={`installer-icon-dot ${installerDetails.backend ? "done" : installerStep === 1 ? "running" : "waiting"}`}>
+                  {installerDetails.backend ? "✓" : installerStep === 1 ? "…" : "1"}
+                </span>
+                <span>Core Backend & Sidecar API</span>
+              </div>
+              <span className={`installer-check-badge ${installerDetails.backend ? "done" : installerStep === 1 ? "running" : "waiting"}`}>
+                {installerDetails.backend ? "Sẵn sàng" : installerStep === 1 ? "Đang kết nối..." : "Chờ"}
+              </span>
+            </li>
+
+            <li className="installer-check-item">
+              <div className="installer-check-label">
+                <span className={`installer-icon-dot ${installerDetails.backend ? (installerDetails.ffmpeg ? "done" : "warn") : "waiting"}`}>
+                  {installerDetails.backend ? (installerDetails.ffmpeg ? "✓" : "!") : "2"}
+                </span>
+                <span>Xử lý Media & FFmpeg</span>
+              </div>
+              <span className={`installer-check-badge ${installerDetails.backend ? (installerDetails.ffmpeg ? "done" : "warn") : "waiting"}`}>
+                {installerDetails.backend ? (installerDetails.ffmpeg ? "Sẵn sàng" : "Direct Stream") : "Chờ"}
+              </span>
+            </li>
+
+            <li className="installer-check-item">
+              <div className="installer-check-label">
+                <span className={`installer-icon-dot ${installerStep >= 3 ? (installerDetails.transcription ? "done" : "warn") : "waiting"}`}>
+                  {installerStep >= 3 ? (installerDetails.transcription ? "✓" : "!") : "3"}
+                </span>
+                <span>Động cơ AI Speech-to-Text</span>
+              </div>
+              <span className={`installer-check-badge ${installerStep >= 3 ? (installerDetails.transcription ? "done" : "warn") : "waiting"}`}>
+                {installerStep >= 3 ? (installerDetails.transcription ? "MLX / PyTorch" : "Chế độ Text") : "Chờ"}
+              </span>
+            </li>
+
+            <li className="installer-check-item">
+              <div className="installer-check-label">
+                <span className={`installer-icon-dot ${installerStep >= 4 ? (installerDetails.agentsCount > 0 ? "done" : "warn") : "waiting"}`}>
+                  {installerStep >= 4 ? (installerDetails.agentsCount > 0 ? "✓" : "ℹ") : "4"}
+                </span>
+                <span>AI Agent Harnesses (ACP)</span>
+              </div>
+              <span className={`installer-check-badge ${installerStep >= 4 ? (installerDetails.agentsCount > 0 ? "done" : "warn") : "waiting"}`}>
+                {installerStep >= 4 ? (installerDetails.agentsCount > 0 ? `${installerDetails.agentsCount} agent sẵn sàng` : "Chế độ Heuristic") : "Chờ"}
+              </span>
+            </li>
+          </ul>
+
+          {installerError ? (
+            <div className="alert" style={{ marginTop: "12px" }}>
+              <div>{installerError}</div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+                <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>
+                  Thử lại
+                </button>
+                <button type="button" className="btn-secondary" onClick={openReportModal}>
+                  Xem log lỗi
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="installer-footer">
+              {installerProgress === 100 && (
+                <button
+                  type="button"
+                  className="primary"
+                  style={{ width: "100%", padding: "12px", fontSize: "14px" }}
+                  onClick={() => setInstallerDone(true)}
+                >
+                  Vào bảng điều khiển →
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page">
       <header className="hero">
         <div className="brand">
           <span className="brand-mark">AB</span>
           <span>AIBrand</span>
+          <button
+            type="button"
+            className="system-status-btn"
+            onClick={() => setInstallerDone(false)}
+            title="Xem lại trạng thái hệ thống và kiểm tra công cụ"
+          >
+            <span className="system-status-indicator" />
+            Hệ thống: Sẵn sàng
+          </button>
         </div>
         <h1>Spy đối thủ → 3 chủ đề viral mỗi sheet</h1>
         <p className="lede">
