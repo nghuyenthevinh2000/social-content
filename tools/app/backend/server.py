@@ -326,10 +326,12 @@ class Handler(BaseHTTPRequestHandler):
             _json(self, 400, {"error": str(exc)})
             return
         try:
+            env_max = _int(os.environ.get("VIRAL_APP_MAX_VIDEOS"), 5, minimum=0, maximum=500)
             options = {
                 "agent": agent_id,
-                "max_videos": _int((query.get("max_videos") or ["5"])[0], 5, minimum=0, maximum=500),
-                "media": _bool((query.get("media") or ["1"])[0], True),
+                "max_videos": _int((query.get("max_videos") or [str(env_max)])[0], env_max, minimum=0, maximum=500),
+                # @deprecated [OBSOLETE]: Local video download + transcribe is obsolete compared to API transcription. Retained for backward-compat; do not delete.
+                "media": _bool((query.get("media") or ["0"])[0], False),
                 "window_hours": _int((query.get("window_hours") or ["48"])[0], 48, minimum=1, maximum=720),
                 "acp_timeout": _int((query.get("acp_timeout") or ["240"])[0], 240, minimum=20, maximum=1800),
             }

@@ -81,8 +81,8 @@ const Home: React.FC = () => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Analyzer
-  const [maxVideos, setMaxVideos] = useState(5);
-  const [media, setMedia] = useState(true);
+  // @deprecated [OBSOLETE]: Local video download + transcribe is obsolete. Retained for backward-compat; do not delete.
+  const [media] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [jobId, setJobId] = useState<string | null>(query.get('job_id'));
   const [error, setError] = useState<string | null>(null);
@@ -181,9 +181,11 @@ const Home: React.FC = () => {
     setJob(null);
     switchTab('analyzer');
     try {
-      const params = new URLSearchParams({ max_videos: String(maxVideos), media: media ? '1' : '0' });
+      const params = new URLSearchParams(media ? { media: '1' } : {});
+      const qs = params.toString();
+      const endpoint = qs ? `/api/jobs?${qs}` : '/api/jobs';
       const payload = { sheets: selected.map((t) => ({ name: t.name, targets: t.targets })) };
-      const data = await apiJson<Job>(`/api/jobs?${params}`, {
+      const data = await apiJson<Job>(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Filename': encodeURIComponent(filename) },
         body: JSON.stringify(payload),
@@ -436,45 +438,6 @@ const Home: React.FC = () => {
                     + Tạo chủ đề
                   </button>
                 </form>
-              </section>
-
-              <section className="panel">
-                <h2>Tuỳ chọn chạy</h2>
-                <div className="option">
-                  <span>
-                    Video tối đa / chủ đề
-                    <small className="muted">0 = không giới hạn</small>
-                  </span>
-                  <span className="stepper">
-                    <button type="button" aria-label="Giảm" onClick={() => setMaxVideos((v) => Math.max(0, v - 1))}>
-                      −
-                    </button>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      max={500}
-                      value={maxVideos}
-                      aria-label="Video tối đa / chủ đề"
-                      onChange={(event) => setMaxVideos(Math.min(500, Math.max(0, Number(event.target.value))))}
-                    />
-                    <button type="button" aria-label="Tăng" onClick={() => setMaxVideos((v) => Math.min(500, v + 1))}>
-                      +
-                    </button>
-                  </span>
-                </div>
-                <label className="option">
-                  <span>
-                    Tải video + transcribe
-                    <small className="muted">chậm hơn</small>
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="switch"
-                    checked={media}
-                    onChange={(e) => setMedia(e.target.checked)}
-                  />
-                </label>
               </section>
             </>
           ) : (

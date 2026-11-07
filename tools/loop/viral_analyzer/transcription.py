@@ -1,5 +1,9 @@
 """Unified AI Transcription engine for viral reels.
 
+@deprecated [OBSOLETE]: Local video download + ASR transcription (Qwen3-ASR / faster-whisper)
+is flagged obsolete compared to direct API transcription (e.g. Glasser.ai / ScrapeCreators).
+Retained as a local offline solution; do not delete.
+
 Qwen3-ASR backends:
 - macOS Apple Silicon: mlx-qwen3-asr (Metal GPU, fastest).
 - Windows/Linux: transformers Qwen3-ASR (CPU or CUDA).

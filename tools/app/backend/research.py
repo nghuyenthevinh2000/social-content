@@ -467,7 +467,8 @@ def _process_sheet(
     if sheet["targets"]:
         sheet_dir = run_dir / "sheets" / sheet["slug"]
         sheet_dir.mkdir(parents=True, exist_ok=True)
-        (run_dir / "cache").mkdir(parents=True, exist_ok=True)
+        shared_cache = RUNS_ROOT / "cache"
+        shared_cache.mkdir(parents=True, exist_ok=True)
         config = load_config(
             {
                 "window_hours": options.get("window_hours", 48),
@@ -486,7 +487,7 @@ def _process_sheet(
             payload = run_analyzer_pipeline(
                 config,
                 max_videos=options.get("max_videos"),
-                cache_dir=run_dir / "cache",
+                cache_dir=shared_cache,
                 media=bool(options.get("media")),
                 legacy_cache=False,
                 progress_cb=log,

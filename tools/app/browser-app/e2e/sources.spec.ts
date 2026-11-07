@@ -21,12 +21,15 @@ test('library adds channels via the backend and runs from the library only', asy
     }
     await route.fulfill({ json: { ok: true, topics } });
   });
-  await page.route('**/api/jobs?*', async (route) => {
-    jobPayload = route.request().postDataJSON();
-    await route.fulfill({
-      json: { id: 'abc', status: 'queued', filename: 'all_topics.json', current_sheet: null, sheets: [], logs: [] },
-    });
-  });
+  await page.route(
+    (url) => url.pathname === '/api/jobs',
+    async (route) => {
+      jobPayload = route.request().postDataJSON();
+      await route.fulfill({
+        json: { id: 'abc', status: 'queued', filename: 'all_topics.json', current_sheet: null, sheets: [], logs: [] },
+      });
+    },
+  );
   await page.route('**/api/jobs/abc', (route) =>
     route.fulfill({
       json: { id: 'abc', status: 'queued', filename: 'all_topics.json', current_sheet: null, sheets: [], logs: [] },

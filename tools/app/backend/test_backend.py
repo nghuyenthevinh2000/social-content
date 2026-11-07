@@ -1,9 +1,11 @@
 """Minimal checks for Excel parsing and topic parsing (run: python3 -m unittest tools.app.backend.test_backend)."""
 
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
+import time
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -280,6 +282,155 @@ class BackendTests(unittest.TestCase):
             self.assertTrue(store.delete_topic("thoi-trang"))
             self.assertIsNone(store.get_topic("thoi-trang"))
             self.assertEqual(len(store.list_topics()), 4)
+
+    def test_max_videos_env_fallback(self):
+        from tools.app.backend.server import _int
+        # Default when unset
+        env_val = os.environ.get("VIRAL_APP_MAX_VIDEOS_NONEXISTENT")
+        self.assertEqual(_int(env_val, 5, minimum=0, maximum=500), 5)
+        # Custom setting from environment
+        with unittest.mock.patch.dict(os.environ, {"VIRAL_APP_MAX_VIDEOS": "12"}):
+            env_val = os.environ.get("VIRAL_APP_MAX_VIDEOS")
+            self.assertEqual(_int(env_val, 5, minimum=0, maximum=500), 12)
+        # Zero cap
+        with unittest.mock.patch.dict(os.environ, {"VIRAL_APP_MAX_VIDEOS": "0"}):
+            env_val = os.environ.get("VIRAL_APP_MAX_VIDEOS")
+            self.assertEqual(_int(env_val, 5, minimum=0, maximum=500), 0)
+
+    def test_fetch_target_reels_cache_hit_and_fallback(self):
+        from tools.loop.viral_analyzer.pipeline import fetch_target_reels
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = Path(tmp) / "cache"
+            cache_dir.mkdir()
+            fake_reels = [{"video_id": "99", "url": "https://facebook.com/reel/99", "view_count": 1000}]
+            cache_file = cache_dir / "glasser_testhandle.json"
+            cache_file.write_text(json.dumps({"reels": fake_reels}), encoding="utf-8")
+
+            config = load_config({
+                "storage": {
+                    "db_path": str(Path(tmp) / "db.sqlite"),
+                    "video_dir": str(Path(tmp) / "videos"),
+                    "output_file": str(Path(tmp) / "out.json"),
+                },
+                "targets": [{"handle": "testhandle", "url": "https://facebook.com/testhandle"}],
+            })
+
+            logs = []
+            reels = fetch_target_reels(
+                {"handle": "testhandle", "url": "https://facebook.com/testhandle"},
+                config,
+                cache_dir=cache_dir,
+                progress_cb=logs.append,
+            )
+            # Must read directly from cache without subprocess/network call
+            self.assertEqual(len(reels), 1)
+            self.assertEqual(reels[0]["video_id"], "99")
+            self.assertTrue(any("[cache]" in line for line in logs))
+
+            # Test TTL expiration fallback on error
+            os.utime(cache_file, (time.time() - 100000, time.time() - 100000))
+            logs_expired = []
+            reels_expired = fetch_target_reels(
+                {"handle": "testhandle", "url": "https://facebook.com/testhandle"},
+                config,
+                cache_dir=cache_dir,
+                progress_cb=logs_expired.append,
+            )
+            # Since Glasser is not mocked and will fail or exit, it falls back to the expired cache
+            self.assertEqual(len(reels_expired), 1)
+            self.assertTrue(any("dùng lại cache cũ" in line for line in logs_expired))
+
+    def test_duplicate_target_uses_cache(self):
+        from tools.loop.viral_analyzer.pipeline import fetch_target_reels
+        import subprocess
+        import unittest.mock as mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = Path(tmp) / "cache"
+            cache_dir.mkdir()
+            config = load_config({
+                "storage": {
+                    "db_path": str(Path(tmp) / "db.sqlite"),
+                    "video_dir": str(Path(tmp) / "videos"),
+                    "output_file": str(Path(tmp) / "out.json"),
+                },
+                "targets": [{"handle": "my_channel", "url": "https://facebook.com/my_channel"}],
+            })
+
+            target = {"handle": "my_channel", "url": "https://facebook.com/my_channel"}
+            glasser_call_count = 0
+
+            def fake_subprocess_run(cmd, *args, **kwargs):
+                nonlocal glasser_call_count
+                glasser_call_count += 1
+                out_idx = cmd.index("-o") + 1
+                out_path = Path(cmd[out_idx])
+                fake_payload = {
+                    "reels": [
+                        {"video_id": "vid_1", "url": "https://facebook.com/reel/1", "view_count": 5000}
+                    ]
+                }
+                out_path.write_text(json.dumps(fake_payload), encoding="utf-8")
+                return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+            with mock.patch("subprocess.run", side_effect=fake_subprocess_run):
+                # 1st call: cache is empty, Glasser must be called
+                logs_1 = []
+                reels_1 = fetch_target_reels(target, config, cache_dir=cache_dir, progress_cb=logs_1.append)
+                self.assertEqual(glasser_call_count, 1)
+                self.assertEqual(len(reels_1), 1)
+                self.assertEqual(reels_1[0]["video_id"], "vid_1")
+                self.assertTrue(any("[api] Gọi Glasser" in log for log in logs_1))
+                # Cache file must have been written
+                cache_file = cache_dir / "glasser_my_channel.json"
+                self.assertTrue(cache_file.exists())
+
+                # 2nd call: duplicate query, Glasser must NOT be called again
+                logs_2 = []
+                reels_2 = fetch_target_reels(target, config, cache_dir=cache_dir, progress_cb=logs_2.append)
+                self.assertEqual(glasser_call_count, 1, "Glasser was called again on duplicate query instead of hitting cache!")
+                self.assertEqual(len(reels_2), 1)
+                self.assertEqual(reels_2[0]["video_id"], "vid_1")
+                self.assertTrue(any("[cache] Dùng cache" in log for log in logs_2))
+
+    def test_pipeline_duplicate_targets_hit_cache(self):
+        from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
+        import subprocess
+        import unittest.mock as mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            cache.mkdir()
+
+            config = load_config({
+                "storage": {
+                    "db_path": str(root / "db.sqlite"),
+                    "video_dir": str(root / "videos"),
+                    "output_file": str(root / "out.json"),
+                },
+                "targets": [
+                    {"handle": "dup_channel", "url": "https://facebook.com/dup_channel"},
+                    {"handle": "dup_channel", "url": "https://facebook.com/dup_channel"},
+                ],
+            })
+
+            glasser_calls = 0
+            def fake_run(cmd, *args, **kwargs):
+                nonlocal glasser_calls
+                glasser_calls += 1
+                out_path = Path(cmd[cmd.index("-o") + 1])
+                out_path.write_text(json.dumps({
+                    "reels": [{"video_id": "v1", "url": "https://facebook.com/reel/v1", "view_count": 2000}]
+                }), encoding="utf-8")
+                return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+            logs = []
+            with mock.patch("subprocess.run", side_effect=fake_run):
+                payload = run_analyzer_pipeline(config, cache_dir=cache, media=False, legacy_cache=False, progress_cb=logs.append)
+                # Across 2 duplicate targets in targets list, Glasser should only be queried ONCE
+                self.assertEqual(glasser_calls, 1, f"Expected 1 Glasser call for duplicate targets, got {glasser_calls}")
+                self.assertTrue(any("[cache]" in log for log in logs))
 
 
 if __name__ == "__main__":

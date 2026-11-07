@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -45,33 +46,70 @@ def fetch_target_reels(
     config: ViralAnalyzerConfig,
     cache_dir: Optional[Path] = None,
     legacy_cache: bool = True,
+    progress_cb: Optional[Callable[[str], None]] = None,
 ) -> List[Dict[str, Any]]:
     """Fetch profile reels via Glasser ScrapeCreators or cached responses."""
     profile_url = target.get("url") or f"https://www.facebook.com/{target.get('handle')}"
-    handle = target.get("handle", "unknown")
+    handle = target.get("handle")
+    if not handle or handle == "unknown":
+        try:
+            from tools.app.backend.profiles import facebook_handle
+            h, _ = facebook_handle(profile_url)
+            handle = h or "unknown"
+        except Exception:
+            handle = "unknown"
     slug = handle.replace(".", "_")
 
-    # Check local cache first
-    search_dirs = [cache_dir, config.storage.output_file.parent]
+    # Search paths in priority order: explicitly provided cache_dir, app shared cache, output dir
+    search_dirs: List[Path] = []
+    if cache_dir:
+        search_dirs.append(Path(cache_dir))
+    env_cache = os.environ.get("VIRAL_APP_CACHE_DIR")
+    if env_cache:
+        search_dirs.append(Path(env_cache))
+    else:
+        shared_default = CURRENT_DIR.resolve().parents[2] / "local" / "app-runs" / "cache"
+        if shared_default not in search_dirs:
+            search_dirs.append(shared_default)
+    if config.storage.output_file and config.storage.output_file.parent not in search_dirs:
+        search_dirs.append(config.storage.output_file.parent)
     if legacy_cache:
         search_dirs += [Path("local/social-listening-test"), CURRENT_DIR]
-    for d in search_dirs:
-        if not d:
-            continue
-        c_path = d / f"temp_{slug}.json"
-        if c_path.exists() and c_path.stat().st_size > 100:
-            try:
-                with open(c_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    reels = data.get("reels", [])
-                    if reels:
-                        return reels
-            except Exception:
-                pass
 
-    # Glasser CLI Fetch
+    ttl_hours = int(os.environ.get("VIRAL_APP_CACHE_TTL_HOURS", "24"))
+    ttl_seconds = ttl_hours * 3600
+    now_ts = time.time()
+
+    # 1. Check local cache first
+    for d in search_dirs:
+        if not d or not d.exists():
+            continue
+        for fname in (f"glasser_{slug}.json", f"temp_{slug}.json"):
+            c_path = d / fname
+            if c_path.exists() and c_path.stat().st_size > 10:
+                if ttl_seconds > 0 and (now_ts - c_path.stat().st_mtime) > ttl_seconds:
+                    continue  # Expired
+                try:
+                    with open(c_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        reels = data.get("reels", [])
+                        if reels:
+                            msg = f"    [cache] Dùng cache ({len(reels)} reel) cho {handle} ({fname})."
+                            print(msg)
+                            if progress_cb:
+                                progress_cb(msg)
+                            return reels
+                except Exception:
+                    pass
+
+    # 2. Glasser CLI Fetch
+    msg = f"    [api] Gọi Glasser cho {handle}..."
+    print(msg)
+    if progress_cb:
+        progress_cb(msg)
+
     temp_out = Path(tempfile.gettempdir()) / f"glasser_{slug}.json"
-    idempotency_key = f"viral-loop-{slug}-{int(time.time() // 3600)}"
+    idempotency_key = f"viral-loop-{slug}-{int(time.time() // 86400)}"
     cmd = [
         "glasser",
         "run",
@@ -90,11 +128,10 @@ def fetch_target_reels(
                 data = json.load(f)
                 reels = data.get("reels", [])
                 for d in search_dirs:
-                    if d and d.exists() and d.is_dir():
+                    if d:
                         try:
-                            import shutil
-                            shutil.copy2(temp_out, d / f"temp_{slug}.json")
-                            break
+                            d.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(temp_out, d / f"glasser_{slug}.json")
                         except Exception:
                             pass
                 return reels
@@ -106,6 +143,26 @@ def fetch_target_reels(
                 os.remove(temp_out)
             except Exception:
                 pass
+
+    # 3. Fallback to expired cache if Glasser query failed or was unavailable
+    for d in search_dirs:
+        if not d or not d.exists():
+            continue
+        for fname in (f"glasser_{slug}.json", f"temp_{slug}.json"):
+            c_path = d / fname
+            if c_path.exists() and c_path.stat().st_size > 10:
+                try:
+                    with open(c_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        reels = data.get("reels", [])
+                        if reels:
+                            fallback_msg = f"    [!] Glasser lỗi; dùng lại cache cũ ({len(reels)} reel) cho {handle}."
+                            print(fallback_msg)
+                            if progress_cb:
+                                progress_cb(fallback_msg)
+                            return reels
+                except Exception:
+                    pass
 
     return []
 
@@ -317,7 +374,13 @@ def run_analyzer_pipeline(
         handle = target.get("handle", "unknown")
         print(f"[{idx}/{len(targets_to_scan)}] Querying {handle}...")
         progress_cb and progress_cb(f"[{idx}/{len(targets_to_scan)}] Querying {handle}...")
-        raw_items = fetch_target_reels(target, config, cache_dir=cache_dir or config.storage.output_file.parent, legacy_cache=legacy_cache)
+        raw_items = fetch_target_reels(
+            target,
+            config,
+            cache_dir=cache_dir or config.storage.output_file.parent,
+            legacy_cache=legacy_cache,
+            progress_cb=progress_cb,
+        )
         count_for_target = 0
 
         for r in raw_items:
@@ -377,6 +440,9 @@ def run_analyzer_pipeline(
     progress_cb and progress_cb(f"[+] Tổng cộng {len(extracted_reels)} reel ứng viên trong 48h.")
 
     # 3. Download & Audio Transcription
+    # @deprecated [OBSOLETE]: Local video download + audio transcription pipeline is obsolete
+    # compared to cloud API transcription (e.g. Glasser.ai / ScrapeCreators).
+    # Retained for offline fallback and backward-compatibility; do not delete.
     transcriber = None
     if media:
         try:

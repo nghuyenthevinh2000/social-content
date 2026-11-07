@@ -90,13 +90,6 @@
             ]
           },
           {
-            "label": "3 · Tuỳ chọn (one row)",
-            "cells": [
-              { "type": "text", "text": "Video / chủ đề  [− 5 +]", "pixels": 210 },
-              { "type": "text", "text": "Tải video + transcribe  (●)", "pixels": 180 }
-            ]
-          },
-          {
             "label": "4 · Kết quả",
             "id": "results",
             "cells": [
@@ -219,13 +212,6 @@
             "label": "Nguồn · Kho chủ đề",
             "cells": [
               { "type": "text", "text": "Kho chủ đề · 4 chủ đề · 6 kênh   [ Tìm… ]\n▼ Mẹ chồng - nàng dâu · 3 kênh   [▶ Chạy]\n   kênh… ✕  ·  [ Dán link kênh… ] [+ Thêm]\n▶ Thực phẩm bẩn · 1 kênh   [▶ Chạy]\n▶ Vợ chồng · 1 kênh   [▶ Chạy]\n▶ Cỏ cây sức khoẻ · 1 kênh   [▶ Chạy]\n[ Tên chủ đề mới ] [ Link kênh ] [+ Tạo]", "pixels": 390 }
-            ]
-          },
-          {
-            "label": "Nguồn · Tuỳ chọn",
-            "cells": [
-              { "type": "text", "text": "Video / chủ đề  [− 5 +]", "pixels": 210 },
-              { "type": "text", "text": "Tải video + transcribe  (●)", "pixels": 180 }
             ]
           },
           {
