@@ -1,4 +1,4 @@
-"""Minimal checks for Excel parsing and topic parsing (run: python3 -m unittest tools.app.test_backend)."""
+"""Minimal checks for Excel parsing and topic parsing (run: python3 -m unittest tools.app.backend.test_backend)."""
 
 import json
 from pathlib import Path
@@ -146,7 +146,7 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(sorted(store.stale_running(-1)), ["a2", "b1"])  # no recent heartbeat => worker lost
 
     def test_log_collection(self):
-        from tools.app.server import _log_line, LOG_PATH
+        from tools.app.backend.server import _log_line, LOG_PATH
         import uuid
         marker = f"TEST_LOG_{uuid.uuid4().hex}"
         _log_line(marker)

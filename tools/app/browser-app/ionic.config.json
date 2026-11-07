@@ -1,0 +1,7 @@
+{
+  "name": "browser-app",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react-vite"
+}

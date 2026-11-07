@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const appDir = dirname(fileURLToPath(import.meta.url));
-const root = join(appDir, "..", "..");
+const root = join(appDir, "..", "..", "..");
 const triple = execFileSync("rustc", ["--print", "host-tuple"], { encoding: "utf8" }).trim();
 const ext = process.platform === "win32" ? ".exe" : "";
 
@@ -78,7 +78,7 @@ args.push(
   "--distpath", join(appDir, "build", "sidecar"),
   "--workpath", join(appDir, "build", "work-sidecar"),
   "--specpath", join(appDir, "build"),
-  join(appDir, "server.py"),
+  join(appDir, "..", "backend", "server.py"),
 );
 
 rmSync(join(appDir, "build", "sidecar"), { recursive: true, force: true });
