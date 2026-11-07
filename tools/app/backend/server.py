@@ -23,6 +23,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from typing import Any, Dict, Optional
@@ -34,9 +35,12 @@ WORKSPACE = BACKEND_DIR.parents[2]
 sys.path.insert(0, str(WORKSPACE))
 
 from tools.app.backend.handler import run_worker  # noqa: E402
+from tools.app.backend.profiles import PROFILE_STORE  # noqa: E402
 from tools.app.backend.research import (  # noqa: E402
     configured_agent,
     create_job,
+    parse_workbook,
+    resolve_xlsx_bytes,
     STORE,
 )
 
@@ -158,6 +162,11 @@ class Handler(BaseHTTPRequestHandler):
                 "desktop": bool(getattr(sys, "frozen", False)),
             })
             return
+        if parsed.path == "/api/sources/topics":
+            query = parse_qs(parsed.query).get("q", [None])[0]
+            topics = PROFILE_STORE.list_topics(query)
+            _json(self, 200, {"ok": True, "topics": topics})
+            return
         match = re.fullmatch(r"/api/jobs/([a-f0-9]+)", parsed.path)
         if match:
             job = STORE.snapshot(match.group(1))
@@ -182,6 +191,69 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/api/sources/parse":
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                if length <= 0:
+                    _json(self, 400, {"error": "Thiếu dữ liệu file"})
+                    return
+                raw = self.rfile.read(length)
+                filename = unquote(self.headers.get("X-Filename") or "upload.xlsx")
+                topics = PROFILE_STORE.import_from_source(raw, filename)
+                _json(self, 200, {
+                    "ok": True,
+                    "filename": filename,
+                    "sheets": topics,
+                    "topics": topics,
+                })
+            except Exception as exc:
+                _json(self, 400, {"error": f"Không đọc được file: {exc}"})
+            return
+        if parsed.path == "/api/sources/topics":
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                topic = body.get("topic") or body.get("name")
+                url = body.get("url")
+                name = body.get("channel_name") or body.get("name")
+                if not topic:
+                    _json(self, 400, {"error": "Thiếu tên chủ đề"})
+                    return
+                if url:
+                    res = PROFILE_STORE.add_profile(topic, url, name)
+                else:
+                    res = PROFILE_STORE.upsert_topic(topic, body.get("targets"))
+                _json(self, 200, {"ok": True, "topic": res, "topics": PROFILE_STORE.list_topics()})
+            except Exception as exc:
+                _json(self, 400, {"error": str(exc)})
+            return
+        if parsed.path == "/api/sources/topics/delete":
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                slug = body.get("slug")
+                if not slug:
+                    _json(self, 400, {"error": "Thiếu slug chủ đề"})
+                    return
+                PROFILE_STORE.delete_topic(slug)
+                _json(self, 200, {"ok": True, "topics": PROFILE_STORE.list_topics()})
+            except Exception as exc:
+                _json(self, 400, {"error": str(exc)})
+            return
+        if parsed.path == "/api/sources/profiles/delete":
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                slug = body.get("slug")
+                url = body.get("url")
+                if not slug or not url:
+                    _json(self, 400, {"error": "Thiếu slug chủ đề hoặc url kênh"})
+                    return
+                PROFILE_STORE.delete_profile(slug, url)
+                _json(self, 200, {"ok": True, "topics": PROFILE_STORE.list_topics()})
+            except Exception as exc:
+                _json(self, 400, {"error": str(exc)})
+            return
         if parsed.path == "/api/jobs":
             self._create_job(parse_qs(parsed.query))
             return
@@ -277,8 +349,12 @@ class Handler(BaseHTTPRequestHandler):
         rel = "index.html" if path in {"", "/"} else path.lstrip("/")
         file_path = (DIST_DIR / rel).resolve()
         if not str(file_path).startswith(str(DIST_DIR.resolve())) or not file_path.is_file():
-            _json(self, 404, {"error": "Not found"})
-            return
+            fallback = DIST_DIR / "index.html"
+            if fallback.is_file() and not rel.startswith("assets/"):
+                file_path = fallback
+            else:
+                _json(self, 404, {"error": "Not found"})
+                return
         data = file_path.read_bytes()
         content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
         self.send_response(200)

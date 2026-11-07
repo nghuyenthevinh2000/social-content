@@ -10,6 +10,8 @@ import re
 import shutil
 import sys
 import unicodedata
+import urllib.error
+import urllib.request
 import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
@@ -17,9 +19,23 @@ from urllib.parse import parse_qs, urlparse
 import openpyxl
 
 from tools.app.backend.acp import ACPClient, ACPError
+from tools.app.backend.profiles import (
+    clean_name,
+    facebook_handle,
+    is_facebook_url,
+    parse_workbook,
+    resolve_xlsx_bytes,
+    slugify,
+    SocialProfileStore,
+    PROFILE_STORE,
+)
 from tools.app.backend.store import JobStore, now_iso
 from tools.loop.viral_analyzer.config import load_config
 from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
+
+_facebook_handle = facebook_handle
+_is_facebook_url = is_facebook_url
+_clean_name = clean_name
 
 WORKSPACE = Path(__file__).resolve().parents[3]
 if os.environ.get("VIRAL_APP_RUNS"):
@@ -92,84 +108,6 @@ def resolve_agent(agent_id: str) -> Dict[str, Any]:
                 )
             return preset
     raise ACPError(f"Harness không hợp lệ: {agent_id}")
-
-
-# -- Excel -------------------------------------------------------------------
-def slugify(value: str) -> str:
-    normalized = unicodedata.normalize("NFKD", value)
-    ascii_text = "".join(ch for ch in normalized if not unicodedata.combining(ch))
-    ascii_text = ascii_text.replace("đ", "d").replace("Đ", "D")
-    return re.sub(r"[^a-zA-Z0-9]+", "-", ascii_text).strip("-").lower() or "sheet"
-
-
-def _facebook_handle(url: str) -> Tuple[str, str]:
-    """Return (handle, canonical_url) from a Facebook profile/reel URL."""
-    parsed = urlparse(url)
-    query = parse_qs(parsed.query)
-    if "profile.php" in parsed.path and query.get("id"):
-        profile_id = query["id"][0]
-        return f"profile_{profile_id}", f"https://www.facebook.com/profile.php?id={profile_id}"
-    parts = [part for part in parsed.path.split("/") if part]
-    if parts:
-        handle = parts[0]
-        return handle, f"https://www.facebook.com/{handle}"
-    return parsed.netloc or "unknown", url
-
-
-def _is_facebook_url(value: str) -> bool:
-    lowered = value.lower()
-    return lowered.startswith("http") and ("facebook.com" in lowered or "fb.com" in lowered)
-
-
-def _clean_name(value: str) -> str:
-    return re.sub(r"\s+", " ", value).strip()
-
-
-def parse_workbook(path: Path) -> List[Dict[str, Any]]:
-    workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
-    sheets: List[Dict[str, Any]] = []
-    try:
-        for sheet_name in workbook.sheetnames:
-            worksheet = workbook[sheet_name]
-            targets: List[Dict[str, Any]] = []
-            seen = set()
-            for row in worksheet.iter_rows(values_only=True):
-                raw_cells = [_clean_name(str(cell)) if cell is not None else "" for cell in row]
-                url_index = next((i for i, cell in enumerate(raw_cells) if _is_facebook_url(cell)), None)
-                if url_index is None:
-                    continue
-                url = raw_cells[url_index]
-                handle, canonical = _facebook_handle(url)
-                if canonical in seen:
-                    continue
-                seen.add(canonical)
-                name = ""
-                if url_index + 1 < len(raw_cells):
-                    candidate = raw_cells[url_index + 1]
-                    if candidate and not _is_facebook_url(candidate) and candidate.lower() not in {
-                        "tên kênh", "mô tả", "source lưu", "file excel", "chú ý", "chú ys",
-                        "link chatbot", "chatbot tạo ảnh", "link page đối chiếu", "tên page",
-                    }:
-                        name = candidate
-                targets.append(
-                    {
-                        "handle": handle,
-                        "url": canonical,
-                        "name": name or handle,
-                        "category": sheet_name,
-                    }
-                )
-            sheets.append(
-                {
-                    "name": sheet_name,
-                    "slug": slugify(sheet_name),
-                    "is_aggregate": slugify(sheet_name) == "tong-hop",
-                    "targets": targets,
-                }
-            )
-    finally:
-        workbook.close()
-    return sheets
 
 
 # -- Topic generation --------------------------------------------------------
@@ -444,6 +382,7 @@ def create_job(
     options: Dict[str, Any],
     client_id: str,
 ) -> Dict[str, Any]:
+    xlsx_bytes, filename = resolve_xlsx_bytes(xlsx_bytes, filename)
     job_id = uuid.uuid4().hex[:12]
     run_dir = RUNS_ROOT / job_id
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -468,6 +407,10 @@ def create_job(
                 "slug": sheet["slug"],
                 "status": "pending",
                 "targets": len(sheet["targets"]),
+                "target_list": [
+                    {"name": t.get("name") or t.get("handle") or "", "url": t.get("url") or ""}
+                    for t in sheet["targets"]
+                ],
                 "reels": 0,
                 "pool_distribution": {},
                 "topics": [],

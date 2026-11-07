@@ -7,12 +7,19 @@ import unittest
 
 import openpyxl
 
+from tools.app.backend.profiles import (
+    SocialProfileStore,
+    facebook_handle,
+    is_facebook_url,
+    parse_workbook,
+    resolve_xlsx_bytes,
+    slugify,
+)
 from tools.app.backend.research import (
+    create_job,
     heuristic_topics,
     normalize_topics,
     parse_topics,
-    parse_workbook,
-    slugify,
 )
 from tools.loop.viral_analyzer.config import load_config
 from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
@@ -164,6 +171,112 @@ class BackendTests(unittest.TestCase):
             res = download_model("test/repo-model", cache_dir=Path("/tmp/cache"))
             self.assertEqual(res, Path("/tmp/fake_model"))
             mock_hub.snapshot_download.assert_called_once_with(repo_id="test/repo-model", cache_dir="/tmp/cache")
+
+    def test_resolve_xlsx_bytes_passthrough(self):
+        from tools.app.backend.research import resolve_xlsx_bytes
+        raw = b"PK\x03\x04test"
+        res, name = resolve_xlsx_bytes(raw, "file.xlsx")
+        self.assertEqual(res, raw)
+        self.assertEqual(name, "file.xlsx")
+
+    def test_resolve_xlsx_bytes_gsheet_json(self):
+        from unittest.mock import MagicMock, patch
+        from tools.app.backend.research import resolve_xlsx_bytes
+
+        gsheet_json = json.dumps({
+            "url": "https://docs.google.com/spreadsheets/d/test12345/edit",
+            "doc_id": "test12345",
+        }).encode("utf-8")
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = b"PK\x03\x04mock_xlsx_bytes"
+        mock_resp.__enter__.return_value = mock_resp
+
+        with patch("urllib.request.urlopen", return_value=mock_resp) as mock_urlopen:
+            res, name = resolve_xlsx_bytes(gsheet_json, "Competitors.gsheet")
+            self.assertEqual(res, b"PK\x03\x04mock_xlsx_bytes")
+            self.assertEqual(name, "Competitors.xlsx")
+            self.assertIn("test12345/export?format=xlsx", mock_urlopen.call_args[0][0].full_url)
+
+    def test_resolve_xlsx_bytes_json_sheets(self):
+        from tools.app.backend.research import resolve_xlsx_bytes, parse_workbook
+        import tempfile
+        payload = json.dumps({
+            "sheets": [
+                {"name": "Topic A", "targets": [{"url": "https://facebook.com/ch1", "name": "Kênh 1"}]},
+                {"name": "Topic B", "targets": [{"url": "https://facebook.com/ch2", "name": "Kênh 2"}]}
+            ]
+        }).encode("utf-8")
+        res, name = resolve_xlsx_bytes(payload, "custom.json")
+        self.assertTrue(res.startswith(b"PK\x03\x04"))
+        self.assertEqual(name, "custom.xlsx")
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            f.write(res)
+            f.flush()
+            parsed = parse_workbook(Path(f.name))
+            self.assertEqual(len(parsed), 2)
+            self.assertEqual(parsed[0]["name"], "Topic A")
+            self.assertEqual(len(parsed[0]["targets"]), 1)
+
+    def test_create_job_includes_target_list(self):
+        payload = {
+            "sheets": [
+                {
+                    "name": "Topic Test",
+                    "targets": [
+                        {"url": "https://facebook.com/testpage", "name": "Test Page"}
+                    ]
+                }
+            ]
+        }
+        job = create_job(
+            json.dumps(payload).encode("utf-8"),
+            "test.json",
+            {"agent": "test-agent", "max_videos": 1, "media": False},
+            "client-1",
+        )
+        self.assertEqual(len(job["sheets"]), 1)
+        self.assertEqual(job["sheets"][0]["name"], "Topic Test")
+        self.assertEqual(job["sheets"][0]["targets"], 1)
+        self.assertEqual(job["sheets"][0]["target_list"][0]["name"], "Test Page")
+        self.assertEqual(job["sheets"][0]["target_list"][0]["url"], "https://www.facebook.com/testpage")
+
+    def test_social_profile_store_crud(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "profiles.db"
+            store = SocialProfileStore(db_path)
+
+            # Test initial seed
+            topics = store.list_topics()
+            self.assertEqual(len(topics), 4)
+            first = store.get_topic("me-chong-nang-dau")
+            self.assertIsNotNone(first)
+            self.assertEqual(len(first["targets"]), 3)
+
+            # Test search query
+            filtered = store.list_topics(query="nàng dâu")
+            self.assertEqual(len(filtered), 1)
+            self.assertEqual(filtered[0]["slug"], "me-chong-nang-dau")
+
+            # Test add profile to existing topic
+            updated = store.add_profile("Mẹ chồng - nàng dâu", "https://facebook.com/newchannel", "Kênh Mới")
+            self.assertEqual(len(updated["targets"]), 4)
+
+            # Test add profile creating new topic
+            new_topic = store.add_profile("Thời trang", "https://facebook.com/thoitrang123", "Shop Xinh")
+            self.assertEqual(new_topic["name"], "Thời trang")
+            self.assertEqual(len(new_topic["targets"]), 1)
+            self.assertEqual(len(store.list_topics()), 5)
+
+            # Test delete profile
+            self.assertTrue(store.delete_profile("thoi-trang", "https://facebook.com/thoitrang123"))
+            after_del = store.get_topic("thoi-trang")
+            self.assertEqual(len(after_del["targets"]), 0)
+
+            # Test delete topic
+            self.assertTrue(store.delete_topic("thoi-trang"))
+            self.assertIsNone(store.get_topic("thoi-trang"))
+            self.assertEqual(len(store.list_topics()), 4)
 
 
 if __name__ == "__main__":
