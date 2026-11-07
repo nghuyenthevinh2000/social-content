@@ -109,6 +109,12 @@ def _int(value: Optional[str], default: Optional[int], minimum: int = 0, maximum
 class Handler(BaseHTTPRequestHandler):
     server_version = "ViralResearch/0.1"
 
+    def handle(self) -> None:
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
+
     def log_message(self, fmt: str, *args: Any) -> None:
         line = f"{self.address_string()} {fmt % args}"
         print(f"[http] {line}")
@@ -119,10 +125,13 @@ class Handler(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
+    def do_HEAD(self) -> None:
+        self.do_GET()
+
     def _cors(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Filename, X-Client-Id")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "*")
 
     def _client_id(self) -> str:
         """Per-browser id from the frontend; falls back to the caller's IP. Not authentication."""
@@ -163,9 +172,12 @@ class Handler(BaseHTTPRequestHandler):
             })
             return
         if parsed.path == "/api/sources/topics":
-            query = parse_qs(parsed.query).get("q", [None])[0]
-            topics = PROFILE_STORE.list_topics(query)
-            _json(self, 200, {"ok": True, "topics": topics})
+            try:
+                query = parse_qs(parsed.query).get("q", [None])[0]
+                topics = PROFILE_STORE.list_topics(query)
+                _json(self, 200, {"ok": True, "topics": topics})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
             return
         match = re.fullmatch(r"/api/jobs/([a-f0-9]+)", parsed.path)
         if match:
@@ -350,7 +362,7 @@ class Handler(BaseHTTPRequestHandler):
         file_path = (DIST_DIR / rel).resolve()
         if not str(file_path).startswith(str(DIST_DIR.resolve())) or not file_path.is_file():
             fallback = DIST_DIR / "index.html"
-            if fallback.is_file() and not rel.startswith("assets/"):
+            if fallback.is_file() and not rel.startswith("assets/") and not rel.startswith("api/"):
                 file_path = fallback
             else:
                 _json(self, 404, {"error": "Not found"})
@@ -434,6 +446,10 @@ def _augment_path() -> None:
         if item and item not in parts:
             parts.append(item)
     os.environ["PATH"] = os.pathsep.join(parts)
+    workspace_str = str(WORKSPACE)
+    existing_ppath = os.environ.get("PYTHONPATH", "")
+    if workspace_str not in existing_ppath.split(os.pathsep):
+        os.environ["PYTHONPATH"] = f"{workspace_str}{os.pathsep}{existing_ppath}" if existing_ppath else workspace_str
 
 
 def main() -> None:
@@ -504,7 +520,15 @@ def main() -> None:
     if args.role == "all":
         threading.Thread(target=run_worker, daemon=True).start()
 
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    ThreadingHTTPServer.allow_reuse_address = True
+    try:
+        server = ThreadingHTTPServer((args.host, args.port), Handler)
+    except OSError as exc:
+        if exc.errno in (48, 98, 10048):
+            print(f"Lỗi: Cổng {args.port} đã được sử dụng bởi một tiến trình khác.")
+            print(f"Gợi ý: Kiểm tra tiến trình đang chạy (lsof -i :{args.port}) hoặc đổi cổng với --port <khác>.")
+            raise SystemExit(1)
+        raise
     print(f"Viral Research app: http://{args.host}:{args.port}")
     try:
         server.serve_forever()

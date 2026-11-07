@@ -8,7 +8,17 @@ export default defineConfig({
   server: {
     port: 8100,
     proxy: {
-      '/api': 'http://127.0.0.1:8765',
+      '/api': {
+        target: 'http://127.0.0.1:8765',
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, res) => {
+            if ('writeHead' in res && !res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Backend chưa chạy (127.0.0.1:8765)' }));
+            }
+          });
+        },
+      },
     },
   },
   test: {

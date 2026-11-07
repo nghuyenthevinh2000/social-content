@@ -16,3 +16,25 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   headers.set('X-Client-Id', clientId());
   return fetch(input, { ...init, headers });
 }
+
+export async function apiJson<T = any>(input: string, init?: RequestInit): Promise<T> {
+  const res = await apiFetch(input, init);
+  const text = (await res.text()).trim();
+  let data: any = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // Non-JSON response body
+    }
+  }
+  if (!res.ok) {
+    const message =
+      data?.error ||
+      (res.status === 502 || res.status === 504
+        ? 'Không thể kết nối đến máy chủ backend (127.0.0.1:8765)'
+        : `Máy chủ phản hồi lỗi (${res.status} ${res.statusText || 'Error'})`.trim());
+    throw new Error(message);
+  }
+  return (data ?? {}) as T;
+}

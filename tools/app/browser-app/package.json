@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "backend": "python3 ../backend/server.py --port 8765",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "npm run eslint && npm run typecheck:e2e && npm run prettier -- --check",

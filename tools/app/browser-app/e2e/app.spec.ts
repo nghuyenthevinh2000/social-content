@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-test('visits the app root url', async ({ page }) => {
+test('opens on the library with a single import box and run-all CTA', async ({ page }) => {
+  await page.route('**/api/sources/topics', (route) => route.fulfill({ json: { ok: true, topics: [] } }));
   await page.goto('/');
-  await expect(page.locator('h1')).toContainText('3 chủ đề viral mỗi sheet');
-  await expect(page.getByRole('button', { name: 'Chạy phân tích' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Thư viện' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('input[type=file]')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /Chạy tất cả/ })).toBeDisabled();
+  await page.getByRole('tab', { name: 'Phân tích' }).click();
+  await expect(page.getByText('Chưa có lần chạy nào.')).toBeVisible();
 });

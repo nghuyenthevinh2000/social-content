@@ -1,10 +1,10 @@
 {
-  "project": "AIBrand / Tab Nguồn dữ liệu & Library",
+  "project": "AIBrand Browser App · UX rework (de-duplicated)",
   "directions": [
     {
-      "id": "source-tab-accordions",
-      "name": "Workspace Accordions · Tab Nguồn dữ liệu",
-      "notes": "Direction 1: Segmented switcher (Excel / Drive / Direct link + Topic picker) on top, followed by an expandable topic library where each topic displays its attached competitor social accounts, direct links, and a dedicated 'Run analysis' button.",
+      "id": "single-screen",
+      "name": "A · Một màn hình: Kho → Tuỳ chọn → Kết quả",
+      "notes": "No tabs. One import box (Excel OR Sheet link) only feeds the library; the library is the only place to run. Removes: second file picker + second Sheet input, 'Chạy kho' banner, separate direct-add form (merged into per-topic inline add + one 'Chủ đề mới' row), duplicate counts (tab badge, stats pill, library header), duplicate heroes, 3 copy-pasted job starters → 1.",
       "design": {
         "layout": "split",
         "visual": "interface",
@@ -21,188 +21,148 @@
         "cornerRadius": "18px"
       },
       "hero": {
-        "eyebrow": "AIBRAND · WORKSPACE",
+        "eyebrow": "AIBRAND · SPY ĐỐI THỦ",
         "topLabel": "AB AIBrand",
-        "navigation": [
-          "Phân tích",
-          "Nguồn dữ liệu (18)"
-        ],
-        "footerLeft": "18 CHỦ ĐỀ · 52 KÊNH SPY",
-        "footerRight": "EXCEL + DRIVE + LINK TRỰC TIẾP"
+        "navigation": ["4 chủ đề · 6 kênh"],
+        "footerLeft": "1 LUỒNG · KHÔNG TAB",
+        "footerRight": "NHẬP → CHẠY → KẾT QUẢ"
       },
       "visual": {
         "imageUrl": "",
         "imageAlt": "",
-        "caption": "TOPIC CARD · ACCORDION EXPANDED",
-        "index": "1 / 18",
+        "caption": "TOPIC ROW · EXPANDED",
+        "index": "01 / 04",
         "interface": {
-          "label": "CHỦ ĐỀ 01 · 5 KÊNH",
+          "label": "CHỦ ĐỀ 01 · 3 KÊNH",
           "title": "Mẹ chồng - nàng dâu",
-          "description": "5 kênh gắn kèm · Mẹ chồng vào bếp, Nàng dâu kể chuyện, Mẹ dạy mẹo hay... · [Chạy riêng]",
-          "metric": "5",
-          "metricLabel": "KÊNH ĐỐI THỦ GẮN KÈM"
+          "description": "Mẹ chồng vào bếp · Nàng dâu kể chuyện · Mẹ dạy mẹo hay · [Dán link + Thêm] · [▶ Chạy]",
+          "metric": "3",
+          "metricLabel": "KÊNH ĐỐI THỦ"
         }
       },
       "wireframe": {
-        "title": "Mobile viewport 390px · Tab Nguồn dữ liệu",
+        "title": "Mobile 390px · single screen",
         "rows": [
           {
-            "label": "Top bar + Tab Switcher",
+            "label": "Top bar",
             "cells": [
-              {
-                "type": "brand",
-                "text": "AB AIBrand",
-                "pixels": 150
-              },
-              {
-                "type": "link",
-                "text": "[Phân tích] | [• Nguồn dữ liệu (18)]",
-                "href": "#tabs",
-                "pixels": 240
-              }
+              { "type": "brand", "text": "AB AIBrand", "pixels": 190 },
+              { "type": "text", "text": "4 chủ đề · 6 kênh", "pixels": 200 }
             ]
           },
           {
-            "label": "Section header",
+            "label": "Hero",
             "cells": [
-              {
-                "type": "text",
-                "text": "Kho nguồn dữ liệu cá nhân\nQuản lý chủ đề và danh sách kênh spy đối thủ. Thêm qua Excel, Google Drive, hoặc dán link trực tiếp.",
-                "pixels": 390
-              }
+              { "type": "text", "text": "Spy đối thủ → 3 chủ đề viral\nQuét video đối thủ 48h, đề xuất 3 chủ đề viral cho mỗi chủ đề.", "pixels": 390 }
             ]
           },
           {
-            "label": "Method 1 & 2: Excel / Google Drive import",
-            "id": "import-files",
+            "label": "1 · Nhập nguồn (single import box)",
+            "id": "import",
             "cells": [
-              {
-                "type": "visual",
-                "text": "THÊM NGUỒN TỰ ĐỘNG (FILE / DRIVE)\n⇪ Chọn file Excel (.xlsx / .xlsm)\nhoặc dán link Google Sheet (đã bật quyền xem)",
-                "pixels": 390
-              }
+              { "type": "visual", "text": "[⇪ Chọn file Excel]\n[ https://docs.google.com/spreadsheets/d/... ] [Nạp]\nGoogle Sheet: Chia sẻ → Bất kỳ ai có đường liên kết (Xem)", "pixels": 390 }
             ]
           },
           {
-            "label": "Method 3: Direct social link + Topic selection",
-            "id": "direct-social",
+            "label": "2 · Kho chủ đề header + search",
             "cells": [
-              {
-                "type": "visual",
-                "text": "HOẶC THÊM KÊNH THỦ CÔNG\n[ Link FB Reel / Page: https://facebook.com/... ]\n[ Gắn vào chủ đề: Mẹ chồng nàng dâu ▾ ]\n[ + Tạo chủ đề mới... ]\n[ + Lưu kênh vào chủ đề ]",
-                "pixels": 390
-              }
+              { "type": "text", "text": "Kho chủ đề", "pixels": 150 },
+              { "type": "text", "text": "[ Tìm chủ đề, kênh, link… ]", "pixels": 240 }
             ]
           },
           {
-            "label": "Topic library search & count",
-            "cells": [
-              {
-                "type": "text",
-                "text": "DANH SÁCH CHỦ ĐỀ (18) · 52 KÊNH\n[ 🔍 Tìm kiếm chủ đề hoặc kênh... ]",
-                "pixels": 390
-              }
-            ]
-          },
-          {
-            "label": "Topic 1 (Expanded accordion)",
+            "label": "Topic 01 (expanded)",
             "id": "topic-1",
             "cells": [
-              {
-                "type": "text",
-                "text": "▼ 01. Mẹ chồng - nàng dâu (5 kênh)   [▶ Chạy chủ đề này]\n • Mẹ chồng vào bếp (fb.com/100084795256037 ↗) [Xoá]\n • Nàng dâu kể chuyện (fb.com/Nangdaukechuyen ↗) [Xoá]\n • Mẹ dạy mẹo hay (fb.com/Medaymeohay ↗) [Xoá]\n + Thêm kênh vào chủ đề này",
-                "pixels": 390
-              }
+              { "type": "text", "text": "▼ Mẹ chồng - nàng dâu · 3 kênh            [▶ Chạy]\n Mẹ chồng vào bếp  facebook.com/100084795256037 ↗  ✕\n Nàng dâu kể chuyện  facebook.com/Nangdaukechuyen ↗  ✕\n Mẹ dạy mẹo hay  facebook.com/Medaymeohay ↗  ✕\n[ Dán link kênh… ] [+ Thêm]\nXoá chủ đề", "pixels": 390 }
             ]
           },
           {
-            "label": "Topic 2 (Collapsed)",
+            "label": "Topics 02–04 (collapsed)",
             "cells": [
-              {
-                "type": "text",
-                "text": "▶ 02. Thực phẩm bẩn (5 kênh · dongianthoi.ok...)   [▶ Chạy]",
-                "pixels": 390
-              }
+              { "type": "text", "text": "▶ Thực phẩm bẩn · 1 kênh   [▶ Chạy]\n▶ Vợ chồng · 1 kênh   [▶ Chạy]\n▶ Cỏ cây sức khoẻ · 1 kênh   [▶ Chạy]", "pixels": 390 }
             ]
           },
           {
-            "label": "Topic 3 (Collapsed)",
+            "label": "New topic row",
             "cells": [
-              {
-                "type": "text",
-                "text": "▶ 03. Vợ chồng (2 kênh · Gia trưởng lo cho em...)   [▶ Chạy]",
-                "pixels": 390
-              }
+              { "type": "text", "text": "[ Tên chủ đề mới ] [ Link kênh đầu tiên ] [+ Tạo]", "pixels": 390 }
             ]
           },
           {
-            "label": "Topic 4 (Collapsed)",
+            "label": "3 · Tuỳ chọn (one row)",
             "cells": [
-              {
-                "type": "text",
-                "text": "▶ 04. Cỏ cây sức khoẻ (13 kênh · sống khoẻ...)     [▶ Chạy]",
-                "pixels": 390
-              }
+              { "type": "text", "text": "Video / chủ đề  [− 5 +]", "pixels": 210 },
+              { "type": "text", "text": "Tải video + transcribe  (●)", "pixels": 180 }
+            ]
+          },
+          {
+            "label": "4 · Kết quả",
+            "id": "results",
+            "cells": [
+              { "type": "text", "text": "Kết quả · 1/4 · Đang chạy           [Tải JSON]\n▓▓▓░░░░ 25% · Đang xử lý: Vợ chồng\n01 Mẹ chồng - nàng dâu · 3 kênh · 42 reel  [Hoàn tất]\n   → 3 topic cards (hook, góc, vì sao viral, outline, Reel gốc ↗)\n[Xem log (18)]", "pixels": 390 }
+            ]
+          },
+          {
+            "label": "Sticky footer",
+            "cells": [
+              { "type": "link", "text": "▶ Chạy tất cả (4 chủ đề)", "href": "#results", "pixels": 280 },
+              { "type": "link", "text": "Dừng", "href": "#results", "pixels": 110 }
             ]
           }
         ]
       },
       "spec": {
         "goal": {
-          "what": "Tab Nguồn dữ liệu cá nhân: lưu trữ, xem và thêm kênh vào các chủ đề bằng Excel, Drive, hoặc link thủ công kèm chọn chủ đề.",
-          "audience": "Nhà sáng tạo nội dung / marketer quản lý nhiều tệp tệp kênh đối thủ theo từng chủ đề.",
-          "successCriteria": "Xem toàn bộ chủ đề và link kênh đính kèm rõ ràng; thêm kênh thủ công vào đúng chủ đề trong 2 bước; chạy phân tích từng chủ đề nhanh."
+          "what": "One screen where every action exists exactly once: import, add channel, run, view results.",
+          "audience": "Marketer quản lý kênh đối thủ theo chủ đề, chủ yếu trên điện thoại.",
+          "successCriteria": "Không còn input/nút trùng lặp; từ mở app đến chạy phân tích ≤ 2 chạm; kết quả hiện ngay dưới nút chạy."
         },
         "format": {
-          "canvas": "Mobile-first 390–430px column, 18px radius, matching warm paper system.",
-          "safeMargins": "16px side gutters; env(safe-area-inset-top) và env(safe-area-inset-bottom)."
+          "canvas": "Mobile-first 430px column, 18px radius, existing warm paper tokens.",
+          "safeMargins": "16px gutters, safe-area insets top/bottom."
         },
         "layout": {
-          "grid": "Single-column scrollable workspace.",
-          "placement": "Top tab switcher → Header → Import card (Excel/Drive) → Dán link kênh + chọn topic → Search bar → Accordion library.",
-          "hierarchy": "Tab switch → Quick add → Topic group → Channels list with clickable links."
+          "grid": "Single column, 4 numbered panels + sticky footer.",
+          "placement": "Top bar → Hero → Nhập nguồn → Kho chủ đề → Tuỳ chọn → Kết quả → Footer.",
+          "hierarchy": "Run CTA (footer) > per-topic Run > import > edit channels."
         },
         "typeSystem": {
-          "display": "Inter / SF Pro Display, 24px title, -0.03em tracking.",
-          "metadata": "11px monospace uppercase for tags (18 CHỦ ĐỀ, 52 KÊNH).",
-          "contrast": "Bold 16px topic header vs 13px channel link text."
+          "display": "Inter 24px hero, -0.03em.",
+          "metadata": "12px muted for counts and URLs.",
+          "contrast": "16px bold topic name vs 13px channel URL."
         },
         "colorMaterial": {
-          "foundation": "Paper #f4efe7 background, ink #14110f.",
-          "surfaces": "Card #fffdf8 panels with 1px #ded5c8 hairline border.",
-          "borders": "1px #ded5c8, rounded 14px-18px.",
-          "signal": "Orange #d9480f for active tab, action buttons, and external link indicators."
+          "foundation": "Paper #f4efe7, ink #14110f.",
+          "surfaces": "Card #fffdf8 with 1px #ded5c8.",
+          "borders": "1px hairline, 14–18px radius.",
+          "signal": "Orange #d9480f only for Run buttons and active progress."
         },
         "copy": {
-          "headline": "Kho nguồn dữ liệu cá nhân",
-          "subtitle": "Quản lý chủ đề và danh sách kênh spy đối thủ. Thêm qua Excel, Google Drive, hoặc dán link trực tiếp.",
+          "headline": "Spy đối thủ → 3 chủ đề viral",
+          "subtitle": "Quét video đối thủ 48h, đề xuất 3 chủ đề viral cho mỗi chủ đề.",
           "actions": [
-            {
-              "label": "Thêm kênh",
-              "href": "#direct-social"
-            },
-            {
-              "label": "Xem chủ đề",
-              "href": "#topic-1"
-            }
+            { "label": "Nhập nguồn", "href": "#import" },
+            { "label": "Xem kết quả", "href": "#results" }
           ]
         },
         "constraints": {
-          "font": "System font stack.",
-          "accent": "Orange #d9480f primary accent.",
-          "container": "Max width 430px, mobile-first."
+          "font": "System / Inter stack (unchanged).",
+          "accent": "Orange #d9480f.",
+          "container": "430px max."
         },
         "negativePrompt": [
-          "No floating popup modals for adding channels; inline form keeps context clear.",
-          "No complex multi-level nested folders; flat Topic -> Channel hierarchy matches Excel sheets.",
-          "No stock generic social icons; clean text tags with platform badge."
+          "No tabs; no second file picker or Sheet input.",
+          "No 'Chạy kho' banner duplicating the footer CTA.",
+          "No separate direct-add form duplicating inline add.",
+          "No counts repeated in more than one place."
         ]
       }
     },
     {
-      "id": "source-tab-matrix",
-      "name": "Topic Pills & Channel Drawer · Tab Nguồn dữ liệu",
-      "notes": "Direction 2: Horizontal topic filter pills at the top, card matrix of social accounts with badges, and a floating '+ Thêm nguồn' action that opens a bottom sheet with the 3 add methods.",
+      "id": "two-tabs-clean",
+      "name": "B · Hai tab rõ ràng: Nguồn (input) | Kết quả (output)",
+      "notes": "Keep two tabs but split by purpose: 'Nguồn' holds ALL input (import, library, options, run); 'Kết quả' holds ONLY job progress, topic cards and logs. Starting a run auto-switches to Kết quả. Same de-duplication as A; better when results are long.",
       "design": {
         "layout": "split",
         "visual": "interface",
@@ -212,171 +172,126 @@
           "surface": "#fffdf8",
           "ink": "#14110f",
           "muted": "#6b625b",
-          "accent": "#29527a",
+          "accent": "#d9480f",
           "line": "#ded5c8"
         },
         "containerWidth": "430px",
         "cornerRadius": "18px"
       },
       "hero": {
-        "eyebrow": "AIBRAND · DIRECTORY VIEW",
+        "eyebrow": "AIBRAND · INPUT / OUTPUT",
         "topLabel": "AB AIBrand",
-        "navigation": [
-          "Phân tích",
-          "Nguồn dữ liệu"
-        ],
-        "footerLeft": "PILL FILTER · MATRIX CARDS",
-        "footerRight": "QUICK ADD DRAWER"
+        "navigation": ["Nguồn", "Kết quả ●"],
+        "footerLeft": "TAB = MỤC ĐÍCH",
+        "footerRight": "CHẠY → TỰ CHUYỂN KẾT QUẢ"
       },
       "visual": {
         "imageUrl": "",
         "imageAlt": "",
-        "caption": "TOPIC FILTER PILLS",
-        "index": "2 / 18",
+        "caption": "KẾT QUẢ TAB · JOB PROGRESS",
+        "index": "1 / 4",
         "interface": {
-          "label": "FILTER CHỦ ĐỀ",
-          "title": "Tất cả kênh (52)",
-          "description": "Lọc theo: Mẹ chồng nàng dâu (5) · Thực phẩm bẩn (5) · Vợ chồng (2) · Cỏ cây sức khoẻ (13)...",
-          "metric": "52",
-          "metricLabel": "TỔNG SỐ KÊNH SPY"
+          "label": "JOB · ĐANG CHẠY",
+          "title": "Vợ chồng",
+          "description": "1/4 chủ đề hoàn tất · 42 reel · 3 topic viral đã sinh",
+          "metric": "25%",
+          "metricLabel": "TIẾN ĐỘ"
         }
       },
       "wireframe": {
-        "title": "Mobile viewport 390px · Matrix & Pills",
+        "title": "Mobile 390px · Tab Nguồn, then Tab Kết quả",
         "rows": [
           {
-            "label": "Top bar + Tab Switcher",
+            "label": "Top bar + tabs",
             "cells": [
-              {
-                "type": "brand",
-                "text": "AB AIBrand",
-                "pixels": 150
-              },
-              {
-                "type": "link",
-                "text": "[Phân tích] | [• Nguồn dữ liệu]",
-                "href": "#tabs",
-                "pixels": 240
-              }
+              { "type": "brand", "text": "AB AIBrand", "pixels": 150 },
+              { "type": "link", "text": "[• Nguồn] [Kết quả ●]", "href": "#results", "pixels": 240 }
             ]
           },
           {
-            "label": "Action bar with + Thêm nguồn",
+            "label": "Nguồn · Nhập",
+            "id": "import",
             "cells": [
-              {
-                "type": "text",
-                "text": "Nguồn dữ liệu cá nhân (52 kênh)",
-                "pixels": 250
-              },
-              {
-                "type": "link",
-                "text": "+ Thêm nguồn",
-                "href": "#add-sheet",
-                "pixels": 140
-              }
+              { "type": "visual", "text": "[⇪ Chọn file Excel]\n[ https://docs.google.com/spreadsheets/d/... ] [Nạp]", "pixels": 390 }
             ]
           },
           {
-            "label": "Horizontal topic filter pills",
+            "label": "Nguồn · Kho chủ đề",
             "cells": [
-              {
-                "type": "text",
-                "text": "[ Tất cả (52) ] [• Mẹ chồng (5) ] [ Thực phẩm bẩn (5) ] [ Vợ chồng (2) ] →",
-                "pixels": 390
-              }
+              { "type": "text", "text": "Kho chủ đề · 4 chủ đề · 6 kênh   [ Tìm… ]\n▼ Mẹ chồng - nàng dâu · 3 kênh   [▶ Chạy]\n   kênh… ✕  ·  [ Dán link kênh… ] [+ Thêm]\n▶ Thực phẩm bẩn · 1 kênh   [▶ Chạy]\n▶ Vợ chồng · 1 kênh   [▶ Chạy]\n▶ Cỏ cây sức khoẻ · 1 kênh   [▶ Chạy]\n[ Tên chủ đề mới ] [ Link kênh ] [+ Tạo]", "pixels": 390 }
             ]
           },
           {
-            "label": "Selected topic summary & Run button",
+            "label": "Nguồn · Tuỳ chọn",
             "cells": [
-              {
-                "type": "text",
-                "text": "Chủ đề: Mẹ chồng - nàng dâu · 5 kênh\nCập nhật gần nhất: Hôm nay",
-                "pixels": 250
-              },
-              {
-                "type": "link",
-                "text": "▶ Chạy phân tích",
-                "href": "#run-topic",
-                "pixels": 140
-              }
+              { "type": "text", "text": "Video / chủ đề  [− 5 +]", "pixels": 210 },
+              { "type": "text", "text": "Tải video + transcribe  (●)", "pixels": 180 }
             ]
           },
           {
-            "label": "Channel card 1",
+            "label": "Nguồn · footer",
             "cells": [
-              {
-                "type": "text",
-                "text": "Mẹ chồng vào bếp\nfb.com/profile.php?id=100084795256037 ↗\n[FB Reel] · [Mẹ chồng nàng dâu]",
-                "pixels": 390
-              }
+              { "type": "link", "text": "▶ Chạy tất cả (4 chủ đề)", "href": "#results", "pixels": 390 }
             ]
           },
           {
-            "label": "Channel card 2",
+            "label": "Kết quả tab",
+            "id": "results",
             "cells": [
-              {
-                "type": "text",
-                "text": "Nàng dâu kể chuyện\nfb.com/Nangdaukechuyen ↗\n[FB Reel] · [Mẹ chồng nàng dâu]",
-                "pixels": 390
-              }
+              { "type": "text", "text": "all_topics.json · 1/4 · Đang chạy   [Tải JSON]\n▓▓▓░░░░ 25% · Đang xử lý: Vợ chồng\n01 Mẹ chồng - nàng dâu  [Hoàn tất] → 3 topic cards\n02 Vợ chồng  [Đang chạy]\n[Xem log (18)]", "pixels": 390 }
             ]
           },
           {
-            "label": "Channel card 3",
+            "label": "Kết quả · footer",
             "cells": [
-              {
-                "type": "text",
-                "text": "Mẹ dạy mẹo hay\nfb.com/Medaymeohay ↗\n[FB Reel] · [Mẹ chồng nàng dâu]",
-                "pixels": 390
-              }
+              { "type": "link", "text": "Dừng", "href": "#results", "pixels": 390 }
             ]
           }
         ]
       },
       "spec": {
         "goal": {
-          "what": "Directory view với topic filter pills và quick add modal.",
-          "audience": "Người dùng muốn xem nhanh kênh theo pill filter và chạy phân tích theo chủ đề.",
-          "successCriteria": "Filter nhanh qua các chủ đề; xem kênh dạng thẻ compact."
+          "what": "Two tabs split by purpose (input vs output) instead of two overlapping input tabs.",
+          "audience": "Same users; suits long result lists.",
+          "successCriteria": "Each tab has one job; no input appears in Kết quả, no results in Nguồn."
         },
         "format": {
-          "canvas": "Mobile-first 390–430px column.",
-          "safeMargins": "16px."
+          "canvas": "Mobile-first 430px, existing tokens.",
+          "safeMargins": "16px gutters."
         },
         "layout": {
-          "grid": "Top bar → Add button → Topic pills horizontal scroller → Channel cards.",
-          "placement": "Filter sticky top, cards in list.",
-          "hierarchy": "Topic pill → Channel card → External link."
+          "grid": "Single column per tab, sticky footer CTA.",
+          "placement": "Nguồn: Nhập → Kho → Tuỳ chọn → Chạy. Kết quả: progress → sheets → log → Dừng.",
+          "hierarchy": "Run CTA > per-topic Run > import > edit."
         },
         "typeSystem": {
-          "display": "Inter 20px header.",
-          "metadata": "11px badge."
+          "display": "Inter 20px section titles (no hero).",
+          "metadata": "12px muted counts.",
+          "contrast": "16px bold names vs 13px URLs."
         },
         "colorMaterial": {
-          "foundation": "#f4efe7 paper.",
-          "surfaces": "#fffdf8 card.",
-          "borders": "1px #ded5c8 hairline.",
-          "signal": "Blue #29527a accent."
+          "foundation": "Paper #f4efe7.",
+          "surfaces": "Card #fffdf8.",
+          "borders": "1px #ded5c8.",
+          "signal": "Orange #d9480f; dot on Kết quả tab while running."
         },
         "copy": {
-          "headline": "Nguồn dữ liệu cá nhân",
-          "subtitle": "Lọc theo chủ đề và quản lý kênh đính kèm.",
+          "headline": "Kho chủ đề",
+          "subtitle": "Nhập nguồn, quản lý kênh, chạy phân tích — kết quả ở tab bên cạnh.",
           "actions": [
-            {
-              "label": "+ Thêm nguồn",
-              "href": "#add-sheet"
-            }
+            { "label": "Nhập nguồn", "href": "#import" },
+            { "label": "Kết quả", "href": "#results" }
           ]
         },
         "constraints": {
-          "font": "System font.",
-          "accent": "Blue signal.",
+          "font": "System / Inter stack.",
+          "accent": "Orange #d9480f.",
           "container": "430px max."
         },
         "negativePrompt": [
-          "No full page reload on pill change.",
-          "No multi-select mode."
+          "No input controls on Kết quả tab.",
+          "No duplicated pickers, banners, or counts.",
+          "No hero blocks repeating tab names."
         ]
       }
     }
