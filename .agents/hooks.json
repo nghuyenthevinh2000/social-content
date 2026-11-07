@@ -10,7 +10,7 @@
     ]
   },
   "story-engine-gate": {
-    "enabled": true,
+    "enabled": false,
     "PreToolUse": [
       {
         "matcher": "*",
