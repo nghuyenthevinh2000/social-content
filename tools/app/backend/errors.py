@@ -168,15 +168,28 @@ def handle_glasser_error(
 ) -> AppError:
     """Normalize and classify errors coming from Glasser scraper execution."""
     raw_text = str(error_or_exc)
-    err_type = error_or_exc.__class__.__name__ if isinstance(error_or_exc, Exception) else "GlasserError"
+    err_type = ""
+    err_code = ""
+    returncode = None
+    if isinstance(error_or_exc, Exception):
+        err_type = error_or_exc.__class__.__name__
+        returncode = getattr(error_or_exc, "returncode", None)
+    elif isinstance(error_or_exc, dict):
+        err_type = str(error_or_exc.get("error_type") or "")
+        err_code = str(error_or_exc.get("code") or "")
+        returncode = error_or_exc.get("returncode")
 
     # 1. Missing or unconfigured API Key
-    if (
+    is_missing_key = (
         "GlasserMissingKeyError" in err_type
+        or err_code == "GLASSER_MISSING_API_KEY"
         or "No Key configured" in raw_text
-        or "GLASSER_API_KEY" in raw_text
+        or "Chưa cấu hình GLASSER_API_KEY" in raw_text
         or "Thiếu biến môi trường GLASSER_API_KEY" in raw_text
-    ):
+        or (returncode == 2 and "key" in raw_text.lower())
+    )
+
+    if is_missing_key:
         app_err = AppError(
             category=ErrorCategory.GLASSER.value,
             code="GLASSER_MISSING_API_KEY",

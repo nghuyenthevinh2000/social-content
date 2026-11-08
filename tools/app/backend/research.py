@@ -39,7 +39,10 @@ from tools.app.backend.profiles import (
 )
 from tools.app.backend.store import JobStore, now_iso
 from tools.loop.viral_analyzer.config import load_config
+from tools.loop.viral_analyzer.glasser import ensure_glasser_env
 from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
+
+ensure_glasser_env()
 
 _facebook_handle = facebook_handle
 _is_facebook_url = is_facebook_url

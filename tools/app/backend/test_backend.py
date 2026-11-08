@@ -606,39 +606,43 @@ class BackendTests(unittest.TestCase):
     def test_glasser_module_and_error_classification(self):
         import subprocess
         from tools.loop.viral_analyzer.glasser import (
+            ensure_glasser_env,
             check_glasser_key,
             check_glasser_status,
             execute_glasser_query,
             GlasserMissingKeyError,
             GlasserNotFoundError,
+            GlasserExecutionError,
         )
 
-        # Missing key
-        with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("GLASSER_API_KEY", None)
-            has_key, err = check_glasser_key()
-            self.assertFalse(has_key)
-            self.assertIn("Thiếu", err)
+        # 1. Truly missing key (no env, no .env file, no CLI stored key)
+        with mock.patch("tools.loop.viral_analyzer.glasser.ensure_glasser_env", return_value=None):
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("GLASSER_API_KEY", None)
+                with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout="No Keys stored.", stderr="")):
+                    has_key, err = check_glasser_key()
+                    self.assertFalse(has_key)
+                    self.assertIn("Thiếu", err)
 
-            with mock.patch("shutil.which", return_value="/usr/bin/glasser"):
-                status = check_glasser_status()
-                self.assertFalse(status["ok"])
-                self.assertFalse(status["has_key"])
-                self.assertTrue(status["installed"])
+                    with mock.patch("shutil.which", return_value="/usr/bin/glasser"):
+                        status = check_glasser_status()
+                        self.assertFalse(status["ok"])
+                        self.assertFalse(status["has_key"])
+                        self.assertTrue(status["installed"])
 
-                with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 2, stdout="", stderr="Error: No Key configured.")):
-                    ok, msg, exc = execute_glasser_query(
-                        profile_url="https://facebook.com/test",
-                        provider="scrapecreators",
-                        endpoint="/v1/facebook/profile/reels",
-                        endpoint_version=2,
-                        idempotency_key="k1",
-                        temp_out=Path("/tmp/out.json"),
-                    )
-                    self.assertFalse(ok)
-                    self.assertIsInstance(exc, GlasserMissingKeyError)
+                        with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 2, stdout="", stderr="Error: No Key configured.")):
+                            ok, msg, exc = execute_glasser_query(
+                                profile_url="https://facebook.com/test",
+                                provider="scrapecreators",
+                                endpoint="/v1/facebook/profile/reels",
+                                endpoint_version=2,
+                                idempotency_key="k1",
+                                temp_out=Path("/tmp/out.json"),
+                            )
+                            self.assertFalse(ok)
+                            self.assertIsInstance(exc, GlasserMissingKeyError)
 
-        # Missing binary
+        # 2. Missing binary
         with mock.patch.dict(os.environ, {"GLASSER_API_KEY": "gl_valid_test_key_12345"}):
             with mock.patch("shutil.which", return_value=None):
                 status = check_glasser_status()
@@ -654,6 +658,34 @@ class BackendTests(unittest.TestCase):
                 )
                 self.assertFalse(ok)
                 self.assertIsInstance(exc, GlasserNotFoundError)
+
+        # 3. HTTP 404 / Facebook not found handling (code 0, empty temp_out)
+        with mock.patch.dict(os.environ, {"GLASSER_API_KEY": "gl_valid_test_key_12345"}):
+            with mock.patch("shutil.which", return_value="/usr/bin/glasser"):
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    t_out = Path(tmp_dir) / "out.json"
+                    stdout_404 = (
+                        "Idempotency-Key: viral-loop-chan-20765\n"
+                        "Response: HTTP 404\n"
+                        '{"error": "not_found", "message": "Shoot it looks like this Facebook profile doesn\'t exist or is private"}\n'
+                        "Nothing written to out.json: only a COMPLETED Run with output is saved."
+                    )
+                    with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=stdout_404, stderr="")):
+                        ok, msg, exc = execute_glasser_query(
+                            profile_url="https://facebook.com/404chan",
+                            provider="scrapecreators",
+                            endpoint="/v1/facebook/profile/reels",
+                            endpoint_version=2,
+                            idempotency_key="k404",
+                            temp_out=t_out,
+                            handle="404chan",
+                        )
+                        self.assertTrue(ok)
+                        self.assertIsNone(exc)
+                        self.assertTrue(t_out.exists())
+                        data = json.loads(t_out.read_text(encoding="utf-8"))
+                        self.assertEqual(data["reels"], [])
+                        self.assertEqual(data["status"], "not_found")
 
     def test_backend_errors_module_and_aggregation(self):
         from tools.app.backend.errors import (
@@ -674,6 +706,14 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(g_err.severity, ErrorSeverity.CRITICAL.value)
         self.assertIn("GLASSER_API_KEY", g_err.suggestion)
         agg.add(g_err)
+
+        # Ensure general execution error is not misclassified as missing key
+        exec_err = handle_glasser_error(
+            {"error_type": "GlasserExecutionError", "message": "Failed query", "returncode": 0, "suggestion": "Kiểm tra cấu hình Glasser CLI và GLASSER_API_KEY."},
+            handle="some_chan",
+        )
+        self.assertEqual(exec_err.code, "GLASSER_EXECUTION_ERROR")
+        self.assertNotEqual(exec_err.code, "GLASSER_MISSING_API_KEY")
 
         # Test ACP auth handling
         a_err = handle_acp_error("ACP: auth required to proceed", agent_id="agy")
