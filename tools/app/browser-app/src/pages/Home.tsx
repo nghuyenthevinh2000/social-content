@@ -76,6 +76,49 @@ const reelLink = (url: string) => {
   }
   return trimmed;
 };
+
+function formatTopicForAI(topic: Topic, sheetName?: string): string {
+  const lines: string[] = [];
+  lines.push(`### Chủ đề: ${topic.title}`);
+  if (sheetName) lines.push(`- **Nhóm chủ đề**: ${sheetName}`);
+  if (topic.format) lines.push(`- **Định dạng**: ${topic.format}`);
+  if (topic.hook) lines.push(`- **Hook (3s đầu)**: "${topic.hook}"`);
+  if (topic.angle) lines.push(`- **Góc tiếp cận**: ${topic.angle}`);
+  if (topic.why_viral) lines.push(`- **Lý do viral & Bằng chứng**: ${topic.why_viral}`);
+  if (topic.outline && topic.outline.length > 0) {
+    lines.push(`- **Dàn ý triển khai**:`);
+    topic.outline.forEach((step, idx) => lines.push(`  ${idx + 1}. ${step}`));
+  }
+  if (topic.source_urls && topic.source_urls.length > 0) {
+    const urls = topic.source_urls.map((u) => reelLink(u)).join('\n  - ');
+    lines.push(`- **Reel tham khảo**:\n  - ${urls}`);
+  }
+  lines.push('');
+  lines.push('---');
+  lines.push('Nhiệm vụ cho AI: Dựa trên dàn ý và hook ở trên, hãy viết kịch bản chi tiết cho video ngắn (Reels/TikTok/Shorts khoảng 30-45 giây). Kịch bản cần có 3 cột: Thời lượng (giây) | Hình ảnh / Cảnh quay (Visual) | Lời thoại / Voiceover (Audio). Nhịp điệu nhanh, giữ chân người xem ngay từ 3 giây đầu.');
+  return lines.join('\n');
+}
+
+function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-999999px';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    textarea.remove();
+    return Promise.resolve();
+  } catch (err) {
+    textarea.remove();
+    return Promise.reject(err);
+  }
+}
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 function reportClientLog(message: string, stack?: string, source = 'client') {
@@ -115,6 +158,20 @@ const Home: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopyTopic = async (topic: Topic, sheetName: string, key: string) => {
+    try {
+      const text = formatTopicForAI(topic, sheetName);
+      await copyToClipboard(text);
+      setCopiedKey(key);
+      setTimeout(() => {
+        setCopiedKey((prev) => (prev === key ? null : prev));
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy topic:', err);
+    }
+  };
 
   // Firebase Auth
   const [user, setUser] = useState<User | null>(auth.currentUser);
@@ -663,22 +720,51 @@ const Home: React.FC = () => {
                                 </ol>
                               )}
                               <div className="topic-foot">
-                                {topic.format && <span>{topic.format}</span>}
-                                {topic.source_urls && topic.source_urls.length > 0 && (
-                                  <span className="topic-reels">
-                                    {topic.source_urls.map((url, i) => (
-                                      <a
-                                        key={i}
-                                        href={reelLink(url)}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style={{ marginLeft: i > 0 ? 8 : 0 }}
+                                <div className="topic-foot-left">
+                                  {topic.format && <span>{topic.format}</span>}
+                                  {topic.source_urls && topic.source_urls.length > 0 && (
+                                    <span className="topic-reels">
+                                      {topic.source_urls.map((url, i) => (
+                                        <a
+                                          key={i}
+                                          href={reelLink(url)}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          style={{ marginLeft: i > 0 ? 8 : 0 }}
+                                        >
+                                          {topic.source_urls.length > 1 ? `Reel gốc ${i + 1} ↗` : 'Reel gốc ↗'}
+                                        </a>
+                                      ))}
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  className={`copy-topic-btn ${copiedKey === `${sheet.slug}-${topicIndex}` ? 'copied' : ''}`}
+                                  onClick={() => handleCopyTopic(topic, sheet.name, `${sheet.slug}-${topicIndex}`)}
+                                  title="Sao chép nội dung kịch bản để dán vào AI Agent"
+                                >
+                                  {copiedKey === `${sheet.slug}-${topicIndex}` ? (
+                                    <>✓ Đã chép</>
+                                  ) : (
+                                    <>
+                                      <svg
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
                                       >
-                                        {topic.source_urls.length > 1 ? `Reel gốc ${i + 1} ↗` : 'Reel gốc ↗'}
-                                      </a>
-                                    ))}
-                                  </span>
-                                )}
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                      </svg>
+                                      Copy cho AI
+                                    </>
+                                  )}
+                                </button>
                               </div>
                             </article>
                           ))}

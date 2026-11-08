@@ -448,6 +448,7 @@
 .topic-foot {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
@@ -456,7 +457,43 @@
   color: var(--muted);
 }
 
+.topic-foot-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .topic-foot a {
+  font-weight: 600;
+}
+
+.copy-topic-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.copy-topic-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.copy-topic-btn.copied {
+  background: #e6f4ea;
+  color: var(--green);
+  border-color: var(--green);
   font-weight: 600;
 }
 
