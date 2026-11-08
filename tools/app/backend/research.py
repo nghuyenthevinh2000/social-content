@@ -545,8 +545,8 @@ def _process_sheet(
                 "retention_days": 7,
                 "max_videos": options.get("max_videos"),
                 "storage": {
-                    "db_path": str(sheet_dir / "traffic_pools.db"),
-                    "video_dir": str(sheet_dir / "cache" / "videos"),
+                    "db_path": str(RUNS_ROOT / "traffic_pools.db"),
+                    "video_dir": str(shared_cache / "videos"),
                     "output_file": str(sheet_dir / "viral_reels_48h.json"),
                 },
                 "transcription": {"engine": "qwen3", "model": "Qwen/Qwen3-ASR-0.6B", "language": None},

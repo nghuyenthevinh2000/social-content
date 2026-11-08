@@ -253,6 +253,12 @@ def execute_glasser_query(
         return False, err.message, err
 
 
+from tools.loop.viral_analyzer.cache import (
+    read_cached_reels,
+    resolve_db_path,
+    write_cached_reels,
+)
+
 # -- Fetching with Cache & Error Tracking ------------------------------------
 
 def fetch_target_reels(
@@ -263,7 +269,7 @@ def fetch_target_reels(
     progress_cb: Optional[Callable[[str], None]] = None,
     error_collector: Optional[List[GlasserError]] = None,
 ) -> List[Dict[str, Any]]:
-    """Fetch profile reels via Glasser ScrapeCreators or cached responses.
+    """Fetch profile reels via Glasser ScrapeCreators or centralized SQLite cache.
 
     Appends encountered GlasserErrors to error_collector if provided.
     """
@@ -277,51 +283,23 @@ def fetch_target_reels(
         except Exception:
             handle = "unknown"
     slug = handle.replace(".", "_")
+    db_path = resolve_db_path(config, cache_dir)
 
-    # Search paths in priority order: explicitly provided cache_dir, app shared cache, output dir
-    search_dirs: List[Path] = []
-    if cache_dir:
-        search_dirs.append(Path(cache_dir))
-    env_cache = os.environ.get("VIRAL_APP_CACHE_DIR")
-    if env_cache:
-        search_dirs.append(Path(env_cache))
-    else:
-        shared_default = CURRENT_DIR.resolve().parents[2] / "local" / "app-runs" / "cache"
-        if shared_default not in search_dirs:
-            search_dirs.append(shared_default)
-    if getattr(config, "storage", None) and config.storage.output_file and config.storage.output_file.parent not in search_dirs:
-        search_dirs.append(config.storage.output_file.parent)
-    if legacy_cache:
-        search_dirs += [Path("local/social-listening-test"), CURRENT_DIR]
-
-    ttl_hours = int(os.environ.get("VIRAL_APP_CACHE_TTL_HOURS", "24"))
-    ttl_seconds = ttl_hours * 3600
-    now_ts = time.time()
-
-    # 1. Check local valid cache first
-    for d in search_dirs:
-        if not d or not d.exists():
-            continue
-        for fname in (f"glasser_{slug}.json", f"temp_{slug}.json"):
-            c_path = d / fname
-            if c_path.exists() and c_path.stat().st_size > 10:
-                if ttl_seconds > 0 and (now_ts - c_path.stat().st_mtime) > ttl_seconds:
-                    continue  # Expired
-                try:
-                    with open(c_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        reels = data.get("reels", [])
-                        if reels:
-                            for r in reels:
-                                if isinstance(r, dict):
-                                    r["_source"] = "cache"
-                            msg = f"    [cache] Dùng cache ({len(reels)} reel) cho {handle} ({fname})."
-                            print(msg)
-                            if progress_cb:
-                                progress_cb(f"[cache] Dùng cache ({len(reels)} reel) cho {handle} ({fname})")
-                            return reels
-                except Exception:
-                    pass
+    # 1. Check centralized SQLite cache (with legacy JSON auto-import)
+    cached = read_cached_reels(
+        handle,
+        db_path=db_path,
+        cache_dir=cache_dir,
+        legacy_cache=legacy_cache,
+        allow_expired=False,
+    )
+    if cached is not None:
+        reels, _status, src_label = cached
+        msg = f"    [cache] Dùng cache ({len(reels)} reel) cho {handle} ({src_label})."
+        print(msg)
+        if progress_cb:
+            progress_cb(f"[cache] Dùng cache ({len(reels)} reel) cho {handle} ({src_label})")
+        return reels
 
     # 2. Glasser CLI Fetch
     msg = f"    [api] Gọi Glasser cho {handle}..."
@@ -352,16 +330,17 @@ def fetch_target_reels(
             with open(temp_out, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 reels = data.get("reels", [])
+                status = data.get("status", "ok")
+                write_cached_reels(
+                    handle=handle,
+                    reels=reels,
+                    status=status,
+                    profile_url=profile_url,
+                    db_path=db_path,
+                )
                 for r in reels:
                     if isinstance(r, dict):
                         r["_source"] = "glasser"
-                for d in search_dirs:
-                    if d:
-                        try:
-                            d.mkdir(parents=True, exist_ok=True)
-                            shutil.copy2(temp_out, d / f"glasser_{slug}.json")
-                        except Exception:
-                            pass
                 success_msg = f"    [api] Glasser thành công ({len(reels)} reel) cho {handle}."
                 print(success_msg)
                 if progress_cb:
@@ -389,26 +368,20 @@ def fetch_target_reels(
             progress_cb(log_msg)
 
     # 3. Fallback to expired cache if Glasser query failed or was unavailable
-    for d in search_dirs:
-        if not d or not d.exists():
-            continue
-        for fname in (f"glasser_{slug}.json", f"temp_{slug}.json"):
-            c_path = d / fname
-            if c_path.exists() and c_path.stat().st_size > 10:
-                try:
-                    with open(c_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        reels = data.get("reels", [])
-                        if reels:
-                            for r in reels:
-                                if isinstance(r, dict):
-                                    r["_source"] = "cache_fallback"
-                            fallback_msg = f"    [!] Glasser lỗi; dùng lại cache cũ ({len(reels)} reel) cho {handle}."
-                            print(fallback_msg)
-                            if progress_cb:
-                                progress_cb(f"[cache-fallback] {handle}: Glasser lỗi, dùng lại cache cũ ({len(reels)} reel)")
-                            return reels
-                except Exception:
-                    pass
+    expired = read_cached_reels(
+        handle,
+        db_path=db_path,
+        cache_dir=cache_dir,
+        legacy_cache=legacy_cache,
+        allow_expired=True,
+    )
+    if expired is not None:
+        reels, _status, _src_label = expired
+        if reels:
+            fallback_msg = f"    [!] Glasser lỗi; dùng lại cache cũ ({len(reels)} reel) cho {handle}."
+            print(fallback_msg)
+            if progress_cb:
+                progress_cb(f"[cache-fallback] {handle}: Glasser lỗi, dùng lại cache cũ ({len(reels)} reel)")
+            return reels
 
     return []

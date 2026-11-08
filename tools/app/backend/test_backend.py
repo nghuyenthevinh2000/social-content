@@ -349,17 +349,17 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(_int(env_val, 5, minimum=0, maximum=500), 0)
 
     def test_fetch_target_reels_cache_hit_and_fallback(self):
+        from tools.loop.viral_analyzer.cache import write_cached_reels
         from tools.loop.viral_analyzer.pipeline import fetch_target_reels
+        import subprocess
         with tempfile.TemporaryDirectory() as tmp:
-            cache_dir = Path(tmp) / "cache"
-            cache_dir.mkdir()
+            db_file = Path(tmp) / "traffic_pools.db"
             fake_reels = [{"video_id": "99", "url": "https://facebook.com/reel/99", "view_count": 1000}]
-            cache_file = cache_dir / "glasser_testhandle.json"
-            cache_file.write_text(json.dumps({"reels": fake_reels}), encoding="utf-8")
+            write_cached_reels("testhandle", fake_reels, db_path=db_file)
 
             config = load_config({
                 "storage": {
-                    "db_path": str(Path(tmp) / "db.sqlite"),
+                    "db_path": str(db_file),
                     "video_dir": str(Path(tmp) / "videos"),
                     "output_file": str(Path(tmp) / "out.json"),
                 },
@@ -370,38 +370,36 @@ class BackendTests(unittest.TestCase):
             reels = fetch_target_reels(
                 {"handle": "testhandle", "url": "https://facebook.com/testhandle"},
                 config,
-                cache_dir=cache_dir,
                 progress_cb=logs.append,
             )
-            # Must read directly from cache without subprocess/network call
+            # Must read directly from SQLite cache without subprocess/network call
             self.assertEqual(len(reels), 1)
             self.assertEqual(reels[0]["video_id"], "99")
             self.assertTrue(any("[cache]" in line for line in logs))
 
             # Test TTL expiration fallback on error
-            os.utime(cache_file, (time.time() - 100000, time.time() - 100000))
+            write_cached_reels("testhandle", fake_reels, db_path=db_file, fetched_at=time.time() - 100000)
             logs_expired = []
-            reels_expired = fetch_target_reels(
-                {"handle": "testhandle", "url": "https://facebook.com/testhandle"},
-                config,
-                cache_dir=cache_dir,
-                progress_cb=logs_expired.append,
-            )
-            # Since Glasser is not mocked and will fail or exit, it falls back to the expired cache
+            with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 1, stdout="err", stderr="err")):
+                reels_expired = fetch_target_reels(
+                    {"handle": "testhandle", "url": "https://facebook.com/testhandle"},
+                    config,
+                    progress_cb=logs_expired.append,
+                )
             self.assertEqual(len(reels_expired), 1)
             self.assertTrue(any("dùng lại cache cũ" in line for line in logs_expired))
 
     def test_duplicate_target_uses_cache(self):
+        from tools.loop.viral_analyzer.cache import read_cached_reels
         from tools.loop.viral_analyzer.pipeline import fetch_target_reels
         import subprocess
         import unittest.mock as mock
 
         with tempfile.TemporaryDirectory() as tmp:
-            cache_dir = Path(tmp) / "cache"
-            cache_dir.mkdir()
+            db_file = Path(tmp) / "traffic_pools.db"
             config = load_config({
                 "storage": {
-                    "db_path": str(Path(tmp) / "db.sqlite"),
+                    "db_path": str(db_file),
                     "video_dir": str(Path(tmp) / "videos"),
                     "output_file": str(Path(tmp) / "out.json"),
                 },
@@ -427,18 +425,19 @@ class BackendTests(unittest.TestCase):
             with mock.patch("subprocess.run", side_effect=fake_subprocess_run):
                 # 1st call: cache is empty, Glasser must be called
                 logs_1 = []
-                reels_1 = fetch_target_reels(target, config, cache_dir=cache_dir, legacy_cache=False, progress_cb=logs_1.append)
+                reels_1 = fetch_target_reels(target, config, legacy_cache=False, progress_cb=logs_1.append)
                 self.assertEqual(glasser_call_count, 1)
                 self.assertEqual(len(reels_1), 1)
                 self.assertEqual(reels_1[0]["video_id"], "vid_1")
                 self.assertTrue(any("[api] Gọi Glasser" in log for log in logs_1))
-                # Cache file must have been written
-                cache_file = cache_dir / "glasser_my_channel.json"
-                self.assertTrue(cache_file.exists())
+                # Entry must have been persisted into centralized SQLite profile_cache
+                cached_entry = read_cached_reels("my_channel", db_path=db_file)
+                self.assertIsNotNone(cached_entry)
+                self.assertEqual(len(cached_entry[0]), 1)
 
                 # 2nd call: duplicate query, Glasser must NOT be called again
                 logs_2 = []
-                reels_2 = fetch_target_reels(target, config, cache_dir=cache_dir, legacy_cache=False, progress_cb=logs_2.append)
+                reels_2 = fetch_target_reels(target, config, legacy_cache=False, progress_cb=logs_2.append)
                 self.assertEqual(glasser_call_count, 1, "Glasser was called again on duplicate query instead of hitting cache!")
                 self.assertEqual(len(reels_2), 1)
                 self.assertEqual(reels_2[0]["video_id"], "vid_1")
@@ -775,6 +774,82 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(target_sheet["status"], "failed")
             self.assertIn("Chưa cấu hình hoặc thiếu GLASSER_API_KEY", target_sheet["notice"])
             self.assertIn("GLASSER_API_KEY", target_sheet["error"])
+
+    def test_centralized_cache_and_migration(self):
+        import sqlite3
+        from tools.loop.viral_analyzer.cache import (
+            connect_db,
+            get_cached_transcript,
+            migrate_fragmented_storage,
+            persist_to_database,
+            read_cached_reels,
+            write_cached_reels,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            central_db = root / "traffic_pools.db"
+
+            # 1. Negative cache for 404 channels (empty reels, status='not_found') must hit cache
+            write_cached_reels("dead_channel", [], status="not_found", db_path=central_db)
+            hit = read_cached_reels("dead_channel", db_path=central_db)
+            self.assertIsNotNone(hit)
+            self.assertEqual(hit[0], [])
+            self.assertEqual(hit[1], "not_found")
+
+            # 2. Cross-run persistence preserves transcript & computes acceleration
+            reel_run_1 = [{
+                "video_id": "v100",
+                "url": "https://facebook.com/reel/v100",
+                "author_handle": "chef",
+                "title": "Món ngon",
+                "views": 1000,
+                "likes": 50,
+                "comments": 5,
+                "shares": 2,
+                "published_at": "2026-11-08T00:00:00+00:00",
+                "current_pool": 2,
+                "velocity_per_hour": 100.0,
+                "comment_ratio": 0.1,
+                "transcript": "Xin chào các bạn",
+            }]
+            persist_to_database(reel_run_1, central_db)
+            self.assertEqual(get_cached_transcript("v100", central_db), "Xin chào các bạn")
+
+            reel_run_2 = [{
+                **reel_run_1[0],
+                "views": 5000,
+                "current_pool": 3,
+                "velocity_per_hour": 250.0,
+                "transcript": None,  # Must not overwrite existing transcript with None
+            }]
+            persist_to_database(reel_run_2, central_db)
+            self.assertEqual(get_cached_transcript("v100", central_db), "Xin chào các bạn")
+
+            with connect_db(central_db) as conn:
+                snaps = conn.execute(
+                    "SELECT velocity_per_hour, acceleration FROM metric_snapshots WHERE video_id = 'facebook:v100' ORDER BY id ASC"
+                ).fetchall()
+                self.assertEqual(len(snaps), 2)
+                self.assertEqual(snaps[0], (100.0, 0.0))
+                self.assertEqual(snaps[1], (250.0, 150.0))
+
+            # 3. Migration from fragmented per-sheet DBs and loose JSON files
+            frag_sheet = root / "job1" / "sheets" / "s1"
+            frag_sheet.mkdir(parents=True)
+            frag_db = frag_sheet / "traffic_pools.db"
+            persist_to_database([{**reel_run_1[0], "video_id": "v200", "url": "https://facebook.com/reel/v200"}], frag_db)
+            (frag_sheet / "glasser_migrated_chan.json").write_text(
+                json.dumps({"reels": [{"video_id": "v300"}]}), encoding="utf-8"
+            )
+
+            stats = migrate_fragmented_storage(runs_root=root, central_db=central_db, cleanup=True)
+            self.assertEqual(stats["migrated_dbs"], 1)
+            self.assertEqual(stats["migrated_json_caches"], 1)
+            self.assertFalse(frag_db.exists())
+            self.assertFalse((frag_sheet / "glasser_migrated_chan.json").exists())
+            self.assertIsNotNone(read_cached_reels("migrated_chan", db_path=central_db))
+            self.assertEqual(get_cached_transcript("v200", central_db), "Xin chào các bạn")
 
 
 if __name__ == "__main__":

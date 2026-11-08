@@ -26,6 +26,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 CURRENT_DIR = Path(__file__).parent
 sys.path.append(str(CURRENT_DIR.parent.parent.parent))
 
+from tools.loop.viral_analyzer.cache import (
+    get_cached_transcript,
+    persist_to_database,
+)
 from tools.loop.viral_analyzer.config import (
     ViralAnalyzerConfig,
     load_config,
@@ -109,107 +113,6 @@ def classify_pool(views: int, config: ViralAnalyzerConfig) -> Tuple[int, str]:
     return 1, config.pools.get(1, config.pools[min(config.pools.keys())]).name
 
 
-def persist_to_database(reels: List[Dict[str, Any]], db_path: Path) -> None:
-    """Persist analyzed reels and transcripts to SQLite database."""
-    if not db_path.parent.exists():
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-
-    conn = sqlite3.connect(str(db_path))
-    now_ts = datetime.now(timezone.utc).isoformat()
-    try:
-        with conn:
-            # Ensure schema & columns
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS videos (
-                id TEXT PRIMARY KEY,
-                platform TEXT NOT NULL,
-                video_id TEXT NOT NULL,
-                url TEXT NOT NULL UNIQUE,
-                author_handle TEXT NOT NULL,
-                title TEXT,
-                sound_id TEXT,
-                sound_name TEXT,
-                duration_sec INTEGER,
-                current_pool INTEGER DEFAULT 1,
-                published_at TIMESTAMP,
-                first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                transcript TEXT,
-                transcribed_at TIMESTAMP
-            )
-            """)
-
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS metric_snapshots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                video_id TEXT NOT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                views INTEGER NOT NULL DEFAULT 0,
-                likes INTEGER NOT NULL DEFAULT 0,
-                comments INTEGER NOT NULL DEFAULT 0,
-                shares INTEGER NOT NULL DEFAULT 0,
-                pool_level INTEGER NOT NULL,
-                velocity_per_hour REAL DEFAULT 0.0,
-                acceleration REAL DEFAULT 0.0,
-                comment_ratio REAL DEFAULT 0.0,
-                engagement_rate REAL DEFAULT 0.0
-            )
-            """)
-
-            for r in reels:
-                primary_id = f"facebook:{r['video_id']}"
-                conn.execute(
-                    """
-                    INSERT INTO videos (
-                        id, platform, video_id, url, author_handle, title,
-                        current_pool, published_at, first_seen_at, last_scraped_at,
-                        transcript, transcribed_at
-                    ) VALUES (?, 'facebook', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                        current_pool = excluded.current_pool,
-                        last_scraped_at = excluded.last_scraped_at,
-                        title = excluded.title,
-                        transcript = COALESCE(excluded.transcript, videos.transcript),
-                        transcribed_at = COALESCE(excluded.transcribed_at, videos.transcribed_at)
-                    """,
-                    (
-                        primary_id,
-                        r["video_id"],
-                        r["url"],
-                        r["author_handle"],
-                        r["title"],
-                        r["current_pool"],
-                        r["published_at"],
-                        now_ts,
-                        now_ts,
-                        r.get("transcript"),
-                        now_ts if r.get("transcript") else None,
-                    ),
-                )
-
-                conn.execute(
-                    """
-                    INSERT INTO metric_snapshots (
-                        video_id, timestamp, views, likes, comments, shares,
-                        pool_level, velocity_per_hour, comment_ratio
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        primary_id,
-                        now_ts,
-                        r["views"],
-                        r["likes"],
-                        r["comments"],
-                        r["shares"],
-                        r["current_pool"],
-                        r["velocity_per_hour"],
-                        r.get("comment_ratio", 0.0),
-                    ),
-                )
-    finally:
-        conn.close()
-
-
 def run_analyzer_pipeline(
     config: ViralAnalyzerConfig,
     dry_run: bool = False,
@@ -266,7 +169,7 @@ def run_analyzer_pipeline(
         raw_items = fetch_target_reels(
             target,
             config,
-            cache_dir=cache_dir or config.storage.output_file.parent,
+            cache_dir=cache_dir,
             legacy_cache=legacy_cache,
             progress_cb=progress_cb,
             error_collector=glasser_errors,
@@ -397,17 +300,8 @@ def run_analyzer_pipeline(
         else:
             print(f"    [*] Found in cache: {video_path.name}")
 
-        # Check existing transcript in DB first
-        existing_tr = None
-        if config.storage.db_path.exists():
-            try:
-                conn_chk = sqlite3.connect(str(config.storage.db_path))
-                row = conn_chk.cursor().execute("SELECT transcript FROM videos WHERE id = ?", (f"facebook:{vid}",)).fetchone()
-                if row and row[0]:
-                    existing_tr = row[0]
-                conn_chk.close()
-            except Exception:
-                pass
+        # Check existing transcript in centralized SQLite DB first
+        existing_tr = get_cached_transcript(vid, config.storage.db_path)
 
         if existing_tr:
             print(f"    [*] Transcript already present in DB ({len(existing_tr)} chars).")
