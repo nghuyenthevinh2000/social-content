@@ -312,10 +312,13 @@ def fetch_target_reels(
                         data = json.load(f)
                         reels = data.get("reels", [])
                         if reels:
+                            for r in reels:
+                                if isinstance(r, dict):
+                                    r["_source"] = "cache"
                             msg = f"    [cache] Dùng cache ({len(reels)} reel) cho {handle} ({fname})."
                             print(msg)
                             if progress_cb:
-                                progress_cb(msg)
+                                progress_cb(f"[cache] Dùng cache ({len(reels)} reel) cho {handle} ({fname})")
                             return reels
                 except Exception:
                     pass
@@ -324,7 +327,7 @@ def fetch_target_reels(
     msg = f"    [api] Gọi Glasser cho {handle}..."
     print(msg)
     if progress_cb:
-        progress_cb(msg)
+        progress_cb(f"[api] Gọi Glasser cho {handle}...")
 
     temp_out = Path(tempfile.gettempdir()) / f"glasser_{slug}.json"
     idempotency_key = f"viral-loop-{slug}-{int(time.time() // 86400)}"
@@ -349,6 +352,9 @@ def fetch_target_reels(
             with open(temp_out, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 reels = data.get("reels", [])
+                for r in reels:
+                    if isinstance(r, dict):
+                        r["_source"] = "glasser"
                 for d in search_dirs:
                     if d:
                         try:
@@ -356,6 +362,10 @@ def fetch_target_reels(
                             shutil.copy2(temp_out, d / f"glasser_{slug}.json")
                         except Exception:
                             pass
+                success_msg = f"    [api] Glasser thành công ({len(reels)} reel) cho {handle}."
+                print(success_msg)
+                if progress_cb:
+                    progress_cb(f"[api] Glasser thành công ({len(reels)} reel mới từ API) cho {handle}")
                 return reels
         except Exception as read_err:
             glasser_err = GlasserExecutionError(
@@ -390,10 +400,13 @@ def fetch_target_reels(
                         data = json.load(f)
                         reels = data.get("reels", [])
                         if reels:
+                            for r in reels:
+                                if isinstance(r, dict):
+                                    r["_source"] = "cache_fallback"
                             fallback_msg = f"    [!] Glasser lỗi; dùng lại cache cũ ({len(reels)} reel) cho {handle}."
                             print(fallback_msg)
                             if progress_cb:
-                                progress_cb(fallback_msg)
+                                progress_cb(f"[cache-fallback] {handle}: Glasser lỗi, dùng lại cache cũ ({len(reels)} reel)")
                             return reels
                 except Exception:
                     pass

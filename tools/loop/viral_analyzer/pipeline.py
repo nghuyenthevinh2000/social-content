@@ -255,6 +255,10 @@ def run_analyzer_pipeline(
     glasser_errors: List[Any] = []
     targets_to_scan = config.targets[:limit_targets] if limit_targets else config.targets
 
+    profiles_from_api: List[str] = []
+    profiles_from_cache: List[str] = []
+    profiles_empty: List[str] = []
+
     for idx, target in enumerate(targets_to_scan, 1):
         handle = target.get("handle", "unknown")
         print(f"[{idx}/{len(targets_to_scan)}] Querying {handle}...")
@@ -268,6 +272,15 @@ def run_analyzer_pipeline(
             error_collector=glasser_errors,
         )
         count_for_target = 0
+        target_source = None
+        if raw_items:
+            target_source = raw_items[0].get("_source", "cache")
+            if target_source == "glasser":
+                profiles_from_api.append(handle)
+            else:
+                profiles_from_cache.append(handle)
+        else:
+            profiles_empty.append(handle)
 
         for r in raw_items:
             creation_str = r.get("creation_time")
@@ -316,14 +329,26 @@ def run_analyzer_pipeline(
                 "pool_name": pool_name,
                 "velocity_per_hour": velocity,
                 "comment_ratio": round(comments / max(likes, 1), 3),
+                "source": r.get("_source", target_source or "cache"),
             })
             count_for_target += 1
 
-        print(f"    -> Extracted {count_for_target} reels in 48h window.")
-        progress_cb and progress_cb(f"    -> {handle}: {count_for_target} reel(s) trong 48h.")
+        source_label = "Glasser API" if target_source == "glasser" else ("Cache" if target_source else "Không có reel")
+        print(f"    -> Extracted {count_for_target} reels in 48h window ({source_label}).")
+        progress_cb and progress_cb(f"    -> {handle}: {count_for_target} reel(s) trong 48h ({source_label}).")
 
     print(f"\n[+] Total 48h viral candidates harvested: {len(extracted_reels)}")
     progress_cb and progress_cb(f"[+] Tổng cộng {len(extracted_reels)} reel ứng viên trong 48h.")
+
+    source_summary = (
+        f"Thống kê nguồn cào: "
+        f"Glasser API ({len(profiles_from_api)} kênh: {', '.join(profiles_from_api) or '0'}) | "
+        f"Cache ({len(profiles_from_cache)} kênh: {', '.join(profiles_from_cache) or '0'})"
+    )
+    if profiles_empty:
+        source_summary += f" | Không có reel ({len(profiles_empty)} kênh: {', '.join(profiles_empty)})"
+    print(f"[*] {source_summary}")
+    progress_cb and progress_cb(f"[*] {source_summary}")
 
     # 3. Download & Audio Transcription
     # @deprecated [OBSOLETE]: Local video download + audio transcription pipeline is obsolete
@@ -439,8 +464,18 @@ def run_analyzer_pipeline(
             "video_cache_dir": str(config.storage.video_dir),
             "retained_cached_videos": len(list(config.storage.video_dir.glob("*.mp4"))),
             "errors": [e.to_dict() if hasattr(e, "to_dict") else str(e) for e in glasser_errors],
+            "source_breakdown": {
+                "glasser_api": profiles_from_api,
+                "cache": profiles_from_cache,
+                "empty": profiles_empty,
+            },
         },
         "errors": [e.to_dict() if hasattr(e, "to_dict") else str(e) for e in glasser_errors],
+        "source_breakdown": {
+            "glasser_api": profiles_from_api,
+            "cache": profiles_from_cache,
+            "empty": profiles_empty,
+        },
         "pools": by_pools,
         "all_reels": extracted_reels,
     }
@@ -458,6 +493,9 @@ def run_analyzer_pipeline(
     print(f"Total Extracted : {len(extracted_reels)} reels across 5 Pools")
     for pid in sorted(config.pools.keys()):
         print(f"  - Pool {pid} ({config.pools[pid].name}): {len(by_pools[f'pool_{pid}'])} reels")
+    print(f"Data Sources    : Glasser API: {len(profiles_from_api)} kênh, Cache: {len(profiles_from_cache)} kênh")
+    if profiles_empty:
+        print(f"Empty Targets   : {len(profiles_empty)} kênh ({', '.join(profiles_empty)})")
     print(f"Saved Output    : {config.storage.output_file}")
     print(f"Database Target : {config.storage.db_path}")
     print(f"Cached Videos   : {len(list(config.storage.video_dir.glob('*.mp4')))} stored in {config.storage.video_dir} (1-week retention)")

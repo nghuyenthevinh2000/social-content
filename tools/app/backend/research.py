@@ -532,6 +532,7 @@ def _process_sheet(
     reels: List[Dict[str, Any]] = []
     error: Optional[str] = None
     notice: Optional[str] = None
+    payload: Dict[str, Any] = {}
     if sheet["targets"]:
         sheet_dir = run_dir / "sheets" / sheet["slug"]
         sheet_dir.mkdir(parents=True, exist_ok=True)
@@ -572,6 +573,7 @@ def _process_sheet(
                 sheet["slug"],
                 reels=len(reels),
                 pool_distribution=payload.get("metadata", {}).get("pool_distribution", {}),
+                source_breakdown=payload.get("source_breakdown") or payload.get("metadata", {}).get("source_breakdown", {}),
             )
         except Exception as exc:
             app_err = handle_glasser_error(exc, log=log)
@@ -620,6 +622,7 @@ def _process_sheet(
         "sheet": sheet_name,
         "targets": sheet["targets"],
         "reels": reels,
+        "source_breakdown": payload.get("source_breakdown", {}),
         "topics": topics,
         "error": error,
         "notice": notice,
@@ -636,6 +639,7 @@ def _process_sheet(
         error=error,
         notice=notice,
         topics=topics,
+        source_breakdown=payload.get("source_breakdown", {}),
         finished_at=now_iso(),
     )
     if topics:

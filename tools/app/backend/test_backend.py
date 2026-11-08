@@ -482,6 +482,9 @@ class BackendTests(unittest.TestCase):
                 # Across 2 duplicate targets in targets list, Glasser should only be queried ONCE
                 self.assertEqual(glasser_calls, 1, f"Expected 1 Glasser call for duplicate targets, got {glasser_calls}")
                 self.assertTrue(any("[cache]" in log for log in logs))
+                self.assertIn("dup_channel", payload["source_breakdown"]["glasser_api"])
+                self.assertIn("dup_channel", payload["source_breakdown"]["cache"])
+                self.assertTrue(any("Thống kê nguồn cào:" in log for log in logs))
 
     def test_suggest_topics_empty_reels_returns_empty(self):
         from tools.app.backend.research import suggest_topics

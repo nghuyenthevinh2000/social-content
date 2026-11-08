@@ -26,6 +26,11 @@ type Sheet = {
   targets: number;
   reels: number;
   pool_distribution: Record<string, number>;
+  source_breakdown?: {
+    glasser_api?: string[];
+    cache?: string[];
+    empty?: string[];
+  };
   topics: Topic[];
   error: string | null;
   notice?: string | null;
@@ -678,6 +683,21 @@ const Home: React.FC = () => {
                               {pool.replace('pool_', 'P')} · {count}
                             </span>
                           ))}
+                        </div>
+                      )}
+                      {sheet.source_breakdown && ((sheet.source_breakdown.glasser_api?.length ?? 0) > 0 || (sheet.source_breakdown.cache?.length ?? 0) > 0) && (
+                        <div className="source-breakdown muted" style={{ fontSize: '0.82rem', margin: '0.35rem 0' }}>
+                          {(sheet.source_breakdown.glasser_api?.length ?? 0) > 0 && (
+                            <span title={sheet.source_breakdown.glasser_api?.join(', ')}>
+                              ⚡ Glasser API: {sheet.source_breakdown.glasser_api?.length} kênh
+                            </span>
+                          )}
+                          {(sheet.source_breakdown.glasser_api?.length ?? 0) > 0 && (sheet.source_breakdown.cache?.length ?? 0) > 0 && ' · '}
+                          {(sheet.source_breakdown.cache?.length ?? 0) > 0 && (
+                            <span title={sheet.source_breakdown.cache?.join(', ')}>
+                              💾 Cache: {sheet.source_breakdown.cache?.length} kênh
+                            </span>
+                          )}
                         </div>
                       )}
                       {sheet.error && <div className="alert error">{sheet.error}</div>}
