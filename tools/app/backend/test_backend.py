@@ -97,6 +97,22 @@ class BackendTests(unittest.TestCase):
         topics = normalize_topics([{"title": "Chỉ một"}], fallback)
         self.assertEqual(len(topics), 3)
 
+    def test_normalize_topics_resolves_page_url_to_reel_url(self):
+        fallback = heuristic_topics("kênh", [])
+        reels = [
+            {"author_handle": "my_page", "video_id": "123456", "url": "https://www.facebook.com/reel/123456"},
+            {"author_handle": "another_page", "video_id": "789101", "url": "https://www.facebook.com/reel/789101"},
+        ]
+        # Agent provided a page URL instead of reel URL
+        agent_data = [
+            {"title": "T1", "source_urls": ["https://www.facebook.com/my_page"]},
+            {"title": "T2", "source_urls": ["https://www.facebook.com/reel/789101"]},
+        ]
+        topics = normalize_topics(agent_data, fallback, reels=reels)
+        # Should resolve page URL to the actual reel URL
+        self.assertEqual(topics[0]["source_urls"], ["https://www.facebook.com/reel/123456"])
+        self.assertEqual(topics[1]["source_urls"], ["https://www.facebook.com/reel/789101"])
+
     def test_pipeline_reads_job_cache_without_network(self):
         from datetime import datetime, timezone
 

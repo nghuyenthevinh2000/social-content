@@ -65,6 +65,17 @@ const EXCEL_ACCEPT =
 
 const formatNumber = (value: number) => new Intl.NumberFormat('vi-VN').format(value);
 const shortUrl = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
+const reelLink = (url: string) => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.includes('/reel/') || trimmed.includes('/videos/') || trimmed.includes('/watch/')) {
+    return trimmed;
+  }
+  if (trimmed.includes('facebook.com') && !trimmed.includes('/reels')) {
+    return trimmed.replace(/\/+$/, '') + '/reels/';
+  }
+  return trimmed;
+};
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 function reportClientLog(message: string, stack?: string, source = 'client') {
@@ -653,10 +664,20 @@ const Home: React.FC = () => {
                               )}
                               <div className="topic-foot">
                                 {topic.format && <span>{topic.format}</span>}
-                                {topic.source_urls?.[0] && (
-                                  <a href={topic.source_urls[0]} target="_blank" rel="noreferrer">
-                                    Reel gốc ↗
-                                  </a>
+                                {topic.source_urls && topic.source_urls.length > 0 && (
+                                  <span className="topic-reels">
+                                    {topic.source_urls.map((url, i) => (
+                                      <a
+                                        key={i}
+                                        href={reelLink(url)}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ marginLeft: i > 0 ? 8 : 0 }}
+                                      >
+                                        {topic.source_urls.length > 1 ? `Reel gốc ${i + 1} ↗` : 'Reel gốc ↗'}
+                                      </a>
+                                    ))}
+                                  </span>
                                 )}
                               </div>
                             </article>

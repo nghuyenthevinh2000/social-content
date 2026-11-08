@@ -141,9 +141,13 @@ def _reel_digest(reels: List[Dict[str, Any]], limit: int = 12) -> str:
         transcript = str(reel.get("transcript") or "").strip().replace("\n", " ")
         if transcript:
             transcript = f" | transcript: {transcript[:400]}"
+        reel_url = str(reel.get("url") or "").strip()
+        if not reel_url and reel.get("video_id"):
+            reel_url = f"https://www.facebook.com/reel/{reel['video_id']}"
+        url_part = f" | reel_url: {reel_url}" if reel_url else ""
         lines.append(
             f"{index}. [P{reel.get('current_pool')} | {int(reel.get('views') or 0):,} views | "
-            f"{float(reel.get('velocity_per_hour') or 0):,.0f} views/h | @{reel.get('author_handle')}] "
+            f"{float(reel.get('velocity_per_hour') or 0):,.0f} views/h | @{reel.get('author_handle')}{url_part}] "
             f"{title}{transcript}"
         )
     return "\n".join(lines)
@@ -168,7 +172,7 @@ DỮ LIỆU REEL 48 GIỜ:
 NHIỆM VỤ: Đề xuất ĐÚNG 3 chủ đề video có khả năng viral cao nhất cho nhóm chủ đề này.
 Yêu cầu:
 - 3 chủ đề phải khác nhau rõ rệt về góc khai thác, không trùng ý.
-- Dựa trên bằng chứng thật từ dữ liệu trên (view, velocity, pool, transcript, tên kênh).
+- Dựa trên bằng chứng thật từ dữ liệu trên (view, velocity, pool, transcript, tên kênh, reel_url).
 - Cụ thể, có thể bấm máy quay làm ngay; không viết chung chung.
 - Viết tiếng Việt.
 - Trả về DUY NHẤT một JSON array, không markdown, không giải thích ngoài JSON.
@@ -182,7 +186,7 @@ Schema mỗi phần tử:
     "why_viral": "vì sao chủ đề này có khả năng viral, dẫn số liệu",
     "outline": ["ý 1", "ý 2", "ý 3"],
     "format": "định dạng gợi ý, ví dụ Reels 35s talking-head",
-    "source_urls": ["url reel bằng chứng"]
+    "source_urls": ["url reel bằng chứng (chính xác giá trị reel_url ở trên, bắt đầu bằng https://www.facebook.com/reel/...)"]
   }}
 ]"""
 
@@ -203,7 +207,38 @@ def _normalize_sources(value: Any) -> List[str]:
     return []
 
 
-def normalize_topics(data: Any, fallback: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _resolve_to_reel_url(url: str, reels: List[Dict[str, Any]]) -> str:
+    """Ensure URL points directly to a reel rather than a generic profile/page."""
+    url = url.strip()
+    if not url:
+        return ""
+    if "/reel/" in url or "/videos/" in url or "/watch/" in url:
+        return url
+
+    clean = url.rstrip("/")
+    target_handle = clean.split("/")[-1].replace("@", "").lower()
+
+    # Find the top matching reel by author handle
+    for r in reels:
+        r_handle = str(r.get("author_handle") or "").strip().lower()
+        if r_handle and (r_handle == target_handle or target_handle in r_handle or r_handle in target_handle):
+            if r.get("url"):
+                return str(r["url"]).strip()
+            if r.get("video_id"):
+                return f"https://www.facebook.com/reel/{r['video_id']}"
+
+    # If it is a facebook page/profile URL, route to the /reels/ tab
+    if "facebook.com" in clean and not clean.endswith("/reels"):
+        return f"{clean}/reels/"
+
+    return url
+
+
+def normalize_topics(
+    data: Any,
+    fallback: List[Dict[str, Any]],
+    reels: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
     if isinstance(data, dict):
         data = data.get("topics") or data.get("ideas") or [data]
     if not isinstance(data, list):
@@ -212,9 +247,14 @@ def normalize_topics(data: Any, fallback: List[Dict[str, Any]]) -> List[Dict[str
     for index, item in enumerate(data):
         if not isinstance(item, dict):
             continue
-        sources = _normalize_sources(item.get("source_urls") or item.get("sources"))
+        raw_sources = _normalize_sources(item.get("source_urls") or item.get("sources"))
+        sources = [_resolve_to_reel_url(u, reels or []) for u in raw_sources if u]
         if not sources and index < len(fallback):
             sources = fallback[index].get("source_urls", [])
+        if not sources and reels and index < len(reels):
+            top_url = reels[index].get("url") or (f"https://www.facebook.com/reel/{reels[index]['video_id']}" if reels[index].get("video_id") else None)
+            if top_url:
+                sources = [top_url]
         topics.append(
             {
                 "title": str(item.get("title") or "").strip() or (fallback[index]["title"] if index < len(fallback) else "Chủ đề mới"),
@@ -245,13 +285,17 @@ def _extract_json_candidates(text: str) -> List[str]:
     return candidates
 
 
-def parse_topics(text: str, fallback: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def parse_topics(
+    text: str,
+    fallback: List[Dict[str, Any]],
+    reels: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
     for candidate in _extract_json_candidates(text):
         try:
             data = json.loads(candidate)
         except json.JSONDecodeError:
             continue
-        topics = normalize_topics(data, fallback)
+        topics = normalize_topics(data, fallback, reels=reels)
         if topics:
             return topics
     return fallback
@@ -353,7 +397,7 @@ def suggest_topics(
             text = client.prompt(session_id, prompt)
             if not text.strip():
                 raise ACPError("Agent trả về nội dung rỗng.")
-            topics = parse_topics(text, fallback)
+            topics = parse_topics(text, fallback, reels=reels)
             if topics and topics[0].get("generated_by") == "agent":
                 log("Agent đã trả về 3 chủ đề.")
             else:
