@@ -293,6 +293,31 @@ class BackendTests(unittest.TestCase):
             self.assertIsNone(store.get_topic("thoi-trang"))
             self.assertEqual(len(store.list_topics()), 4)
 
+            # Test multi-user isolation: new accounts start empty, no leakage
+            user_a = "user_alpha_123"
+            user_b = "user_beta_456"
+            self.assertEqual(len(store.list_topics(user_id=user_a)), 0)
+            self.assertEqual(len(store.list_topics(user_id=user_b)), 0)
+            store.add_profile("Nấu ăn A", "https://facebook.com/nauan123", "Bếp A", user_id=user_a)
+            self.assertEqual(len(store.list_topics(user_id=user_a)), 1)
+            self.assertEqual(len(store.list_topics(user_id=user_b)), 0)
+            self.assertIsNone(store.get_topic("nau-an-a", user_id=user_b))
+
+    def test_job_store_user_isolation(self):
+        from tools.app.backend.store import JobStore
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "jobs.db"
+            store = JobStore(db_path)
+            job_a = {"id": "job_a1", "status": "completed", "created_at": "2026-11-08T00:00:00Z", "user_id": "user_a"}
+            store.put(job_a)
+
+            # user_a can read job_a
+            self.assertIsNotNone(store.snapshot("job_a1", user_id="user_a"))
+            # user_b cannot read job_a
+            self.assertIsNone(store.snapshot("job_a1", user_id="user_b"))
+            # unassigned user cannot cancel job_a
+            self.assertFalse(store.cancel("job_a1", user_id="user_b"))
+
     def test_max_videos_env_fallback(self):
         from tools.app.backend.server import _int
         # Default when unset

@@ -26,6 +26,7 @@
     "@capacitor/status-bar": "8.0.4",
     "@ionic/react": "^9.0.0",
     "@ionic/react-router": "^9.0.0",
+    "firebase": "^13.2.0",
     "ionicons": "^8.1.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",

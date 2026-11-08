@@ -222,29 +222,77 @@ class SocialProfileStore:
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
         with self._tx() as db:
+            self._init_or_migrate(db)
+        db = sqlite3.connect(path)
+        db.execute("PRAGMA journal_mode=WAL")
+        db.close()
+        self._ensure_seeds("default")
+
+    def _init_or_migrate(self, db) -> None:
+        cursor = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='topics'")
+        if not cursor.fetchone():
             db.execute("""
-            CREATE TABLE IF NOT EXISTS topics (
-                slug TEXT PRIMARY KEY,
+            CREATE TABLE topics (
+                user_id TEXT NOT NULL,
+                slug TEXT NOT NULL,
                 name TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, slug)
             )
             """)
             db.execute("""
-            CREATE TABLE IF NOT EXISTS profiles (
+            CREATE TABLE profiles (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
                 topic_slug TEXT NOT NULL,
                 name TEXT NOT NULL,
                 url TEXT NOT NULL,
                 handle TEXT NOT NULL,
                 created_at TEXT NOT NULL,
-                UNIQUE(topic_slug, url)
+                UNIQUE(user_id, topic_slug, url)
             )
             """)
-            db.execute("CREATE INDEX IF NOT EXISTS idx_profiles_topic ON profiles (topic_slug)")
-        db = sqlite3.connect(path)
-        db.execute("PRAGMA journal_mode=WAL")
-        db.close()
-        self._ensure_seeds()
+            db.execute("CREATE INDEX IF NOT EXISTS idx_profiles_user_topic ON profiles (user_id, topic_slug)")
+            return
+
+        cols = [r[1] for r in db.execute("PRAGMA table_info(topics)").fetchall()]
+        if "user_id" not in cols:
+            db.execute("ALTER TABLE topics RENAME TO topics_old")
+            db.execute("ALTER TABLE profiles RENAME TO profiles_old")
+
+            db.execute("""
+            CREATE TABLE topics (
+                user_id TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, slug)
+            )
+            """)
+            db.execute("""
+            CREATE TABLE profiles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                topic_slug TEXT NOT NULL,
+                name TEXT NOT NULL,
+                url TEXT NOT NULL,
+                handle TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(user_id, topic_slug, url)
+            )
+            """)
+            db.execute("CREATE INDEX IF NOT EXISTS idx_profiles_user_topic ON profiles (user_id, topic_slug)")
+
+            db.execute("""
+            INSERT OR IGNORE INTO topics (user_id, slug, name, created_at)
+            SELECT 'default', slug, name, created_at FROM topics_old
+            """)
+            db.execute("""
+            INSERT OR IGNORE INTO profiles (user_id, topic_slug, name, url, handle, created_at)
+            SELECT 'default', topic_slug, name, url, handle, created_at FROM profiles_old
+            """)
+            db.execute("DROP TABLE topics_old")
+            db.execute("DROP TABLE profiles_old")
 
     @contextmanager
     def _tx(self):
@@ -262,31 +310,50 @@ class SocialProfileStore:
         finally:
             db.close()
 
-    def _ensure_seeds(self) -> None:
+    def claim_legacy_topics(self, user_id: str) -> None:
+        """Migrate unassigned 'default' or test legacy topics to the given user account."""
         with self._tx() as db:
-            count = db.execute("SELECT COUNT(*) FROM topics").fetchone()[0]
+            user_count = db.execute("SELECT COUNT(*) FROM topics WHERE user_id = ?", (user_id,)).fetchone()[0]
+            if user_count == 0:
+                for src in ("default", "uid_hieu_111"):
+                    count = db.execute("SELECT COUNT(*) FROM topics WHERE user_id = ?", (src,)).fetchone()[0]
+                    if count > 0:
+                        db.execute("UPDATE topics SET user_id = ? WHERE user_id = ?", (user_id, src))
+                        db.execute("UPDATE profiles SET user_id = ? WHERE user_id = ?", (user_id, src))
+                        break
+
+    def _ensure_seeds(self, user_id: str = "default") -> None:
+        if user_id != "default":
+            # Real accounts start clean with their own library. NEVER copy from default or other users!
+            return
+        with self._tx() as db:
+            count = db.execute("SELECT COUNT(*) FROM topics WHERE user_id = 'default'").fetchone()[0]
             if count == 0:
                 now = now_iso()
                 for seed in DEFAULT_SEEDS:
                     slug = slugify(seed["name"])
-                    db.execute("INSERT OR IGNORE INTO topics (slug, name, created_at) VALUES (?, ?, ?)", (slug, seed["name"], now))
+                    db.execute(
+                        "INSERT OR IGNORE INTO topics (user_id, slug, name, created_at) VALUES ('default', ?, ?, ?)",
+                        (slug, seed["name"], now),
+                    )
                     for target in seed["targets"]:
                         handle, canonical = facebook_handle(target["url"])
                         db.execute(
-                            "INSERT OR IGNORE INTO profiles (topic_slug, name, url, handle, created_at) VALUES (?, ?, ?, ?, ?)",
+                            "INSERT OR IGNORE INTO profiles (user_id, topic_slug, name, url, handle, created_at) VALUES ('default', ?, ?, ?, ?, ?)",
                             (slug, target["name"], canonical, handle, now),
                         )
 
-    def list_topics(self, query: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_topics(self, user_id: str = "default", query: Optional[str] = None) -> List[Dict[str, Any]]:
         """Query topics and attached social profiles, optionally filtered by keyword."""
+        self._ensure_seeds(user_id)
         with self._tx() as db:
-            rows = db.execute("SELECT slug, name FROM topics ORDER BY rowid ASC").fetchall()
+            rows = db.execute("SELECT slug, name FROM topics WHERE user_id = ? ORDER BY rowid ASC", (user_id,)).fetchall()
             results: List[Dict[str, Any]] = []
             q = (query or "").strip().lower()
             for slug, name in rows:
                 p_rows = db.execute(
-                    "SELECT name, url, handle FROM profiles WHERE topic_slug = ? ORDER BY id ASC",
-                    (slug,),
+                    "SELECT name, url, handle FROM profiles WHERE user_id = ? AND topic_slug = ? ORDER BY id ASC",
+                    (user_id, slug),
                 ).fetchall()
                 targets = [{"name": r[0], "url": r[1], "handle": r[2]} for r in p_rows]
                 if q:
@@ -303,15 +370,15 @@ class SocialProfileStore:
                     results.append({"name": name, "slug": slug, "targets": targets})
             return results
 
-    def get_topic(self, slug: str) -> Optional[Dict[str, Any]]:
+    def get_topic(self, slug: str, user_id: str = "default") -> Optional[Dict[str, Any]]:
         with self._tx() as db:
-            row = db.execute("SELECT slug, name FROM topics WHERE slug = ?", (slug,)).fetchone()
+            row = db.execute("SELECT slug, name FROM topics WHERE user_id = ? AND slug = ?", (user_id, slug)).fetchone()
             if not row:
                 return None
             slug, name = row
             p_rows = db.execute(
-                "SELECT name, url, handle FROM profiles WHERE topic_slug = ? ORDER BY id ASC",
-                (slug,),
+                "SELECT name, url, handle FROM profiles WHERE user_id = ? AND topic_slug = ? ORDER BY id ASC",
+                (user_id, slug),
             ).fetchall()
             return {
                 "name": name,
@@ -319,14 +386,16 @@ class SocialProfileStore:
                 "targets": [{"name": r[0], "url": r[1], "handle": r[2]} for r in p_rows],
             }
 
-    def upsert_topic(self, name: str, targets: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    def upsert_topic(
+        self, name: str, targets: Optional[List[Dict[str, Any]]] = None, user_id: str = "default"
+    ) -> Dict[str, Any]:
         slug = slugify(name)
         now = now_iso()
         with self._tx() as db:
             db.execute(
-                "INSERT INTO topics (slug, name, created_at) VALUES (?, ?, ?) "
-                "ON CONFLICT(slug) DO UPDATE SET name = excluded.name",
-                (slug, name.strip(), now),
+                "INSERT INTO topics (user_id, slug, name, created_at) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(user_id, slug) DO UPDATE SET name = excluded.name",
+                (user_id, slug, name.strip(), now),
             )
             if targets:
                 for target in targets:
@@ -336,44 +405,49 @@ class SocialProfileStore:
                     handle, canonical = facebook_handle(url)
                     t_name = clean_name(target.get("name") or handle)
                     db.execute(
-                        "INSERT INTO profiles (topic_slug, name, url, handle, created_at) VALUES (?, ?, ?, ?, ?) "
-                        "ON CONFLICT(topic_slug, url) DO UPDATE SET name = excluded.name",
-                        (slug, t_name, canonical, handle, now),
+                        "INSERT INTO profiles (user_id, topic_slug, name, url, handle, created_at) VALUES (?, ?, ?, ?, ?, ?) "
+                        "ON CONFLICT(user_id, topic_slug, url) DO UPDATE SET name = excluded.name",
+                        (user_id, slug, t_name, canonical, handle, now),
                     )
-        return self.get_topic(slug) or {"name": name, "slug": slug, "targets": targets or []}
+        return self.get_topic(slug, user_id=user_id) or {"name": name, "slug": slug, "targets": targets or []}
 
-    def add_profile(self, topic_name_or_slug: str, url: str, name: Optional[str] = None) -> Dict[str, Any]:
+    def add_profile(
+        self, topic_name_or_slug: str, url: str, name: Optional[str] = None, user_id: str = "default"
+    ) -> Dict[str, Any]:
         slug = slugify(topic_name_or_slug)
         handle, canonical = facebook_handle(url)
         channel_name = clean_name(name or handle)
         now = now_iso()
         with self._tx() as db:
-            row = db.execute("SELECT slug, name FROM topics WHERE slug = ?", (slug,)).fetchone()
+            row = db.execute("SELECT slug, name FROM topics WHERE user_id = ? AND slug = ?", (user_id, slug)).fetchone()
             if not row:
-                db.execute("INSERT INTO topics (slug, name, created_at) VALUES (?, ?, ?)", (slug, topic_name_or_slug.strip(), now))
+                db.execute(
+                    "INSERT INTO topics (user_id, slug, name, created_at) VALUES (?, ?, ?, ?)",
+                    (user_id, slug, topic_name_or_slug.strip(), now),
+                )
             db.execute(
-                "INSERT INTO profiles (topic_slug, name, url, handle, created_at) VALUES (?, ?, ?, ?, ?) "
-                "ON CONFLICT(topic_slug, url) DO UPDATE SET name = excluded.name",
-                (slug, channel_name, canonical, handle, now),
+                "INSERT INTO profiles (user_id, topic_slug, name, url, handle, created_at) VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(user_id, topic_slug, url) DO UPDATE SET name = excluded.name",
+                (user_id, slug, channel_name, canonical, handle, now),
             )
-        return self.get_topic(slug) or {"name": topic_name_or_slug, "slug": slug, "targets": []}
+        return self.get_topic(slug, user_id=user_id) or {"name": topic_name_or_slug, "slug": slug, "targets": []}
 
-    def delete_profile(self, topic_slug: str, url: str) -> bool:
+    def delete_profile(self, topic_slug: str, url: str, user_id: str = "default") -> bool:
         _, canonical = facebook_handle(url)
         with self._tx() as db:
             res = db.execute(
-                "DELETE FROM profiles WHERE topic_slug = ? AND (url = ? OR url = ?)",
-                (topic_slug, url, canonical),
+                "DELETE FROM profiles WHERE user_id = ? AND topic_slug = ? AND (url = ? OR url = ?)",
+                (user_id, topic_slug, url, canonical),
             )
             return res.rowcount > 0
 
-    def delete_topic(self, topic_slug: str) -> bool:
+    def delete_topic(self, topic_slug: str, user_id: str = "default") -> bool:
         with self._tx() as db:
-            db.execute("DELETE FROM profiles WHERE topic_slug = ?", (topic_slug,))
-            res = db.execute("DELETE FROM topics WHERE slug = ?", (topic_slug,))
+            db.execute("DELETE FROM profiles WHERE user_id = ? AND topic_slug = ?", (user_id, topic_slug))
+            res = db.execute("DELETE FROM topics WHERE user_id = ? AND slug = ?", (user_id, topic_slug))
             return res.rowcount > 0
 
-    def import_from_source(self, raw: bytes, filename: str) -> List[Dict[str, Any]]:
+    def import_from_source(self, raw: bytes, filename: str, user_id: str = "default") -> List[Dict[str, Any]]:
         """Parse an Excel or Google Sheet and persist the discovered topics and profiles."""
         import tempfile
 
@@ -387,8 +461,8 @@ class SocialProfileStore:
             tmp_path.unlink(missing_ok=True)
 
         for sheet in sheets:
-            self.upsert_topic(sheet["name"], sheet["targets"])
-        return self.list_topics()
+            self.upsert_topic(sheet["name"], sheet["targets"], user_id=user_id)
+        return self.list_topics(user_id=user_id)
 
 
 PROFILE_STORE = SocialProfileStore(RUNS_ROOT / "profiles.db")

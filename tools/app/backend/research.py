@@ -382,6 +382,7 @@ def create_job(
     filename: str,
     options: Dict[str, Any],
     client_id: str,
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     xlsx_bytes, filename = resolve_xlsx_bytes(xlsx_bytes, filename)
     job_id = uuid.uuid4().hex[:12]
@@ -393,6 +394,7 @@ def create_job(
     job = {
         "id": job_id,
         "client_id": client_id,
+        "user_id": user_id,
         "status": "queued",
         "filename": filename,
         "agent": options.get("agent"),

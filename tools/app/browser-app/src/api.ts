@@ -1,3 +1,5 @@
+import { auth } from './firebase';
+
 /**
  * Browser-based API client for backend communication.
  * In dev mode, /api requests proxy to http://127.0.0.1:8765.
@@ -14,6 +16,18 @@ function clientId(): string {
 export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
   headers.set('X-Client-Id', clientId());
+  if (auth.currentUser) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      headers.set('Authorization', `Bearer ${token}`);
+      headers.set('X-User-Id', auth.currentUser.uid);
+      if (auth.currentUser.email) {
+        headers.set('X-User-Email', auth.currentUser.email);
+      }
+    } catch {
+      // Proceed without token if refresh fails
+    }
+  }
   return fetch(input, { ...init, headers });
 }
 

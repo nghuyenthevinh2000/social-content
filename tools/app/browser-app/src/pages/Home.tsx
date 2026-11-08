@@ -1,8 +1,11 @@
-import { IonContent, IonFooter, IonHeader, IonPage } from '@ionic/react';
+import { IonContent, IonFooter, IonHeader, IonIcon, IonPage } from '@ionic/react';
+import { analyticsOutline, libraryOutline, personCircleOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { apiFetch, apiJson } from '../api';
+import { AuthModal } from '../components/AuthModal';
+import { auth, onAuthStateChanged, signOut, type User } from '../firebase';
 import './Home.css';
 
 type Topic = {
@@ -39,7 +42,13 @@ type Job = {
 
 export type TargetItem = { name: string; url: string };
 export type TopicItem = { name: string; slug: string; targets: TargetItem[] };
-type Tab = 'library' | 'analyzer';
+type Tab = 'library' | 'analyzer' | 'profile';
+
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'library', label: 'Thư viện', icon: libraryOutline },
+  { id: 'analyzer', label: 'Phân tích', icon: analyticsOutline },
+  { id: 'profile', label: 'Hồ sơ', icon: personCircleOutline },
+];
 
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
 
@@ -69,7 +78,13 @@ function reportClientLog(message: string, stack?: string, source = 'client') {
 const Home: React.FC = () => {
   const location = useLocation();
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const [tab, setTab] = useState<Tab>(query.get('job_id') || query.get('tab') === 'analyzer' ? 'analyzer' : 'library');
+  const [tab, setTab] = useState<Tab>(
+    query.get('tab') === 'profile'
+      ? 'profile'
+      : query.get('job_id') || query.get('tab') === 'analyzer'
+        ? 'analyzer'
+        : 'library',
+  );
 
   // Library (backend is the source of truth)
   const [topics, setTopics] = useState<TopicItem[]>([]);
@@ -90,6 +105,19 @@ const Home: React.FC = () => {
   const [starting, setStarting] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
 
+  // Firebase Auth
+  const [user, setUser] = useState<User | null>(auth.currentUser);
+  const [authReady, setAuthReady] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
   function switchTab(next: Tab) {
     setTab(next);
     window.history.replaceState(null, '', jobId ? `?tab=${next}&job_id=${jobId}` : `?tab=${next}`);
@@ -97,6 +125,10 @@ const Home: React.FC = () => {
 
   // Every library mutation goes through here; the server returns the full, normalized topic list.
   async function library(path: string, body?: BodyInit, headers?: HeadersInit, success?: string) {
+    if (!user) {
+      setShowAuthModal(true);
+      return false;
+    }
     setBusy(true);
     setNotice(null);
     try {
@@ -116,10 +148,22 @@ const Home: React.FC = () => {
     library(path, JSON.stringify(payload), { 'Content-Type': 'application/json' }, success);
 
   useEffect(() => {
+    if (!authReady) return;
+    if (!user) {
+      setTopics([]);
+      setJob(null);
+      setJobId(null);
+      window.history.replaceState(null, '', `?tab=${tab}`);
+      return;
+    }
+    setTopics([]);
+    setJob(null);
+    setJobId(null);
+    window.history.replaceState(null, '', `?tab=${tab}`);
     apiJson<{ topics?: TopicItem[] }>('/api/sources/topics')
       .then((data) => setTopics(data.topics || []))
       .catch((err) => setNotice({ type: 'error', text: `Không tải được thư viện: ${errorText(err)}` }));
-  }, []);
+  }, [authReady, user?.uid]);
 
   useEffect(() => {
     const onError = (e: ErrorEvent) =>
@@ -135,7 +179,7 @@ const Home: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!jobId) return;
+    if (!jobId || !user) return;
     let stopped = false;
     const tick = async () => {
       try {
@@ -144,7 +188,10 @@ const Home: React.FC = () => {
         setJob(data);
         if (TERMINAL.has(data.status)) stopped = true;
       } catch {
-        // keep polling
+        stopped = true;
+        setJob(null);
+        setJobId(null);
+        window.history.replaceState(null, '', `?tab=${tab}`);
       }
     };
     tick();
@@ -153,7 +200,7 @@ const Home: React.FC = () => {
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [jobId]);
+  }, [jobId, user?.uid]);
 
   const progress = useMemo(() => {
     if (!job) return { done: 0, total: 0, pct: 0 };
@@ -177,6 +224,10 @@ const Home: React.FC = () => {
   }, [topics, search]);
 
   async function run(selected: TopicItem[], filename: string) {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
     setError(null);
     setStarting(true);
     setJob(null);
@@ -203,10 +254,18 @@ const Home: React.FC = () => {
   }
 
   async function cancel() {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
     if (jobId) await apiFetch(`/api/jobs/${jobId}/cancel`, { method: 'POST' });
   }
 
   function importSource(source: File | string) {
+    if (!user) {
+      setShowAuthModal(true);
+      return Promise.resolve(false);
+    }
     const isUrl = typeof source === 'string';
     return library(
       '/api/sources/parse',
@@ -220,11 +279,19 @@ const Home: React.FC = () => {
   }
 
   async function addChannel(topic: string, url: string) {
+    if (!user) {
+      setShowAuthModal(true);
+      return false;
+    }
     return postJson('/api/sources/topics', { topic, url }, `Đã thêm kênh vào "${topic}".`);
   }
 
   async function createTopic(e: React.FormEvent) {
     e.preventDefault();
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
     const name = newTopic.name.trim();
     const url = newTopic.url.trim();
     if (!name) return;
@@ -241,35 +308,69 @@ const Home: React.FC = () => {
           <span className="brand">
             <span className="brand-mark">AB</span>AIBrand
           </span>
-          <div className="tab-nav" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'library'}
-              className={`tab-nav-btn ${tab === 'library' ? 'active' : ''}`}
-              onClick={() => switchTab('library')}
-            >
-              Thư viện
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'analyzer'}
-              className={`tab-nav-btn ${tab === 'analyzer' ? 'active' : ''}`}
-              onClick={() => switchTab('analyzer')}
-            >
-              Phân tích
-              {running && <span className="live-dot" aria-label="đang chạy" />}
-            </button>
-          </div>
         </div>
       </IonHeader>
 
       <IonContent>
         <div className="ab-page">
-          {tab === 'library' ? (
-            <>
-              <section className="panel" id="import">
+          {!authReady ? (
+            <div className="empty">
+              <p className="muted">Đang kiểm tra đăng nhập…</p>
+            </div>
+          ) : tab === 'profile' ? (
+            <section className="panel profile">
+              <div className="profile-head">
+                <span className="avatar">{user ? (user.email || user.uid)[0].toUpperCase() : '?'}</span>
+                <div className="sheet-title">
+                  <strong>{user ? user.displayName || user.email || 'Người dùng' : 'Chưa đăng nhập'}</strong>
+                  {!user && <small className="muted">Đăng nhập để đồng bộ tài khoản của bạn.</small>}
+                </div>
+              </div>
+              {user ? (
+                <>
+                  <dl className="details">
+                    <dt>Email</dt>
+                    <dd>{user.email || '—'}</dd>
+                    <dt>Đăng nhập gần nhất</dt>
+                    <dd>{user.metadata.lastSignInTime || '—'}</dd>
+                  </dl>
+                  <button
+                    type="button"
+                    className="ghost danger profile-btn"
+                    onClick={() => {
+                      setTopics([]);
+                      setJob(null);
+                      setJobId(null);
+                      window.history.replaceState(null, '', '?tab=profile');
+                      signOut(auth);
+                    }}
+                  >
+                    Đăng xuất
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="primary profile-btn" onClick={() => setShowAuthModal(true)}>
+                  Đăng nhập / Đăng ký
+                </button>
+              )}
+            </section>
+          ) : tab === 'library' ? (
+            !user ? (
+              <section className="panel">
+                <div className="empty">
+                  <span className="gate-icon">🔒</span>
+                  <h2>Yêu cầu đăng nhập</h2>
+                  <p className="muted">
+                    Vui lòng đăng nhập tài khoản để xem, quản lý Thư viện kênh và chạy phân tích.
+                  </p>
+                  <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
+                    Đăng nhập / Đăng ký
+                  </button>
+                </div>
+              </section>
+            ) : (
+              <>
+                <section className="panel" id="import">
                 <h2>Nhập vào thư viện</h2>
                 <button className="picker" type="button" onClick={() => fileRef.current?.click()} disabled={busy}>
                   <input
@@ -441,16 +542,29 @@ const Home: React.FC = () => {
                 </form>
               </section>
             </>
-          ) : (
+          )) : (
             <section className="panel" id="results">
               {error && <div className="alert error">{error}</div>}
               {!job ? (
                 <div className="empty">
-                  <p className="muted">{starting ? 'Đang tạo job…' : 'Chưa có lần chạy nào.'}</p>
-                  {!starting && (
-                    <button type="button" className="ghost" onClick={() => switchTab('library')}>
-                      Chọn chủ đề trong Thư viện
-                    </button>
+                  {!user ? (
+                    <>
+                      <span className="gate-icon">🔒</span>
+                      <h2>Yêu cầu đăng nhập</h2>
+                      <p className="muted">Vui lòng đăng nhập tài khoản để bắt đầu chạy phân tích.</p>
+                      <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
+                        Đăng nhập / Đăng ký
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="muted">{starting ? 'Đang tạo job…' : 'Chưa có lần chạy nào.'}</p>
+                      {!starting && (
+                        <button type="button" className="ghost" onClick={() => switchTab('library')}>
+                          Chọn chủ đề trong Thư viện
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (
@@ -570,8 +684,8 @@ const Home: React.FC = () => {
         </div>
       </IonContent>
 
-      {(tab === 'library' || running) && (
-        <IonFooter className="ion-no-border">
+      <IonFooter className="ion-no-border">
+        {((tab === 'library' && user) || (tab === 'analyzer' && running)) && (
           <div className="actionbar">
             {tab === 'library' && (
               <button
@@ -589,8 +703,29 @@ const Home: React.FC = () => {
               </button>
             )}
           </div>
-        </IonFooter>
-      )}
+        )}
+        <nav className="tabbar" role="tablist">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={`tabbar-btn ${tab === t.id ? 'active' : ''}`}
+              onClick={() => switchTab(t.id)}
+            >
+              <span className="tabbar-icon">
+                <IonIcon icon={t.icon} aria-hidden="true" />
+                {t.id === 'analyzer' && running && <span className="live-dot" aria-label="đang chạy" />}
+                {t.id === 'profile' && user && <span className="live-dot online" aria-label="đã đăng nhập" />}
+              </span>
+              {t.label}
+            </button>
+          ))}
+        </nav>
+      </IonFooter>
+
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </IonPage>
   );
 };

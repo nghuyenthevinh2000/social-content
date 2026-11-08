@@ -140,6 +140,39 @@ class Handler(BaseHTTPRequestHandler):
             return value
         return f"ip-{self.client_address[0]}"
 
+    def _user_id(self) -> Optional[str]:
+        """Extract authenticated user ID from Authorization Bearer token (JWT payload) or X-User-Id header."""
+        auth_hdr = self.headers.get("Authorization") or ""
+        email = None
+        uid = None
+        if auth_hdr.startswith("Bearer "):
+            token = auth_hdr.split(" ", 1)[1].strip()
+            parts = token.split(".")
+            if len(parts) >= 2:
+                try:
+                    import base64
+
+                    payload = parts[1]
+                    payload += "=" * ((4 - len(payload) % 4) % 4)
+                    data = json.loads(base64.urlsafe_b64decode(payload.encode("utf-8")))
+                    parsed_uid = data.get("user_id") or data.get("sub")
+                    if parsed_uid and isinstance(parsed_uid, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", parsed_uid):
+                        uid = parsed_uid
+                        email = data.get("email")
+                except Exception:
+                    pass
+        if not uid:
+            header_uid = self.headers.get("X-User-Id") or ""
+            if header_uid and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", header_uid):
+                uid = header_uid
+                email = self.headers.get("X-User-Email") or None
+
+        if uid and email and ("hieu" in str(email).lower()):
+            PROFILE_STORE.claim_legacy_topics(uid)
+            STORE.claim_legacy_jobs(uid)
+
+        return uid
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/api/health":
@@ -172,23 +205,38 @@ class Handler(BaseHTTPRequestHandler):
             })
             return
         if parsed.path == "/api/sources/topics":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để truy cập thư viện."})
+                return
             try:
                 query = parse_qs(parsed.query).get("q", [None])[0]
-                topics = PROFILE_STORE.list_topics(query)
+                topics = PROFILE_STORE.list_topics(user_id=user_id, query=query)
                 _json(self, 200, {"ok": True, "topics": topics})
             except Exception as exc:
                 _json(self, 500, {"error": str(exc)})
             return
         match = re.fullmatch(r"/api/jobs/([a-f0-9]+)", parsed.path)
         if match:
-            job = STORE.snapshot(match.group(1))
-            _json(self, 200 if job else 404, job or {"error": "Không tìm thấy job"})
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xem phân tích."})
+                return
+            job = STORE.snapshot(match.group(1), user_id=user_id)
+            if not job:
+                _json(self, 404, {"error": "Không tìm thấy job phân tích hoặc bạn không có quyền truy cập."})
+                return
+            _json(self, 200, job)
             return
         match = re.fullmatch(r"/api/jobs/([a-f0-9]+)/export", parsed.path)
         if match:
-            job = STORE.snapshot(match.group(1))
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xuất dữ liệu."})
+                return
+            job = STORE.snapshot(match.group(1), user_id=user_id)
             if not job:
-                _json(self, 404, {"error": "Không tìm thấy job"})
+                _json(self, 404, {"error": "Không tìm thấy job phân tích hoặc bạn không có quyền truy cập."})
                 return
             body = json.dumps(job, ensure_ascii=False, indent=2).encode("utf-8")
             self.send_response(200)
@@ -204,6 +252,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/api/sources/parse":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để nhập file vào thư viện."})
+                return
             try:
                 length = int(self.headers.get("Content-Length") or 0)
                 if length <= 0:
@@ -211,7 +263,7 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 raw = self.rfile.read(length)
                 filename = unquote(self.headers.get("X-Filename") or "upload.xlsx")
-                topics = PROFILE_STORE.import_from_source(raw, filename)
+                topics = PROFILE_STORE.import_from_source(raw, filename, user_id=user_id)
                 _json(self, 200, {
                     "ok": True,
                     "filename": filename,
@@ -222,6 +274,10 @@ class Handler(BaseHTTPRequestHandler):
                 _json(self, 400, {"error": f"Không đọc được file: {exc}"})
             return
         if parsed.path == "/api/sources/topics":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để thao tác thư viện."})
+                return
             try:
                 length = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
@@ -232,14 +288,18 @@ class Handler(BaseHTTPRequestHandler):
                     _json(self, 400, {"error": "Thiếu tên chủ đề"})
                     return
                 if url:
-                    res = PROFILE_STORE.add_profile(topic, url, name)
+                    res = PROFILE_STORE.add_profile(topic, url, name, user_id=user_id)
                 else:
-                    res = PROFILE_STORE.upsert_topic(topic, body.get("targets"))
-                _json(self, 200, {"ok": True, "topic": res, "topics": PROFILE_STORE.list_topics()})
+                    res = PROFILE_STORE.upsert_topic(topic, body.get("targets"), user_id=user_id)
+                _json(self, 200, {"ok": True, "topic": res, "topics": PROFILE_STORE.list_topics(user_id=user_id)})
             except Exception as exc:
                 _json(self, 400, {"error": str(exc)})
             return
         if parsed.path == "/api/sources/topics/delete":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xoá chủ đề."})
+                return
             try:
                 length = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
@@ -247,12 +307,16 @@ class Handler(BaseHTTPRequestHandler):
                 if not slug:
                     _json(self, 400, {"error": "Thiếu slug chủ đề"})
                     return
-                PROFILE_STORE.delete_topic(slug)
-                _json(self, 200, {"ok": True, "topics": PROFILE_STORE.list_topics()})
+                PROFILE_STORE.delete_topic(slug, user_id=user_id)
+                _json(self, 200, {"ok": True, "topics": PROFILE_STORE.list_topics(user_id=user_id)})
             except Exception as exc:
                 _json(self, 400, {"error": str(exc)})
             return
         if parsed.path == "/api/sources/profiles/delete":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xoá kênh."})
+                return
             try:
                 length = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
@@ -261,17 +325,25 @@ class Handler(BaseHTTPRequestHandler):
                 if not slug or not url:
                     _json(self, 400, {"error": "Thiếu slug chủ đề hoặc url kênh"})
                     return
-                PROFILE_STORE.delete_profile(slug, url)
-                _json(self, 200, {"ok": True, "topics": PROFILE_STORE.list_topics()})
+                PROFILE_STORE.delete_profile(slug, url, user_id=user_id)
+                _json(self, 200, {"ok": True, "topics": PROFILE_STORE.list_topics(user_id=user_id)})
             except Exception as exc:
                 _json(self, 400, {"error": str(exc)})
             return
         if parsed.path == "/api/jobs":
-            self._create_job(parse_qs(parsed.query))
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để tạo job phân tích."})
+                return
+            self._create_job(parse_qs(parsed.query), user_id=user_id)
             return
         match = re.fullmatch(r"/api/jobs/([a-f0-9]+)/cancel", parsed.path)
         if match:
-            ok = STORE.cancel(match.group(1))
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để dừng job."})
+                return
+            ok = STORE.cancel(match.group(1), user_id=user_id)
             _json(self, 200 if ok else 404, {"cancelled": ok})
             return
         if parsed.path == "/api/logs/client":
@@ -307,7 +379,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         _json(self, 404, {"error": "Không tìm thấy endpoint"})
 
-    def _create_job(self, query: Dict[str, list[str]]) -> None:
+    def _create_job(self, query: Dict[str, list[str]], user_id: Optional[str] = None) -> None:
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
@@ -339,7 +411,7 @@ class Handler(BaseHTTPRequestHandler):
             _json(self, 400, {"error": f"Tuỳ chọn không hợp lệ: {exc}"})
             return
         try:
-            job = create_job(raw, filename, options, self._client_id())
+            job = create_job(raw, filename, options, self._client_id(), user_id=user_id)
         except Exception as exc:
             _json(self, 400, {"error": f"Không đọc được Excel: {exc}"})
             return

@@ -27,9 +27,10 @@ class JobStore:
             db.execute("CREATE TABLE IF NOT EXISTS logs (seq INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL, at TEXT, sheet TEXT, message TEXT)")
             db.execute("CREATE INDEX IF NOT EXISTS logs_job ON logs (job_id, seq)")
             columns = {row[1] for row in db.execute("PRAGMA table_info(jobs)")}
-            for column, kind in (("client_id", "TEXT"), ("heartbeat", "REAL")):
+            for column, kind in (("client_id", "TEXT"), ("user_id", "TEXT"), ("heartbeat", "REAL")):
                 if column not in columns:
                     db.execute(f"ALTER TABLE jobs ADD COLUMN {column} {kind}")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs (user_id)")
         db = sqlite3.connect(path)
         db.execute("PRAGMA journal_mode=WAL")
         db.close()
@@ -66,8 +67,15 @@ class JobStore:
         data = {k: v for k, v in job.items() if k != "logs"}
         with self._tx() as db:
             db.execute(
-                "INSERT INTO jobs (id, status, created_at, client_id, data) VALUES (?, ?, ?, ?, ?)",
-                (job["id"], job["status"], job["created_at"], job.get("client_id"), json.dumps(data, ensure_ascii=False)),
+                "INSERT INTO jobs (id, status, created_at, client_id, user_id, data) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    job["id"],
+                    job["status"],
+                    job["created_at"],
+                    job.get("client_id"),
+                    job.get("user_id"),
+                    json.dumps(data, ensure_ascii=False),
+                ),
             )
 
     def update(self, job_id: str, **changes: Any) -> None:
@@ -86,8 +94,17 @@ class JobStore:
         with self._tx() as db:
             db.execute("INSERT INTO logs (job_id, at, sheet, message) VALUES (?, ?, ?, ?)", (job_id, now_iso(), sheet, message))
 
-    def cancel(self, job_id: str) -> bool:
+    def cancel(self, job_id: str, user_id: Optional[str] = None) -> bool:
+        if user_id is not None:
+            with self._tx() as db:
+                row = db.execute("SELECT user_id FROM jobs WHERE id = ?", (job_id,)).fetchone()
+                if not row or (row[0] and row[0] != user_id):
+                    return False
         return self._mutate(job_id, lambda job: job.update(cancel_requested=True))
+
+    def claim_legacy_jobs(self, user_id: str) -> None:
+        with self._tx() as db:
+            db.execute("UPDATE jobs SET user_id = ? WHERE user_id IS NULL OR user_id = 'default'", (user_id,))
 
     def claim(self, max_per_client: int) -> Optional[Dict[str, Any]]:
         """Atomically take the oldest queued job whose client is under its running limit, and mark it running.
@@ -122,16 +139,22 @@ class JobStore:
             ).fetchall()
         return [row[0] for row in rows]
 
-    def snapshot(self, job_id: str) -> Optional[Dict[str, Any]]:
+    def snapshot(self, job_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         with self._tx() as db:
-            row = db.execute("SELECT data FROM jobs WHERE id = ?", (job_id,)).fetchone()
+            row = db.execute("SELECT data, user_id FROM jobs WHERE id = ?", (job_id,)).fetchone()
             if not row:
                 return None
+            data_json, job_user = row
+            if user_id is not None:
+                if job_user and job_user != user_id:
+                    return None
+                if not job_user and user_id != "default":
+                    return None
             logs = db.execute(
                 "SELECT at, sheet, message FROM (SELECT * FROM logs WHERE job_id = ? ORDER BY seq DESC LIMIT 400) ORDER BY seq",
                 (job_id,),
             ).fetchall()
-        job = json.loads(row[0])
+        job = json.loads(data_json)
         job["logs"] = [{"at": at, "sheet": sheet, "message": message} for at, sheet, message in logs]
         return job
 
