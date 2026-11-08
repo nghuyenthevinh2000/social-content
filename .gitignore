@@ -48,3 +48,7 @@ __pycache__/
 .twitter-agent/
 # Local secrets written by `elevenlabs onboard`
 /.env.local
+
+# Systemd service units
+*.service
+
