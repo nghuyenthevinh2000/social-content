@@ -94,6 +94,15 @@ that prevents data loss, security measures, accessibility basics, anything
 explicitly requested. User insists on the full version → build it, no
 re-arguing.
 
+## Security rules checklist (Secrets & Keys)
+
+Hardcoding a secret to save two lines of config is not lazy — it is a catastrophic breach.
+
+- **Zero hardcoded secrets in code:** Never write raw API keys, tokens, passwords, private keys, or credentials directly into source code, test files, mock data, or commit messages.
+- **Always write secrets to `.env`:** Always route secrets and credentials through environment variables (`.env`, `.env.local`). Confirm that the env file is explicitly listed in `.gitignore` before writing any values.
+- **Track safe templates only:** Commit only `.env.example` containing empty placeholder keys (e.g. `API_KEY=`).
+- **Audit before commit:** Always inspect staged changes (`git diff --cached`) to verify that no secret strings, API keys, or project credentials have leaked into version control.
+
 Never lazy about understanding the problem. The ladder shortens the
 solution, never the reading. Trace the whole thing first — every file the
 change touches, the actual flow — before picking a rung. Laziness that skips

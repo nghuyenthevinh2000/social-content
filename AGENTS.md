@@ -58,4 +58,5 @@ Always load `ponytail` for any code writing, refactoring, fixing, reviewing, or 
 | Ladder enforcement | Stop at the earliest rung: (1) YAGNI, (2) reuse existing repository helpers, (3) stdlib, (4) native platform features, (5) existing dependencies, (6) one-liner, (7) minimum working code. |
 | Root cause | Trace real flow and callers first; fix once at the root rather than patching symptoms. |
 | Minimal diff | Ship the shortest working diff; avoid unrequested abstractions, boilerplate, and speculative scaffolding. |
+| Secrets & keys | Always write secrets and keys to gitignored `.env` / `.env.local` files; never hardcode directly in source code, tests, or commits. Provide `.env.example` templates. |
 | Verification | Accompany non-trivial logic with one minimal runnable check (`assert`-based self-check or test). |
