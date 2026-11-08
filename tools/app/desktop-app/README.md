@@ -107,7 +107,7 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 
 | Path | Purpose |
 |---|---|
-| `tools/app/server.py` | Python API server, bundled as the Tauri sidecar. |
+| `tools/app/backend/server.py` | Python API server, bundled as the Tauri sidecar. |
 | `tools/app/backend/docker-compose.yml` | Docker Compose spec for containerized backend and worker. |
 | `tools/app/backend/download_models.py` | Pre-downloads Qwen3-ASR model weights into Hugging Face cache. |
 | `tools/app/backend/research.py` | Excel parsing, per-sheet jobs, topic prompt/parse/fallback. |

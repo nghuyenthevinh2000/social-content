@@ -41,130 +41,14 @@ from tools.loop.viral_analyzer.transcription import (
 )
 
 
-def fetch_target_reels(
-    target: Dict[str, Any],
-    config: ViralAnalyzerConfig,
-    cache_dir: Optional[Path] = None,
-    legacy_cache: bool = True,
-    progress_cb: Optional[Callable[[str], None]] = None,
-) -> List[Dict[str, Any]]:
-    """Fetch profile reels via Glasser ScrapeCreators or cached responses."""
-    profile_url = target.get("url") or f"https://www.facebook.com/{target.get('handle')}"
-    handle = target.get("handle")
-    if not handle or handle == "unknown":
-        try:
-            from tools.app.backend.profiles import facebook_handle
-            h, _ = facebook_handle(profile_url)
-            handle = h or "unknown"
-        except Exception:
-            handle = "unknown"
-    slug = handle.replace(".", "_")
-
-    # Search paths in priority order: explicitly provided cache_dir, app shared cache, output dir
-    search_dirs: List[Path] = []
-    if cache_dir:
-        search_dirs.append(Path(cache_dir))
-    env_cache = os.environ.get("VIRAL_APP_CACHE_DIR")
-    if env_cache:
-        search_dirs.append(Path(env_cache))
-    else:
-        shared_default = CURRENT_DIR.resolve().parents[2] / "local" / "app-runs" / "cache"
-        if shared_default not in search_dirs:
-            search_dirs.append(shared_default)
-    if config.storage.output_file and config.storage.output_file.parent not in search_dirs:
-        search_dirs.append(config.storage.output_file.parent)
-    if legacy_cache:
-        search_dirs += [Path("local/social-listening-test"), CURRENT_DIR]
-
-    ttl_hours = int(os.environ.get("VIRAL_APP_CACHE_TTL_HOURS", "24"))
-    ttl_seconds = ttl_hours * 3600
-    now_ts = time.time()
-
-    # 1. Check local cache first
-    for d in search_dirs:
-        if not d or not d.exists():
-            continue
-        for fname in (f"glasser_{slug}.json", f"temp_{slug}.json"):
-            c_path = d / fname
-            if c_path.exists() and c_path.stat().st_size > 10:
-                if ttl_seconds > 0 and (now_ts - c_path.stat().st_mtime) > ttl_seconds:
-                    continue  # Expired
-                try:
-                    with open(c_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        reels = data.get("reels", [])
-                        if reels:
-                            msg = f"    [cache] Dùng cache ({len(reels)} reel) cho {handle} ({fname})."
-                            print(msg)
-                            if progress_cb:
-                                progress_cb(msg)
-                            return reels
-                except Exception:
-                    pass
-
-    # 2. Glasser CLI Fetch
-    msg = f"    [api] Gọi Glasser cho {handle}..."
-    print(msg)
-    if progress_cb:
-        progress_cb(msg)
-
-    temp_out = Path(tempfile.gettempdir()) / f"glasser_{slug}.json"
-    idempotency_key = f"viral-loop-{slug}-{int(time.time() // 86400)}"
-    cmd = [
-        "glasser",
-        "run",
-        "-p", config.glasser_provider,
-        "-e", config.glasser_endpoint,
-        "-i", json.dumps({"url": profile_url}),
-        "--endpoint-version", str(config.glasser_endpoint_version),
-        "--idempotency-key", idempotency_key,
-        "-o", str(temp_out),
-    ]
-
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
-        if proc.returncode == 0 and temp_out.exists():
-            with open(temp_out, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                reels = data.get("reels", [])
-                for d in search_dirs:
-                    if d:
-                        try:
-                            d.mkdir(parents=True, exist_ok=True)
-                            shutil.copy2(temp_out, d / f"glasser_{slug}.json")
-                        except Exception:
-                            pass
-                return reels
-    except Exception as e:
-        print(f"[!] Glasser query error for {handle}: {e}")
-    finally:
-        if temp_out.exists():
-            try:
-                os.remove(temp_out)
-            except Exception:
-                pass
-
-    # 3. Fallback to expired cache if Glasser query failed or was unavailable
-    for d in search_dirs:
-        if not d or not d.exists():
-            continue
-        for fname in (f"glasser_{slug}.json", f"temp_{slug}.json"):
-            c_path = d / fname
-            if c_path.exists() and c_path.stat().st_size > 10:
-                try:
-                    with open(c_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        reels = data.get("reels", [])
-                        if reels:
-                            fallback_msg = f"    [!] Glasser lỗi; dùng lại cache cũ ({len(reels)} reel) cho {handle}."
-                            print(fallback_msg)
-                            if progress_cb:
-                                progress_cb(fallback_msg)
-                            return reels
-                except Exception:
-                    pass
-
-    return []
+from tools.loop.viral_analyzer.glasser import (
+    GlasserError,
+    GlasserMissingKeyError,
+    GlasserNotFoundError,
+    GlasserExecutionError,
+    check_glasser_status,
+    fetch_target_reels,
+)
 
 
 def download_video_stream(url_or_cdn: str, target_path: Path, is_reel_page: bool = False, max_bytes: int = 80 * 1024 * 1024) -> bool:
@@ -368,6 +252,7 @@ def run_analyzer_pipeline(
 
     # 2. Ingestion & 48h Filtering
     extracted_reels: List[Dict[str, Any]] = []
+    glasser_errors: List[Any] = []
     targets_to_scan = config.targets[:limit_targets] if limit_targets else config.targets
 
     for idx, target in enumerate(targets_to_scan, 1):
@@ -380,6 +265,7 @@ def run_analyzer_pipeline(
             cache_dir=cache_dir or config.storage.output_file.parent,
             legacy_cache=legacy_cache,
             progress_cb=progress_cb,
+            error_collector=glasser_errors,
         )
         count_for_target = 0
 
@@ -552,7 +438,9 @@ def run_analyzer_pipeline(
             "pool_distribution": {k: len(v) for k, v in by_pools.items()},
             "video_cache_dir": str(config.storage.video_dir),
             "retained_cached_videos": len(list(config.storage.video_dir.glob("*.mp4"))),
+            "errors": [e.to_dict() if hasattr(e, "to_dict") else str(e) for e in glasser_errors],
         },
+        "errors": [e.to_dict() if hasattr(e, "to_dict") else str(e) for e in glasser_errors],
         "pools": by_pools,
         "all_reels": extracted_reels,
     }

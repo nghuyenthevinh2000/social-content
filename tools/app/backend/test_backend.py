@@ -557,6 +557,166 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(target_sheet["topics"], [])
             self.assertIn("Chưa có kênh đối thủ nào", target_sheet["notice"])
 
+    def test_install_binaries_script_content(self):
+        script_path = Path(__file__).parent / "install_binaries.sh"
+        self.assertTrue(script_path.exists())
+        content = script_path.read_text(encoding="utf-8")
+        self.assertIn("https://opencode.ai/v2/install", content)
+        self.assertIn("https://antigravity.google/cli/install.sh", content)
+        self.assertIn("command -v opencode", content)
+        self.assertIn("command -v agy", content)
+
+    def test_agy_agent_model_resolution(self):
+        from tools.app.backend.research import resolve_agent
+        with mock.patch("shutil.which", return_value="/usr/local/bin/agy"):
+            # Unset env: no hard-coded model, defaults to base agy command
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("VIRAL_APP_AGY_MODEL", None)
+                agent = resolve_agent("agy")
+                self.assertNotIn("model", agent)
+                self.assertEqual(agent["command"], ["agy", "acp"])
+
+            # Env override: uses the env config
+            with mock.patch.dict(os.environ, {"VIRAL_APP_AGY_MODEL": "gemini-3.8-flash-low"}):
+                agent = resolve_agent("agy")
+                self.assertEqual(agent["model"], "gemini-3.8-flash-low")
+                self.assertEqual(agent["command"], ["agy", "--model", "gemini-3.8-flash-low", "acp"])
+
+            # Parameter override
+            agent = resolve_agent("agy", model="param-model")
+            self.assertEqual(agent["model"], "param-model")
+            self.assertEqual(agent["command"], ["agy", "--model", "param-model", "acp"])
+
+    def test_glasser_module_and_error_classification(self):
+        import subprocess
+        from tools.loop.viral_analyzer.glasser import (
+            check_glasser_key,
+            check_glasser_status,
+            execute_glasser_query,
+            GlasserMissingKeyError,
+            GlasserNotFoundError,
+        )
+
+        # Missing key
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("GLASSER_API_KEY", None)
+            has_key, err = check_glasser_key()
+            self.assertFalse(has_key)
+            self.assertIn("Thiếu", err)
+
+            with mock.patch("shutil.which", return_value="/usr/bin/glasser"):
+                status = check_glasser_status()
+                self.assertFalse(status["ok"])
+                self.assertFalse(status["has_key"])
+                self.assertTrue(status["installed"])
+
+                with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 2, stdout="", stderr="Error: No Key configured.")):
+                    ok, msg, exc = execute_glasser_query(
+                        profile_url="https://facebook.com/test",
+                        provider="scrapecreators",
+                        endpoint="/v1/facebook/profile/reels",
+                        endpoint_version=2,
+                        idempotency_key="k1",
+                        temp_out=Path("/tmp/out.json"),
+                    )
+                    self.assertFalse(ok)
+                    self.assertIsInstance(exc, GlasserMissingKeyError)
+
+        # Missing binary
+        with mock.patch.dict(os.environ, {"GLASSER_API_KEY": "gl_valid_test_key_12345"}):
+            with mock.patch("shutil.which", return_value=None):
+                status = check_glasser_status()
+                self.assertFalse(status["ok"])
+                self.assertFalse(status["installed"])
+                ok, msg, exc = execute_glasser_query(
+                    profile_url="https://facebook.com/test",
+                    provider="scrapecreators",
+                    endpoint="/v1/facebook/profile/reels",
+                    endpoint_version=2,
+                    idempotency_key="k1",
+                    temp_out=Path("/tmp/out.json"),
+                )
+                self.assertFalse(ok)
+                self.assertIsInstance(exc, GlasserNotFoundError)
+
+    def test_backend_errors_module_and_aggregation(self):
+        from tools.app.backend.errors import (
+            AppError,
+            ErrorAggregator,
+            ErrorCategory,
+            ErrorSeverity,
+            handle_glasser_error,
+            handle_acp_error,
+        )
+
+        agg = ErrorAggregator(job_id="job123")
+        self.assertFalse(agg.has_errors())
+
+        # Test Glasser missing key handling
+        g_err = handle_glasser_error("Error: No Key configured. Run glasser keys add", handle="test_handle")
+        self.assertEqual(g_err.code, "GLASSER_MISSING_API_KEY")
+        self.assertEqual(g_err.severity, ErrorSeverity.CRITICAL.value)
+        self.assertIn("GLASSER_API_KEY", g_err.suggestion)
+        agg.add(g_err)
+
+        # Test ACP auth handling
+        a_err = handle_acp_error("ACP: auth required to proceed", agent_id="agy")
+        self.assertEqual(a_err.code, "ACP_AUTH_REQUIRED")
+        agg.add(a_err)
+
+        self.assertTrue(agg.has_errors())
+        self.assertTrue(agg.has_category(ErrorCategory.GLASSER))
+        self.assertTrue(agg.has_category(ErrorCategory.ACP))
+        summary = agg.summary()
+        self.assertEqual(summary["total"], 2)
+        self.assertEqual(summary["by_category"]["glasser"], 1)
+        self.assertEqual(summary["by_category"]["acp"], 1)
+        self.assertEqual(len(agg.notices()), 2)
+
+    def test_process_sheet_reports_glasser_error_when_no_reels(self):
+        from tools.app.backend.research import STORE, _process_sheet
+        import uuid
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            job_id = uuid.uuid4().hex[:12]
+            sheet = {
+                "name": "Kênh lỗi Glasser",
+                "slug": "kenh-loi-glasser",
+                "targets": [{"name": "fail_chan", "url": "https://facebook.com/fail_chan", "handle": "fail_chan"}],
+            }
+            job = {
+                "id": job_id,
+                "status": "running",
+                "created_at": "2026-01-01",
+                "sheets": [{
+                    "name": sheet["name"],
+                    "slug": sheet["slug"],
+                    "status": "pending",
+                    "targets": 1,
+                    "reels": 0,
+                    "topics": [],
+                    "error": None,
+                    "notice": None,
+                }],
+                "logs": [],
+            }
+            STORE.put(job)
+
+            glasser_mock_error = {
+                "error_type": "GlasserMissingKeyError",
+                "message": "Chưa cấu hình GLASSER_API_KEY cho Glasser CLI.",
+                "handle": "fail_chan",
+                "suggestion": "Thêm GLASSER_API_KEY vào .env",
+            }
+            with mock.patch("tools.app.backend.research.run_analyzer_pipeline", return_value={"all_reels": [], "errors": [glasser_mock_error], "metadata": {}}):
+                _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
+
+            snap = STORE.snapshot(job_id)
+            target_sheet = snap["sheets"][0]
+            self.assertEqual(target_sheet["status"], "failed")
+            self.assertIn("Chưa cấu hình hoặc thiếu GLASSER_API_KEY", target_sheet["notice"])
+            self.assertIn("GLASSER_API_KEY", target_sheet["error"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 """Local web app for Excel -> viral research -> 3 topic ideas per sheet.
 
 Run:
-    python3 tools/app/server.py --port 8765
+    python3 tools/app/backend/server.py --port 8765
 
 The frontend is served from tools/app/dist (npm run build). During development
 use `npm run dev` in tools/app; Vite proxies /api to this server.
@@ -176,13 +176,15 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/api/health":
+            glasser_info = _glasser_status()
             _json(self, 200, {
                 "ok": True,
                 "app": "aibrand",
                 "desktop": bool(getattr(sys, "frozen", False)),
                 "transcription": _transcription_status(),
                 "ffmpeg": _ffmpeg_status(),
-                "glasser": _glasser_status(),
+                "glasser": glasser_info["ok"],
+                "glasser_details": glasser_info,
                 "agent": _agent_status(),
             })
             return
@@ -399,8 +401,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             env_max = _int(os.environ.get("VIRAL_APP_MAX_VIDEOS"), 5, minimum=0, maximum=500)
+            model_val = (query.get("model") or [os.environ.get("VIRAL_APP_AGY_MODEL", "")])[0].strip()
             options = {
                 "agent": agent_id,
+                "model": model_val if (agent_id == "agy" and model_val) else None,
                 "max_videos": _int((query.get("max_videos") or [str(env_max)])[0], env_max, minimum=0, maximum=500),
                 # @deprecated [OBSOLETE]: Local video download + transcribe is obsolete compared to API transcription. Retained for backward-compat; do not delete.
                 "media": _bool((query.get("media") or ["0"])[0], False),
@@ -472,13 +476,21 @@ def _ffmpeg_status() -> bool:
         return False
 
 
-def _glasser_status() -> bool:
-    return shutil.which("glasser") is not None
+def _glasser_status() -> Dict[str, Any]:
+    try:
+        from tools.loop.viral_analyzer.glasser import check_glasser_status
+        return check_glasser_status()
+    except Exception as exc:
+        return {"ok": False, "installed": False, "has_key": False, "error": str(exc)}
 
 
 def _agent_status() -> Optional[str]:
     try:
-        return configured_agent()["label"]
+        agent = configured_agent()
+        label = agent["label"]
+        if agent.get("model"):
+            return f"{label} ({agent['model']})"
+        return label
     except Exception:
         return None
 

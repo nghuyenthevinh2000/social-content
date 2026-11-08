@@ -38,14 +38,27 @@ class JobStore:
     @contextmanager
     def _tx(self):
         db = sqlite3.connect(self.path, timeout=30, isolation_level=None)
+        db.execute("PRAGMA busy_timeout = 30000")
         try:
             db.execute("BEGIN IMMEDIATE")
             yield db
             db.execute("COMMIT")
         except BaseException:
             if db.in_transaction:
-                db.execute("ROLLBACK")
+                try:
+                    db.execute("ROLLBACK")
+                except Exception:
+                    pass
             raise
+        finally:
+            db.close()
+
+    @contextmanager
+    def _ro(self):
+        db = sqlite3.connect(self.path, timeout=30)
+        db.execute("PRAGMA busy_timeout = 30000")
+        try:
+            yield db
         finally:
             db.close()
 
@@ -54,14 +67,21 @@ class JobStore:
         db.execute("UPDATE jobs SET status = ?, data = ? WHERE id = ?", (job["status"], json.dumps(job, ensure_ascii=False), job["id"]))
 
     def _mutate(self, job_id: str, change: Callable[[Dict[str, Any]], None]) -> bool:
-        with self._tx() as db:
-            row = db.execute("SELECT data FROM jobs WHERE id = ?", (job_id,)).fetchone()
-            if not row:
-                return False
-            job = json.loads(row[0])
-            change(job)
-            self._write(db, job)
-            return True
+        for attempt in range(5):
+            try:
+                with self._tx() as db:
+                    row = db.execute("SELECT data FROM jobs WHERE id = ?", (job_id,)).fetchone()
+                    if not row:
+                        return False
+                    job = json.loads(row[0])
+                    change(job)
+                    self._write(db, job)
+                    return True
+            except sqlite3.OperationalError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
+        return False
 
     def put(self, job: Dict[str, Any]) -> None:
         data = {k: v for k, v in job.items() if k != "logs"}
@@ -91,8 +111,15 @@ class JobStore:
         self._mutate(job_id, change)
 
     def log(self, job_id: str, message: str, sheet: Optional[str] = None) -> None:
-        with self._tx() as db:
-            db.execute("INSERT INTO logs (job_id, at, sheet, message) VALUES (?, ?, ?, ?)", (job_id, now_iso(), sheet, message))
+        for attempt in range(5):
+            try:
+                with self._tx() as db:
+                    db.execute("INSERT INTO logs (job_id, at, sheet, message) VALUES (?, ?, ?, ?)", (job_id, now_iso(), sheet, message))
+                return
+            except sqlite3.OperationalError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
 
     def cancel(self, job_id: str, user_id: Optional[str] = None) -> bool:
         if user_id is not None:
@@ -132,7 +159,7 @@ class JobStore:
 
     def stale_running(self, max_age_sec: float) -> List[str]:
         """Running jobs no worker has touched recently, i.e. their worker died."""
-        with self._tx() as db:
+        with self._ro() as db:
             rows = db.execute(
                 "SELECT id FROM jobs WHERE status = 'running' AND (heartbeat IS NULL OR heartbeat < ?)",
                 (time.time() - max_age_sec,),
@@ -140,7 +167,7 @@ class JobStore:
         return [row[0] for row in rows]
 
     def snapshot(self, job_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        with self._tx() as db:
+        with self._ro() as db:
             row = db.execute("SELECT data, user_id FROM jobs WHERE id = ?", (job_id,)).fetchone()
             if not row:
                 return None

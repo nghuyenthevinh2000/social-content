@@ -19,6 +19,14 @@ from urllib.parse import parse_qs, urlparse
 import openpyxl
 
 from tools.app.backend.acp import ACPClient, ACPError
+from tools.app.backend.errors import (
+    AppError,
+    ErrorAggregator,
+    ErrorCategory,
+    ErrorSeverity,
+    handle_acp_error,
+    handle_glasser_error,
+)
 from tools.app.backend.profiles import (
     clean_name,
     facebook_handle,
@@ -94,11 +102,11 @@ def configured_agent() -> Dict[str, Any]:
         return resolve_agent(agent_id)
     for preset in AGENT_PRESETS:
         if shutil.which(preset["detect"]):
-            return preset
+            return resolve_agent(preset["id"])
     raise ACPError("Không tìm thấy harness nào trên máy (agy, opencode, claude, codex).")
 
 
-def resolve_agent(agent_id: str) -> Dict[str, Any]:
+def resolve_agent(agent_id: str, model: Optional[str] = None) -> Dict[str, Any]:
     for preset in AGENT_PRESETS:
         if preset["id"] == agent_id:
             if shutil.which(preset["detect"]) is None:
@@ -106,7 +114,13 @@ def resolve_agent(agent_id: str) -> Dict[str, Any]:
                     f"Không tìm thấy harness '{preset['label']}' trên máy. "
                     f"Cài đặt rồi thử lại (gợi ý đăng nhập: {preset['login_hint']})."
                 )
-            return preset
+            result = dict(preset)
+            if agent_id == "agy":
+                selected_model = (model or os.environ.get("VIRAL_APP_AGY_MODEL", "")).strip()
+                if selected_model:
+                    result["model"] = selected_model
+                    result["command"] = ["agy", "--model", selected_model, "acp"]
+            return result
     raise ACPError(f"Harness không hợp lệ: {agent_id}")
 
 
@@ -320,6 +334,7 @@ def suggest_topics(
     cwd: Path,
     timeout_sec: float,
     log: Callable[[str], None],
+    model: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     if not reels:
         log(f"Không có reel nào trong 48 giờ cho '{sheet_name}'; bỏ qua gợi ý chủ đề.")
@@ -329,8 +344,9 @@ def suggest_topics(
     client = None
     with _harness_lock(log):
         try:
-            preset = resolve_agent(agent_id)
-            log(f"Gọi harness {preset['label']} qua ACP...")
+            preset = resolve_agent(agent_id, model=model)
+            model_info = f" ({preset['model']})" if preset.get("model") else ""
+            log(f"Gọi harness {preset['label']}{model_info} qua ACP...")
             client = ACPClient(preset["command"], cwd=cwd, timeout_sec=timeout_sec, log=log)
             client.initialize()
             session_id = client.new_session()
@@ -474,6 +490,7 @@ def _process_sheet(
         sheet_dir.mkdir(parents=True, exist_ok=True)
         shared_cache = RUNS_ROOT / "cache"
         shared_cache.mkdir(parents=True, exist_ok=True)
+        aggregator = ErrorAggregator(job_id=job_id)
         config = load_config(
             {
                 "window_hours": options.get("window_hours", 48),
@@ -498,6 +515,11 @@ def _process_sheet(
                 progress_cb=log,
             )
             reels = payload.get("all_reels", [])
+            for err_item in payload.get("errors", []):
+                handle_name = err_item.get("handle") if isinstance(err_item, dict) else None
+                app_err = handle_glasser_error(err_item, handle=handle_name, log=log)
+                aggregator.add(app_err)
+
             STORE.patch_sheet(
                 job_id,
                 sheet["slug"],
@@ -505,20 +527,32 @@ def _process_sheet(
                 pool_distribution=payload.get("metadata", {}).get("pool_distribution", {}),
             )
         except Exception as exc:
-            error = str(exc)
-            log(f"Pipeline lỗi: {error}")
+            app_err = handle_glasser_error(exc, log=log)
+            aggregator.add(app_err)
+            error = app_err.message
     else:
+        aggregator = ErrorAggregator(job_id=job_id)
         log("Sheet không có link Facebook.")
 
     window_hours = options.get("window_hours", 48)
     if not reels:
         topics = []
         if not error:
-            if not sheet["targets"]:
+            glasser_errs = aggregator.filter(category=ErrorCategory.GLASSER.value)
+            if glasser_errs:
+                critical = next(
+                    (e for e in glasser_errs if e.severity == ErrorSeverity.CRITICAL.value),
+                    glasser_errs[0],
+                )
+                notice = critical.format_notice()
+                error = critical.message
+                log(f"[Cảnh báo API] {notice}")
+            elif not sheet["targets"]:
                 notice = "Chưa có kênh đối thủ nào. Vui lòng cập nhật thêm danh sách kênh."
+                log(notice)
             else:
                 notice = f"Không tìm thấy reel mới nào trong {window_hours} giờ qua. Vui lòng cập nhật thêm danh sách kênh."
-            log(notice)
+                log(notice)
     else:
         topics, topic_error = suggest_topics(
             options.get("agent", "agy"),
@@ -528,9 +562,12 @@ def _process_sheet(
             cwd=run_dir,
             timeout_sec=float(options.get("acp_timeout", 240)),
             log=log,
+            model=options.get("agy_model") or options.get("model"),
         )
         if topic_error and not error:
-            error = f"ACP: {topic_error}"
+            acp_err = handle_acp_error(topic_error, agent_id=options.get("agent", "agy"), log=log)
+            aggregator.add(acp_err)
+            error = acp_err.message
 
     result = {
         "sheet": sheet_name,
@@ -539,6 +576,7 @@ def _process_sheet(
         "topics": topics,
         "error": error,
         "notice": notice,
+        "errors": [e.to_dict() for e in aggregator.all_errors()],
     }
     result_path = run_dir / "sheets" / sheet["slug"] / "result.json"
     result_path.parent.mkdir(parents=True, exist_ok=True)

@@ -33,7 +33,6 @@ RUN useradd --create-home --uid 1000 app \
 
 WORKDIR /app
 COPY --chown=app tools/loop tools/loop
-COPY --chown=app tools/app/server.py tools/app/server.py
 COPY --chown=app tools/app/backend tools/app/backend
 
 USER app
@@ -48,4 +47,4 @@ EXPOSE 8765
 # tini reaps agent/ffmpeg processes orphaned when Stop kills a job.
 ENTRYPOINT ["tini", "--"]
 # ROLE: all | api | worker. PORT is honoured for Cloud Run.
-CMD ["sh", "-c", "exec python tools/app/server.py --host 0.0.0.0 --port \"$PORT\" --role \"$ROLE\""]
+CMD ["sh", "-c", "exec python tools/app/backend/server.py --host 0.0.0.0 --port \"$PORT\" --role \"$ROLE\""]
