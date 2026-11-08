@@ -28,9 +28,19 @@ from tools.app.backend.research import (
 )
 from tools.loop.viral_analyzer.config import load_config
 from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
+import unittest.mock as mock
 
 
 class BackendTests(unittest.TestCase):
+    def setUp(self):
+        self._cache_tmp = tempfile.TemporaryDirectory()
+        self._env_patch = mock.patch.dict(os.environ, {"VIRAL_APP_CACHE_DIR": self._cache_tmp.name})
+        self._env_patch.start()
+
+    def tearDown(self):
+        self._env_patch.stop()
+        self._cache_tmp.cleanup()
+
     def test_parse_workbook(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "spy.xlsx"
@@ -376,7 +386,7 @@ class BackendTests(unittest.TestCase):
             with mock.patch("subprocess.run", side_effect=fake_subprocess_run):
                 # 1st call: cache is empty, Glasser must be called
                 logs_1 = []
-                reels_1 = fetch_target_reels(target, config, cache_dir=cache_dir, progress_cb=logs_1.append)
+                reels_1 = fetch_target_reels(target, config, cache_dir=cache_dir, legacy_cache=False, progress_cb=logs_1.append)
                 self.assertEqual(glasser_call_count, 1)
                 self.assertEqual(len(reels_1), 1)
                 self.assertEqual(reels_1[0]["video_id"], "vid_1")
@@ -387,7 +397,7 @@ class BackendTests(unittest.TestCase):
 
                 # 2nd call: duplicate query, Glasser must NOT be called again
                 logs_2 = []
-                reels_2 = fetch_target_reels(target, config, cache_dir=cache_dir, progress_cb=logs_2.append)
+                reels_2 = fetch_target_reels(target, config, cache_dir=cache_dir, legacy_cache=False, progress_cb=logs_2.append)
                 self.assertEqual(glasser_call_count, 1, "Glasser was called again on duplicate query instead of hitting cache!")
                 self.assertEqual(len(reels_2), 1)
                 self.assertEqual(reels_2[0]["video_id"], "vid_1")
@@ -431,6 +441,96 @@ class BackendTests(unittest.TestCase):
                 # Across 2 duplicate targets in targets list, Glasser should only be queried ONCE
                 self.assertEqual(glasser_calls, 1, f"Expected 1 Glasser call for duplicate targets, got {glasser_calls}")
                 self.assertTrue(any("[cache]" in log for log in logs))
+
+    def test_suggest_topics_empty_reels_returns_empty(self):
+        from tools.app.backend.research import suggest_topics
+        logs = []
+        topics, err = suggest_topics(
+            "agy",
+            "test_sheet",
+            [{"name": "chan", "url": "https://facebook.com/chan"}],
+            [],
+            Path("/tmp"),
+            10.0,
+            logs.append,
+        )
+        self.assertEqual(topics, [])
+        self.assertIsNone(err)
+        self.assertTrue(any("Không có reel nào" in m for m in logs))
+
+    def test_process_sheet_zero_reels_notifies_and_produces_no_topics(self):
+        from tools.app.backend.research import STORE, _process_sheet
+        import uuid
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            job_id = uuid.uuid4().hex[:12]
+            sheet = {
+                "name": "Chủ đề vắng",
+                "slug": "chu-de-vang",
+                "targets": [{"name": "k1", "url": "https://facebook.com/k1", "handle": "k1"}],
+            }
+            job = {
+                "id": job_id,
+                "status": "running",
+                "created_at": "2026-01-01",
+                "sheets": [{
+                    "name": sheet["name"],
+                    "slug": sheet["slug"],
+                    "status": "pending",
+                    "targets": 1,
+                    "reels": 0,
+                    "topics": [],
+                    "error": None,
+                    "notice": None,
+                }],
+                "logs": [],
+            }
+            STORE.put(job)
+            with mock.patch("tools.app.backend.research.run_analyzer_pipeline", return_value={"all_reels": [], "metadata": {}}):
+                _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
+            snap = STORE.snapshot(job_id)
+            target_sheet = snap["sheets"][0]
+            self.assertEqual(target_sheet["status"], "completed")
+            self.assertEqual(target_sheet["reels"], 0)
+            self.assertEqual(target_sheet["topics"], [])
+            self.assertIn("Không tìm thấy reel mới nào trong 48 giờ qua", target_sheet["notice"])
+            self.assertIn("cập nhật thêm danh sách", target_sheet["notice"])
+
+    def test_process_sheet_no_targets_notifies_and_produces_no_topics(self):
+        from tools.app.backend.research import STORE, _process_sheet
+        import uuid
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            job_id = uuid.uuid4().hex[:12]
+            sheet = {
+                "name": "Chủ đề rỗng",
+                "slug": "chu-de-rong",
+                "targets": [],
+            }
+            job = {
+                "id": job_id,
+                "status": "running",
+                "created_at": "2026-01-01",
+                "sheets": [{
+                    "name": sheet["name"],
+                    "slug": sheet["slug"],
+                    "status": "pending",
+                    "targets": 0,
+                    "reels": 0,
+                    "topics": [],
+                    "error": None,
+                    "notice": None,
+                }],
+                "logs": [],
+            }
+            STORE.put(job)
+            _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
+            snap = STORE.snapshot(job_id)
+            target_sheet = snap["sheets"][0]
+            self.assertEqual(target_sheet["status"], "completed")
+            self.assertEqual(target_sheet["reels"], 0)
+            self.assertEqual(target_sheet["topics"], [])
+            self.assertIn("Chưa có kênh đối thủ nào", target_sheet["notice"])
 
 
 if __name__ == "__main__":

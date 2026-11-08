@@ -701,6 +701,12 @@
   color: #155724;
 }
 
+.alert.warn {
+  background: #fef8ec;
+  color: #8c5800;
+  border: 1px solid #f6d89b;
+}
+
 .search-input {
   margin-bottom: 8px;
   border-radius: 999px;

@@ -22,6 +22,7 @@ type Sheet = {
   pool_distribution: Record<string, number>;
   topics: Topic[];
   error: string | null;
+  notice?: string | null;
   started_at: string | null;
   finished_at: string | null;
 };
@@ -648,6 +649,16 @@ export default function App() {
                           >
                             Báo cáo lỗi qua email ✉
                           </button>
+                        </div>
+                      )}
+                      {sheet.notice && (
+                        <div className="alert slim warn">
+                          <div>{sheet.notice}</div>
+                        </div>
+                      )}
+                      {sheet.status === "completed" && sheet.reels === 0 && !sheet.error && !sheet.notice && (
+                        <div className="alert slim warn">
+                          <div>Không tìm thấy reel mới nào trong 48 giờ qua. Vui lòng cập nhật thêm danh sách kênh.</div>
                         </div>
                       )}
                       {sheet.status === "pending" && <p className="muted">Đang chờ tới lượt…</p>}

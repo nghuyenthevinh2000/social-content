@@ -321,9 +321,10 @@ def suggest_topics(
     timeout_sec: float,
     log: Callable[[str], None],
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    if not reels:
+        log(f"Không có reel nào trong 48 giờ cho '{sheet_name}'; bỏ qua gợi ý chủ đề.")
+        return [], None
     fallback = heuristic_topics(sheet_name, reels)
-    if not reels and targets:
-        log("Không thu được reel nào; dùng gợi ý dự phòng từ tên nhóm.")
     prompt = build_topic_prompt(sheet_name, targets, reels)
     client = None
     with _harness_lock(log):
@@ -415,6 +416,7 @@ def create_job(
                 "pool_distribution": {},
                 "topics": [],
                 "error": None,
+                "notice": None,
                 "started_at": None,
                 "finished_at": None,
             }
@@ -464,6 +466,7 @@ def _process_sheet(
 
     reels: List[Dict[str, Any]] = []
     error: Optional[str] = None
+    notice: Optional[str] = None
     if sheet["targets"]:
         sheet_dir = run_dir / "sheets" / sheet["slug"]
         sheet_dir.mkdir(parents=True, exist_ok=True)
@@ -503,19 +506,29 @@ def _process_sheet(
             error = str(exc)
             log(f"Pipeline lỗi: {error}")
     else:
-        log("Sheet không có link Facebook; chỉ gợi ý chủ đề từ tên nhóm.")
+        log("Sheet không có link Facebook.")
 
-    topics, topic_error = suggest_topics(
-        options.get("agent", "agy"),
-        sheet_name,
-        sheet["targets"],
-        reels,
-        cwd=run_dir,
-        timeout_sec=float(options.get("acp_timeout", 240)),
-        log=log,
-    )
-    if topic_error and not error:
-        error = f"ACP: {topic_error}"
+    window_hours = options.get("window_hours", 48)
+    if not reels:
+        topics = []
+        if not error:
+            if not sheet["targets"]:
+                notice = "Chưa có kênh đối thủ nào. Vui lòng cập nhật thêm danh sách kênh."
+            else:
+                notice = f"Không tìm thấy reel mới nào trong {window_hours} giờ qua. Vui lòng cập nhật thêm danh sách kênh."
+            log(notice)
+    else:
+        topics, topic_error = suggest_topics(
+            options.get("agent", "agy"),
+            sheet_name,
+            sheet["targets"],
+            reels,
+            cwd=run_dir,
+            timeout_sec=float(options.get("acp_timeout", 240)),
+            log=log,
+        )
+        if topic_error and not error:
+            error = f"ACP: {topic_error}"
 
     result = {
         "sheet": sheet_name,
@@ -523,6 +536,7 @@ def _process_sheet(
         "reels": reels,
         "topics": topics,
         "error": error,
+        "notice": notice,
     }
     result_path = run_dir / "sheets" / sheet["slug"] / "result.json"
     result_path.parent.mkdir(parents=True, exist_ok=True)
@@ -533,7 +547,11 @@ def _process_sheet(
         sheet["slug"],
         status="failed" if error else "completed",
         error=error,
+        notice=notice,
         topics=topics,
         finished_at=now_iso(),
     )
-    STORE.log(job_id, f"Xong sheet '{sheet_name}': {len(reels)} reel, 3 chủ đề.", sheet_name)
+    if topics:
+        STORE.log(job_id, f"Xong sheet '{sheet_name}': {len(reels)} reel, {len(topics)} chủ đề.", sheet_name)
+    else:
+        STORE.log(job_id, f"Xong sheet '{sheet_name}': 0 reel. {notice or error or ''}".strip(), sheet_name)

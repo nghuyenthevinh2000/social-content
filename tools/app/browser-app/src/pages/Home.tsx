@@ -25,6 +25,7 @@ type Sheet = {
   pool_distribution: Record<string, number>;
   topics: Topic[];
   error: string | null;
+  notice?: string | null;
 };
 
 type Job = {
@@ -498,6 +499,12 @@ const Home: React.FC = () => {
                         </div>
                       )}
                       {sheet.error && <div className="alert error">{sheet.error}</div>}
+                      {sheet.notice && <div className="alert warn">{sheet.notice}</div>}
+                      {sheet.status === 'completed' && sheet.reels === 0 && !sheet.error && !sheet.notice && (
+                        <div className="alert warn">
+                          Không tìm thấy reel mới nào trong 48 giờ qua. Vui lòng cập nhật thêm danh sách kênh.
+                        </div>
+                      )}
                       {sheet.status === 'pending' && <p className="muted">Đang chờ tới lượt…</p>}
                       {sheet.status === 'running' && <p className="muted">Đang crawl, phân pool và hỏi agent…</p>}
 

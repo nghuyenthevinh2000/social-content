@@ -257,6 +257,12 @@ h2:first-child {
   margin: 10px 0 0;
 }
 
+.alert.warn {
+  border-color: #f6d89b;
+  background: #fef8ec;
+  color: #8c5800;
+}
+
 .results {
   min-height: 520px;
 }
