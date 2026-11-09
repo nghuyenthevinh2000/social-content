@@ -41,6 +41,7 @@ from tools.app.backend.research import (  # noqa: E402
     create_job,
     parse_workbook,
     resolve_xlsx_bytes,
+    RUNS_ROOT,
     STORE,
 )
 
@@ -362,8 +363,11 @@ class Handler(BaseHTTPRequestHandler):
             if not user_id:
                 _json(self, 401, {"error": "Yêu cầu đăng nhập để xoá job."})
                 return
-            ok = STORE.delete(match.group(1), user_id=user_id)
-            _json(self, 200 if ok else 404, {"ok": ok})
+            job_id = match.group(1)
+            ok = STORE.delete(job_id, user_id=user_id)
+            if ok:
+                shutil.rmtree(RUNS_ROOT / job_id, ignore_errors=True)
+            _json(self, 200 if ok else 404, {"ok": ok, "jobs": STORE.list_jobs(user_id=user_id)})
             return
         if parsed.path == "/api/logs/client":
             try:

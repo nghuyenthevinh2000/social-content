@@ -271,8 +271,8 @@ const Home: React.FC = () => {
   async function deleteJob(id: string, e?: React.MouseEvent) {
     e?.stopPropagation();
     try {
-      await apiFetch(`/api/jobs/${id}/delete`, { method: 'POST' });
-      setHistory((prev) => prev.filter((j) => j.id !== id));
+      const data = await apiJson<{ ok: boolean; jobs?: JobSummary[] }>(`/api/jobs/${id}/delete`, { method: 'POST' });
+      setHistory((prev) => data.jobs ?? prev.filter((j) => j.id !== id));
       if (jobId === id) {
         selectJob(null);
       }

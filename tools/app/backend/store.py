@@ -196,7 +196,7 @@ class JobStore:
         job["logs"] = [{"at": at, "sheet": sheet, "message": message} for at, sheet, message in logs]
         return job
 
-    def list_jobs(self, user_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    def list_jobs(self, user_id: Optional[str] = None, limit: int = 500) -> List[Dict[str, Any]]:
         with self._tx() as db:
             if user_id and user_id != "default":
                 rows = db.execute(

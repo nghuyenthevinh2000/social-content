@@ -26,6 +26,7 @@ from tools.app.backend.research import (
     normalize_topics,
     parse_topics,
 )
+from tools.app.backend.store import JobStore
 from tools.loop.viral_analyzer.config import load_config
 from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
 import unittest.mock as mock
@@ -36,8 +37,16 @@ class BackendTests(unittest.TestCase):
         self._cache_tmp = tempfile.TemporaryDirectory()
         self._env_patch = mock.patch.dict(os.environ, {"VIRAL_APP_CACHE_DIR": self._cache_tmp.name})
         self._env_patch.start()
+        self._runs_root = Path(self._cache_tmp.name) / "runs"
+        self._store = JobStore(self._runs_root / "jobs.db")
+        self._runs_patch = mock.patch("tools.app.backend.research.RUNS_ROOT", self._runs_root)
+        self._store_patch = mock.patch("tools.app.backend.research.STORE", self._store)
+        self._runs_patch.start()
+        self._store_patch.start()
 
     def tearDown(self):
+        self._store_patch.stop()
+        self._runs_patch.stop()
         self._env_patch.stop()
         self._cache_tmp.cleanup()
 
@@ -513,7 +522,7 @@ class BackendTests(unittest.TestCase):
         self.assertTrue(any("Không có reel nào" in m for m in logs))
 
     def test_process_sheet_zero_reels_notifies_and_produces_no_topics(self):
-        from tools.app.backend.research import STORE, _process_sheet
+        from tools.app.backend.research import _process_sheet
         import uuid
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
@@ -539,10 +548,10 @@ class BackendTests(unittest.TestCase):
                 }],
                 "logs": [],
             }
-            STORE.put(job)
+            self._store.put(job)
             with mock.patch("tools.app.backend.research.run_analyzer_pipeline", return_value={"all_reels": [], "metadata": {}}):
                 _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
-            snap = STORE.snapshot(job_id)
+            snap = self._store.snapshot(job_id)
             target_sheet = snap["sheets"][0]
             self.assertEqual(target_sheet["status"], "completed")
             self.assertEqual(target_sheet["reels"], 0)
@@ -551,7 +560,7 @@ class BackendTests(unittest.TestCase):
             self.assertIn("cập nhật thêm danh sách", target_sheet["notice"])
 
     def test_process_sheet_no_targets_notifies_and_produces_no_topics(self):
-        from tools.app.backend.research import STORE, _process_sheet
+        from tools.app.backend.research import _process_sheet
         import uuid
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
@@ -577,9 +586,9 @@ class BackendTests(unittest.TestCase):
                 }],
                 "logs": [],
             }
-            STORE.put(job)
+            self._store.put(job)
             _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
-            snap = STORE.snapshot(job_id)
+            snap = self._store.snapshot(job_id)
             target_sheet = snap["sheets"][0]
             self.assertEqual(target_sheet["status"], "completed")
             self.assertEqual(target_sheet["reels"], 0)
@@ -773,7 +782,7 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(len(agg.notices()), 2)
 
     def test_process_sheet_reports_glasser_error_when_no_reels(self):
-        from tools.app.backend.research import STORE, _process_sheet
+        from tools.app.backend.research import _process_sheet
         import uuid
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
@@ -799,7 +808,7 @@ class BackendTests(unittest.TestCase):
                 }],
                 "logs": [],
             }
-            STORE.put(job)
+            self._store.put(job)
 
             glasser_mock_error = {
                 "error_type": "GlasserMissingKeyError",
@@ -810,7 +819,7 @@ class BackendTests(unittest.TestCase):
             with mock.patch("tools.app.backend.research.run_analyzer_pipeline", return_value={"all_reels": [], "errors": [glasser_mock_error], "metadata": {}}):
                 _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
 
-            snap = STORE.snapshot(job_id)
+            snap = self._store.snapshot(job_id)
             target_sheet = snap["sheets"][0]
             self.assertEqual(target_sheet["status"], "failed")
             self.assertIn("Chưa cấu hình hoặc thiếu GLASSER_API_KEY", target_sheet["notice"])
