@@ -600,15 +600,7 @@ const Home: React.FC = () => {
                         tabIndex={pack.disabled ? undefined : 0}
                       >
                         <div className="pack-card-top">
-                          <span className="pack-card-title">
-                            {pack.name}
-                            <span className="muted count">
-                              ({pack.countLabel || (pack.count ? `${formatNumber(pack.count)} kênh` : 'Liên tục')})
-                            </span>
-                          </span>
-                          <span className={`pack-badge ${pack.disabled ? 'coming-soon' : 'free'}`}>
-                            {pack.badge}
-                          </span>
+                          <span className="pack-card-title">{pack.name}</span>
                         </div>
 
                         <p className="pack-card-desc">{pack.description}</p>
