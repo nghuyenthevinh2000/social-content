@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import App from './App';
 import { apiJson } from './api';
+import { CREATOR_PACKS } from './data/creatorPacks';
 
 describe('App', () => {
   afterEach(() => {
@@ -78,5 +79,39 @@ describe('App', () => {
     expect(localStorage.getItem('aibrand-active-job-id')).toBe('job_persist_test');
     localStorage.removeItem('aibrand-active-job-id');
     expect(localStorage.getItem('aibrand-active-job-id')).toBeNull();
+  });
+
+  test('CREATOR_PACKS contains 5 packs with ongoing months, maintenance pack and correct pricing', () => {
+    expect(CREATOR_PACKS).toHaveLength(5);
+
+    const pack50 = CREATOR_PACKS.find((p) => p.name === '50 creator list October');
+    expect(pack50).toBeDefined();
+    expect(pack50?.price).toBe('Free');
+    expect(pack50?.disabled).toBe(false);
+    expect(pack50?.count).toBe(50);
+    expect(pack50?.targets).toHaveLength(50);
+
+    const packBds = CREATOR_PACKS.find((p) => p.name === '1000 creator bđs November');
+    expect(packBds).toBeDefined();
+    expect(packBds?.price).toBe('5$');
+    expect(packBds?.disabled).toBe(true);
+    expect(packBds?.count).toBe(1000);
+
+    const packDaoTao = CREATOR_PACKS.find((p) => p.name === '1000 creator đào tạo December');
+    expect(packDaoTao).toBeDefined();
+    expect(packDaoTao?.price).toBe('5$');
+    expect(packDaoTao?.disabled).toBe(true);
+    expect(packDaoTao?.count).toBe(1000);
+
+    const packTongHop = CREATOR_PACKS.find((p) => p.name === '10000 creators tổng hợp December');
+    expect(packTongHop).toBeDefined();
+    expect(packTongHop?.price).toBe('20$');
+    expect(packTongHop?.disabled).toBe(true);
+    expect(packTongHop?.count).toBe(10000);
+
+    const packMaintenance = CREATOR_PACKS.find((p) => p.name === 'bảo trì dài hạn');
+    expect(packMaintenance).toBeDefined();
+    expect(packMaintenance?.price).toBe('50$/year');
+    expect(packMaintenance?.disabled).toBe(true);
   });
 });

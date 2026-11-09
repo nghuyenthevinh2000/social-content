@@ -256,7 +256,17 @@ class SocialProfileStore:
             return
 
         cols = [r[1] for r in db.execute("PRAGMA table_info(topics)").fetchall()]
-        if "user_id" not in cols:
+        p_cols = [r[1] for r in db.execute("PRAGMA table_info(profiles)").fetchall()]
+        topics_sql = (db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='topics'").fetchone() or [""])[0]
+        profiles_sql = (db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='profiles'").fetchone() or [""])[0]
+        if (
+            "user_id" not in cols
+            or "user_id" not in p_cols
+            or "PRIMARY KEY (user_id, slug)" not in topics_sql
+            or "UNIQUE(user_id, topic_slug, url)" not in profiles_sql
+        ):
+            t_uid_expr = "COALESCE(user_id, 'default')" if "user_id" in cols else "'default'"
+            p_uid_expr = "COALESCE(user_id, 'default')" if "user_id" in p_cols else "'default'"
             db.execute("ALTER TABLE topics RENAME TO topics_old")
             db.execute("ALTER TABLE profiles RENAME TO profiles_old")
 
@@ -283,13 +293,13 @@ class SocialProfileStore:
             """)
             db.execute("CREATE INDEX IF NOT EXISTS idx_profiles_user_topic ON profiles (user_id, topic_slug)")
 
-            db.execute("""
+            db.execute(f"""
             INSERT OR IGNORE INTO topics (user_id, slug, name, created_at)
-            SELECT 'default', slug, name, created_at FROM topics_old
+            SELECT {t_uid_expr}, slug, name, created_at FROM topics_old
             """)
-            db.execute("""
+            db.execute(f"""
             INSERT OR IGNORE INTO profiles (user_id, topic_slug, name, url, handle, created_at)
-            SELECT 'default', topic_slug, name, url, handle, created_at FROM profiles_old
+            SELECT {p_uid_expr}, topic_slug, name, url, handle, created_at FROM profiles_old
             """)
             db.execute("DROP TABLE topics_old")
             db.execute("DROP TABLE profiles_old")

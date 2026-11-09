@@ -976,3 +976,277 @@
   align-items: center;
   gap: 8px;
 }
+
+/* Creator Pack In-App Payment Mock */
+.creator-store {
+  margin-top: 14px;
+}
+
+.store-summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.store-summary::-webkit-details-marker {
+  display: none;
+}
+
+.store-header-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.creator-store[open] .store-header-wrap {
+  margin-bottom: 12px;
+}
+
+.store-toggle-icon {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.creator-store[open] .store-toggle-icon {
+  transform: rotate(45deg);
+}
+
+.pack-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pack-card {
+  position: relative;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  transition: all 0.2s ease;
+}
+
+.pack-card.active {
+  cursor: pointer;
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+
+.pack-card.active:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 14px -4px rgba(217, 72, 15, 0.2);
+}
+
+.pack-card.disabled {
+  opacity: 0.55;
+  filter: grayscale(0.5);
+  cursor: not-allowed;
+  user-select: none;
+}
+
+.pack-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.pack-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pack-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pack-badge.free {
+  background: color-mix(in srgb, var(--green) 15%, transparent);
+  color: var(--green);
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+}
+
+.pack-badge.coming-soon {
+  background: color-mix(in srgb, var(--muted) 15%, transparent);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.pack-card-desc {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0 0 12px;
+}
+
+.pack-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.pack-action-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pack-action-btn.primary {
+  background: var(--ink);
+  color: #fff;
+}
+
+.pack-action-btn.primary:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.pack-action-btn.owned {
+  background: color-mix(in srgb, var(--green) 15%, transparent);
+  color: var(--green);
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+}
+
+.pack-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Payment Mock Sheet / Modal */
+.payment-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+  padding: 0 0 calc(env(safe-area-inset-bottom, 0px) + 8px);
+}
+
+@media (min-width: 480px) {
+  .payment-backdrop {
+    align-items: center;
+    padding: 16px;
+  }
+}
+
+.payment-sheet {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 420px;
+  padding: 22px 20px;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.25);
+  animation: paymentSlideUp 0.22s ease-out;
+}
+
+@keyframes paymentSlideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.payment-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.payment-sheet-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.payment-sheet-title h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.payment-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.payment-receipt-box {
+  background: color-mix(in srgb, var(--paper) 60%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.payment-receipt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.payment-receipt-row.total {
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.payment-sheet-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.payment-sheet-buttons button {
+  flex: 1;
+  padding: 11px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+

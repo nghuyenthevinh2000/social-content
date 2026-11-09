@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 
 import { apiFetch, apiJson } from '../api';
 import { AuthModal } from '../components/AuthModal';
+import { CREATOR_PACKS, type CreatorPack } from '../data/creatorPacks';
 import { auth, onAuthStateChanged, signOut, type User } from '../firebase';
 import './Home.css';
 
@@ -221,17 +222,35 @@ const Home: React.FC = () => {
   const [authReady, setAuthReady] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // In-App Payment Mock
+  const [activePaymentPack, setActivePaymentPack] = useState<CreatorPack | null>(null);
+  const [claimingPack, setClaimingPack] = useState<string | null>(null);
+
+  function resetUserSessionState() {
+    setTopics([]);
+    setNotice(null);
+    setError(null);
+    setSearch('');
+    setSheetUrl('');
+    setInlineUrls({});
+    setNewTopic({ name: '', url: '' });
+    setJob(null);
+    setJobId(null);
+    setHistory([]);
+    setActivePaymentPack(null);
+    localStorage.removeItem('aibrand-active-job-id');
+  }
+
   useEffect(() => {
+    let lastUid = auth.currentUser?.uid ?? null;
     const unsubscribe = onAuthStateChanged(auth, (currentUser: User | null) => {
+      const nextUid = currentUser?.uid ?? null;
+      if (!currentUser || nextUid !== lastUid) {
+        resetUserSessionState();
+      }
+      lastUid = nextUid;
       setUser(currentUser);
       setAuthReady(true);
-      if (!currentUser) {
-        setTopics([]);
-        setJob(null);
-        setJobId(null);
-        setHistory([]);
-        localStorage.removeItem('aibrand-active-job-id');
-      }
     });
     return () => unsubscribe();
   }, []);
@@ -308,6 +327,8 @@ const Home: React.FC = () => {
   useEffect(() => {
     if (!authReady || !user) return;
     let ignore = false;
+    setNotice(null);
+    setError(null);
     apiJson<{ topics?: TopicItem[] }>('/api/sources/topics')
       .then((data) => {
         if (!ignore) setTopics(data.topics || []);
@@ -478,6 +499,26 @@ const Home: React.FC = () => {
     if (ok) setNewTopic({ name: '', url: '' });
   }
 
+  function handleSelectPack(pack: CreatorPack) {
+    if (pack.disabled) return;
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    setActivePaymentPack(pack);
+  }
+
+  async function handleConfirmMockPayment(pack: CreatorPack) {
+    if (!pack.targets || pack.targets.length === 0) return;
+    setClaimingPack(pack.id);
+    try {
+      await postJson('/api/sources/topics', { topic: pack.name, targets: pack.targets });
+      setActivePaymentPack(null);
+    } finally {
+      setClaimingPack(null);
+    }
+  }
+
   const blocked = starting || running;
 
   return (
@@ -497,51 +538,116 @@ const Home: React.FC = () => {
               <p className="muted">Đang kiểm tra đăng nhập…</p>
             </div>
           ) : tab === 'profile' ? (
-            <section className="panel profile">
-              <div className="profile-head">
-                <span className="avatar">{user ? (user.email || user.uid)[0].toUpperCase() : '?'}</span>
-                <div className="sheet-title">
-                  <strong>{user ? user.displayName || user.email || 'Người dùng' : 'Chưa đăng nhập'}</strong>
-                  {!user && <small className="muted">Đăng nhập để đồng bộ tài khoản của bạn.</small>}
+            <>
+              <section className="panel profile">
+                <div className="profile-head">
+                  <span className="avatar">{user ? (user.email || user.uid)[0].toUpperCase() : '?'}</span>
+                  <div className="sheet-title">
+                    <strong>{user ? user.displayName || user.email || 'Người dùng' : 'Chưa đăng nhập'}</strong>
+                    {!user && <small className="muted">Đăng nhập để đồng bộ tài khoản của bạn.</small>}
+                  </div>
                 </div>
-              </div>
-              {user ? (
-                <>
-                  <dl className="details">
-                    <dt>Email</dt>
-                    <dd>{user.email || '—'}</dd>
-                    <dt>Đăng nhập gần nhất</dt>
-                    <dd>{user.metadata.lastSignInTime || '—'}</dd>
-                  </dl>
-                  <button
-                    type="button"
-                    className="ghost danger profile-btn"
-                    onClick={() => {
-                      setTopics([]);
-                      setJob(null);
-                      setJobId(null);
-                      setHistory([]);
-                      localStorage.removeItem('aibrand-active-job-id');
-                      window.history.replaceState(null, '', '?tab=profile');
-                      signOut(auth);
-                    }}
-                  >
-                    Đăng xuất
+                {user ? (
+                  <>
+                    <dl className="details">
+                      <dt>Email</dt>
+                      <dd>{user.email || '—'}</dd>
+                      <dt>Đăng nhập gần nhất</dt>
+                      <dd>{user.metadata.lastSignInTime || '—'}</dd>
+                    </dl>
+                    <button
+                      type="button"
+                      className="ghost danger profile-btn"
+                      onClick={() => {
+                        resetUserSessionState();
+                        window.history.replaceState(null, '', '?tab=profile');
+                        signOut(auth);
+                      }}
+                    >
+                      Đăng xuất
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="primary profile-btn" onClick={() => setShowAuthModal(true)}>
+                    Đăng nhập / Đăng ký
                   </button>
-                </>
-              ) : (
-                <button type="button" className="primary profile-btn" onClick={() => setShowAuthModal(true)}>
-                  Đăng nhập / Đăng ký
-                </button>
+                )}
+              </section>
+
+              {user && (
+                <details className="panel creator-store" open>
+                <summary className="store-summary">
+                  <div className="store-header-wrap">
+                    <div>
+                      <h2>Gói Content Creator</h2>
+                      <p className="muted count">Nạp nhanh danh sách creator vào Thư viện để phân tích video</p>
+                    </div>
+                    <span className="store-toggle-icon" aria-hidden="true" />
+                  </div>
+                </summary>
+
+                <div className="pack-list">
+                  {CREATOR_PACKS.map((pack) => {
+                    const isOwned = topics.some(
+                      (t) => t.name.toLowerCase() === pack.name.toLowerCase(),
+                    );
+                    return (
+                      <div
+                        key={pack.id}
+                        className={`pack-card ${pack.disabled ? 'disabled' : 'active'}`}
+                        onClick={() => !pack.disabled && handleSelectPack(pack)}
+                        role={pack.disabled ? undefined : 'button'}
+                        tabIndex={pack.disabled ? undefined : 0}
+                      >
+                        <div className="pack-card-top">
+                          <span className="pack-card-title">
+                            {pack.name}
+                            <span className="muted count">
+                              ({pack.countLabel || (pack.count ? `${formatNumber(pack.count)} kênh` : 'Liên tục')})
+                            </span>
+                          </span>
+                          <span className={`pack-badge ${pack.disabled ? 'coming-soon' : 'free'}`}>
+                            {pack.badge}
+                          </span>
+                        </div>
+
+                        <p className="pack-card-desc">{pack.description}</p>
+
+                        <div className="pack-card-bottom">
+                          <button
+                            type="button"
+                            className={`pack-action-btn ${
+                              pack.disabled ? 'disabled' : isOwned ? 'owned' : 'primary'
+                            }`}
+                            disabled={pack.disabled || busy || claimingPack === pack.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!pack.disabled) handleSelectPack(pack);
+                            }}
+                          >
+                            {pack.disabled
+                              ? `${pack.price} · Chưa mở bán`
+                              : claimingPack === pack.id
+                                ? 'Đang nạp…'
+                                : isOwned
+                                  ? '✓ Đã nhận (Nạp lại)'
+                                  : `Nhận gói (${pack.price})`}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                </details>
               )}
-            </section>
+            </>
           ) : tab === 'library' ? (
             !user ? (
               <section className="panel">
                 <div className="empty">
                   <span className="gate-icon">🔒</span>
                   <h2>Yêu cầu đăng nhập</h2>
-                  <p className="muted">Vui lòng đăng nhập tài khoản để xem, quản lý Thư viện kênh và chạy phân tích.</p>
+                  <p className="muted">Vui lòng đăng nhập tài khoản để xem, quản lý Thư viện kênh</p>
                   <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
                     Đăng nhập / Đăng ký
                   </button>
@@ -1062,6 +1168,76 @@ const Home: React.FC = () => {
       </IonFooter>
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+
+      {activePaymentPack && (
+        <div className="payment-backdrop" onClick={() => setActivePaymentPack(null)}>
+          <div className="payment-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="payment-sheet-head">
+              <div className="payment-sheet-title">
+                <span style={{ fontSize: 20 }}>🛒</span>
+                <h3>Xác nhận giao dịch In-App (Mock)</h3>
+              </div>
+              <button
+                type="button"
+                className="payment-close-btn"
+                aria-label="Đóng"
+                onClick={() => setActivePaymentPack(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="muted" style={{ fontSize: 13, margin: '0 0 10px' }}>
+              Mô phỏng thanh toán in-app để nạp gói creator vào Thư viện tài khoản.
+            </p>
+
+            <div className="payment-receipt-box">
+              <div className="payment-receipt-row">
+                <span className="muted">Tài khoản</span>
+                <strong>{user ? user.displayName || user.email || user.uid : 'Khách'}</strong>
+              </div>
+              <div className="payment-receipt-row">
+                <span className="muted">Gói creator</span>
+                <strong>{activePaymentPack.name}</strong>
+              </div>
+              <div className="payment-receipt-row">
+                <span className="muted">Số lượng kênh</span>
+                <strong>
+                  {activePaymentPack.countLabel ||
+                    (activePaymentPack.count ? `${formatNumber(activePaymentPack.count)} creator Facebook` : 'Bảo trì hàng tháng')}
+                </strong>
+              </div>
+              <div className="payment-receipt-row">
+                <span className="muted">Phương thức</span>
+                <span>In-App Mock Purchase</span>
+              </div>
+              <div className="payment-receipt-row total">
+                <span>Tổng thanh toán</span>
+                <span style={{ color: 'var(--green)', fontWeight: 800 }}>{activePaymentPack.price}</span>
+              </div>
+            </div>
+
+            <div className="payment-sheet-buttons">
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setActivePaymentPack(null)}
+                disabled={claimingPack === activePaymentPack.id}
+              >
+                Huỷ
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => handleConfirmMockPayment(activePaymentPack)}
+                disabled={claimingPack === activePaymentPack.id}
+              >
+                {claimingPack === activePaymentPack.id ? 'Đang nạp kênh…' : 'Xác nhận nạp gói (0$)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </IonPage>
   );
 };
