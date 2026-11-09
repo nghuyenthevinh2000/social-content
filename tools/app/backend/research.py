@@ -454,6 +454,10 @@ def create_job(
     input_path = run_dir / "input.xlsx"
     input_path.write_bytes(xlsx_bytes)
     sheets = parse_workbook(input_path)
+    if len(sheets) == 1 and sheets[0].get("name"):
+        filename = sheets[0]["name"]
+    elif filename:
+        filename = filename.removesuffix(".json").removesuffix(".xlsx")
     job = {
         "id": job_id,
         "client_id": client_id,

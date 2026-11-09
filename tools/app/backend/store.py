@@ -182,6 +182,17 @@ class JobStore:
                 (job_id,),
             ).fetchall()
         job = json.loads(data_json)
+        sheets = job.get("sheets") or []
+        if len(sheets) == 1 and sheets[0].get("name"):
+            job["filename"] = sheets[0]["name"]
+        elif job.get("filename"):
+            job["filename"] = job["filename"].removesuffix(".json").removesuffix(".xlsx")
+            if job["filename"] in ("all_topics", "tong-hop"):
+                job["filename"] = "Tất cả chủ đề"
+        elif not job.get("filename") and sheets:
+            job["filename"] = sheets[0].get("name") or "Phân tích"
+        else:
+            job["filename"] = job.get("filename") or "Phân tích"
         job["logs"] = [{"at": at, "sheet": sheet, "message": message} for at, sheet, message in logs]
         return job
 
@@ -205,10 +216,21 @@ class JobStore:
                 total_sheets = len(sheets)
                 completed_sheets = sum(1 for s in sheets if s.get("status") in ("completed", "failed"))
                 total_topics = sum(len(s.get("topics") or []) for s in sheets)
+                fn = j.get("filename") or ""
+                if len(sheets) == 1 and sheets[0].get("name"):
+                    fn = sheets[0]["name"]
+                elif fn:
+                    fn = fn.removesuffix(".json").removesuffix(".xlsx")
+                    if fn in ("all_topics", "tong-hop"):
+                        fn = "Tất cả chủ đề"
+                elif not fn and sheets:
+                    fn = sheets[0].get("name") or "Phân tích"
+                else:
+                    fn = "Phân tích"
                 jobs.append({
                     "id": j.get("id"),
                     "status": j.get("status"),
-                    "filename": j.get("filename"),
+                    "filename": fn,
                     "created_at": j.get("created_at"),
                     "finished_at": j.get("finished_at"),
                     "current_sheet": j.get("current_sheet"),

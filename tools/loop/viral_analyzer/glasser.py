@@ -198,27 +198,45 @@ def execute_glasser_query(
         if proc.returncode == 0 and temp_out.exists() and temp_out.stat().st_size > 0:
             return True, None, None
 
-        # Analyze failure or 404 output
-        output_text = (proc.stderr or proc.stdout or "").strip()
+        # Analyze failure or 404 output across both stdout and stderr
+        stdout_text = (proc.stdout or "").strip()
+        stderr_text = (proc.stderr or "").strip()
+        output_text = f"{stdout_text}\n{stderr_text}".strip()
 
         # Handle Facebook 404 / no reels tab (COMPLETED run with HTTP 404 or empty output)
-        if proc.returncode == 0 and (
+        is_not_found = proc.returncode == 0 and (
             "HTTP 404" in output_text
             or '"errorStatus": 404' in output_text
             or '"error": "not_found"' in output_text
             or "doesn't exist or is private" in output_text
             or "don't have a reels tab" in output_text
-        ):
+            or "NO_RESULT" in output_text
+            or "Response: HTTP 404" in output_text
+            or '"http_status": 404' in output_text
+            or (
+                "only a COMPLETED Run with output is saved" in output_text
+                and ("Status:   COMPLETED" in output_text or '"status": "COMPLETED"' in output_text)
+            )
+        )
+        if is_not_found:
             try:
                 temp_out.write_text(json.dumps({"reels": [], "status": "not_found", "handle": handle}), encoding="utf-8")
                 return True, None, None
             except Exception:
                 pass
 
-        # Parse specific failure cause, skipping idempotency banner
+        # Parse specific failure cause, skipping banners and updater notices
+        ignored_prefixes = (
+            "Idempotency-Key:",
+            "Update available:",
+            "upgrade:",
+            "skill:",
+            "Run ID:",
+            "Run URL:",
+        )
         err_lines = [
             line.strip() for line in output_text.splitlines()
-            if line.strip() and not line.startswith("Idempotency-Key:")
+            if line.strip() and not any(line.strip().startswith(p) for p in ignored_prefixes)
         ]
         err_first_line = err_lines[0] if err_lines else "Lỗi không xác định"
 
@@ -341,10 +359,16 @@ def fetch_target_reels(
                 for r in reels:
                     if isinstance(r, dict):
                         r["_source"] = "glasser"
-                success_msg = f"    [api] Glasser thành công ({len(reels)} reel) cho {handle}."
-                print(success_msg)
-                if progress_cb:
-                    progress_cb(f"[api] Glasser thành công ({len(reels)} reel mới từ API) cho {handle}")
+                if status == "not_found":
+                    status_msg = f"    [api] Kênh {handle} không tồn tại hoặc không có reels (not_found)."
+                    print(status_msg)
+                    if progress_cb:
+                        progress_cb(f"[api] Kênh {handle} không tồn tại hoặc không có reels (not_found)")
+                else:
+                    success_msg = f"    [api] Glasser thành công ({len(reels)} reel) cho {handle}."
+                    print(success_msg)
+                    if progress_cb:
+                        progress_cb(f"[api] Glasser thành công ({len(reels)} reel mới từ API) cho {handle}")
                 return reels
         except Exception as read_err:
             glasser_err = GlasserExecutionError(

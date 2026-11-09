@@ -700,6 +700,36 @@ class BackendTests(unittest.TestCase):
                         self.assertEqual(data["reels"], [])
                         self.assertEqual(data["status"], "not_found")
 
+                    # 4. Split-stream 404 test (stderr has "Nothing written", stdout has HTTP 404 response)
+                    t_out_split = Path(tmp_dir) / "out_split.json"
+                    real_stdout = (
+                        "Run ID:   e52c2889-27c5-4c5f-b246-9ad1bd97c410\n"
+                        "Status:   COMPLETED\n"
+                        "Response: HTTP 404\n"
+                        "Charge:   $0.00188 (NO_RESULT)\n"
+                        '{"error": "not_found", "message": "Shoot it looks like this Facebook profile doesn\'t exist or is private :( Or they don\'t have a reels tab", "success": true, "errorStatus": 404}'
+                    )
+                    real_stderr = (
+                        "Nothing written to out_split.json: only a COMPLETED Run with output is saved.\n"
+                        "Update available: glasser v0.1.88 -> v0.1.125\n"
+                    )
+                    with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=real_stdout, stderr=real_stderr)):
+                        ok, msg, exc = execute_glasser_query(
+                            profile_url="https://facebook.com/testpage",
+                            provider="scrapecreators",
+                            endpoint="/v1/facebook/profile/reels",
+                            endpoint_version=2,
+                            idempotency_key="k_split",
+                            temp_out=t_out_split,
+                            handle="testpage",
+                        )
+                        self.assertTrue(ok)
+                        self.assertIsNone(exc)
+                        self.assertTrue(t_out_split.exists())
+                        data_split = json.loads(t_out_split.read_text(encoding="utf-8"))
+                        self.assertEqual(data_split["reels"], [])
+                        self.assertEqual(data_split["status"], "not_found")
+
     def test_backend_errors_module_and_aggregation(self):
         from tools.app.backend.errors import (
             AppError,

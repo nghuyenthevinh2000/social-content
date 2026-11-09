@@ -113,7 +113,9 @@ function formatTopicForAI(topic: Topic, sheetName?: string): string {
   }
   lines.push('');
   lines.push('---');
-  lines.push('Nhiệm vụ cho AI: Dựa trên dàn ý và hook ở trên, hãy viết kịch bản chi tiết cho video ngắn (Reels/TikTok/Shorts khoảng 30-45 giây). Kịch bản cần có 3 cột: Thời lượng (giây) | Hình ảnh / Cảnh quay (Visual) | Lời thoại / Voiceover (Audio). Nhịp điệu nhanh, giữ chân người xem ngay từ 3 giây đầu.');
+  lines.push(
+    'Nhiệm vụ cho AI: Dựa trên dàn ý và hook ở trên, hãy viết kịch bản chi tiết cho video ngắn (Reels/TikTok/Shorts khoảng 30-45 giây). Kịch bản cần có 3 cột: Thời lượng (giây) | Hình ảnh / Cảnh quay (Visual) | Lời thoại / Voiceover (Audio). Nhịp điệu nhanh, giữ chân người xem ngay từ 3 giây đầu.',
+  );
   return lines.join('\n');
 }
 
@@ -138,6 +140,12 @@ function copyToClipboard(text: string): Promise<void> {
   }
 }
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
+const cleanTopicTitle = (title?: string | null) => {
+  if (!title) return 'Phân tích';
+  const stripped = String(title).replace(/\.(xlsx|json)$/i, '');
+  if (stripped === 'all_topics' || stripped === 'tong-hop') return 'Tất cả chủ đề';
+  return stripped;
+};
 const formatTime = (iso?: string) => {
   if (!iso) return '';
   try {
@@ -262,7 +270,6 @@ const Home: React.FC = () => {
 
   async function deleteJob(id: string, e?: React.MouseEvent) {
     e?.stopPropagation();
-    if (!window.confirm('Bạn có chắc muốn xoá lần chạy này khỏi lịch sử?')) return;
     try {
       await apiFetch(`/api/jobs/${id}/delete`, { method: 'POST' });
       setHistory((prev) => prev.filter((j) => j.id !== id));
@@ -620,7 +627,7 @@ const Home: React.FC = () => {
                             className="topic-run-btn"
                             onClick={(e) => {
                               e.preventDefault();
-                              run([topic], `${topic.slug}.json`);
+                              run([topic], topic.name);
                             }}
                             disabled={blocked || topic.targets.length === 0}
                           >
@@ -769,8 +776,8 @@ const Home: React.FC = () => {
                             tabIndex={0}
                           >
                             <div className="history-head">
-                              <span className="history-filename" title={item.filename}>
-                                {item.filename}
+                              <span className="history-filename" title={cleanTopicTitle(item.filename)}>
+                                {cleanTopicTitle(item.filename)}
                               </span>
                               <span className={`badge ${item.status}`}>
                                 {isRunning && <span className="live-dot" />}
@@ -810,7 +817,7 @@ const Home: React.FC = () => {
                               <button
                                 type="button"
                                 className="channel-del-btn"
-                                aria-label={`Xoá lần chạy ${item.filename}`}
+                                aria-label={`Xoá lần chạy ${cleanTopicTitle(item.filename)}`}
                                 title="Xoá lần chạy"
                                 onClick={(e) => deleteJob(item.id, e)}
                               >
@@ -832,7 +839,7 @@ const Home: React.FC = () => {
                       </button>
                       <h2>Kết quả</h2>
                       <p className="muted count">
-                        {job.filename} · {progress.done}/{progress.total} · {STATUS_LABEL[job.status]}
+                        {cleanTopicTitle(job.filename)} · {progress.done}/{progress.total} · {STATUS_LABEL[job.status]}
                         {job.created_at && ` · ${formatTime(job.created_at)}`}
                       </p>
                     </div>
@@ -883,21 +890,25 @@ const Home: React.FC = () => {
                           ))}
                         </div>
                       )}
-                      {sheet.source_breakdown && ((sheet.source_breakdown.glasser_api?.length ?? 0) > 0 || (sheet.source_breakdown.cache?.length ?? 0) > 0) && (
-                        <div className="source-breakdown muted" style={{ fontSize: '0.82rem', margin: '0.35rem 0' }}>
-                          {(sheet.source_breakdown.glasser_api?.length ?? 0) > 0 && (
-                            <span title={sheet.source_breakdown.glasser_api?.join(', ')}>
-                              ⚡ Glasser API: {sheet.source_breakdown.glasser_api?.length} kênh
-                            </span>
-                          )}
-                          {(sheet.source_breakdown.glasser_api?.length ?? 0) > 0 && (sheet.source_breakdown.cache?.length ?? 0) > 0 && ' · '}
-                          {(sheet.source_breakdown.cache?.length ?? 0) > 0 && (
-                            <span title={sheet.source_breakdown.cache?.join(', ')}>
-                              💾 Cache: {sheet.source_breakdown.cache?.length} kênh
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      {sheet.source_breakdown &&
+                        ((sheet.source_breakdown.glasser_api?.length ?? 0) > 0 ||
+                          (sheet.source_breakdown.cache?.length ?? 0) > 0) && (
+                          <div className="source-breakdown muted" style={{ fontSize: '0.82rem', margin: '0.35rem 0' }}>
+                            {(sheet.source_breakdown.glasser_api?.length ?? 0) > 0 && (
+                              <span title={sheet.source_breakdown.glasser_api?.join(', ')}>
+                                ⚡ Glasser API: {sheet.source_breakdown.glasser_api?.length} kênh
+                              </span>
+                            )}
+                            {(sheet.source_breakdown.glasser_api?.length ?? 0) > 0 &&
+                              (sheet.source_breakdown.cache?.length ?? 0) > 0 &&
+                              ' · '}
+                            {(sheet.source_breakdown.cache?.length ?? 0) > 0 && (
+                              <span title={sheet.source_breakdown.cache?.join(', ')}>
+                                💾 Cache: {sheet.source_breakdown.cache?.length} kênh
+                              </span>
+                            )}
+                          </div>
+                        )}
                       {sheet.error && <div className="alert error">{sheet.error}</div>}
                       {sheet.notice && <div className="alert warn">{sheet.notice}</div>}
                       {sheet.status === 'completed' && sheet.reels === 0 && !sheet.error && !sheet.notice && (
@@ -1016,7 +1027,7 @@ const Home: React.FC = () => {
               <button
                 className="primary"
                 type="button"
-                onClick={() => run(runnable, 'all_topics.json')}
+                onClick={() => run(runnable, 'Tất cả chủ đề')}
                 disabled={blocked || runnable.length === 0}
               >
                 {running ? 'Đang chạy…' : `▶ Chạy tất cả (${runnable.length} chủ đề)`}

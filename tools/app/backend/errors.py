@@ -223,13 +223,15 @@ def handle_glasser_error(
         )
     # 4. General execution failure
     else:
+        clean_msg = error_or_exc.get("message") if isinstance(error_or_exc, dict) and error_or_exc.get("message") else raw_text
+        custom_suggestion = error_or_exc.get("suggestion") if isinstance(error_or_exc, dict) and error_or_exc.get("suggestion") else None
         app_err = AppError(
             category=ErrorCategory.GLASSER.value,
             code="GLASSER_EXECUTION_ERROR",
-            message=f"Lỗi khi cào dữ liệu Glasser cho {handle or 'kênh'}: {raw_text}".strip(),
+            message=f"Lỗi khi cào dữ liệu Glasser cho {handle or 'kênh'}: {clean_msg}".strip(),
             severity=ErrorSeverity.ERROR.value,
             source=handle,
-            suggestion="Kiểm tra lại đường dẫn Facebook hoặc quota Glasser.",
+            suggestion=custom_suggestion or "Kiểm tra lại đường dẫn Facebook hoặc quota Glasser.",
             details={"raw": raw_text},
         )
 
