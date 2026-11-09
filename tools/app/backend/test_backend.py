@@ -334,6 +334,17 @@ class BackendTests(unittest.TestCase):
             # unassigned user cannot cancel job_a
             self.assertFalse(store.cancel("job_a1", user_id="user_b"))
 
+            # list_jobs isolation
+            jobs_a = store.list_jobs(user_id="user_a")
+            self.assertEqual(len(jobs_a), 1)
+            self.assertEqual(jobs_a[0]["id"], "job_a1")
+            self.assertEqual(len(store.list_jobs(user_id="user_b")), 0)
+
+            # delete job
+            self.assertFalse(store.delete("job_a1", user_id="user_b"))
+            self.assertTrue(store.delete("job_a1", user_id="user_a"))
+            self.assertEqual(len(store.list_jobs(user_id="user_a")), 0)
+
     def test_max_videos_env_fallback(self):
         from tools.app.backend.server import _int
         # Default when unset

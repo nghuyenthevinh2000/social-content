@@ -218,6 +218,14 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 _json(self, 500, {"error": str(exc)})
             return
+        if parsed.path == "/api/jobs":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xem lịch sử chạy."})
+                return
+            jobs = STORE.list_jobs(user_id=user_id)
+            _json(self, 200, {"ok": True, "jobs": jobs})
+            return
         match = re.fullmatch(r"/api/jobs/([a-f0-9]+)", parsed.path)
         if match:
             user_id = self._user_id()
@@ -347,6 +355,15 @@ class Handler(BaseHTTPRequestHandler):
                 return
             ok = STORE.cancel(match.group(1), user_id=user_id)
             _json(self, 200 if ok else 404, {"cancelled": ok})
+            return
+        match = re.fullmatch(r"/api/jobs/([a-f0-9]+)/delete", parsed.path)
+        if match:
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xoá job."})
+                return
+            ok = STORE.delete(match.group(1), user_id=user_id)
+            _json(self, 200 if ok else 404, {"ok": ok})
             return
         if parsed.path == "/api/logs/client":
             try:

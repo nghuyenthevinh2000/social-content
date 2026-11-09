@@ -185,3 +185,50 @@ class JobStore:
         job["logs"] = [{"at": at, "sheet": sheet, "message": message} for at, sheet, message in logs]
         return job
 
+    def list_jobs(self, user_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        with self._tx() as db:
+            if user_id and user_id != "default":
+                rows = db.execute(
+                    "SELECT data FROM jobs WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                    (user_id, limit),
+                ).fetchall()
+            else:
+                rows = db.execute(
+                    "SELECT data FROM jobs WHERE user_id = 'default' OR user_id IS NULL ORDER BY created_at DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
+        jobs = []
+        for (data_json,) in rows:
+            try:
+                j = json.loads(data_json)
+                sheets = j.get("sheets") or []
+                total_sheets = len(sheets)
+                completed_sheets = sum(1 for s in sheets if s.get("status") in ("completed", "failed"))
+                total_topics = sum(len(s.get("topics") or []) for s in sheets)
+                jobs.append({
+                    "id": j.get("id"),
+                    "status": j.get("status"),
+                    "filename": j.get("filename"),
+                    "created_at": j.get("created_at"),
+                    "finished_at": j.get("finished_at"),
+                    "current_sheet": j.get("current_sheet"),
+                    "total_sheets": total_sheets,
+                    "completed_sheets": completed_sheets,
+                    "total_topics": total_topics,
+                })
+            except Exception:
+                pass
+        return jobs
+
+    def delete(self, job_id: str, user_id: Optional[str] = None) -> bool:
+        with self._tx() as db:
+            if user_id and user_id != "default":
+                row = db.execute("SELECT id FROM jobs WHERE id = ? AND user_id = ?", (job_id, user_id)).fetchone()
+            else:
+                row = db.execute("SELECT id FROM jobs WHERE id = ? AND (user_id IS NULL OR user_id = 'default')", (job_id,)).fetchone()
+            if not row:
+                return False
+            db.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
+            db.execute("DELETE FROM logs WHERE job_id = ?", (job_id,))
+            return True
+

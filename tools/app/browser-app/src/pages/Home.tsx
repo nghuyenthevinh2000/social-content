@@ -40,9 +40,22 @@ type Job = {
   id: string;
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
   filename: string;
+  created_at?: string;
   current_sheet: string | null;
   sheets: Sheet[];
   logs: { at: string; sheet: string | null; message: string }[];
+};
+
+type JobSummary = {
+  id: string;
+  status: Job['status'];
+  filename: string;
+  created_at: string;
+  finished_at: string | null;
+  current_sheet: string | null;
+  total_sheets: number;
+  completed_sheets: number;
+  total_topics: number;
 };
 
 export type TargetItem = { name: string; url: string };
@@ -125,6 +138,20 @@ function copyToClipboard(text: string): Promise<void> {
   }
 }
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
+const formatTime = (iso?: string) => {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+    }).format(d);
+  } catch {
+    return iso;
+  }
+};
 
 function reportClientLog(message: string, stack?: string, source = 'client') {
   apiFetch('/api/logs/client', {
@@ -137,10 +164,11 @@ function reportClientLog(message: string, stack?: string, source = 'client') {
 const Home: React.FC = () => {
   const location = useLocation();
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const initialJobId = query.get('job_id') || localStorage.getItem('aibrand-active-job-id');
   const [tab, setTab] = useState<Tab>(
     query.get('tab') === 'profile'
       ? 'profile'
-      : query.get('job_id') || query.get('tab') === 'analyzer'
+      : initialJobId || query.get('tab') === 'analyzer'
         ? 'analyzer'
         : 'library',
   );
@@ -159,7 +187,9 @@ const Home: React.FC = () => {
   // @deprecated [OBSOLETE]: Local video download + transcribe is obsolete. Retained for backward-compat; do not delete.
   const [media] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
-  const [jobId, setJobId] = useState<string | null>(query.get('job_id'));
+  const [jobId, setJobId] = useState<string | null>(initialJobId);
+  const [history, setHistory] = useState<JobSummary[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
@@ -187,13 +217,61 @@ const Home: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser: User | null) => {
       setUser(currentUser);
       setAuthReady(true);
+      if (!currentUser) {
+        setTopics([]);
+        setJob(null);
+        setJobId(null);
+        setHistory([]);
+        localStorage.removeItem('aibrand-active-job-id');
+      }
     });
     return () => unsubscribe();
   }, []);
 
+  function selectJob(id: string | null) {
+    setJobId(id);
+    if (id) {
+      localStorage.setItem('aibrand-active-job-id', id);
+      window.history.replaceState(null, '', `?tab=${tab}&job_id=${id}`);
+    } else {
+      localStorage.removeItem('aibrand-active-job-id');
+      setJob(null);
+      window.history.replaceState(null, '', `?tab=${tab}`);
+    }
+  }
+
   function switchTab(next: Tab) {
     setTab(next);
     window.history.replaceState(null, '', jobId ? `?tab=${next}&job_id=${jobId}` : `?tab=${next}`);
+  }
+
+  async function fetchHistory() {
+    if (!user) return [];
+    setLoadingHistory(true);
+    try {
+      const data = await apiJson<{ ok: boolean; jobs: JobSummary[] }>('/api/jobs');
+      const jobs = data.jobs || [];
+      setHistory(jobs);
+      return jobs;
+    } catch {
+      return [];
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
+  async function deleteJob(id: string, e?: React.MouseEvent) {
+    e?.stopPropagation();
+    if (!window.confirm('Bạn có chắc muốn xoá lần chạy này khỏi lịch sử?')) return;
+    try {
+      await apiFetch(`/api/jobs/${id}/delete`, { method: 'POST' });
+      setHistory((prev) => prev.filter((j) => j.id !== id));
+      if (jobId === id) {
+        selectJob(null);
+      }
+    } catch (err) {
+      alert(`Không thể xoá: ${errorText(err)}`);
+    }
   }
 
   // Every library mutation goes through here; the server returns the full, normalized topic list.
@@ -221,21 +299,34 @@ const Home: React.FC = () => {
     library(path, JSON.stringify(payload), { 'Content-Type': 'application/json' }, success);
 
   useEffect(() => {
-    if (!authReady) return;
-    if (!user) {
-      setTopics([]);
-      setJob(null);
-      setJobId(null);
-      window.history.replaceState(null, '', `?tab=${tab}`);
-      return;
-    }
-    setTopics([]);
-    setJob(null);
-    setJobId(null);
-    window.history.replaceState(null, '', `?tab=${tab}`);
+    if (!authReady || !user) return;
+    let ignore = false;
     apiJson<{ topics?: TopicItem[] }>('/api/sources/topics')
-      .then((data) => setTopics(data.topics || []))
-      .catch((err) => setNotice({ type: 'error', text: `Không tải được thư viện: ${errorText(err)}` }));
+      .then((data) => {
+        if (!ignore) setTopics(data.topics || []);
+      })
+      .catch((err) => {
+        if (!ignore) setNotice({ type: 'error', text: `Không tải được thư viện: ${errorText(err)}` });
+      });
+
+    apiJson<{ ok: boolean; jobs: JobSummary[] }>('/api/jobs')
+      .then((data) => {
+        if (ignore) return;
+        const jobs = data.jobs || [];
+        setHistory(jobs);
+        const activeRunning = jobs.find((j) => !TERMINAL.has(j.status));
+        const storedId = query.get('job_id') || localStorage.getItem('aibrand-active-job-id');
+        const targetId = storedId || activeRunning?.id;
+        if (targetId) {
+          selectJob(targetId);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      ignore = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authReady, user?.uid]);
 
   useEffect(() => {
@@ -259,12 +350,13 @@ const Home: React.FC = () => {
         const data = await apiJson<Job>(`/api/jobs/${jobId}`);
         if (stopped) return;
         setJob(data);
-        if (TERMINAL.has(data.status)) stopped = true;
+        if (TERMINAL.has(data.status)) {
+          stopped = true;
+          fetchHistory();
+        }
       } catch {
         stopped = true;
-        setJob(null);
-        setJobId(null);
-        window.history.replaceState(null, '', `?tab=${tab}`);
+        selectJob(null);
       }
     };
     tick();
@@ -273,6 +365,7 @@ const Home: React.FC = () => {
       stopped = true;
       window.clearInterval(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, user?.uid]);
 
   const progress = useMemo(() => {
@@ -283,6 +376,9 @@ const Home: React.FC = () => {
   }, [job]);
 
   const running = job ? !TERMINAL.has(job.status) : false;
+  const hasActiveJob = useMemo(() => {
+    return running || history.some((j) => !TERMINAL.has(j.status));
+  }, [running, history]);
   const runnable = topics.filter((t) => t.targets.length > 0);
   const totalChannels = topics.reduce((acc, t) => acc + t.targets.length, 0);
 
@@ -316,8 +412,8 @@ const Home: React.FC = () => {
         body: JSON.stringify(payload),
       });
       setJob(data);
-      setJobId(data.id);
-      window.history.replaceState(null, '', `?tab=analyzer&job_id=${data.id}`);
+      selectJob(data.id);
+      fetchHistory();
     } catch (err) {
       setError(errorText(err));
       reportClientLog(errorText(err), err instanceof Error ? err.stack : undefined, 'start-job');
@@ -331,7 +427,10 @@ const Home: React.FC = () => {
       setShowAuthModal(true);
       return;
     }
-    if (jobId) await apiFetch(`/api/jobs/${jobId}/cancel`, { method: 'POST' });
+    if (jobId) {
+      await apiFetch(`/api/jobs/${jobId}/cancel`, { method: 'POST' });
+      fetchHistory();
+    }
   }
 
   function importSource(source: File | string) {
@@ -414,6 +513,8 @@ const Home: React.FC = () => {
                       setTopics([]);
                       setJob(null);
                       setJobId(null);
+                      setHistory([]);
+                      localStorage.removeItem('aibrand-active-job-id');
                       window.history.replaceState(null, '', '?tab=profile');
                       signOut(auth);
                     }}
@@ -433,9 +534,7 @@ const Home: React.FC = () => {
                 <div className="empty">
                   <span className="gate-icon">🔒</span>
                   <h2>Yêu cầu đăng nhập</h2>
-                  <p className="muted">
-                    Vui lòng đăng nhập tài khoản để xem, quản lý Thư viện kênh và chạy phân tích.
-                  </p>
+                  <p className="muted">Vui lòng đăng nhập tài khoản để xem, quản lý Thư viện kênh và chạy phân tích.</p>
                   <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
                     Đăng nhập / Đăng ký
                   </button>
@@ -444,210 +543,309 @@ const Home: React.FC = () => {
             ) : (
               <>
                 <section className="panel" id="import">
-                <h2>Nhập vào thư viện</h2>
-                <button className="picker" type="button" onClick={() => fileRef.current?.click()} disabled={busy}>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept={EXCEL_ACCEPT}
-                    hidden
-                    onChange={(event) => {
-                      const picked = event.target.files?.[0];
-                      event.target.value = '';
-                      if (picked) importSource(picked);
+                  <h2>Nhập vào thư viện</h2>
+                  <button className="picker" type="button" onClick={() => fileRef.current?.click()} disabled={busy}>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept={EXCEL_ACCEPT}
+                      hidden
+                      onChange={(event) => {
+                        const picked = event.target.files?.[0];
+                        event.target.value = '';
+                        if (picked) importSource(picked);
+                      }}
+                    />
+                    <span className="picker-icon">⇪</span>
+                    <span>
+                      <strong>{busy ? 'Đang xử lý…' : 'Chọn file Excel'}</strong>
+                      <small className="muted">Mỗi sheet thành một chủ đề · .xlsx / .xlsm</small>
+                    </span>
+                  </button>
+                  <form
+                    className="row"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (sheetUrl.trim()) importSource(sheetUrl.trim());
                     }}
-                  />
-                  <span className="picker-icon">⇪</span>
-                  <span>
-                    <strong>{busy ? 'Đang xử lý…' : 'Chọn file Excel'}</strong>
-                    <small className="muted">Mỗi sheet thành một chủ đề · .xlsx / .xlsm</small>
-                  </span>
-                </button>
-                <form
-                  className="row"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (sheetUrl.trim()) importSource(sheetUrl.trim());
-                  }}
-                >
+                  >
+                    <input
+                      type="url"
+                      className="text-input"
+                      placeholder="hoặc dán link Google Sheet"
+                      aria-label="Link Google Sheet"
+                      value={sheetUrl}
+                      onChange={(e) => setSheetUrl(e.target.value)}
+                    />
+                    <button type="submit" className="ghost" disabled={busy || !sheetUrl.trim()}>
+                      Nạp
+                    </button>
+                  </form>
+                  <small className="muted hint">
+                    Google Sheet: <strong>Chia sẻ</strong> → <strong>Bất kỳ ai có đường liên kết</strong> (Xem).
+                  </small>
+                  {notice && <div className={`alert ${notice.type}`}>{notice.text}</div>}
+                </section>
+
+                <section className="panel">
+                  <div className="panel-head">
+                    <h2>Chủ đề</h2>
+                    <span className="muted count">
+                      {topics.length} chủ đề · {totalChannels} kênh
+                    </span>
+                  </div>
                   <input
-                    type="url"
-                    className="text-input"
-                    placeholder="hoặc dán link Google Sheet"
-                    aria-label="Link Google Sheet"
-                    value={sheetUrl}
-                    onChange={(e) => setSheetUrl(e.target.value)}
+                    type="search"
+                    className="text-input search-input"
+                    placeholder="Tìm chủ đề, kênh, link…"
+                    aria-label="Tìm trong thư viện"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
                   />
-                  <button type="submit" className="ghost" disabled={busy || !sheetUrl.trim()}>
-                    Nạp
-                  </button>
-                </form>
-                <small className="muted hint">
-                  Google Sheet: <strong>Chia sẻ</strong> → <strong>Bất kỳ ai có đường liên kết</strong> (Xem).
-                </small>
-                {notice && <div className={`alert ${notice.type}`}>{notice.text}</div>}
-              </section>
 
-              <section className="panel">
-                <div className="panel-head">
-                  <h2>Chủ đề</h2>
-                  <span className="muted count">
-                    {topics.length} chủ đề · {totalChannels} kênh
-                  </span>
-                </div>
-                <input
-                  type="search"
-                  className="text-input search-input"
-                  placeholder="Tìm chủ đề, kênh, link…"
-                  aria-label="Tìm trong thư viện"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-
-                {filteredTopics.length === 0 ? (
-                  <p className="muted empty">
-                    {topics.length ? 'Không có kết quả phù hợp.' : 'Thư viện trống. Nhập file hoặc tạo chủ đề.'}
-                  </p>
-                ) : (
-                  filteredTopics.map((topic) => (
-                    <details key={topic.slug} className="topic-accordion">
-                      <summary>
-                        <span className="sheet-title">
-                          <strong>{topic.name}</strong>
-                          <small className="muted">{topic.targets.length} kênh</small>
-                        </span>
-                        <button
-                          type="button"
-                          className="topic-run-btn"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            run([topic], `${topic.slug}.json`);
-                          }}
-                          disabled={blocked || topic.targets.length === 0}
-                        >
-                          ▶ Chạy
-                        </button>
-                      </summary>
-
-                      <div className="accordion-body">
-                        {topic.targets.map((target) => (
-                          <div key={target.url} className="channel-card">
-                            <div className="channel-info">
-                              <span className="channel-name">{target.name}</span>
-                              <a href={target.url} target="_blank" rel="noreferrer" className="channel-link">
-                                {shortUrl(target.url)} ↗
-                              </a>
-                            </div>
-                            <button
-                              type="button"
-                              className="channel-del-btn"
-                              aria-label={`Xoá kênh ${target.name}`}
-                              onClick={() =>
-                                postJson('/api/sources/profiles/delete', { slug: topic.slug, url: target.url })
-                              }
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-
-                        <form
-                          className="row"
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            const url = (inlineUrls[topic.slug] || '').trim();
-                            if (url && (await addChannel(topic.name, url)))
-                              setInlineUrls((prev) => ({ ...prev, [topic.slug]: '' }));
-                          }}
-                        >
-                          <input
-                            type="url"
-                            className="text-input small"
-                            placeholder="Dán link kênh…"
-                            aria-label={`Thêm kênh vào ${topic.name}`}
-                            value={inlineUrls[topic.slug] || ''}
-                            onChange={(e) => setInlineUrls((prev) => ({ ...prev, [topic.slug]: e.target.value }))}
-                          />
+                  {filteredTopics.length === 0 ? (
+                    <p className="muted empty">
+                      {topics.length ? 'Không có kết quả phù hợp.' : 'Thư viện trống. Nhập file hoặc tạo chủ đề.'}
+                    </p>
+                  ) : (
+                    filteredTopics.map((topic) => (
+                      <details key={topic.slug} className="topic-accordion">
+                        <summary>
+                          <span className="sheet-title">
+                            <strong>{topic.name}</strong>
+                            <small className="muted">{topic.targets.length} kênh</small>
+                          </span>
                           <button
-                            type="submit"
-                            className="ghost small"
-                            disabled={busy || !(inlineUrls[topic.slug] || '').trim()}
+                            type="button"
+                            className="topic-run-btn"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              run([topic], `${topic.slug}.json`);
+                            }}
+                            disabled={blocked || topic.targets.length === 0}
                           >
-                            + Thêm
+                            ▶ Chạy
                           </button>
-                        </form>
+                        </summary>
 
-                        <button
-                          type="button"
-                          className="btn-text-danger"
-                          onClick={() =>
-                            window.confirm(`Xoá chủ đề "${topic.name}" cùng toàn bộ kênh?`) &&
-                            postJson('/api/sources/topics/delete', { slug: topic.slug })
-                          }
-                        >
-                          Xoá chủ đề
-                        </button>
-                      </div>
-                    </details>
-                  ))
-                )}
+                        <div className="accordion-body">
+                          {topic.targets.map((target) => (
+                            <div key={target.url} className="channel-card">
+                              <div className="channel-info">
+                                <span className="channel-name">{target.name}</span>
+                                <a href={target.url} target="_blank" rel="noreferrer" className="channel-link">
+                                  {shortUrl(target.url)} ↗
+                                </a>
+                              </div>
+                              <button
+                                type="button"
+                                className="channel-del-btn"
+                                aria-label={`Xoá kênh ${target.name}`}
+                                onClick={() =>
+                                  postJson('/api/sources/profiles/delete', { slug: topic.slug, url: target.url })
+                                }
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
 
-                <form className="new-topic" onSubmit={createTopic}>
-                  <input
-                    type="text"
-                    className="text-input small"
-                    placeholder="Tên chủ đề mới"
-                    aria-label="Tên chủ đề mới"
-                    value={newTopic.name}
-                    onChange={(e) => setNewTopic((v) => ({ ...v, name: e.target.value }))}
-                  />
-                  <input
-                    type="url"
-                    className="text-input small"
-                    placeholder="Link kênh đầu tiên (tuỳ chọn)"
-                    aria-label="Link kênh đầu tiên"
-                    value={newTopic.url}
-                    onChange={(e) => setNewTopic((v) => ({ ...v, url: e.target.value }))}
-                  />
-                  <button type="submit" className="ghost small" disabled={busy || !newTopic.name.trim()}>
-                    + Tạo chủ đề
-                  </button>
-                </form>
-              </section>
-            </>
-          )) : (
+                          <form
+                            className="row"
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const url = (inlineUrls[topic.slug] || '').trim();
+                              if (url && (await addChannel(topic.name, url)))
+                                setInlineUrls((prev) => ({ ...prev, [topic.slug]: '' }));
+                            }}
+                          >
+                            <input
+                              type="url"
+                              className="text-input small"
+                              placeholder="Dán link kênh…"
+                              aria-label={`Thêm kênh vào ${topic.name}`}
+                              value={inlineUrls[topic.slug] || ''}
+                              onChange={(e) => setInlineUrls((prev) => ({ ...prev, [topic.slug]: e.target.value }))}
+                            />
+                            <button
+                              type="submit"
+                              className="ghost small"
+                              disabled={busy || !(inlineUrls[topic.slug] || '').trim()}
+                            >
+                              + Thêm
+                            </button>
+                          </form>
+
+                          <button
+                            type="button"
+                            className="btn-text-danger"
+                            onClick={() =>
+                              window.confirm(`Xoá chủ đề "${topic.name}" cùng toàn bộ kênh?`) &&
+                              postJson('/api/sources/topics/delete', { slug: topic.slug })
+                            }
+                          >
+                            Xoá chủ đề
+                          </button>
+                        </div>
+                      </details>
+                    ))
+                  )}
+
+                  <form className="new-topic" onSubmit={createTopic}>
+                    <input
+                      type="text"
+                      className="text-input small"
+                      placeholder="Tên chủ đề mới"
+                      aria-label="Tên chủ đề mới"
+                      value={newTopic.name}
+                      onChange={(e) => setNewTopic((v) => ({ ...v, name: e.target.value }))}
+                    />
+                    <input
+                      type="url"
+                      className="text-input small"
+                      placeholder="Link kênh đầu tiên (tuỳ chọn)"
+                      aria-label="Link kênh đầu tiên"
+                      value={newTopic.url}
+                      onChange={(e) => setNewTopic((v) => ({ ...v, url: e.target.value }))}
+                    />
+                    <button type="submit" className="ghost small" disabled={busy || !newTopic.name.trim()}>
+                      + Tạo chủ đề
+                    </button>
+                  </form>
+                </section>
+              </>
+            )
+          ) : (
             <section className="panel" id="results">
               {error && <div className="alert error">{error}</div>}
-              {!job ? (
+              {!user ? (
                 <div className="empty">
-                  {!user ? (
-                    <>
-                      <span className="gate-icon">🔒</span>
-                      <h2>Yêu cầu đăng nhập</h2>
-                      <p className="muted">Vui lòng đăng nhập tài khoản để bắt đầu chạy phân tích.</p>
-                      <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
-                        Đăng nhập / Đăng ký
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <p className="muted">{starting ? 'Đang tạo job…' : 'Chưa có lần chạy nào.'}</p>
-                      {!starting && (
-                        <button type="button" className="ghost" onClick={() => switchTab('library')}>
-                          Chọn chủ đề trong Thư viện
-                        </button>
-                      )}
-                    </>
-                  )}
+                  <span className="gate-icon">🔒</span>
+                  <h2>Yêu cầu đăng nhập</h2>
+                  <p className="muted">Vui lòng đăng nhập tài khoản để bắt đầu chạy phân tích.</p>
+                  <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
+                    Đăng nhập / Đăng ký
+                  </button>
                 </div>
+              ) : starting ? (
+                <div className="empty">
+                  <p className="muted">Đang tạo job…</p>
+                </div>
+              ) : jobId && !job ? (
+                <div className="empty">
+                  <p className="muted">Đang tải kết quả phân tích…</p>
+                </div>
+              ) : !job ? (
+                <>
+                  <div className="panel-head">
+                    <div>
+                      <h2>Lịch sử phân tích</h2>
+                      <p className="muted count">
+                        {history.length > 0 ? `${history.length} lần chạy` : 'Chưa có lần chạy nào'}
+                      </p>
+                    </div>
+                    <button type="button" className="ghost small" onClick={fetchHistory} disabled={loadingHistory}>
+                      {loadingHistory ? 'Đang tải…' : '↻ Làm mới'}
+                    </button>
+                  </div>
+
+                  {history.length === 0 ? (
+                    <div className="empty">
+                      <p className="muted">Chưa có lần chạy nào trong lịch sử.</p>
+                      <button type="button" className="ghost" onClick={() => switchTab('library')}>
+                        Chọn chủ đề trong Thư viện để chạy
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="history-list">
+                      {history.map((item) => {
+                        const isRunning = !TERMINAL.has(item.status);
+                        return (
+                          <div
+                            key={item.id}
+                            className={`history-card ${isRunning ? 'running-card' : ''}`}
+                            onClick={() => selectJob(item.id)}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <div className="history-head">
+                              <span className="history-filename" title={item.filename}>
+                                {item.filename}
+                              </span>
+                              <span className={`badge ${item.status}`}>
+                                {isRunning && <span className="live-dot" />}
+                                {STATUS_LABEL[item.status] || item.status}
+                              </span>
+                            </div>
+                            <div className="history-meta muted">
+                              <span>{formatTime(item.created_at)}</span>
+                              <span>·</span>
+                              <span>{item.total_sheets} chủ đề</span>
+                              {item.total_topics > 0 && (
+                                <>
+                                  <span>·</span>
+                                  <span className="history-topics">{item.total_topics} ý tưởng</span>
+                                </>
+                              )}
+                              {isRunning && item.total_sheets > 0 && (
+                                <>
+                                  <span>·</span>
+                                  <span>
+                                    {item.completed_sheets}/{item.total_sheets} xong
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <div className="history-actions">
+                              <button
+                                type="button"
+                                className="ghost small history-view-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  selectJob(item.id);
+                                }}
+                              >
+                                {isRunning ? '▶ Xem tiến độ' : 'Xem kết quả'}
+                              </button>
+                              <button
+                                type="button"
+                                className="channel-del-btn"
+                                aria-label={`Xoá lần chạy ${item.filename}`}
+                                title="Xoá lần chạy"
+                                onClick={(e) => deleteJob(item.id, e)}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               ) : (
                 <>
                   <div className="panel-head">
                     <div>
+                      <button type="button" className="history-back-btn" onClick={() => selectJob(null)}>
+                        ← Lịch sử chạy ({history.length})
+                      </button>
                       <h2>Kết quả</h2>
                       <p className="muted count">
                         {job.filename} · {progress.done}/{progress.total} · {STATUS_LABEL[job.status]}
+                        {job.created_at && ` · ${formatTime(job.created_at)}`}
                       </p>
+                    </div>
+                    <div className="panel-head-actions">
+                      <a
+                        href={`/api/jobs/${job.id}/export`}
+                        download={`viral-research-${job.id}.json`}
+                        className="ghost small"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Xuất JSON
+                      </a>
                     </div>
                   </div>
 
@@ -843,7 +1041,7 @@ const Home: React.FC = () => {
             >
               <span className="tabbar-icon">
                 <IonIcon icon={t.icon} aria-hidden="true" />
-                {t.id === 'analyzer' && running && <span className="live-dot" aria-label="đang chạy" />}
+                {t.id === 'analyzer' && hasActiveJob && <span className="live-dot" aria-label="đang chạy" />}
                 {t.id === 'profile' && user && <span className="live-dot online" aria-label="đã đăng nhập" />}
               </span>
               {t.label}

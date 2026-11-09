@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
-import {
-  auth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from '../firebase';
+
+import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase';
 import './AuthModal.css';
 
 interface AuthModalProps {
@@ -35,7 +32,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     } catch (err: any) {
       let msg = err.message || 'Đã xảy ra lỗi khi xác thực.';
       if (err.code === 'auth/invalid-email') msg = 'Địa chỉ email không hợp lệ.';
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')
+      if (
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/invalid-credential'
+      )
         msg = 'Email hoặc mật khẩu không chính xác.';
       if (err.code === 'auth/email-already-in-use') msg = 'Email này đã được đăng ký tài khoản.';
       if (err.code === 'auth/weak-password') msg = 'Mật khẩu phải có ít nhất 6 ký tự.';
