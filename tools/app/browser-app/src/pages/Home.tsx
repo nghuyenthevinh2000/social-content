@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 
 import { apiFetch, apiJson } from '../api';
 import { AuthModal } from '../components/AuthModal';
+import { Tour, type TourStep } from '../components/Tour';
 import { CREATOR_PACKS, type CreatorPack } from '../data/creatorPacks';
 import { auth, onAuthStateChanged, signOut, type User } from '../firebase';
 import './Home.css';
@@ -67,6 +68,19 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'library', label: 'Thư viện', icon: libraryOutline },
   { id: 'analyzer', label: 'Phân tích', icon: analyticsOutline },
   { id: 'profile', label: 'Hồ sơ', icon: personCircleOutline },
+];
+
+const DEFAULT_TOPIC = 'sở thích cá nhân';
+const isDefaultTopic = (t: TopicItem) => t.name.toLowerCase() === DEFAULT_TOPIC;
+const TOUR_KEY = 'aibrand-tour-done';
+const TOUR_STEPS: TourStep[] = [
+  { tab: 'library', target: '.tabbar-btn:nth-child(1)', title: 'Thư viện', text: 'Nơi lưu các chủ đề và kênh creator bạn muốn theo dõi.' },
+  { tab: 'library', target: '#import', title: 'Nhập dữ liệu', text: 'Chọn file Excel hoặc dán link Google Sheet — mỗi sheet thành một chủ đề.' },
+  { tab: 'library', target: '.topic-accordion', title: 'Chủ đề mặc định', text: 'Mở chủ đề để thêm/xoá kênh, hoặc bấm ▶ Chạy để phân tích riêng chủ đề này.' },
+  { tab: 'library', target: '.new-topic', title: 'Tạo chủ đề mới', text: 'Nhập tên chủ đề và (tuỳ chọn) link kênh đầu tiên.' },
+  { tab: 'library', target: '.actionbar .primary', title: 'Chạy tất cả', text: 'Phân tích mọi chủ đề trong thư viện cùng lúc.' },
+  { tab: 'analyzer', target: '.tabbar-btn:nth-child(2)', title: 'Phân tích', text: 'Xem tiến độ, lịch sử và kết quả ý tưởng viral. Dùng "Copy cho AI" để lấy kịch bản.' },
+  { tab: 'profile', target: '.tabbar-btn:nth-child(3)', title: 'Hồ sơ', text: 'Đăng nhập/đăng xuất và nhận gói Content Creator để nạp nhanh kênh vào thư viện.' },
 ];
 
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
@@ -221,12 +235,24 @@ const Home: React.FC = () => {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [authReady, setAuthReady] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  // Seen-flag is per account, so a freshly registered user gets the tour even on a browser that showed it before.
+  const [tourDismissed, setTourDismissed] = useState(false);
+  const [tourReplay, setTourReplay] = useState(false);
+  const tourKey = user ? `${TOUR_KEY}-${user.uid}` : '';
+  const showTour = !!user && (tourReplay || (!tourDismissed && !localStorage.getItem(tourKey)));
+  const closeTour = () => {
+    if (tourKey) localStorage.setItem(tourKey, '1');
+    setTourDismissed(true);
+    setTourReplay(false);
+  };
 
   // In-App Payment Mock
   const [activePaymentPack, setActivePaymentPack] = useState<CreatorPack | null>(null);
   const [claimingPack, setClaimingPack] = useState<string | null>(null);
 
   function resetUserSessionState() {
+    setTourDismissed(false);
+    setTourReplay(false);
     setTopics([]);
     setNotice(null);
     setError(null);
@@ -321,6 +347,13 @@ const Home: React.FC = () => {
     }
   }
 
+  const postTopic = (topic: string) =>
+    apiJson<{ topics?: TopicItem[] }>('/api/sources/topics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic }),
+    });
+
   const postJson = (path: string, payload: object, success?: string) =>
     library(path, JSON.stringify(payload), { 'Content-Type': 'application/json' }, success);
 
@@ -330,8 +363,11 @@ const Home: React.FC = () => {
     setNotice(null);
     setError(null);
     apiJson<{ topics?: TopicItem[] }>('/api/sources/topics')
-      .then((data) => {
-        if (!ignore) setTopics(data.topics || []);
+      .then(async (data) => {
+        let list = data.topics || [];
+        // The default topic is permanent (the tour depends on it): recreate if missing.
+        if (!list.some(isDefaultTopic)) list = (await postTopic(DEFAULT_TOPIC)).topics || list;
+        if (!ignore) setTopics(list);
       })
       .catch((err) => {
         if (!ignore) setNotice({ type: 'error', text: `Không tải được thư viện: ${errorText(err)}` });
@@ -557,6 +593,16 @@ const Home: React.FC = () => {
                     </dl>
                     <button
                       type="button"
+                      className="ghost profile-btn"
+                      onClick={() => {
+                        setTourDismissed(false);
+                        setTourReplay(true);
+                      }}
+                    >
+                      ? Xem lại hướng dẫn
+                    </button>
+                    <button
+                      type="button"
                       className="ghost danger profile-btn"
                       onClick={() => {
                         resetUserSessionState();
@@ -575,7 +621,7 @@ const Home: React.FC = () => {
               </section>
 
               {user && (
-                <details className="panel creator-store" open>
+                <details className="panel creator-store">
                 <summary className="store-summary">
                   <div className="store-header-wrap">
                     <div>
@@ -781,16 +827,18 @@ const Home: React.FC = () => {
                             </button>
                           </form>
 
-                          <button
-                            type="button"
-                            className="btn-text-danger"
-                            onClick={() =>
-                              window.confirm(`Xoá chủ đề "${topic.name}" cùng toàn bộ kênh?`) &&
-                              postJson('/api/sources/topics/delete', { slug: topic.slug })
-                            }
-                          >
-                            Xoá chủ đề
-                          </button>
+                          {!isDefaultTopic(topic) && (
+                            <button
+                              type="button"
+                              className="btn-text-danger"
+                              onClick={() =>
+                                window.confirm(`Xoá chủ đề "${topic.name}" cùng toàn bộ kênh?`) &&
+                                postJson('/api/sources/topics/delete', { slug: topic.slug })
+                              }
+                            >
+                              Xoá chủ đề
+                            </button>
+                          )}
                         </div>
                       </details>
                     ))
@@ -1158,6 +1206,8 @@ const Home: React.FC = () => {
           ))}
         </nav>
       </IonFooter>
+
+      {showTour && authReady && <Tour steps={TOUR_STEPS} onTab={(t) => switchTab(t as Tab)} onClose={closeTour} />}
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
