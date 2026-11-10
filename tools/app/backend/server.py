@@ -38,6 +38,7 @@ from tools.app.backend.handler import run_worker  # noqa: E402
 from tools.app.backend.media import MEDIA_STORE  # noqa: E402
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO  # noqa: E402
 from tools.app.backend.video_jobs import VIDEO_STORE, VIDEO_RUNNER  # noqa: E402
+from tools.app.backend.video_engine import get_video_duration  # noqa: E402
 from tools.app.backend.profiles import PROFILE_STORE  # noqa: E402
 from tools.app.backend.research import (  # noqa: E402
     configured_agent,
@@ -542,11 +543,7 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/videos/estimate":
             user_id = self._user_id()
             try:
-                length = int(self.headers.get("Content-Length") or 0)
-                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
-                duration = int(body.get("duration", 10))
-                duration = max(5, min(15, duration))
-                est = CREDIT_STORE.estimate(duration_sec=duration, user_id=user_id)
+                est = CREDIT_STORE.estimate(user_id=user_id)
                 _json(self, 200, {"ok": True, **est})
             except Exception as exc:
                 _json(self, 400, {"error": str(exc)})
@@ -562,8 +559,7 @@ class Handler(BaseHTTPRequestHandler):
                 prompt = body.get("prompt", "")
                 profile_media_id = body.get("profile_media_id", "")
                 context_media_ids = body.get("context_media_ids", [])
-                duration = int(body.get("duration") or body.get("duration_sec") or 10)
-                duration = max(5, min(15, duration))
+                duration = get_video_duration()
                 cost_micro = duration * RATE_PER_SEC_MICRO
                 if not profile_media_id:
                     _json(self, 400, {"error": "Thiếu ảnh chân dung mẫu (profile_media_id)."})

@@ -13,6 +13,15 @@ from typing import Any, Dict, List, Optional
 DEFAULT_MODEL = "gemini-omni-1.2-flash"
 
 
+def get_video_duration(*_args: Any) -> int:
+    """Return video duration enforced by VIDEO_GENERATION_DURATION (default 15)."""
+    _load_env()
+    try:
+        return int(os.environ.get("VIDEO_GENERATION_DURATION", 15))
+    except (ValueError, TypeError):
+        return 15
+
+
 def _load_env() -> None:
     env_file = Path(__file__).resolve().parent / ".env"
     if not env_file.is_file():
@@ -33,20 +42,36 @@ def _detect_mime(data: bytes) -> str:
     return "image/jpeg"
 
 
-def build_prompt(prompt: str, safe_fallback: bool = False) -> str:
+def build_prompt(prompt: str, safe_fallback: bool = False, *_args: Any, **_kwargs: Any) -> str:
+    dur = get_video_duration()
+    hook_end = "03"
+    cta_start = f"{max(4, dur - 4):02d}"
+
     if safe_fallback:
         spoken = "Xin chào các bạn, hôm nay chúng ta cùng chia sẻ những điều hữu ích và tích cực."
-        action = "Subject smiles warmly and speaks naturally with gentle hand gestures."
+        action = (
+            f"00:00 - 00:{hook_end}: Subject looks directly into camera lens with a warm engaging smile.\n"
+            f"00:{hook_end} - 00:{cta_start}: Subject shares practical advice with gentle, natural hand gestures.\n"
+            f"00:{cta_start} - 00:{dur:02d}: Subject smiles warmly and invites viewers to save and apply the tips."
+        )
+    elif "[CAMERA & COMPOSITION]" in prompt or "[ACTION & TIMECODE]" in prompt:
+        return prompt.strip()
     else:
         spoken = prompt.strip()
-        action = "Subject delivers the spoken message conversationally with expressive facial micro-expressions and natural gestures."
+        action = (
+            f"00:00 - 00:{hook_end}: Subject looks directly into camera lens with an engaging, confident smile.\n"
+            f"00:{hook_end} - 00:{cta_start}: Subject delivers the core message with expressive facial micro-expressions and natural hand gestures.\n"
+            f"00:{cta_start} - 00:{dur:02d}: Subject smiles warmly and makes a welcoming gesture toward viewer."
+        )
 
     return (
         f"[CAMERA & COMPOSITION]\n"
-        f"Vertical 9:16 portrait orientation, clear medium close-up framing, sharp eye-level focus.\n\n"
-        f"[SUBJECT & ENVIRONMENT]\n"
-        f"Consistent appearance faithfully matching the reference portrait. Clean, realistic background lighting.\n\n"
-        f"[ACTION & EXPRESSION]\n"
+        f"Vertical 9:16 portrait orientation, clear medium close-up framing, sharp eye-level focus. Natural handheld motion, clean social media documentary style. Pristine clean video, no watermarks, no logos, no text overlays.\n\n"
+        f"[ENVIRONMENT & ATMOSPHERE]\n"
+        f"Clean, realistic workspace setting with natural background lighting matching the scene context.\n\n"
+        f"[SUBJECT & CONTINUITY]\n"
+        f"Consistent appearance faithfully matching reference portrait <IMAGE_REF_0>, smiling warmly and engaging directly with camera.\n\n"
+        f"[ACTION & TIMECODE]\n"
         f"{action}\n\n"
         f"[AUDIO & DIALOGUE]\n"
         f"Spoken Vietnamese: \"{spoken}\"\n"
@@ -126,12 +151,14 @@ def generate_video(
     context_images_bytes: Optional[List[bytes]] = None,
     output_path: Optional[Path] = None,
     client: Optional[Any] = None,
-    duration_sec: int = 10,
+    duration_sec: Optional[int] = None,
 ) -> Path:
     if not prompt or not prompt.strip():
         raise ValueError("Prompt must not be empty.")
     if not profile_image_bytes:
         raise ValueError("Profile image bytes required.")
+
+    dur = get_video_duration()
 
     if output_path is None:
         fd, temp_out = tempfile.mkstemp(suffix=".mp4")
@@ -169,7 +196,7 @@ def generate_video(
             or "gen-lang-client-0582170752"
         )
         location = os.environ.get("VERTEX_LOCATION", "global")
-        api_key = os.environ.get("VERTEX_VIDEO_API")
+        api_key = os.environ.get("VERTEX_VIDEO_API_KEY")
 
         # For Vertex AI with Omni Interactions, Vertex ADC with location="global" and project is required.
         # If a non-Express API key is provided, pass it; otherwise use project & location.
@@ -179,7 +206,6 @@ def generate_video(
             client = genai.Client(vertexai=True, project=project, location=location)
 
     model = os.environ.get("VERTEX_VIDEO_MODEL", DEFAULT_MODEL)
-    dur = max(5, min(15, int(duration_sec)))
     kwargs = {
         "model": model,
         "input": inputs,

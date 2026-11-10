@@ -13,7 +13,7 @@ test('unauthenticated video tab shows login gate', async ({ page }) => {
   const videoTab = page.getByRole('tab', { name: 'Tạo Video' });
   await expect(videoTab).toBeVisible();
   await expect(videoTab).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByText('Tạo Video AI (10s)')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Tạo Video AI/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Đăng nhập ngay' })).toBeVisible();
 });
 
@@ -228,6 +228,8 @@ test('clicking Copy cho AI in Analysis immediately switches to Video tab and pas
             format: 'Talking head + B-roll',
             source_urls: ['https://www.facebook.com/reel/123456'],
             generated_by: 'agy',
+            prompt:
+              '[CAMERA & COMPOSITION]\nVertical 9:16 mobile POV\n\n[ACTION & TIMECODE]\n00:00 - 00:03: Hook\n00:03 - 00:11: Detail\n00:11 - 00:15: CTA\n\n[AUDIO & DIALOGUE]\nĐừng bao giờ nướng bánh mì ở nhiệt độ thấp!',
           },
         ],
         error: null,
@@ -252,6 +254,9 @@ test('clicking Copy cho AI in Analysis immediately switches to Video tab and pas
   // Immediately switches to Video tab and pastes the formatted prompt into the textarea
   await expect(page.getByRole('tab', { name: 'Tạo Video' })).toHaveAttribute('aria-selected', 'true');
   const promptBox = page.getByPlaceholder(/Nhập lời thoại/);
-  await expect(promptBox).toHaveValue(/### Chủ đề: 3 bí quyết làm bánh mì giòn rụm/);
+  await expect(promptBox).toHaveValue(/\[CAMERA & COMPOSITION\]/);
+  await expect(promptBox).toHaveValue(/\[ACTION & TIMECODE\]/);
+  await expect(promptBox).toHaveValue(/00:15/);
+  await expect(promptBox).toHaveValue(/\[AUDIO & DIALOGUE\]/);
   await expect(promptBox).toHaveValue(/Đừng bao giờ nướng bánh mì ở nhiệt độ thấp!/);
 });

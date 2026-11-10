@@ -18,11 +18,11 @@ import uuid
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO
 from tools.app.backend.media import MEDIA_STORE
 from tools.app.backend.profiles import RUNS_ROOT, now_iso
-from tools.app.backend.video_engine import generate_video
+from tools.app.backend.video_engine import generate_video, get_video_duration
 
 DEFAULT_MAX_GLOBAL_JOBS = 2
 DEFAULT_MAX_PER_USER_JOBS = 1
-VIDEO_COST_MICRO = 10 * RATE_PER_SEC_MICRO  # 230,000 micro-USD = $0.23
+VIDEO_COST_MICRO = get_video_duration() * RATE_PER_SEC_MICRO
 
 
 class VideoJobStore:
@@ -328,7 +328,7 @@ class VideoRunner:
                     context_bytes_list.append(Path(c_media["path"]).read_bytes())
 
             cost = int(job.get("cost") or VIDEO_COST_MICRO)
-            duration_sec = max(5, min(15, round(cost / RATE_PER_SEC_MICRO)))
+            duration_sec = get_video_duration()
 
             try:
                 self.generator(

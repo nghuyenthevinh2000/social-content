@@ -26,16 +26,14 @@ type VideoTabProps = {
   onGoToProfile?: () => void;
   prompt?: string;
   onPromptChange?: (value: string) => void;
+  duration?: number;
+  onDurationChange?: (value: number) => void;
 };
 
-const DURATION_OPTIONS = [
-  { sec: 5, label: '5 giây', desc: 'Ngắn ($0.12)' },
-  { sec: 10, label: '10 giây', desc: 'Chuẩn ($0.23)' },
-  { sec: 15, label: '15 giây', desc: 'Tối đa ($0.35)' },
-];
-
-const DEFAULT_COST_MICRO = 230000;
-const DEFAULT_COST_USD = 0.23;
+export const DEFAULT_VIDEO_DURATION = Number(import.meta.env.VITE_VIDEO_GENERATION_DURATION) || 15;
+const RATE_PER_SEC_MICRO = 23000;
+const DEFAULT_COST_MICRO = DEFAULT_VIDEO_DURATION * RATE_PER_SEC_MICRO;
+const DEFAULT_COST_USD = Number((DEFAULT_COST_MICRO / 1000000).toFixed(2));
 
 export function VideoTab({
   user,
@@ -43,6 +41,8 @@ export function VideoTab({
   onGoToProfile,
   prompt: controlledPrompt,
   onPromptChange,
+  duration: controlledDuration,
+  onDurationChange,
 }: VideoTabProps) {
   const [internalPrompt, setInternalPrompt] = useState('');
   const prompt = controlledPrompt !== undefined ? controlledPrompt : internalPrompt;
@@ -50,7 +50,12 @@ export function VideoTab({
     setInternalPrompt(val);
     onPromptChange?.(val);
   };
-  const [duration, setDuration] = useState<number>(10);
+  const [internalDuration, setInternalDuration] = useState<number>(DEFAULT_VIDEO_DURATION);
+  const duration = controlledDuration !== undefined ? controlledDuration : internalDuration;
+  const setDuration = (val: number) => {
+    setInternalDuration(val);
+    onDurationChange?.(val);
+  };
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
@@ -111,7 +116,7 @@ export function VideoTab({
     }
   };
 
-  const fetchCreditsAndEstimate = async (targetDuration: number = duration) => {
+  const fetchCreditsAndEstimate = async () => {
     try {
       const est = await apiJson<{
         ok: boolean;
@@ -120,8 +125,6 @@ export function VideoTab({
         balance?: number;
       }>('/api/videos/estimate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration: targetDuration }),
       });
       if (est.ok && typeof est.balance === 'number') {
         setBalance(est.balance);
@@ -205,7 +208,7 @@ export function VideoTab({
           setExpandedIds((prev) => ({ ...prev, [res.job.id]: true }));
         }
         fetchJobs();
-        fetchCreditsAndEstimate(duration);
+        fetchCreditsAndEstimate();
       }
     } catch (err: any) {
       setNotice({ type: 'error', text: err?.message || 'Không thể tạo video.' });
@@ -238,7 +241,7 @@ export function VideoTab({
   if (!user) {
     return (
       <section className="panel">
-        <h2>Tạo Video AI (10s)</h2>
+        <h2>Tạo Video AI ({duration}s)</h2>
         <div style={{ padding: '24px 0', textAlign: 'center' }}>
           <p className="muted" style={{ marginBottom: 16 }}>
             Vui lòng đăng nhập để tạo video ngắn bằng AI (Omni Flash).
@@ -271,7 +274,7 @@ export function VideoTab({
       {/* Main Creation Form */}
       <section className="panel">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h2 style={{ margin: 0 }}>Tạo video AI (Omni Flash 1.2 • Tối đa 15s)</h2>
+          <h2 style={{ margin: 0 }}>Tạo video AI Cá Nhân</h2>
           {onGoToProfile && (
             <button
               type="button"
@@ -350,37 +353,10 @@ export function VideoTab({
           )}
         </div>
 
-        {/* 3. Duration Selector (Up to 15s) */}
+        {/* 3. Prompt Input */}
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>
-            3. Thời lượng video (Omni Flash 1.2 hỗ trợ tối đa 15 giây)
-          </div>
-          <div className="duration-selector-row">
-            {DURATION_OPTIONS.map((opt) => {
-              const isSelected = duration === opt.sec;
-              return (
-                <button
-                  key={opt.sec}
-                  type="button"
-                  data-testid={`duration-select-${opt.sec}`}
-                  className={`duration-btn ${isSelected ? 'active' : ''}`}
-                  onClick={() => {
-                    setDuration(opt.sec);
-                    fetchCreditsAndEstimate(opt.sec);
-                  }}
-                >
-                  <span className="duration-label">{opt.label}</span>
-                  <span className="duration-desc">{opt.desc}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 4. Prompt Input */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>
-            4. Lời thoại & Kịch bản tiếng Việt ({duration} giây)
+            3. Lời thoại & Kịch bản tiếng Việt ({duration} giây)
           </div>
           <textarea
             className="prompt-textarea"
@@ -394,7 +370,7 @@ export function VideoTab({
         <div className="cost-card" style={{ marginBottom: 16 }}>
           <div>
             <div>Thời lượng: <strong>{duration} giây</strong> (360p)</div>
-            <small className="muted">Voice tiếng Việt tự nhiên (Omni Flash 1.2 • tối đa 15s)</small>
+            <small className="muted">Voice tiếng Việt tự nhiên (Omni Flash 1.2 • {duration}s)</small>
           </div>
           <div className="cost-highlight">
             ${costUsd.toFixed(2)} <small className="muted">({costMicro.toLocaleString()} credits)</small>
@@ -514,7 +490,7 @@ export function VideoTab({
                                 : 'Đã huỷ'}
                       </span>
                       <span className="duration-tag">
-                        {Math.round(j.cost / 23000) || 10}s
+                        {Math.round(j.cost / RATE_PER_SEC_MICRO) || duration}s
                       </span>
                       {!expanded && (
                         <span className="video-card-preview-prompt">

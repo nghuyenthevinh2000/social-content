@@ -19,8 +19,14 @@ from urllib.parse import parse_qs, urlparse
 import openpyxl
 
 WORKSPACE = Path(__file__).resolve().parents[3]
-if os.environ.get("VIRAL_APP_RUNS"):
-    RUNS_ROOT = Path(os.environ["VIRAL_APP_RUNS"])
+custom_runs = os.environ.get("VIRAL_APP_RUNS")
+if custom_runs:
+    candidate = Path(custom_runs)
+    try:
+        candidate.mkdir(parents=True, exist_ok=True)
+        RUNS_ROOT = candidate
+    except OSError:
+        RUNS_ROOT = WORKSPACE / "local" / "app-runs"
 elif getattr(sys, "frozen", False):
     if os.name == "nt":
         base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))

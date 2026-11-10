@@ -7,18 +7,44 @@ import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
 import pytest
-from tools.app.backend.video_engine import build_prompt, generate_video, normalize_video
+from tools.app.backend.video_engine import build_prompt, generate_video, get_video_duration, normalize_video
+
+
+def test_get_video_duration(monkeypatch):
+    monkeypatch.delenv("VIDEO_GENERATION_DURATION", raising=False)
+    assert get_video_duration() == 15
+
+    monkeypatch.setenv("VIDEO_GENERATION_DURATION", "10")
+    assert get_video_duration() == 10
+
+    monkeypatch.setenv("VIDEO_GENERATION_DURATION", "20")
+    assert get_video_duration() == 20
+
+    monkeypatch.setenv("VIDEO_GENERATION_DURATION", "invalid")
+    assert get_video_duration() == 15
 
 
 def test_build_prompt():
     prompt = "Chia sẻ kinh nghiệm làm bánh mì giòn tan"
-    p = build_prompt(prompt, safe_fallback=False)
+    p = build_prompt(prompt, safe_fallback=False, duration_sec=15)
     assert prompt in p
+    assert "[CAMERA & COMPOSITION]" in p
+    assert "[ENVIRONMENT & ATMOSPHERE]" in p
+    assert "[SUBJECT & CONTINUITY]" in p
+    assert "[ACTION & TIMECODE]" in p
+    assert "[AUDIO & DIALOGUE]" in p
+    assert "00:00 - 00:03" in p
+    assert "00:15" in p
     assert "Vertical 9:16" in p
     assert "Spoken Vietnamese" in p
 
-    p_safe = build_prompt(prompt, safe_fallback=True)
+    # If prompt is already structured, build_prompt preserves it directly
+    already_structured = "[CAMERA & COMPOSITION]\nPOV 9:16\n\n[ACTION & TIMECODE]\n00:00 - 00:15"
+    assert build_prompt(already_structured) == already_structured
+
+    p_safe = build_prompt(prompt, safe_fallback=True, duration_sec=15)
     assert "Xin chào các bạn" in p_safe
+    assert "[ACTION & TIMECODE]" in p_safe
 
 
 def test_normalize_video():

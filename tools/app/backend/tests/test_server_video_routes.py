@@ -63,20 +63,14 @@ def test_server_video_and_media_routes():
         res = json.loads(h.wfile.getvalue().decode())
         assert res["balance"] == 0
 
-        # 2. POST /api/videos/estimate (10s and 15s)
-        h = DummyHandler("POST", "/api/videos/estimate", user_hdr, body=json.dumps({"duration": 10}).encode())
+        # 2. POST /api/videos/estimate
+        h = DummyHandler("POST", "/api/videos/estimate", user_hdr, body=b"{}")
         h.do_POST()
         assert h.response_status == 200
         res = json.loads(h.wfile.getvalue().decode())
-        assert res["cost_micro"] == 230000
+        assert res["duration_sec"] == 15
+        assert res["cost_micro"] == 345000
         assert res["can_afford"] is False
-
-        h15 = DummyHandler("POST", "/api/videos/estimate", user_hdr, body=json.dumps({"duration": 15}).encode())
-        h15.do_POST()
-        assert h15.response_status == 200
-        res15 = json.loads(h15.wfile.getvalue().decode())
-        assert res15["cost_micro"] == 345000
-        assert res15["duration_sec"] == 15
 
         # 3. Upload media: profile & context
         img_bytes = b"\xff\xd8\xff\xe01234567890"
@@ -117,6 +111,7 @@ def test_server_video_and_media_routes():
             "prompt": "Hello",
             "profile_media_id": media_prof["id"],
             "context_media_ids": [media_ctx["id"]],
+            "duration": 10,
         }).encode()
         job_hdr = {"X-User-Id": "u_test_1", "Content-Type": "application/json", "Content-Length": str(len(body_job))}
         h = DummyHandler("POST", "/api/videos", job_hdr, body=body_job)
@@ -124,13 +119,13 @@ def test_server_video_and_media_routes():
         assert h.response_status == 402
 
         # 5. Grant credits; test invalid media id -> 400 without deducting credits
-        c_store.grant("u_test_1", 500000)
+        c_store.grant("u_test_1", 1000000)
         bad_job = json.dumps({"prompt": "Hello", "profile_media_id": "nonexistent"}).encode()
         bad_hdr = {"X-User-Id": "u_test_1", "Content-Type": "application/json", "Content-Length": str(len(bad_job))}
         h = DummyHandler("POST", "/api/videos", bad_hdr, body=bad_job)
         h.do_POST()
         assert h.response_status == 400
-        assert c_store.get_balance("u_test_1") == 500000
+        assert c_store.get_balance("u_test_1") == 1000000
 
         # 6. POST /api/videos with valid profile & context -> 201
         h = DummyHandler("POST", "/api/videos", job_hdr, body=body_job)
@@ -139,7 +134,7 @@ def test_server_video_and_media_routes():
         created_job = json.loads(h.wfile.getvalue().decode())["job"]
         assert created_job["status"] == "pending"
         assert created_job["context_media_ids"] == [media_ctx["id"]]
-        assert c_store.get_balance("u_test_1") == 270000
+        assert c_store.get_balance("u_test_1") == 655000
 
         # 7. GET /api/videos
         h = DummyHandler("GET", "/api/videos", user_hdr)
@@ -165,12 +160,12 @@ def test_server_video_and_media_routes():
         h.do_POST()
         assert h.response_status == 201
         job2 = json.loads(h.wfile.getvalue().decode())["job"]
-        assert c_store.get_balance("u_test_1") == 40000
+        assert c_store.get_balance("u_test_1") == 310000
 
         h = DummyHandler("POST", f"/api/videos/{job2['id']}/cancel", user_hdr)
         h.do_POST()
         assert h.response_status == 200
-        assert c_store.get_balance("u_test_1") == 270000
+        assert c_store.get_balance("u_test_1") == 655000
 
         # 10. POST /api/videos/<id>/delete
         for jid in (created_job["id"], job2["id"]):

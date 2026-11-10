@@ -14,13 +14,14 @@ def test_credit_lifecycle():
         
         # New user has 0 balance
         assert store.get_balance("user_a") == 0
-        est = store.estimate(duration_sec=10, user_id="user_a")
-        assert est["cost_micro"] == 230000
-        assert est["cost_usd"] == 0.23
+        est = store.estimate(user_id="user_a")
+        assert est["duration_sec"] == 15
+        assert est["cost_micro"] == 345000
+        assert est["cost_usd"] == 0.345
         assert est["can_afford"] is False
         
         # Cannot reserve with 0 balance
-        assert store.reserve("user_a", 230000, job_id="job1") is False
+        assert store.reserve("user_a", 345000, job_id="job1") is False
         assert store.get_balance("user_a") == 0
         
         # Grant credits
@@ -29,13 +30,9 @@ def test_credit_lifecycle():
         assert store.get_balance("user_a") == 500000
         
         # Estimate now shows can_afford = True
-        est2 = store.estimate(duration_sec=10, user_id="user_a")
+        est2 = store.estimate(user_id="user_a")
+        assert est2["cost_micro"] == 345000
         assert est2["can_afford"] is True
-
-        est15 = store.estimate(duration_sec=15, user_id="user_a")
-        assert est15["cost_micro"] == 345000
-        assert est15["cost_usd"] == 0.345
-        assert est15["can_afford"] is True
         
         # Reserve credits
         ok = store.reserve("user_a", 230000, job_id="job1")

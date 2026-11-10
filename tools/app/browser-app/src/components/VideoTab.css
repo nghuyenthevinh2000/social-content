@@ -62,49 +62,6 @@
   color: var(--accent);
 }
 
-.duration-selector-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.duration-btn {
-  flex: 1;
-  min-width: 90px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-}
-
-.duration-btn:hover {
-  border-color: var(--accent);
-}
-
-.duration-btn.active {
-  border-color: var(--accent);
-  background: var(--card);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.duration-btn .duration-label {
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--ink);
-}
-
-.duration-btn .duration-desc {
-  font-size: 11px;
-  color: var(--muted);
-}
-
 .duration-tag {
   font-size: 11px;
   font-weight: 600;

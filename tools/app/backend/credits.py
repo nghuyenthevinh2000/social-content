@@ -11,6 +11,7 @@ import sqlite3
 from typing import Any, Dict, List, Optional
 
 from tools.app.backend.profiles import RUNS_ROOT, now_iso
+from tools.app.backend.video_engine import get_video_duration
 
 RATE_PER_SEC_MICRO = 23000  # $0.023/s, 10s = 230,000 micro-USD = $0.23
 
@@ -146,13 +147,14 @@ class CreditStore:
             row = db.execute("SELECT balance FROM user_credits WHERE user_id = ?", (user_id,)).fetchone()
             return int(row[0])
 
-    def estimate(self, duration_sec: int = 10, user_id: Optional[str] = None) -> Dict[str, Any]:
-        cost_micro = duration_sec * RATE_PER_SEC_MICRO
+    def estimate(self, user_id: Optional[str] = None, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
+        dur = get_video_duration()
+        cost_micro = dur * RATE_PER_SEC_MICRO
         balance = self.get_balance(user_id) if user_id else 0
         return {
             "cost_micro": cost_micro,
             "cost_usd": round(cost_micro / 1_000_000, 4),
-            "duration_sec": duration_sec,
+            "duration_sec": dur,
             "balance": balance,
             "balance_usd": round(balance / 1_000_000, 4),
             "can_afford": balance >= cost_micro,

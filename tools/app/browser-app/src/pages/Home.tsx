@@ -21,6 +21,7 @@ type Topic = {
   format: string;
   source_urls: string[];
   generated_by: string;
+  prompt?: string;
 };
 
 type Sheet = {
@@ -114,27 +115,22 @@ const reelLink = (url: string) => {
   return trimmed;
 };
 
-function formatTopicForAI(topic: Topic, sheetName?: string): string {
+export function formatTopicForAI(topic: Topic, sheetName?: string): string {
+  // Use the AI-generated director prompt directly from backend
+  if (topic.prompt && topic.prompt.trim()) {
+    return topic.prompt.trim();
+  }
+  // Minimal fallback for legacy topics without generated prompt
   const lines: string[] = [];
   lines.push(`### Chủ đề: ${topic.title}`);
   if (sheetName) lines.push(`- **Nhóm chủ đề**: ${sheetName}`);
   if (topic.format) lines.push(`- **Định dạng**: ${topic.format}`);
-  if (topic.hook) lines.push(`- **Hook (3s đầu)**: "${topic.hook}"`);
+  if (topic.hook) lines.push(`- **Hook**: "${topic.hook}"`);
   if (topic.angle) lines.push(`- **Góc tiếp cận**: ${topic.angle}`);
-  if (topic.why_viral) lines.push(`- **Lý do viral & Bằng chứng**: ${topic.why_viral}`);
   if (topic.outline && topic.outline.length > 0) {
     lines.push(`- **Dàn ý triển khai**:`);
     topic.outline.forEach((step, idx) => lines.push(`  ${idx + 1}. ${step}`));
   }
-  if (topic.source_urls && topic.source_urls.length > 0) {
-    const urls = topic.source_urls.map((u) => reelLink(u)).join('\n  - ');
-    lines.push(`- **Reel tham khảo**:\n  - ${urls}`);
-  }
-  lines.push('');
-  lines.push('---');
-  lines.push(
-    'Nhiệm vụ cho AI: Dựa trên dàn ý và hook ở trên, hãy viết kịch bản chi tiết cho video ngắn (Reels/TikTok/Shorts khoảng 30-45 giây). Kịch bản cần có 3 cột: Thời lượng (giây) | Hình ảnh / Cảnh quay (Visual) | Lời thoại / Voiceover (Audio). Nhịp điệu nhanh, giữ chân người xem ngay từ 3 giây đầu.',
-  );
   return lines.join('\n');
 }
 
@@ -224,6 +220,9 @@ const Home: React.FC = () => {
   const [showLogs, setShowLogs] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [videoPrompt, setVideoPrompt] = useState('');
+  const [videoDuration, setVideoDuration] = useState<number>(
+    Number(import.meta.env.VITE_VIDEO_GENERATION_DURATION) || 15,
+  );
 
   const handleCopyTopic = async (topic: Topic, sheetName: string, key: string) => {
     const text = formatTopicForAI(topic, sheetName);
@@ -706,6 +705,8 @@ const Home: React.FC = () => {
               onGoToProfile={() => switchTab('profile')}
               prompt={videoPrompt}
               onPromptChange={setVideoPrompt}
+              duration={videoDuration}
+              onDurationChange={setVideoDuration}
             />
           ) : tab === 'library' ? (
             !user ? (

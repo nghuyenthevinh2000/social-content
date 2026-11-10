@@ -36,8 +36,10 @@ from tools.app.backend.profiles import (
     slugify,
     SocialProfileStore,
     PROFILE_STORE,
+    RUNS_ROOT,
 )
 from tools.app.backend.store import JobStore, now_iso
+from tools.app.backend.video_engine import get_video_duration
 from tools.loop.viral_analyzer.config import load_config
 from tools.loop.viral_analyzer.glasser import ensure_glasser_env
 from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
@@ -49,18 +51,6 @@ _is_facebook_url = is_facebook_url
 _clean_name = clean_name
 
 WORKSPACE = Path(__file__).resolve().parents[3]
-if os.environ.get("VIRAL_APP_RUNS"):
-    RUNS_ROOT = Path(os.environ["VIRAL_APP_RUNS"])
-elif getattr(sys, "frozen", False):
-    if os.name == "nt":
-        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
-    elif sys.platform == "darwin":
-        base = Path.home() / "Library" / "Application Support"
-    else:
-        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
-    RUNS_ROOT = base / "AIBrand" / "runs"
-else:
-    RUNS_ROOT = WORKSPACE / "local" / "app-runs"
 
 AGENT_PRESETS: List[Dict[str, Any]] = [
     {
@@ -156,6 +146,59 @@ def _reel_digest(reels: List[Dict[str, Any]], limit: int = 12) -> str:
     return "\n".join(lines)
 
 
+def format_director_prompt(
+    item: Dict[str, Any],
+    sheet_name: str = "",
+    *_args: Any,
+    **_kwargs: Any,
+) -> str:
+    dur = get_video_duration()
+    hook_end = "03"
+    cta_start = f"{max(4, dur - 4):02d}"
+
+    title = str(item.get("title") or "").strip()
+    hook = str(item.get("hook") or "").strip().strip("\"'")
+    angle = str(item.get("angle") or "").strip()
+    outline = item.get("outline") or []
+    if isinstance(outline, list):
+        clean_outline = [re.sub(r"^\d+[\.\)]\s*", "", str(x)).strip() for x in outline if str(x).strip()]
+    else:
+        clean_outline = [str(outline).strip()]
+    outline_summary = ". ".join(clean_outline[:2])
+
+    dialogue_parts = []
+    if hook:
+        dialogue_parts.append(hook)
+    if outline_summary:
+        dialogue_parts.append(outline_summary)
+    dialogue_parts.append("Mọi người cùng lưu lại và áp dụng ngay nhé!")
+    dialogue_text = ". ".join(dialogue_parts).replace("..", ".")
+
+    env_text = f"Không gian làm việc chân thực phù hợp chủ đề '{sheet_name or title}'. Ánh sáng tự nhiên rõ nét, bố cục gọn gàng, tự nhiên."
+    action_hook = f"Presenter nhìn thẳng ống kính camera cười tươi, mở đầu lôi cuốn: \"{hook or title}\"."
+    action_body = f"Presenter thao tác tự nhiên, diễn giải các ý chính: {outline_summary or angle or title}."
+    action_cta = "Presenter cười thân thiện, gật đầu và ra hiệu kêu gọi người xem lưu lại và tương tác."
+
+    actions = (
+        f"00:00 - 00:{hook_end}: {action_hook}\n"
+        f"00:{hook_end} - 00:{cta_start}: {action_body}\n"
+        f"00:{cta_start} - 00:{dur:02d}: {action_cta}"
+    )
+
+    return (
+        f"[CAMERA & COMPOSITION]\n"
+        f"Vertical 9:16 mobile POV, góc quay chân thực, cận cảnh vừa phải theo dõi người dẫn và thao tác, raw BTS social video style. Video sạch sẽ, không watermark, không logo, không text overlay.\n\n"
+        f"[ENVIRONMENT & ATMOSPHERE]\n"
+        f"{env_text}\n\n"
+        f"[SUBJECT & CONTINUITY]\n"
+        f"Người dẫn nhìn thẳng ống kính, cử chỉ tự nhiên, kết nối trực tiếp với người xem matching reference portrait <IMAGE_REF_0>.\n\n"
+        f"[ACTION & TIMECODE]\n"
+        f"{actions}\n\n"
+        f"[AUDIO & DIALOGUE]\n"
+        f"Lời thoại tiếng Việt tự nhiên, chuẩn nhịp điệu: \"{dialogue_text}\". Âm thanh nền chân thực."
+    )
+
+
 def build_topic_prompt(sheet_name: str, targets: List[Dict[str, Any]], reels: List[Dict[str, Any]]) -> str:
     channels = ", ".join(target.get("name") or target.get("handle", "") for target in targets[:20]) or "(chưa có kênh)"
     pools: Dict[str, int] = {}
@@ -164,7 +207,11 @@ def build_topic_prompt(sheet_name: str, targets: List[Dict[str, Any]], reels: Li
         pools[key] = pools.get(key, 0) + 1
     pool_text = ", ".join(f"{key}: {count}" for key, count in sorted(pools.items())) or "không có dữ liệu"
     digest = _reel_digest(reels) or "(không có reel nào trong 48 giờ)"
-    return f"""Bạn là chiến lược gia nội dung viral cho Facebook Reels tiếng Việt.
+    dur = get_video_duration()
+    hook_end = "03"
+    cta_start = f"{max(4, dur - 4):02d}"
+
+    return f"""Bạn là chiến lược gia nội dung viral cho Facebook Reels & video ngắn tiếng Việt.
 
 NHÓM CHỦ ĐỀ: {sheet_name}
 KÊNH ĐỐI THỦ: {channels}
@@ -173,6 +220,27 @@ DỮ LIỆU REEL 48 GIỜ:
 {digest}
 
 NHIỆM VỤ: Đề xuất ĐÚNG 3 chủ đề video có khả năng viral cao nhất cho nhóm chủ đề này.
+Mỗi chủ đề phải đi kèm trường "prompt" chứa kịch bản đạo diễn (director prompt) hoàn chỉnh, chuẩn bị sẵn cho AI tạo video (tỷ lệ 9:16 dọc, thời lượng {dur} giây).
+
+CẤU TRÚC PROMPT ĐẠO DIỄN (bắt buộc đúng 5 phần theo chuẩn UGC):
+[CAMERA & COMPOSITION]
+Vertical 9:16 mobile POV, góc quay cận cảnh tự nhiên theo dõi người dẫn và thao tác, raw BTS social style, không watermark, logo, text overlay.
+
+[ENVIRONMENT & ATMOSPHERE]
+Bối cảnh thực tế phù hợp chủ đề (xưởng, văn phòng, nhà bếp, studio...), ánh sáng tự nhiên, chân thực.
+
+[SUBJECT & CONTINUITY]
+Người dẫn nhìn thẳng ống kính, biểu cảm thân thiện kết nối trực tiếp với người xem (<IMAGE_REF_0>).
+
+[ACTION & TIMECODE]
+Phân chia nhịp thời gian chính xác trong đúng {dur} giây:
+- 00:00 - 00:{hook_end}: Hành động mở đầu và hook gây tò mò
+- 00:{hook_end} - 00:{cta_start}: Thao tác và diễn giải nội dung chính
+- 00:{cta_start} - 00:{dur:02d}: Kết luận và kêu gọi hành động (CTA)
+
+[AUDIO & DIALOGUE]
+Lời thoại tiếng Việt tự nhiên, súc tích, nhịp điệu nhanh vừa khớp thời lượng {dur} giây.
+
 Yêu cầu:
 - 3 chủ đề phải khác nhau rõ rệt về góc khai thác, không trùng ý.
 - Dựa trên bằng chứng thật từ dữ liệu trên (view, velocity, pool, transcript, tên kênh, reel_url).
@@ -188,8 +256,9 @@ Schema mỗi phần tử:
     "angle": "góc khai thác khác biệt so với đối thủ",
     "why_viral": "vì sao chủ đề này có khả năng viral, dẫn số liệu",
     "outline": ["ý 1", "ý 2", "ý 3"],
-    "format": "định dạng gợi ý, ví dụ Reels 35s talking-head",
-    "source_urls": ["url reel bằng chứng (chính xác giá trị reel_url ở trên, bắt đầu bằng https://www.facebook.com/reel/...)"]
+    "format": "Reels {dur}s UGC",
+    "source_urls": ["url reel bằng chứng (chính xác giá trị reel_url ở trên, bắt đầu bằng https://www.facebook.com/reel/...)"],
+    "prompt": "[CAMERA & COMPOSITION]\\n...\\n\\n[ENVIRONMENT & ATMOSPHERE]\\n...\\n\\n[SUBJECT & CONTINUITY]\\n...\\n\\n[ACTION & TIMECODE]\\n...\\n\\n[AUDIO & DIALOGUE]\\n..."
   }}
 ]"""
 
@@ -241,12 +310,14 @@ def normalize_topics(
     data: Any,
     fallback: List[Dict[str, Any]],
     reels: Optional[List[Dict[str, Any]]] = None,
+    sheet_name: str = "",
 ) -> List[Dict[str, Any]]:
     if isinstance(data, dict):
         data = data.get("topics") or data.get("ideas") or [data]
     if not isinstance(data, list):
         return fallback
     topics = []
+    dur = get_video_duration()
     for index, item in enumerate(data):
         if not isinstance(item, dict):
             continue
@@ -258,6 +329,9 @@ def normalize_topics(
             top_url = reels[index].get("url") or (f"https://www.facebook.com/reel/{reels[index]['video_id']}" if reels[index].get("video_id") else None)
             if top_url:
                 sources = [top_url]
+        prompt_val = str(item.get("prompt") or item.get("director_prompt") or "").strip()
+        if not prompt_val:
+            prompt_val = format_director_prompt(item, sheet_name=sheet_name)
         topics.append(
             {
                 "title": str(item.get("title") or "").strip() or (fallback[index]["title"] if index < len(fallback) else "Chủ đề mới"),
@@ -265,8 +339,9 @@ def normalize_topics(
                 "angle": str(item.get("angle") or "").strip(),
                 "why_viral": str(item.get("why_viral") or item.get("why") or "").strip(),
                 "outline": _normalize_outline(item.get("outline")),
-                "format": str(item.get("format") or "").strip(),
+                "format": str(item.get("format") or f"Reels {dur}s UGC").strip(),
                 "source_urls": sources,
+                "prompt": prompt_val,
                 "generated_by": "agent",
             }
         )
@@ -292,19 +367,21 @@ def parse_topics(
     text: str,
     fallback: List[Dict[str, Any]],
     reels: Optional[List[Dict[str, Any]]] = None,
+    sheet_name: str = "",
 ) -> List[Dict[str, Any]]:
     for candidate in _extract_json_candidates(text):
         try:
             data = json.loads(candidate)
         except json.JSONDecodeError:
             continue
-        topics = normalize_topics(data, fallback, reels=reels)
+        topics = normalize_topics(data, fallback, reels=reels, sheet_name=sheet_name)
         if topics:
             return topics
     return fallback
 
 
 def heuristic_topics(sheet_name: str, reels: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    dur = get_video_duration()
     ranked = sorted(
         reels,
         key=lambda r: (
@@ -319,22 +396,22 @@ def heuristic_topics(sheet_name: str, reels: List[Dict[str, Any]]) -> List[Dict[
         title = str(reel.get("title") or "").strip() or f"Câu chuyện từ @{reel.get('author_handle')}"
         views = int(reel.get("views") or 0)
         velocity = float(reel.get("velocity_per_hour") or 0)
-        topics.append(
-            {
-                "title": f"Kể lại: {title[:90]}",
-                "hook": f"Vì sao chuyện này đạt {views:,} lượt xem trong 48 giờ?",
-                "angle": f"Phân tích góc P{reel.get('current_pool')} - {reel.get('pool_name', '')}, tập trung vào cảm xúc và bình luận.",
-                "why_viral": f"{views:,} views, {velocity:,.0f} views/giờ, pool P{reel.get('current_pool')}.",
-                "outline": [
-                    f"Mở bằng chi tiết gây tò mò từ video gốc của @{reel.get('author_handle')}",
-                    "Kể lại câu chuyện bằng hình ảnh/điện thoại, giữ nhịp nhanh",
-                    "Kết bằng câu hỏi mở để kéo bình luận",
-                ],
-                "format": "Reels 30-45s talking-head hoặc kể chuyện",
-                "source_urls": [reel.get("url")] if reel.get("url") else [],
-                "generated_by": "heuristic",
-            }
-        )
+        t = {
+            "title": f"Kể lại: {title[:90]}",
+            "hook": f"Vì sao chuyện này đạt {views:,} lượt xem trong 48 giờ?",
+            "angle": f"Phân tích góc P{reel.get('current_pool')} - {reel.get('pool_name', '')}, tập trung vào cảm xúc và bình luận.",
+            "why_viral": f"{views:,} views, {velocity:,.0f} views/giờ, pool P{reel.get('current_pool')}.",
+            "outline": [
+                f"Mở bằng chi tiết gây tò mò từ video gốc của @{reel.get('author_handle')}",
+                "Kể lại câu chuyện bằng hình ảnh/điện thoại, giữ nhịp nhanh",
+                "Kết bằng câu hỏi mở để kéo bình luận",
+            ],
+            "format": f"Reels {dur}s UGC",
+            "source_urls": [reel.get("url")] if reel.get("url") else [],
+            "generated_by": "heuristic",
+        }
+        t["prompt"] = format_director_prompt(t, sheet_name=sheet_name)
+        topics.append(t)
 
     generic = [
         {
@@ -343,7 +420,7 @@ def heuristic_topics(sheet_name: str, reels: List[Dict[str, Any]]) -> List[Dict[
             "angle": "Myth-busting: nêu hiểu lầm phổ biến rồi sửa bằng ví dụ đời thường.",
             "why_viral": "Chủ đề dựa trên tên nhóm; chưa có reel 48 giờ để đối chiếu.",
             "outline": ["Nêu hiểu lầm", "Đưa bằng chứng trực quan", "Chốt bằng mẹo làm ngay"],
-            "format": "Reels 30s",
+            "format": f"Reels {dur}s UGC",
             "source_urls": [],
             "generated_by": "heuristic",
         },
@@ -353,7 +430,7 @@ def heuristic_topics(sheet_name: str, reels: List[Dict[str, Any]]) -> List[Dict[
             "angle": "Nhật ký trải nghiệm cá nhân, tạo chuỗi theo dõi nhiều tập.",
             "why_viral": "Chuỗi thử thách giữ chân người xem quay lại.",
             "outline": ["Ngày 1: mục tiêu", "Ngày 3-5: khó khăn", "Ngày 7: kết quả"],
-            "format": "Chuỗi Reels 20-30s",
+            "format": f"Chuỗi Reels {dur}s UGC",
             "source_urls": [],
             "generated_by": "heuristic",
         },
@@ -363,11 +440,13 @@ def heuristic_topics(sheet_name: str, reels: List[Dict[str, Any]]) -> List[Dict[
             "angle": "Danh sách nhanh, dễ lưu và chia sẻ.",
             "why_viral": "Nội dung lưu/chia sẻ tốt, phù hợp người mới.",
             "outline": ["Mẹo 1", "Mẹo 2", "Mẹo 3 + lời mời lưu video"],
-            "format": "Reels 25-35s",
+            "format": f"Reels {dur}s UGC",
             "source_urls": [],
             "generated_by": "heuristic",
         },
     ]
+    for g in generic:
+        g["prompt"] = format_director_prompt(g, sheet_name=sheet_name)
     while len(topics) < 3:
         topics.append(generic[len(topics)])
     return topics[:3]
@@ -400,7 +479,7 @@ def suggest_topics(
             text = client.prompt(session_id, prompt)
             if not text.strip():
                 raise ACPError("Agent trả về nội dung rỗng.")
-            topics = parse_topics(text, fallback, reels=reels)
+            topics = parse_topics(text, fallback, reels=reels, sheet_name=sheet_name)
             if topics and topics[0].get("generated_by") == "agent":
                 log("Agent đã trả về 3 chủ đề.")
             else:

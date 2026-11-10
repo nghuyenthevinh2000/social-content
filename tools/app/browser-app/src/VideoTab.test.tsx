@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { MediaPanel } from './components/MediaPanel';
 import { VideoTab } from './components/VideoTab';
+import { formatTopicForAI } from './pages/Home';
 import type { User } from './firebase';
 
 const mockUser = {
@@ -22,7 +23,7 @@ describe('VideoTab and MediaPanel', () => {
     const onOpenAuth = vi.fn();
     render(<VideoTab user={null} onOpenAuth={onOpenAuth} />);
 
-    expect(screen.getByText('Tạo Video AI (10s)')).toBeDefined();
+    expect(screen.getByText(/Tạo Video AI \(\d+s\)/)).toBeDefined();
     expect(screen.getByText('Đăng nhập ngay')).toBeDefined();
 
     fireEvent.click(screen.getByText('Đăng nhập ngay'));
@@ -314,7 +315,7 @@ describe('VideoTab and MediaPanel', () => {
       prompt: 'Chia sẻ công thức làm bánh mì',
       profile_media_id: 'prof1',
       context_media_ids: ['ctx1'],
-      duration: 10,
+      duration: 15,
     });
 
     // Test cancel pending job button
@@ -379,5 +380,32 @@ describe('VideoTab and MediaPanel', () => {
     const imgs = Array.from(container.querySelectorAll('img')).map((img) => img.getAttribute('src'));
     expect(imgs).toContain('/api/media/prof_abc?uid=test_uid_123');
     expect(imgs).toContain('/api/media/ctx1?uid=test_uid_123');
+  });
+
+  test('formatTopicForAI uses backend AI generated prompt directly', () => {
+    const aiPrompt = `[CAMERA & COMPOSITION]\nVertical 9:16 mobile POV\n\n[ACTION & TIMECODE]\n00:00 - 00:15\n\n[AUDIO & DIALOGUE]\nSpoken Vietnamese`;
+    const topic = {
+      title: 'Bao lì xì giấy mỹ thuật',
+      hook: 'Có ai lấy giấy mỹ thuật này in bao lì xì Tết chưa?',
+      angle: 'Trải nghiệm thực tế xưởng in',
+      why_viral: 'Hiếu kỳ về chất liệu giấy cao cấp',
+      outline: [
+        '1. Chọn định lượng giấy 180gsm phù hợp',
+        '2. Kỹ thuật ép kim vàng sắc nét',
+      ],
+      format: 'Reels 15s UGC',
+      source_urls: [],
+      generated_by: 'agent',
+      prompt: aiPrompt,
+    };
+
+    expect(formatTopicForAI(topic)).toBe(aiPrompt);
+
+    // Fallback if prompt is not present
+    const legacyTopic = { ...topic, prompt: undefined };
+    const fallbackText = formatTopicForAI(legacyTopic, 'Nhóm in ấn');
+    expect(fallbackText).toContain('### Chủ đề: Bao lì xì giấy mỹ thuật');
+    expect(fallbackText).toContain('Nhóm in ấn');
+    expect(fallbackText).toContain('Có ai lấy giấy mỹ thuật này in bao lì xì Tết chưa?');
   });
 });

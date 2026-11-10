@@ -31,11 +31,11 @@ def test_video_job_lifecycle_and_cancel():
             c_store.grant("u1", 500000)
             assert c_store.get_balance("u1") == 500000
 
-            # Create job reserves 230,000
+            # Create job reserves 345,000 (15s @ 23,000/s)
             job = store.create_job(user_id="u1", prompt="test prompt", profile_media_id="m1")
             assert job["status"] == "pending"
-            assert job["cost"] == 230000
-            assert c_store.get_balance("u1") == 270000
+            assert job["cost"] == 345000
+            assert c_store.get_balance("u1") == 155000
 
             # List jobs
             jobs = store.list_jobs("u1")
@@ -69,14 +69,14 @@ def test_crash_recovery():
 
         try:
             store = VideoJobStore(db_path=tmp / "jobs.db", runs_dir=tmp / "runs")
-            c_store.grant("u1", 300000)
+            c_store.grant("u1", 500000)
             job = store.create_job(user_id="u1", prompt="p", profile_media_id="m1")
             
             # Simulate job running when server crashes
             claimed = store.claim_next_pending()
             assert claimed is not None
             assert store.get_job("u1", job["id"])["status"] == "running"
-            assert c_store.get_balance("u1") == 70000
+            assert c_store.get_balance("u1") == 155000
 
             # Run crash recovery
             recovered = store.recover_stale_jobs()
@@ -85,7 +85,7 @@ def test_crash_recovery():
             assert stale_job["status"] == "failed"
             assert "Server restarted" in stale_job["error"]
             # Credits refunded
-            assert c_store.get_balance("u1") == 300000
+            assert c_store.get_balance("u1") == 500000
         finally:
             vj.CREDIT_STORE = orig_credit_store
 
