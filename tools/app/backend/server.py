@@ -35,6 +35,9 @@ WORKSPACE = BACKEND_DIR.parents[2]
 sys.path.insert(0, str(WORKSPACE))
 
 from tools.app.backend.handler import run_worker  # noqa: E402
+from tools.app.backend.media import MEDIA_STORE  # noqa: E402
+from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO  # noqa: E402
+from tools.app.backend.video_jobs import VIDEO_STORE, VIDEO_RUNNER  # noqa: E402
 from tools.app.backend.profiles import PROFILE_STORE  # noqa: E402
 from tools.app.backend.research import (  # noqa: E402
     configured_agent,
@@ -167,8 +170,13 @@ class Handler(BaseHTTPRequestHandler):
             if header_uid and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", header_uid):
                 uid = header_uid
                 email = self.headers.get("X-User-Email") or None
+        if not uid:
+            qs = parse_qs(urlparse(self.path).query)
+            query_uid = (qs.get("uid") or [""])[0]
+            if query_uid and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", query_uid):
+                uid = query_uid
 
-        if uid and email and ("hieu" in str(email).lower()):
+        if uid and (email and ("hieu" in str(email).lower()) or ("hieu" in (self.headers.get("X-User-Email") or "").lower())):
             PROFILE_STORE.claim_legacy_topics(uid)
             STORE.claim_legacy_jobs(uid)
 
@@ -257,6 +265,105 @@ class Handler(BaseHTTPRequestHandler):
             self._cors()
             self.end_headers()
             self.wfile.write(body)
+            return
+        if parsed.path == "/api/media":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để truy cập phương tiện."})
+                return
+            kind = parse_qs(parsed.query).get("kind", [None])[0]
+            _json(self, 200, {"ok": True, "media": MEDIA_STORE.list_media(user_id=user_id, kind=kind)})
+            return
+        match = re.fullmatch(r"/api/media/([a-zA-Z0-9_-]+)", parsed.path)
+        if match:
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            media = MEDIA_STORE.get_media(user_id=user_id, media_id=match.group(1))
+            if not media or not Path(media["path"]).exists():
+                _json(self, 404, {"error": "Không tìm thấy file phương tiện."})
+                return
+            data = Path(media["path"]).read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", media["mime"])
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "public, max-age=86400")
+            self._cors()
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        if parsed.path == "/api/credits":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xem số dư credit."})
+                return
+            bal = CREDIT_STORE.get_balance(user_id=user_id)
+            _json(self, 200, {
+                "ok": True,
+                "balance": bal,
+                "balance_usd": round(bal / 1_000_000, 4),
+                "rate_per_sec_micro": RATE_PER_SEC_MICRO,
+                "ledger": CREDIT_STORE.get_ledger(user_id=user_id),
+            })
+            return
+        if parsed.path == "/api/videos":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xem danh sách video."})
+                return
+            _json(self, 200, {"ok": True, "jobs": VIDEO_STORE.list_jobs(user_id=user_id)})
+            return
+        match = re.fullmatch(r"/api/videos/([a-zA-Z0-9_-]+)", parsed.path)
+        if match:
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            job = VIDEO_STORE.get_job(user_id=user_id, job_id=match.group(1))
+            if not job:
+                _json(self, 404, {"error": "Không tìm thấy video job."})
+                return
+            _json(self, 200, {"ok": True, "job": job})
+            return
+        match = re.fullmatch(r"/api/videos/([a-zA-Z0-9_-]+)/file", parsed.path)
+        if match:
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            job = VIDEO_STORE.get_job(user_id=user_id, job_id=match.group(1))
+            if not job or not job.get("video_path") or not Path(job["video_path"]).exists():
+                _json(self, 404, {"error": "Video file chưa sẵn sàng hoặc không tồn tại."})
+                return
+            file_path = Path(job["video_path"])
+            file_size = file_path.stat().st_size
+            range_hdr = self.headers.get("Range")
+            if range_hdr and range_hdr.startswith("bytes="):
+                rm = re.match(r"bytes=(\d+)-(\d*)", range_hdr)
+                if rm:
+                    start = int(rm.group(1))
+                    end = int(rm.group(2)) if rm.group(2) else file_size - 1
+                    end = min(end, file_size - 1)
+                    length = end - start + 1
+                    self.send_response(206)
+                    self.send_header("Content-Type", "video/mp4")
+                    self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+                    self.send_header("Content-Length", str(length))
+                    self.send_header("Accept-Ranges", "bytes")
+                    self._cors()
+                    self.end_headers()
+                    with open(file_path, "rb") as f:
+                        f.seek(start)
+                        self.wfile.write(f.read(length))
+                    return
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Length", str(file_size))
+            self.send_header("Accept-Ranges", "bytes")
+            self._cors()
+            self.end_headers()
+            self.wfile.write(file_path.read_bytes())
             return
         self._serve_static(parsed.path)
 
@@ -395,6 +502,127 @@ class Handler(BaseHTTPRequestHandler):
                 _json(self, 200, {"ok": True})
             except Exception as exc:
                 _json(self, 500, {"error": str(exc)})
+            return
+        if parsed.path == "/api/media":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để tải lên phương tiện."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                if length <= 0:
+                    _json(self, 400, {"error": "Thiếu dữ liệu hình ảnh."})
+                    return
+                raw = self.rfile.read(length)
+                qs = parse_qs(parsed.query)
+                kind = qs.get("kind", [None])[0] or self.headers.get("X-Media-Kind") or "context"
+                content_type = self.headers.get("Content-Type") or "image/jpeg"
+                media = MEDIA_STORE.save_media(user_id=user_id, kind=kind, raw_bytes=raw, mime_type=content_type)
+                _json(self, 200, {"ok": True, "media": media})
+            except Exception as exc:
+                _json(self, 400, {"error": str(exc)})
+            return
+        if parsed.path == "/api/media/delete":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                media_id = body.get("id") or body.get("media_id")
+                if not media_id:
+                    _json(self, 400, {"error": "Thiếu media ID"})
+                    return
+                ok = MEDIA_STORE.delete_media(user_id=user_id, media_id=media_id)
+                _json(self, 200 if ok else 404, {"ok": ok})
+            except Exception as exc:
+                _json(self, 400, {"error": str(exc)})
+            return
+        if parsed.path == "/api/videos/estimate":
+            user_id = self._user_id()
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                duration = int(body.get("duration", 10))
+                duration = max(5, min(15, duration))
+                est = CREDIT_STORE.estimate(duration_sec=duration, user_id=user_id)
+                _json(self, 200, {"ok": True, **est})
+            except Exception as exc:
+                _json(self, 400, {"error": str(exc)})
+            return
+        if parsed.path == "/api/videos":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để tạo video."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                prompt = body.get("prompt", "")
+                profile_media_id = body.get("profile_media_id", "")
+                context_media_ids = body.get("context_media_ids", [])
+                duration = int(body.get("duration") or body.get("duration_sec") or 10)
+                duration = max(5, min(15, duration))
+                cost_micro = duration * RATE_PER_SEC_MICRO
+                if not profile_media_id:
+                    _json(self, 400, {"error": "Thiếu ảnh chân dung mẫu (profile_media_id)."})
+                    return
+                prof = MEDIA_STORE.get_media(user_id=user_id, media_id=profile_media_id)
+                if not prof or prof.get("kind") != "profile":
+                    _json(self, 400, {"error": "Ảnh chân dung mẫu không tồn tại hoặc không thuộc quyền sở hữu của bạn."})
+                    return
+                for cid in context_media_ids:
+                    ctx = MEDIA_STORE.get_media(user_id=user_id, media_id=cid)
+                    if not ctx:
+                        _json(self, 400, {"error": f"Ảnh bối cảnh '{cid}' không hợp lệ hoặc không thuộc quyền sở hữu của bạn."})
+                        return
+                job = VIDEO_STORE.create_job(
+                    user_id=user_id,
+                    prompt=prompt,
+                    profile_media_id=profile_media_id,
+                    context_media_ids=context_media_ids,
+                    cost_micro=cost_micro,
+                )
+                VIDEO_RUNNER.trigger()
+                _json(self, 201, {"ok": True, "job": job})
+            except ValueError as exc:
+                if "INSUFFICIENT_CREDITS" in str(exc):
+                    _json(self, 402, {"error": "Số dư không đủ. Cần 0.23 USD (230,000 micro-credits) để tạo 1 video 10 giây."})
+                else:
+                    _json(self, 400, {"error": str(exc)})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
+            return
+        match = re.fullmatch(r"/api/videos/([a-zA-Z0-9_-]+)/cancel", parsed.path)
+        if match:
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            ok = VIDEO_STORE.cancel_job(user_id=user_id, job_id=match.group(1))
+            if ok:
+                _json(self, 200, {"ok": True, "cancelled": True})
+            else:
+                _json(self, 400, {"ok": False, "error": "Chỉ có thể huỷ video đang trong hàng đợi (pending)."})
+            return
+        match = re.fullmatch(r"/api/videos/([a-zA-Z0-9_-]+)/delete", parsed.path)
+        if match or parsed.path == "/api/videos/delete":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            if match:
+                job_id = match.group(1)
+            else:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                job_id = body.get("id") or body.get("job_id")
+            if not job_id:
+                _json(self, 400, {"error": "Thiếu job ID"})
+                return
+            ok = VIDEO_STORE.delete_job(user_id=user_id, job_id=job_id)
+            _json(self, 200 if ok else 404, {"ok": ok})
             return
         if parsed.path == "/api/shutdown":
             _json(self, 200, {"ok": True})
@@ -626,6 +854,9 @@ def main() -> None:
         return
     if args.role == "all":
         threading.Thread(target=run_worker, daemon=True).start()
+
+    VIDEO_STORE.recover_stale_jobs()
+    VIDEO_RUNNER.trigger()
 
     ThreadingHTTPServer.allow_reuse_address = True
     try:

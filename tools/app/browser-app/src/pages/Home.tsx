@@ -1,11 +1,13 @@
 import { IonContent, IonFooter, IonHeader, IonIcon, IonPage } from '@ionic/react';
-import { analyticsOutline, libraryOutline, personCircleOutline } from 'ionicons/icons';
+import { analyticsOutline, libraryOutline, personCircleOutline, videocamOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { apiFetch, apiJson } from '../api';
 import { AuthModal } from '../components/AuthModal';
+import { MediaPanel } from '../components/MediaPanel';
 import { Tour, type TourStep } from '../components/Tour';
+import { VideoTab } from '../components/VideoTab';
 import { CREATOR_PACKS, type CreatorPack } from '../data/creatorPacks';
 import { auth, onAuthStateChanged, signOut, type User } from '../firebase';
 import './Home.css';
@@ -62,11 +64,12 @@ type JobSummary = {
 
 export type TargetItem = { name: string; url: string };
 export type TopicItem = { name: string; slug: string; targets: TargetItem[] };
-type Tab = 'library' | 'analyzer' | 'profile';
+type Tab = 'library' | 'analyzer' | 'video' | 'profile';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'library', label: 'Thư viện', icon: libraryOutline },
   { id: 'analyzer', label: 'Phân tích', icon: analyticsOutline },
+  { id: 'video', label: 'Tạo Video', icon: videocamOutline },
   { id: 'profile', label: 'Hồ sơ', icon: personCircleOutline },
 ];
 
@@ -80,7 +83,8 @@ const TOUR_STEPS: TourStep[] = [
   { tab: 'library', target: '.new-topic', title: 'Tạo chủ đề mới', text: 'Nhập tên chủ đề và (tuỳ chọn) link kênh đầu tiên.' },
   { tab: 'library', target: '.actionbar .primary', title: 'Chạy tất cả', text: 'Phân tích mọi chủ đề trong thư viện cùng lúc.' },
   { tab: 'analyzer', target: '.tabbar-btn:nth-child(2)', title: 'Phân tích', text: 'Xem tiến độ, lịch sử và kết quả ý tưởng viral. Dùng "Copy cho AI" để lấy kịch bản.' },
-  { tab: 'profile', target: '.tabbar-btn:nth-child(3)', title: 'Hồ sơ', text: 'Đăng nhập/đăng xuất và nhận gói Content Creator để nạp nhanh kênh vào thư viện.' },
+  { tab: 'video', target: '.tabbar-btn:nth-child(3)', title: 'Tạo Video AI', text: 'Tạo video ngắn 10 giây với khuôn mặt mẫu và giọng đọc tiếng Việt tự nhiên.' },
+  { tab: 'profile', target: '.tabbar-btn:nth-child(4)', title: 'Hồ sơ', text: 'Đăng nhập/đăng xuất, nạp gói creator và quản lý ảnh mẫu khuôn mặt.' },
 ];
 
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
@@ -191,9 +195,11 @@ const Home: React.FC = () => {
   const [tab, setTab] = useState<Tab>(
     query.get('tab') === 'profile'
       ? 'profile'
-      : initialJobId || query.get('tab') === 'analyzer'
-        ? 'analyzer'
-        : 'library',
+      : query.get('tab') === 'video'
+        ? 'video'
+        : initialJobId || query.get('tab') === 'analyzer'
+          ? 'analyzer'
+          : 'library',
   );
 
   // Library (backend is the source of truth)
@@ -217,15 +223,18 @@ const Home: React.FC = () => {
   const [starting, setStarting] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [videoPrompt, setVideoPrompt] = useState('');
 
   const handleCopyTopic = async (topic: Topic, sheetName: string, key: string) => {
+    const text = formatTopicForAI(topic, sheetName);
+    setVideoPrompt(text);
+    switchTab('video');
+    setCopiedKey(key);
+    setTimeout(() => {
+      setCopiedKey((prev) => (prev === key ? null : prev));
+    }, 2000);
     try {
-      const text = formatTopicForAI(topic, sheetName);
       await copyToClipboard(text);
-      setCopiedKey(key);
-      setTimeout(() => {
-        setCopiedKey((prev) => (prev === key ? null : prev));
-      }, 2000);
     } catch (err) {
       console.error('Failed to copy topic:', err);
     }
@@ -264,6 +273,7 @@ const Home: React.FC = () => {
     setJobId(null);
     setHistory([]);
     setActivePaymentPack(null);
+    setVideoPrompt('');
     localStorage.removeItem('aibrand-active-job-id');
   }
 
@@ -678,7 +688,25 @@ const Home: React.FC = () => {
                 </div>
                 </details>
               )}
+
+              {user && (
+                <section className="panel">
+                  <h2>Ảnh mẫu khuôn mặt & Bối cảnh</h2>
+                  <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                    Tải lên ảnh chân dung rõ mặt để AI giữ nhất quán khuôn mặt của bạn trong các video tạo ra.
+                  </p>
+                  <MediaPanel />
+                </section>
+              )}
             </>
+          ) : tab === 'video' ? (
+            <VideoTab
+              user={user}
+              onOpenAuth={() => setShowAuthModal(true)}
+              onGoToProfile={() => switchTab('profile')}
+              prompt={videoPrompt}
+              onPromptChange={setVideoPrompt}
+            />
           ) : tab === 'library' ? (
             !user ? (
               <section className="panel">

@@ -1,0 +1,234 @@
+"""Lite video generation engine: 10-second reference_to_video Omni call with normalization."""
+
+from __future__ import annotations
+
+import base64
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+from typing import Any, Dict, List, Optional
+
+DEFAULT_MODEL = "gemini-omni-1.2-flash"
+
+
+def _load_env() -> None:
+    env_file = Path(__file__).resolve().parent / ".env"
+    if not env_file.is_file():
+        return
+    for line in env_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+
+
+def _detect_mime(data: bytes) -> str:
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return "image/jpeg"
+
+
+def build_prompt(prompt: str, safe_fallback: bool = False) -> str:
+    if safe_fallback:
+        spoken = "Xin chào các bạn, hôm nay chúng ta cùng chia sẻ những điều hữu ích và tích cực."
+        action = "Subject smiles warmly and speaks naturally with gentle hand gestures."
+    else:
+        spoken = prompt.strip()
+        action = "Subject delivers the spoken message conversationally with expressive facial micro-expressions and natural gestures."
+
+    return (
+        f"[CAMERA & COMPOSITION]\n"
+        f"Vertical 9:16 portrait orientation, clear medium close-up framing, sharp eye-level focus.\n\n"
+        f"[SUBJECT & ENVIRONMENT]\n"
+        f"Consistent appearance faithfully matching the reference portrait. Clean, realistic background lighting.\n\n"
+        f"[ACTION & EXPRESSION]\n"
+        f"{action}\n\n"
+        f"[AUDIO & DIALOGUE]\n"
+        f"Spoken Vietnamese: \"{spoken}\"\n"
+        f"Authentic Vietnamese spoken audio with natural intonation, cadence, and studio sound clarity."
+    )
+
+
+def normalize_video(input_path: Path, output_path: Path) -> Path:
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input file not found: {input_path}")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(input_path),
+        "-vf",
+        "colorspace=all=bt709:fast=1",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "20",
+        "-pix_fmt",
+        "yuv420p",
+        "-color_primaries",
+        "bt709",
+        "-color_trc",
+        "bt709",
+        "-colorspace",
+        "bt709",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        "-ar",
+        "44100",
+        "-ac",
+        "2",
+        "-af",
+        "loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-movflags",
+        "+faststart",
+        str(output_path),
+    ]
+
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        # Fallback if audio track is missing or loudnorm failed
+        fallback_cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(input_path),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "fast",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            str(output_path),
+        ]
+        fallback_res = subprocess.run(fallback_cmd, capture_output=True, text=True)
+        if fallback_res.returncode != 0:
+            raise RuntimeError(f"FFmpeg normalization failed: {res.stderr}\nFallback: {fallback_res.stderr}")
+
+    return output_path
+
+
+def generate_video(
+    prompt: str,
+    profile_image_bytes: bytes,
+    context_images_bytes: Optional[List[bytes]] = None,
+    output_path: Optional[Path] = None,
+    client: Optional[Any] = None,
+    duration_sec: int = 10,
+) -> Path:
+    if not prompt or not prompt.strip():
+        raise ValueError("Prompt must not be empty.")
+    if not profile_image_bytes:
+        raise ValueError("Profile image bytes required.")
+
+    if output_path is None:
+        fd, temp_out = tempfile.mkstemp(suffix=".mp4")
+        os.close(fd)
+        output_path = Path(temp_out)
+
+    inputs: List[Dict[str, Any]] = [
+        {
+            "type": "image",
+            "data": base64.b64encode(profile_image_bytes).decode("utf-8"),
+            "mime_type": _detect_mime(profile_image_bytes),
+        }
+    ]
+
+    if context_images_bytes:
+        for ctx_bytes in context_images_bytes:
+            if ctx_bytes:
+                inputs.append(
+                    {
+                        "type": "image",
+                        "data": base64.b64encode(ctx_bytes).decode("utf-8"),
+                        "mime_type": _detect_mime(ctx_bytes),
+                    }
+                )
+
+    inputs.append({"type": "text", "text": build_prompt(prompt, safe_fallback=False)})
+
+    _load_env()
+    if client is None:
+        from google import genai
+
+        project = (
+            os.environ.get("VERTEX_PROJECT")
+            or os.environ.get("GOOGLE_CLOUD_PROJECT")
+            or "gen-lang-client-0582170752"
+        )
+        location = os.environ.get("VERTEX_LOCATION", "global")
+        api_key = os.environ.get("VERTEX_VIDEO_API")
+
+        # For Vertex AI with Omni Interactions, Vertex ADC with location="global" and project is required.
+        # If a non-Express API key is provided, pass it; otherwise use project & location.
+        if api_key and not api_key.startswith("AQ."):
+            client = genai.Client(vertexai=True, project=project, location=location, api_key=api_key)
+        else:
+            client = genai.Client(vertexai=True, project=project, location=location)
+
+    model = os.environ.get("VERTEX_VIDEO_MODEL", DEFAULT_MODEL)
+    dur = max(5, min(15, int(duration_sec)))
+    kwargs = {
+        "model": model,
+        "input": inputs,
+        "response_format": {
+            "type": "video",
+            "aspect_ratio": "9:16",
+            "duration": f"{dur}s",
+            "resolution": "360p",
+        },
+        "store": True,
+    }
+
+    try:
+        interaction = client.interactions.create(**kwargs)
+    except Exception as exc:
+        err_msg = str(exc).lower()
+        if "safety" in err_msg or "harmful" in err_msg:
+            inputs[-1] = {"type": "text", "text": build_prompt(prompt, safe_fallback=True)}
+            interaction = client.interactions.create(**kwargs)
+        else:
+            raise
+
+    video_b64 = None
+    out_vid = getattr(interaction, "output_video", None)
+    if out_vid:
+        video_b64 = getattr(out_vid, "data", None) or (out_vid.get("data") if isinstance(out_vid, dict) else None)
+
+    if not video_b64:
+        for item in getattr(interaction, "outputs", None) or []:
+            item_type = getattr(item, "type", None) or (item.get("type") if isinstance(item, dict) else None)
+            if item_type == "video":
+                video_b64 = getattr(item, "data", None) or (item.get("data") if isinstance(item, dict) else None)
+                break
+
+    if not video_b64:
+        raise RuntimeError(f"Omni call returned no video data: {interaction}")
+
+    raw_mp4_bytes = base64.b64decode(video_b64)
+
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as raw_file:
+        raw_path = Path(raw_file.name)
+        raw_path.write_bytes(raw_mp4_bytes)
+
+    try:
+        normalize_video(raw_path, output_path)
+    finally:
+        try:
+            raw_path.unlink()
+        except OSError:
+            pass
+
+    return output_path

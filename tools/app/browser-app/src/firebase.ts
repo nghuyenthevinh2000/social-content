@@ -4,7 +4,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged,
+  onAuthStateChanged as firebaseOnAuthStateChanged,
   type User,
 } from 'firebase/auth';
 
@@ -21,5 +21,15 @@ export const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-export { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged };
+export function onAuthStateChanged(authInstance: any, cb: (user: User | null) => void) {
+  const e2eUser = (globalThis as any).__E2E_TEST_USER__ as User | undefined;
+  if (e2eUser) {
+    Object.defineProperty(auth, 'currentUser', { get: () => e2eUser, configurable: true });
+    queueMicrotask(() => cb(e2eUser));
+    return () => {};
+  }
+  return firebaseOnAuthStateChanged(authInstance, cb);
+}
+
+export { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
 export type { User };

@@ -8,7 +8,7 @@ import tempfile
 import time
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
 import openpyxl
 
@@ -596,7 +596,7 @@ class BackendTests(unittest.TestCase):
             self.assertIn("Chưa có kênh đối thủ nào", target_sheet["notice"])
 
     def test_install_binaries_script_content(self):
-        script_path = Path(__file__).parent / "install_binaries.sh"
+        script_path = Path(__file__).resolve().parents[1] / "install_binaries.sh"
         self.assertTrue(script_path.exists())
         content = script_path.read_text(encoding="utf-8")
         self.assertIn("https://opencode.ai/v2/install", content)

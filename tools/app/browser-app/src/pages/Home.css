@@ -550,7 +550,7 @@
 /* Bottom tab bar */
 .tabbar {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   max-width: 430px;
   margin: 0 auto;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
