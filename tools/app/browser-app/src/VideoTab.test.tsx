@@ -3,9 +3,9 @@ import React from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { MediaPanel } from './components/MediaPanel';
-import { VideoTab } from './components/VideoTab';
-import { formatTopicForAI } from './pages/Home';
+import { VideoTab, videoDownloadUrl, videoFileUrl } from './components/VideoTab';
 import type { User } from './firebase';
+import { formatTopicForAI } from './pages/Home';
 
 const mockUser = {
   uid: 'test_uid_123',
@@ -53,9 +53,7 @@ describe('VideoTab and MediaPanel', () => {
     });
 
     const onGoToProfile = vi.fn();
-    const { container } = render(
-      <VideoTab user={mockUser} onOpenAuth={vi.fn()} onGoToProfile={onGoToProfile} />,
-    );
+    const { container } = render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} onGoToProfile={onGoToProfile} />);
 
     await waitFor(() => {
       expect(screen.getByText(/Chưa có ảnh chân dung mẫu/)).toBeDefined();
@@ -291,6 +289,25 @@ describe('VideoTab and MediaPanel', () => {
     const videoEl = container.querySelector('video.video-player') as HTMLVideoElement;
     expect(videoEl?.getAttribute('src')).toBe('/api/videos/vj_done/file?uid=test_uid_123');
 
+    // Verify download links are present for completed jobs
+    const headerDownloadLink = container.querySelector('.video-card-head-right a.download-btn') as HTMLAnchorElement;
+    expect(headerDownloadLink).toBeDefined();
+    expect(headerDownloadLink?.getAttribute('href')).toBe('/api/videos/vj_done/file?uid=test_uid_123&download=1');
+    expect(headerDownloadLink?.getAttribute('download')).toBe('video-vj_done.mp4');
+    expect(headerDownloadLink?.textContent).toContain('Tải về');
+
+    const bodyDownloadLink = container.querySelector('a.download-video-action') as HTMLAnchorElement;
+    expect(bodyDownloadLink).toBeDefined();
+    expect(bodyDownloadLink?.getAttribute('href')).toBe('/api/videos/vj_done/file?uid=test_uid_123&download=1');
+    expect(bodyDownloadLink?.getAttribute('download')).toBe('video-vj_done.mp4');
+    expect(bodyDownloadLink?.textContent).toContain('Tải video về máy');
+
+    // Pending and failed cards do not have download links
+    const pendingCard = screen.getAllByText('Video đang chờ')[0].closest('.video-card');
+    expect(pendingCard?.querySelector('a.download-btn')).toBeNull();
+    const failedCard = screen.getAllByText('Video lỗi')[0].closest('.video-card');
+    expect(failedCard?.querySelector('a.download-btn')).toBeNull();
+
     // Toggle context image ctx1 selection
     fireEvent.click(screen.getByTestId('context-select-ctx1'));
     expect(screen.getByText(/đã chọn 1\/2/)).toBeDefined();
@@ -389,10 +406,7 @@ describe('VideoTab and MediaPanel', () => {
       hook: 'Có ai lấy giấy mỹ thuật này in bao lì xì Tết chưa?',
       angle: 'Trải nghiệm thực tế xưởng in',
       why_viral: 'Hiếu kỳ về chất liệu giấy cao cấp',
-      outline: [
-        '1. Chọn định lượng giấy 180gsm phù hợp',
-        '2. Kỹ thuật ép kim vàng sắc nét',
-      ],
+      outline: ['1. Chọn định lượng giấy 180gsm phù hợp', '2. Kỹ thuật ép kim vàng sắc nét'],
       format: 'Reels 15s UGC',
       source_urls: [],
       generated_by: 'agent',
@@ -407,5 +421,15 @@ describe('VideoTab and MediaPanel', () => {
     expect(fallbackText).toContain('### Chủ đề: Bao lì xì giấy mỹ thuật');
     expect(fallbackText).toContain('Nhóm in ấn');
     expect(fallbackText).toContain('Có ai lấy giấy mỹ thuật này in bao lì xì Tết chưa?');
+  });
+
+  test('videoFileUrl and videoDownloadUrl generate proper URLs', () => {
+    const job = {
+      id: 'job_456',
+      user_id: 'user_789',
+    } as any;
+
+    expect(videoFileUrl(job)).toBe('/api/videos/job_456/file?uid=user_789');
+    expect(videoDownloadUrl(job)).toBe('/api/videos/job_456/file?uid=user_789&download=1');
   });
 });

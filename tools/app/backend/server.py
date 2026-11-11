@@ -339,6 +339,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             file_path = Path(job["video_path"])
             file_size = file_path.stat().st_size
+            is_download = "download" in parse_qs(parsed.query)
             range_hdr = self.headers.get("Range")
             if range_hdr and range_hdr.startswith("bytes="):
                 rm = re.match(r"bytes=(\d+)-(\d*)", range_hdr)
@@ -349,6 +350,8 @@ class Handler(BaseHTTPRequestHandler):
                     length = end - start + 1
                     self.send_response(206)
                     self.send_header("Content-Type", "video/mp4")
+                    if is_download:
+                        self.send_header("Content-Disposition", f'attachment; filename="video-{match.group(1)}.mp4"')
                     self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
                     self.send_header("Content-Length", str(length))
                     self.send_header("Accept-Ranges", "bytes")
@@ -360,6 +363,8 @@ class Handler(BaseHTTPRequestHandler):
                     return
             self.send_response(200)
             self.send_header("Content-Type", "video/mp4")
+            if is_download:
+                self.send_header("Content-Disposition", f'attachment; filename="video-{match.group(1)}.mp4"')
             self.send_header("Content-Length", str(file_size))
             self.send_header("Accept-Ranges", "bytes")
             self._cors()

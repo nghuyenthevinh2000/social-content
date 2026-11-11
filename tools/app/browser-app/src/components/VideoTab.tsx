@@ -35,6 +35,16 @@ const RATE_PER_SEC_MICRO = 23000;
 const DEFAULT_COST_MICRO = DEFAULT_VIDEO_DURATION * RATE_PER_SEC_MICRO;
 const DEFAULT_COST_USD = Number((DEFAULT_COST_MICRO / 1000000).toFixed(2));
 
+export function videoFileUrl(job: VideoJob): string {
+  const uidParam = job.user_id ? `?uid=${encodeURIComponent(job.user_id)}` : '';
+  return `/api/videos/${encodeURIComponent(job.id)}/file${uidParam}`;
+}
+
+export function videoDownloadUrl(job: VideoJob): string {
+  const base = videoFileUrl(job);
+  return `${base}${base.includes('?') ? '&' : '?'}download=1`;
+}
+
 export function VideoTab({
   user,
   onOpenAuth,
@@ -267,7 +277,9 @@ export function VideoTab({
         <span>Số dư của bạn:</span>
         <div className="credits-badge">
           <span>💰</span>
-          <span>${(balance / 1000000).toFixed(2)} ({balance.toLocaleString()} credits)</span>
+          <span>
+            ${(balance / 1000000).toFixed(2)} ({balance.toLocaleString()} credits)
+          </span>
         </div>
       </div>
 
@@ -276,11 +288,7 @@ export function VideoTab({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <h2 style={{ margin: 0 }}>Tạo video AI Cá Nhân</h2>
           {onGoToProfile && (
-            <button
-              type="button"
-              className="media-action-btn"
-              onClick={onGoToProfile}
-            >
+            <button type="button" className="media-action-btn" onClick={onGoToProfile}>
               Đi tới Hồ sơ
             </button>
           )}
@@ -369,7 +377,9 @@ export function VideoTab({
         {/* Cost Estimation */}
         <div className="cost-card" style={{ marginBottom: 16 }}>
           <div>
-            <div>Thời lượng: <strong>{duration} giây</strong> (360p)</div>
+            <div>
+              Thời lượng: <strong>{duration} giây</strong> (360p)
+            </div>
             <small className="muted">Voice tiếng Việt tự nhiên (Omni Flash 1.2 • {duration}s)</small>
           </div>
           <div className="cost-highlight">
@@ -399,7 +409,8 @@ export function VideoTab({
           <div className="confirm-dialog">
             <h3>Xác nhận tạo video AI</h3>
             <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-              Hệ thống sẽ giữ <strong>${costUsd.toFixed(2)}</strong> ({costMicro.toLocaleString()} credits) để tạo 1 video ngắn {duration} giây. Nếu thất bại, toàn bộ credit sẽ được hoàn lại tự động.
+              Hệ thống sẽ giữ <strong>${costUsd.toFixed(2)}</strong> ({costMicro.toLocaleString()} credits) để tạo 1
+              video ngắn {duration} giây. Nếu thất bại, toàn bộ credit sẽ được hoàn lại tự động.
             </p>
 
             <div className="confirm-details">
@@ -426,20 +437,10 @@ export function VideoTab({
             </div>
 
             <div className="dialog-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setShowConfirm(false)}
-                disabled={starting}
-              >
+              <button type="button" className="btn-secondary" onClick={() => setShowConfirm(false)} disabled={starting}>
                 Huỷ
               </button>
-              <button
-                type="button"
-                className="btn-confirm"
-                onClick={handleStartGeneration}
-                disabled={starting}
-              >
+              <button type="button" className="btn-confirm" onClick={handleStartGeneration} disabled={starting}>
                 {starting ? 'Đang xử lý...' : 'Xác nhận tạo'}
               </button>
             </div>
@@ -452,11 +453,7 @@ export function VideoTab({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h2 style={{ margin: 0 }}>Lịch sử tạo video ({jobs.length})</h2>
           {jobs.length > 0 && (
-            <button
-              type="button"
-              className="media-action-btn"
-              onClick={toggleAllExpanded}
-            >
+            <button type="button" className="media-action-btn" onClick={toggleAllExpanded}>
               {hasAnyExpanded ? 'Thu gọn tất cả' : 'Mở rộng tất cả'}
             </button>
           )}
@@ -489,19 +486,15 @@ export function VideoTab({
                                 ? 'Thất bại'
                                 : 'Đã huỷ'}
                       </span>
-                      <span className="duration-tag">
-                        {Math.round(j.cost / RATE_PER_SEC_MICRO) || duration}s
-                      </span>
-                      {!expanded && (
-                        <span className="video-card-preview-prompt">
-                          {j.prompt}
-                        </span>
-                      )}
+                      <span className="duration-tag">{Math.round(j.cost / RATE_PER_SEC_MICRO) || duration}s</span>
+                      {!expanded && <span className="video-card-preview-prompt">{j.prompt}</span>}
                     </div>
 
                     <div className="video-card-head-right">
                       <span className="video-card-time">
-                        {j.created_at ? new Date(j.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                        {j.created_at
+                          ? new Date(j.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                          : ''}
                       </span>
 
                       {j.status === 'pending' && (
@@ -515,6 +508,18 @@ export function VideoTab({
                         >
                           Huỷ & Hoàn tiền
                         </button>
+                      )}
+
+                      {j.status === 'completed' && j.video_path && (
+                        <a
+                          href={videoDownloadUrl(j)}
+                          download={`video-${j.id}.mp4`}
+                          className="media-action-btn download-btn"
+                          title="Tải video về máy"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Tải về
+                        </a>
                       )}
 
                       {(j.status === 'completed' || j.status === 'failed' || j.status === 'cancelled') && (
@@ -556,12 +561,19 @@ export function VideoTab({
                     </div>
 
                     {j.status === 'completed' && j.video_path && (
-                      <video
-                        controls
-                        playsInline
-                        className="video-player"
-                        src={`/api/videos/${encodeURIComponent(j.id)}/file?uid=${encodeURIComponent(j.user_id)}`}
-                      />
+                      <div className="video-player-box">
+                        <video controls playsInline className="video-player" src={videoFileUrl(j)} />
+                        <div className="video-player-toolbar">
+                          <a
+                            href={videoDownloadUrl(j)}
+                            download={`video-${j.id}.mp4`}
+                            className="download-video-action"
+                            title="Tải video định dạng .mp4 về máy"
+                          >
+                            ⬇ Tải video về máy (.mp4)
+                          </a>
+                        </div>
+                      </div>
                     )}
 
                     {j.status === 'failed' && (

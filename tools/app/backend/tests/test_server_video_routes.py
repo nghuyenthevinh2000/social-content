@@ -155,6 +155,12 @@ def test_server_video_and_media_routes():
         assert h.wfile.getvalue() == b"0123"
         assert h.response_headers["content-range"] == "bytes 0-3/16"
 
+        # 8b. Test download=1 sets Content-Disposition attachment header
+        h = DummyHandler("GET", f"/api/videos/{created_job['id']}/file?uid=u_test_1&download=1")
+        h.do_GET()
+        assert h.response_status == 200
+        assert h.response_headers.get("content-disposition") == f'attachment; filename="video-{created_job["id"]}.mp4"'
+
         # 9. Create a second job and cancel while pending -> refunds credits
         h = DummyHandler("POST", "/api/videos", job_hdr, body=body_job)
         h.do_POST()
