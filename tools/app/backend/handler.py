@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import multiprocessing
 import os
+from pathlib import Path
+import shutil
 import signal
+import tempfile
 import threading
 import time
 from typing import Any, Dict, Optional
 
+from tools.app.backend import blobs
+from tools.app.backend.db import tx
 from tools.app.backend.research import STORE, run_job
 from tools.app.backend.store import now_iso
 
@@ -17,10 +23,67 @@ MAX_PER_CLIENT = int(os.environ.get("VIRAL_APP_MAX_PER_CLIENT", "1"))
 STALE_AFTER_SEC = 30
 
 
+def sweep_stale_temp_dirs(max_age_sec: float = 86400) -> None:
+    temp_root = Path(tempfile.gettempdir())
+    cutoff = time.time() - max_age_sec
+    for p in temp_root.glob("job-*"):
+        try:
+            if p.is_dir() and p.stat().st_mtime < cutoff:
+                shutil.rmtree(p, ignore_errors=True)
+        except Exception:
+            pass
+
+
+def purge_expired() -> None:
+    """Purge completed/failed/cancelled jobs and video jobs older than RETENTION_DAYS."""
+    retention_days = int(os.environ.get("RETENTION_DAYS", "30"))
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+
+    expired_job_ids = []
+    with tx() as conn:
+        cur = conn.execute(
+            "SELECT id FROM jobs WHERE status IN ('completed', 'failed', 'cancelled') AND created_at < %s FOR UPDATE",
+            (cutoff,),
+        )
+        expired_job_ids = [r[0] for r in cur.fetchall()]
+        if expired_job_ids:
+            conn.execute("DELETE FROM jobs WHERE id = ANY(%s)", (expired_job_ids,))
+
+    for jid in expired_job_ids:
+        try:
+            blobs.delete_prefix(f"runs/{jid}/")
+        except Exception:
+            pass
+
+    expired_vjobs = []
+    with tx() as conn:
+        cur = conn.execute(
+            "SELECT id, user_id FROM video_jobs WHERE status IN ('completed', 'failed', 'cancelled') AND created_at < %s FOR UPDATE",
+            (cutoff,),
+        )
+        expired_vjobs = cur.fetchall()
+        if expired_vjobs:
+            conn.execute("DELETE FROM video_jobs WHERE id = ANY(%s)", ([r[0] for r in expired_vjobs],))
+
+    for jid, uid in expired_vjobs:
+        try:
+            blobs.delete_prefix(f"videos/{uid}/{jid}/")
+        except Exception:
+            pass
+
+
 def run_worker(poll_sec: float = 1.0) -> None:
     """Run up to MAX_PROCESSES jobs at once, at most MAX_PER_CLIENT per client (enforced in the store)."""
+    sweep_stale_temp_dirs()
     running: Dict[str, multiprocessing.Process] = {}
+    last_purge = 0.0
     while True:
+        if time.time() - last_purge >= 3600:
+            last_purge = time.time()
+            try:
+                purge_expired()
+            except Exception:
+                pass
         STORE.heartbeat(list(running))
         for job_id in STORE.stale_running(STALE_AFTER_SEC):
             _finish_stopped_job(job_id, None)
@@ -43,6 +106,7 @@ def run_worker(poll_sec: float = 1.0) -> None:
 
 
 def _job_process(job: Dict[str, Any], worker_pid: int) -> None:
+    os.environ["DB_POOL_MAX"] = "2"
     if hasattr(os, "setsid"):
         # Own process group, so a kill also reaches the agent CLI, ffmpeg and yt-dlp children.
         os.setsid()

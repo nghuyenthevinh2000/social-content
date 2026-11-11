@@ -10,6 +10,7 @@ use `npm run dev` in tools/app; Vite proxies /api to this server.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
@@ -34,6 +35,7 @@ APP_DIR = BACKEND_DIR.parent
 WORKSPACE = BACKEND_DIR.parents[2]
 sys.path.insert(0, str(WORKSPACE))
 
+from tools.app.backend import blobs  # noqa: E402
 from tools.app.backend.handler import run_worker  # noqa: E402
 from tools.app.backend.media import MEDIA_STORE  # noqa: E402
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO  # noqa: E402
@@ -282,17 +284,15 @@ class Handler(BaseHTTPRequestHandler):
                 _json(self, 401, {"error": "Yêu cầu đăng nhập."})
                 return
             media = MEDIA_STORE.get_media(user_id=user_id, media_id=match.group(1))
-            if not media or not Path(media["path"]).exists():
+            if not media:
                 _json(self, 404, {"error": "Không tìm thấy file phương tiện."})
                 return
-            data = Path(media["path"]).read_bytes()
-            self.send_response(200)
-            self.send_header("Content-Type", media["mime"])
-            self.send_header("Content-Length", str(len(data)))
+            media_url = blobs.url(media["path"])
+            self.send_response(302)
+            self.send_header("Location", media_url)
             self.send_header("Cache-Control", "public, max-age=86400")
             self._cors()
             self.end_headers()
-            self.wfile.write(data)
             return
         if parsed.path == "/api/credits":
             user_id = self._user_id()
@@ -334,42 +334,16 @@ class Handler(BaseHTTPRequestHandler):
                 _json(self, 401, {"error": "Yêu cầu đăng nhập."})
                 return
             job = VIDEO_STORE.get_job(user_id=user_id, job_id=match.group(1))
-            if not job or not job.get("video_path") or not Path(job["video_path"]).exists():
+            if not job or not job.get("video_path"):
                 _json(self, 404, {"error": "Video file chưa sẵn sàng hoặc không tồn tại."})
                 return
-            file_path = Path(job["video_path"])
-            file_size = file_path.stat().st_size
             is_download = "download" in parse_qs(parsed.query)
-            range_hdr = self.headers.get("Range")
-            if range_hdr and range_hdr.startswith("bytes="):
-                rm = re.match(r"bytes=(\d+)-(\d*)", range_hdr)
-                if rm:
-                    start = int(rm.group(1))
-                    end = int(rm.group(2)) if rm.group(2) else file_size - 1
-                    end = min(end, file_size - 1)
-                    length = end - start + 1
-                    self.send_response(206)
-                    self.send_header("Content-Type", "video/mp4")
-                    if is_download:
-                        self.send_header("Content-Disposition", f'attachment; filename="video-{match.group(1)}.mp4"')
-                    self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
-                    self.send_header("Content-Length", str(length))
-                    self.send_header("Accept-Ranges", "bytes")
-                    self._cors()
-                    self.end_headers()
-                    with open(file_path, "rb") as f:
-                        f.seek(start)
-                        self.wfile.write(f.read(length))
-                    return
-            self.send_response(200)
-            self.send_header("Content-Type", "video/mp4")
-            if is_download:
-                self.send_header("Content-Disposition", f'attachment; filename="video-{match.group(1)}.mp4"')
-            self.send_header("Content-Length", str(file_size))
-            self.send_header("Accept-Ranges", "bytes")
+            filename = f"video-{match.group(1)}.mp4" if is_download else None
+            video_url = blobs.url(job["video_path"], ttl=3600, filename=filename)
+            self.send_response(302)
+            self.send_header("Location", video_url)
             self._cors()
             self.end_headers()
-            self.wfile.write(file_path.read_bytes())
             return
         self._serve_static(parsed.path)
 
@@ -479,7 +453,7 @@ class Handler(BaseHTTPRequestHandler):
             job_id = match.group(1)
             ok = STORE.delete(job_id, user_id=user_id)
             if ok:
-                shutil.rmtree(RUNS_ROOT / job_id, ignore_errors=True)
+                blobs.delete_prefix(f"runs/{job_id}/")
             _json(self, 200 if ok else 404, {"ok": ok, "jobs": STORE.list_jobs(user_id=user_id)})
             return
         if parsed.path == "/api/logs/client":
@@ -788,6 +762,21 @@ def _augment_path() -> None:
         os.environ["PYTHONPATH"] = f"{workspace_str}{os.pathsep}{existing_ppath}" if existing_ppath else workspace_str
 
 
+class BoundedHTTPServer(ThreadingHTTPServer):
+    request_queue_size = 256
+
+    def __init__(self, server_address, RequestHandlerClass, max_workers: int = 64):
+        super().__init__(server_address, RequestHandlerClass)
+        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    def process_request(self, request, client_address):
+        self.executor.submit(self.process_request_thread, request, client_address)
+
+    def server_close(self):
+        super().server_close()
+        self.executor.shutdown(wait=False)
+
+
 def main() -> None:
     multiprocessing.freeze_support()  # job processes re-launch the PyInstaller binary
     _augment_path()
@@ -859,9 +848,10 @@ def main() -> None:
     VIDEO_STORE.recover_stale_jobs()
     VIDEO_RUNNER.trigger()
 
-    ThreadingHTTPServer.allow_reuse_address = True
+    BoundedHTTPServer.allow_reuse_address = True
+    api_threads = int(os.environ.get("API_THREADS", "64"))
     try:
-        server = ThreadingHTTPServer((args.host, args.port), Handler)
+        server = BoundedHTTPServer((args.host, args.port), Handler, max_workers=api_threads)
     except OSError as exc:
         if exc.errno in (48, 98, 10048):
             print(f"Lỗi: Cổng {args.port} đã được sử dụng bởi một tiến trình khác.")

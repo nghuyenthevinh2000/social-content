@@ -30,7 +30,6 @@
     }
   },
   "storage": {
-    "db_path": "local/social-listening-test/traffic_pools.db",
     "video_dir": "local/social-listening-test/cache/videos",
     "output_file": "local/social-listening-test/viral_reels_48h.json"
   },

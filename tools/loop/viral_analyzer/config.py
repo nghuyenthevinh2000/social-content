@@ -29,12 +29,11 @@ DEFAULT_POOLS = {
 }
 
 
-from tools.loop.viral_analyzer.cache import default_db_path, default_video_dir
+from tools.loop.viral_analyzer.cache import default_video_dir
 
 
 @dataclass
 class StorageConfig:
-    db_path: Path = field(default_factory=default_db_path)
     video_dir: Path = field(default_factory=default_video_dir)
     output_file: Path = Path("local/app-runs/viral_reels_48h.json")
 
@@ -92,7 +91,6 @@ def load_config(config_path_or_dict: Any) -> ViralAnalyzerConfig:
     # Parse Storage
     st_raw = raw.get("storage", {})
     storage = StorageConfig(
-        db_path=Path(st_raw["db_path"]) if st_raw.get("db_path") else default_db_path(),
         video_dir=Path(st_raw["video_dir"]) if st_raw.get("video_dir") else default_video_dir(),
         output_file=Path(st_raw.get("output_file", "local/app-runs/viral_reels_48h.json")),
     )

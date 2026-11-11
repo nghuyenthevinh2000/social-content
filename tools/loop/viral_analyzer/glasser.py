@@ -273,7 +273,6 @@ def execute_glasser_query(
 
 from tools.loop.viral_analyzer.cache import (
     read_cached_reels,
-    resolve_db_path,
     write_cached_reels,
 )
 
@@ -287,7 +286,7 @@ def fetch_target_reels(
     progress_cb: Optional[Callable[[str], None]] = None,
     error_collector: Optional[List[GlasserError]] = None,
 ) -> List[Dict[str, Any]]:
-    """Fetch profile reels via Glasser ScrapeCreators or centralized SQLite cache.
+    """Fetch profile reels via Glasser ScrapeCreators or centralized cache.
 
     Appends encountered GlasserErrors to error_collector if provided.
     """
@@ -301,12 +300,10 @@ def fetch_target_reels(
         except Exception:
             handle = "unknown"
     slug = handle.replace(".", "_")
-    db_path = resolve_db_path(config, cache_dir)
 
-    # 1. Check centralized SQLite cache (with legacy JSON auto-import)
+    # 1. Check centralized cache (with legacy JSON auto-import)
     cached = read_cached_reels(
         handle,
-        db_path=db_path,
         cache_dir=cache_dir,
         legacy_cache=legacy_cache,
         allow_expired=False,
@@ -354,7 +351,6 @@ def fetch_target_reels(
                     reels=reels,
                     status=status,
                     profile_url=profile_url,
-                    db_path=db_path,
                 )
                 for r in reels:
                     if isinstance(r, dict):
@@ -394,7 +390,6 @@ def fetch_target_reels(
     # 3. Fallback to expired cache if Glasser query failed or was unavailable
     expired = read_cached_reels(
         handle,
-        db_path=db_path,
         cache_dir=cache_dir,
         legacy_cache=legacy_cache,
         allow_expired=True,

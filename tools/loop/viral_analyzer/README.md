@@ -44,7 +44,6 @@ Config JSON -> Retention Sweep (Purge > 7d) -> Glasser v2 Ingestion (48h Window)
 | `retention_days` | `int` | `7` | Cache retention TTL in days. Expired videos are purged automatically. |
 | `max_videos` | `int` | `null` | Optional stop quota. Halts additional downloads once target is reached. |
 | `pools` | `dict` | Pools 1–5 | View count thresholds defining each traffic pool. |
-| `storage.db_path` | `string` | `local/.../traffic_pools.db` | SQLite database destination path. |
 | `storage.video_dir` | `string` | `local/.../cache/videos` | Directory for downloaded video MP4 files and manifest. |
 | `storage.output_file` | `string` | `local/.../viral_reels_48h.json` | Path to output JSON summary artifact. |
 | `transcription.engine` | `string` | `"qwen3"` | STT engine (`"qwen3"` or `"faster-whisper"`). |

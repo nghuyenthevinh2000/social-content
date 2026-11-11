@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import sys
+import tempfile
 import unicodedata
 import urllib.error
 import urllib.request
@@ -18,6 +19,7 @@ from urllib.parse import parse_qs, urlparse
 
 import openpyxl
 
+from tools.app.backend import blobs
 from tools.app.backend.acp import ACPClient, ACPError
 from tools.app.backend.errors import (
     AppError,
@@ -500,23 +502,27 @@ def suggest_topics(
 
 @contextmanager
 def _harness_lock(log: Callable[[str], None]):
-    """One harness session per machine: concurrent CLIs (e.g. opencode) lock their shared local state DB."""
-    try:
-        import fcntl
-    except ImportError:  # ponytail: no lock on Windows; the desktop app runs one job at a time anyway
-        yield
-        return
-    with open(RUNS_ROOT / "harness.lock", "w") as handle:
-        try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
+    """One harness session across all workers: serialized via Postgres advisory lock."""
+    import psycopg
+    from tools.app.backend.db import get_dsn
+
+    with psycopg.connect(get_dsn(), autocommit=True) as conn:
+        cur = conn.execute("SELECT pg_try_advisory_lock(hashtext('harness_lock'))")
+        got_lock = cur.fetchone()[0]
+        if not got_lock:
             log("Harness đang bận với job khác; chờ tới lượt...")
-            fcntl.flock(handle, fcntl.LOCK_EX)
-        yield
+            conn.execute("SELECT pg_advisory_lock(hashtext('harness_lock'))")
+        try:
+            yield
+        finally:
+            try:
+                conn.execute("SELECT pg_advisory_unlock(hashtext('harness_lock'))")
+            except Exception:
+                pass
 
 
 # -- Jobs --------------------------------------------------------------------
-STORE = JobStore(RUNS_ROOT / "jobs.db")
+STORE = JobStore()
 
 
 def create_job(
@@ -528,11 +534,12 @@ def create_job(
 ) -> Dict[str, Any]:
     xlsx_bytes, filename = resolve_xlsx_bytes(xlsx_bytes, filename)
     job_id = uuid.uuid4().hex[:12]
-    run_dir = RUNS_ROOT / job_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    input_path = run_dir / "input.xlsx"
-    input_path.write_bytes(xlsx_bytes)
-    sheets = parse_workbook(input_path)
+    blobs.put(
+        f"runs/{job_id}/input.xlsx",
+        xlsx_bytes,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    sheets = parse_workbook(xlsx_bytes)
     if len(sheets) == 1 and sheets[0].get("name"):
         filename = sheets[0]["name"]
     elif filename:
@@ -549,7 +556,6 @@ def create_job(
         "finished_at": None,
         "current_sheet": None,
         "cancel_requested": False,
-        "run_dir": str(run_dir),
         "sheets": [
             {
                 "name": sheet["name"],
@@ -579,21 +585,24 @@ def create_job(
 
 def run_job(job: Dict[str, Any]) -> None:
     job_id, options = job["id"], job["options"]
-    run_dir = Path(job["run_dir"])
-    try:
-        sheets = parse_workbook(run_dir / "input.xlsx")
-        for index, sheet in enumerate(sheets, 1):
-            job = STORE.snapshot(job_id)
-            if not job or job.get("cancel_requested"):
-                STORE.update(job_id, status="cancelled", finished_at=now_iso())
-                STORE.log(job_id, "Đã dừng theo yêu cầu.")
-                return
-            _process_sheet(job_id, index, len(sheets), sheet, run_dir, options)
-        STORE.update(job_id, status="completed", current_sheet=None, finished_at=now_iso())
-        STORE.log(job_id, "Hoàn tất toàn bộ sheet.")
-    except Exception as exc:  # keep the job inspectable on unexpected failure
-        STORE.update(job_id, status="failed", finished_at=now_iso(), current_sheet=None)
-        STORE.log(job_id, f"Lỗi job: {exc}")
+    with tempfile.TemporaryDirectory(prefix=f"job-{job_id}-") as tmpdir:
+        run_dir = Path(tmpdir)
+        try:
+            input_path = run_dir / "input.xlsx"
+            blobs.download(f"runs/{job_id}/input.xlsx", input_path)
+            sheets = parse_workbook(input_path)
+            for index, sheet in enumerate(sheets, 1):
+                cur_job = STORE.snapshot(job_id)
+                if not cur_job or cur_job.get("cancel_requested"):
+                    STORE.update(job_id, status="cancelled", finished_at=now_iso())
+                    STORE.log(job_id, "Đã dừng theo yêu cầu.")
+                    return
+                _process_sheet(job_id, index, len(sheets), sheet, run_dir, options)
+            STORE.update(job_id, status="completed", current_sheet=None, finished_at=now_iso())
+            STORE.log(job_id, "Hoàn tất toàn bộ sheet.")
+        except Exception as exc:  # keep the job inspectable on unexpected failure
+            STORE.update(job_id, status="failed", finished_at=now_iso(), current_sheet=None)
+            STORE.log(job_id, f"Lỗi job: {exc}")
 
 
 def _process_sheet(
@@ -619,7 +628,7 @@ def _process_sheet(
     if sheet["targets"]:
         sheet_dir = run_dir / "sheets" / sheet["slug"]
         sheet_dir.mkdir(parents=True, exist_ok=True)
-        shared_cache = RUNS_ROOT / "cache"
+        shared_cache = run_dir / "cache"
         shared_cache.mkdir(parents=True, exist_ok=True)
         aggregator = ErrorAggregator(job_id=job_id)
         config = load_config(
@@ -628,7 +637,6 @@ def _process_sheet(
                 "retention_days": 7,
                 "max_videos": options.get("max_videos"),
                 "storage": {
-                    "db_path": str(RUNS_ROOT / "traffic_pools.db"),
                     "video_dir": str(shared_cache / "videos"),
                     "output_file": str(sheet_dir / "viral_reels_48h.json"),
                 },
@@ -713,7 +721,9 @@ def _process_sheet(
     }
     result_path = run_dir / "sheets" / sheet["slug"] / "result.json"
     result_path.parent.mkdir(parents=True, exist_ok=True)
-    result_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    res_bytes = json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
+    result_path.write_bytes(res_bytes)
+    blobs.put(f"runs/{job_id}/result.json", res_bytes, content_type="application/json")
 
     STORE.patch_sheet(
         job_id,

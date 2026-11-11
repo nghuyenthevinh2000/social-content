@@ -2,7 +2,7 @@
 # Build from the repo root, since the backend imports tools.loop:
 #   docker build -f tools/app/backend/Dockerfile -t aibrand-backend .
 #   docker run -p 8765:8765 --env-file tools/app/backend/.env \
-#     -e GLASSER_API_KEY=... -e ANTHROPIC_API_KEY=... -v aibrand-data:/data aibrand-backend
+#     -e GLASSER_API_KEY=... -e ANTHROPIC_API_KEY=... aibrand-backend
 FROM python:3.12-slim-bookworm
 
 # Node for the glasser CLI and the ACP harness CLIs (opencode, npx adapters).
@@ -17,7 +17,7 @@ RUN apt-get update \
 
 RUN npm install -g @glasser-ai/cli@latest opencode-ai@latest && npm cache clean --force
 
-RUN pip install --no-cache-dir openpyxl yt-dlp imageio-ffmpeg
+RUN pip install --no-cache-dir openpyxl yt-dlp imageio-ffmpeg "psycopg[binary,pool]" boto3
 
 # Speech-to-text on Linux uses transformers Qwen3-ASR (CPU). WITH_ASR=0 skips it for a much smaller image.
 ARG WITH_ASR=1
@@ -28,20 +28,19 @@ RUN if [ "$WITH_ASR" = "1" ]; then \
 
 # Dirs exist up front (app-owned) so credential files and the HF model cache volume can be mounted into them.
 RUN useradd --create-home --uid 1000 app \
-    && mkdir -p /data /home/app/.config/glasser /home/app/.local/share/opencode /home/app/.cache/huggingface \
-    && chown -R app /data /home/app
+    && mkdir -p /home/app/.config/glasser /home/app/.local/share/opencode /home/app/.cache/huggingface \
+    && chown -R app /home/app
 
 WORKDIR /app
 COPY --chown=app tools/loop tools/loop
 COPY --chown=app tools/app/backend tools/app/backend
+COPY --chown=app tools/app/browser-app/dist tools/app/browser-app/dist
 
 USER app
 ENV PYTHONUNBUFFERED=1 \
-    VIRAL_APP_RUNS=/data/runs \
     VIRAL_APP_AGENT=opencode \
     ROLE=all \
     PORT=8765
-VOLUME /data
 EXPOSE 8765
 
 # tini reaps agent/ffmpeg processes orphaned when Stop kills a job.

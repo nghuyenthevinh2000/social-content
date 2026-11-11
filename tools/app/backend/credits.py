@@ -3,83 +3,32 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
-from datetime import datetime, timezone
-import os
-from pathlib import Path
-import sqlite3
 from typing import Any, Dict, List, Optional
 
-from tools.app.backend.profiles import RUNS_ROOT, now_iso
+from tools.app.backend.db import ro, tx
+from tools.app.backend.profiles import now_iso
 from tools.app.backend.video_engine import get_video_duration
 
 RATE_PER_SEC_MICRO = 23000  # $0.023/s, 10s = 230,000 micro-USD = $0.23
 
 
 class CreditStore:
-    def __init__(self, db_path: Optional[Path] = None) -> None:
-        self.db_path = db_path or (RUNS_ROOT / "credits.db")
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        with self._tx() as db:
-            db.execute("""
-            CREATE TABLE IF NOT EXISTS user_credits (
-                user_id TEXT PRIMARY KEY,
-                balance INTEGER NOT NULL DEFAULT 0
-            )
-            """)
-            db.execute("""
-            CREATE TABLE IF NOT EXISTS credit_ledger (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                delta INTEGER NOT NULL,
-                reason TEXT NOT NULL,
-                job_id TEXT,
-                created_at TEXT NOT NULL
-            )
-            """)
-            db.execute("CREATE INDEX IF NOT EXISTS idx_ledger_user ON credit_ledger (user_id, created_at)")
-        db = sqlite3.connect(self.db_path)
-        db.execute("PRAGMA journal_mode=WAL")
-        db.close()
-
-    @contextmanager
-    def _tx(self):
-        db = sqlite3.connect(self.db_path, timeout=30, isolation_level=None)
-        db.execute("PRAGMA busy_timeout = 30000")
-        try:
-            db.execute("BEGIN IMMEDIATE")
-            yield db
-            db.execute("COMMIT")
-        except BaseException:
-            if db.in_transaction:
-                try:
-                    db.execute("ROLLBACK")
-                except Exception:
-                    pass
-            raise
-        finally:
-            db.close()
-
-    @contextmanager
-    def _ro(self):
-        db = sqlite3.connect(self.db_path, timeout=30)
-        db.execute("PRAGMA busy_timeout = 30000")
-        try:
-            yield db
-        finally:
-            db.close()
+    def __init__(self) -> None:
+        pass
 
     def get_balance(self, user_id: str) -> int:
-        with self._ro() as db:
-            row = db.execute("SELECT balance FROM user_credits WHERE user_id = ?", (user_id,)).fetchone()
+        with ro() as conn:
+            cur = conn.execute("SELECT balance FROM user_credits WHERE user_id = %s", (user_id,))
+            row = cur.fetchone()
             return int(row[0]) if row else 0
 
     def get_ledger(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
-        with self._ro() as db:
-            rows = db.execute(
-                "SELECT id, user_id, delta, reason, job_id, created_at FROM credit_ledger WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+        with ro() as conn:
+            cur = conn.execute(
+                "SELECT id, user_id, delta, reason, job_id, created_at FROM credit_ledger WHERE user_id = %s ORDER BY id DESC LIMIT %s",
                 (user_id, limit),
-            ).fetchall()
+            )
+            rows = cur.fetchall()
         return [
             {
                 "id": r[0],
@@ -95,36 +44,35 @@ class CreditStore:
     def grant(self, user_id: str, delta_micro: int, reason: str = "grant", job_id: Optional[str] = None) -> int:
         if delta_micro <= 0:
             raise ValueError("Grant amount must be positive.")
-        with self._tx() as db:
-            db.execute(
+        with tx() as conn:
+            cur = conn.execute(
                 """
-                INSERT INTO user_credits (user_id, balance) VALUES (?, ?)
-                ON CONFLICT(user_id) DO UPDATE SET balance = balance + excluded.balance
+                INSERT INTO user_credits (user_id, balance) VALUES (%s, %s)
+                ON CONFLICT(user_id) DO UPDATE SET balance = user_credits.balance + EXCLUDED.balance
+                RETURNING balance
                 """,
                 (user_id, delta_micro),
             )
-            db.execute(
-                "INSERT INTO credit_ledger (user_id, delta, reason, job_id, created_at) VALUES (?, ?, ?, ?, ?)",
+            row = cur.fetchone()
+            conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, job_id, created_at) VALUES (%s, %s, %s, %s, %s)",
                 (user_id, delta_micro, reason, job_id, now_iso()),
             )
-            row = db.execute("SELECT balance FROM user_credits WHERE user_id = ?", (user_id,)).fetchone()
-            return int(row[0])
+            return int(row[0]) if row else 0
 
     def reserve(self, user_id: str, amount_micro: int, job_id: str, reason: str = "reserve") -> bool:
         if amount_micro <= 0:
             raise ValueError("Reserve amount must be positive.")
-        with self._tx() as db:
-            row = db.execute("SELECT balance FROM user_credits WHERE user_id = ?", (user_id,)).fetchone()
-            if not row or int(row[0]) < amount_micro:
-                return False
-            cursor = db.execute(
-                "UPDATE user_credits SET balance = balance - ? WHERE user_id = ? AND balance >= ?",
+        with tx() as conn:
+            cur = conn.execute(
+                "UPDATE user_credits SET balance = balance - %s WHERE user_id = %s AND balance >= %s RETURNING balance",
                 (amount_micro, user_id, amount_micro),
             )
-            if cursor.rowcount == 0:
+            row = cur.fetchone()
+            if not row:
                 return False
-            db.execute(
-                "INSERT INTO credit_ledger (user_id, delta, reason, job_id, created_at) VALUES (?, ?, ?, ?, ?)",
+            conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, job_id, created_at) VALUES (%s, %s, %s, %s, %s)",
                 (user_id, -amount_micro, reason, job_id, now_iso()),
             )
             return True
@@ -132,20 +80,21 @@ class CreditStore:
     def refund(self, user_id: str, amount_micro: int, job_id: str, reason: str = "refund") -> int:
         if amount_micro <= 0:
             return self.get_balance(user_id)
-        with self._tx() as db:
-            db.execute(
+        with tx() as conn:
+            cur = conn.execute(
                 """
-                INSERT INTO user_credits (user_id, balance) VALUES (?, ?)
-                ON CONFLICT(user_id) DO UPDATE SET balance = balance + excluded.balance
+                INSERT INTO user_credits (user_id, balance) VALUES (%s, %s)
+                ON CONFLICT(user_id) DO UPDATE SET balance = user_credits.balance + EXCLUDED.balance
+                RETURNING balance
                 """,
                 (user_id, amount_micro),
             )
-            db.execute(
-                "INSERT INTO credit_ledger (user_id, delta, reason, job_id, created_at) VALUES (?, ?, ?, ?, ?)",
+            row = cur.fetchone()
+            conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, job_id, created_at) VALUES (%s, %s, %s, %s, %s)",
                 (user_id, amount_micro, reason, job_id, now_iso()),
             )
-            row = db.execute("SELECT balance FROM user_credits WHERE user_id = ?", (user_id,)).fetchone()
-            return int(row[0])
+            return int(row[0]) if row else 0
 
     def estimate(self, user_id: Optional[str] = None, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
         dur = get_video_duration()

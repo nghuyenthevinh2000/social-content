@@ -38,7 +38,7 @@ class BackendTests(unittest.TestCase):
         self._env_patch = mock.patch.dict(os.environ, {"VIRAL_APP_CACHE_DIR": self._cache_tmp.name})
         self._env_patch.start()
         self._runs_root = Path(self._cache_tmp.name) / "runs"
-        self._store = JobStore(self._runs_root / "jobs.db")
+        self._store = JobStore()
         self._runs_patch = mock.patch("tools.app.backend.research.RUNS_ROOT", self._runs_root)
         self._store_patch = mock.patch("tools.app.backend.research.STORE", self._store)
         self._runs_patch.start()
@@ -145,7 +145,6 @@ class BackendTests(unittest.TestCase):
             config = load_config(
                 {
                     "storage": {
-                        "db_path": str(root / "db.sqlite"),
                         "video_dir": str(root / "videos"),
                         "output_file": str(root / "out.json"),
                     },
@@ -160,37 +159,35 @@ class BackendTests(unittest.TestCase):
     def test_job_store_queue(self):
         from tools.app.backend.store import JobStore
 
-        with tempfile.TemporaryDirectory() as tmp:
-            store = JobStore(Path(tmp) / "jobs.db")
-            for job_id, created in (("b", "2026-01-02"), ("a", "2026-01-01")):
-                store.put({"id": job_id, "status": "queued", "created_at": created, "sheets": [{"slug": "s", "status": "pending"}], "logs": []})
-            self.assertEqual(store.claim(2)["id"], "a")
-            self.assertEqual(store.snapshot("a")["status"], "running")
-            store.patch_sheet("a", "s", status="completed")
-            store.log("a", "hello", "s")
-            self.assertTrue(store.cancel("b"))
-            self.assertFalse(store.cancel("missing"))
-            snap = JobStore(Path(tmp) / "jobs.db").snapshot("a")  # survives a new process/store
-            self.assertEqual(snap["sheets"][0]["status"], "completed")
-            self.assertEqual(snap["logs"][0]["message"], "hello")
-            self.assertTrue(store.snapshot("b")["cancel_requested"])
-            self.assertEqual(store.claim(2)["id"], "b")
-            self.assertIsNone(store.claim(2))
+        store = JobStore()
+        for job_id, created in (("b", "2026-01-02"), ("a", "2026-01-01")):
+            store.put({"id": job_id, "status": "queued", "created_at": created, "sheets": [{"slug": "s", "status": "pending"}], "logs": []})
+        self.assertEqual(store.claim(2)["id"], "a")
+        self.assertEqual(store.snapshot("a")["status"], "running")
+        store.patch_sheet("a", "s", status="completed")
+        store.log("a", "hello", "s")
+        self.assertTrue(store.cancel("b"))
+        self.assertFalse(store.cancel("missing"))
+        snap = JobStore().snapshot("a")  # survives a new process/store
+        self.assertEqual(snap["sheets"][0]["status"], "completed")
+        self.assertEqual(snap["logs"][0]["message"], "hello")
+        self.assertTrue(store.snapshot("b")["cancel_requested"])
+        self.assertEqual(store.claim(2)["id"], "b")
+        self.assertIsNone(store.claim(2))
 
     def test_claim_is_fair_across_clients(self):
         from tools.app.backend.store import JobStore
 
-        with tempfile.TemporaryDirectory() as tmp:
-            store = JobStore(Path(tmp) / "jobs.db")
-            for job_id, client, created in (("a1", "A", "1"), ("a2", "A", "2"), ("b1", "B", "3")):
-                store.put({"id": job_id, "client_id": client, "status": "queued", "created_at": created, "sheets": []})
-            self.assertEqual(store.claim(1)["id"], "a1")
-            self.assertEqual(store.claim(1)["id"], "b1")  # A is at its limit, so B jumps ahead of a2
-            self.assertIsNone(store.claim(1))
-            store.update("a1", status="completed")
-            self.assertEqual(store.claim(1)["id"], "a2")
-            self.assertEqual(store.stale_running(60), [])
-            self.assertEqual(sorted(store.stale_running(-1)), ["a2", "b1"])  # no recent heartbeat => worker lost
+        store = JobStore()
+        for job_id, client, created in (("a1", "A", "1"), ("a2", "A", "2"), ("b1", "B", "3")):
+            store.put({"id": job_id, "client_id": client, "status": "queued", "created_at": created, "sheets": []})
+        self.assertEqual(store.claim(1)["id"], "a1")
+        self.assertEqual(store.claim(1)["id"], "b1")  # A is at its limit, so B jumps ahead of a2
+        self.assertIsNone(store.claim(1))
+        store.update("a1", status="completed")
+        self.assertEqual(store.claim(1)["id"], "a2")
+        self.assertEqual(store.stale_running(60), [])
+        self.assertEqual(sorted(store.stale_running(-1)), ["a2", "b1"])  # no recent heartbeat => worker lost
 
     def test_log_collection(self):
         from tools.app.backend.server import _log_line, LOG_PATH
@@ -282,77 +279,73 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(job["sheets"][0]["target_list"][0]["url"], "https://www.facebook.com/testpage")
 
     def test_social_profile_store_crud(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            db_path = Path(tmp) / "profiles.db"
-            store = SocialProfileStore(db_path)
+        store = SocialProfileStore()
 
-            # Test initial seed
-            topics = store.list_topics()
-            self.assertEqual(len(topics), 4)
-            first = store.get_topic("me-chong-nang-dau")
-            self.assertIsNotNone(first)
-            self.assertEqual(len(first["targets"]), 3)
+        # Test initial seed
+        topics = store.list_topics()
+        self.assertEqual(len(topics), 4)
+        first = store.get_topic("me-chong-nang-dau")
+        self.assertIsNotNone(first)
+        self.assertEqual(len(first["targets"]), 3)
 
-            # Test search query
-            filtered = store.list_topics(query="nàng dâu")
-            self.assertEqual(len(filtered), 1)
-            self.assertEqual(filtered[0]["slug"], "me-chong-nang-dau")
+        # Test search query
+        filtered = store.list_topics(query="nàng dâu")
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0]["slug"], "me-chong-nang-dau")
 
-            # Test add profile to existing topic
-            updated = store.add_profile("Mẹ chồng - nàng dâu", "https://facebook.com/newchannel", "Kênh Mới")
-            self.assertEqual(len(updated["targets"]), 4)
+        # Test add profile to existing topic
+        updated = store.add_profile("Mẹ chồng - nàng dâu", "https://facebook.com/newchannel", "Kênh Mới")
+        self.assertEqual(len(updated["targets"]), 4)
 
-            # Test add profile creating new topic
-            new_topic = store.add_profile("Thời trang", "https://facebook.com/thoitrang123", "Shop Xinh")
-            self.assertEqual(new_topic["name"], "Thời trang")
-            self.assertEqual(len(new_topic["targets"]), 1)
-            self.assertEqual(len(store.list_topics()), 5)
+        # Test add profile creating new topic
+        new_topic = store.add_profile("Thời trang", "https://facebook.com/thoitrang123", "Shop Xinh")
+        self.assertEqual(new_topic["name"], "Thời trang")
+        self.assertEqual(len(new_topic["targets"]), 1)
+        self.assertEqual(len(store.list_topics()), 5)
 
-            # Test delete profile
-            self.assertTrue(store.delete_profile("thoi-trang", "https://facebook.com/thoitrang123"))
-            after_del = store.get_topic("thoi-trang")
-            self.assertEqual(len(after_del["targets"]), 0)
+        # Test delete profile
+        self.assertTrue(store.delete_profile("thoi-trang", "https://facebook.com/thoitrang123"))
+        after_del = store.get_topic("thoi-trang")
+        self.assertEqual(len(after_del["targets"]), 0)
 
-            # Test delete topic
-            self.assertTrue(store.delete_topic("thoi-trang"))
-            self.assertIsNone(store.get_topic("thoi-trang"))
-            self.assertEqual(len(store.list_topics()), 4)
+        # Test delete topic
+        self.assertTrue(store.delete_topic("thoi-trang"))
+        self.assertIsNone(store.get_topic("thoi-trang"))
+        self.assertEqual(len(store.list_topics()), 4)
 
-            # Test multi-user isolation: new accounts start empty, no leakage
-            user_a = "user_alpha_123"
-            user_b = "user_beta_456"
-            self.assertEqual(len(store.list_topics(user_id=user_a)), 0)
-            self.assertEqual(len(store.list_topics(user_id=user_b)), 0)
-            store.add_profile("Nấu ăn A", "https://facebook.com/nauan123", "Bếp A", user_id=user_a)
-            self.assertEqual(len(store.list_topics(user_id=user_a)), 1)
-            self.assertEqual(len(store.list_topics(user_id=user_b)), 0)
-            self.assertIsNone(store.get_topic("nau-an-a", user_id=user_b))
+        # Test multi-user isolation: new accounts start empty, no leakage
+        user_a = "user_alpha_123"
+        user_b = "user_beta_456"
+        self.assertEqual(len(store.list_topics(user_id=user_a)), 0)
+        self.assertEqual(len(store.list_topics(user_id=user_b)), 0)
+        store.add_profile("Nấu ăn A", "https://facebook.com/nauan123", "Bếp A", user_id=user_a)
+        self.assertEqual(len(store.list_topics(user_id=user_a)), 1)
+        self.assertEqual(len(store.list_topics(user_id=user_b)), 0)
+        self.assertIsNone(store.get_topic("nau-an-a", user_id=user_b))
 
     def test_job_store_user_isolation(self):
         from tools.app.backend.store import JobStore
-        with tempfile.TemporaryDirectory() as tmp:
-            db_path = Path(tmp) / "jobs.db"
-            store = JobStore(db_path)
-            job_a = {"id": "job_a1", "status": "completed", "created_at": "2026-11-08T00:00:00Z", "user_id": "user_a"}
-            store.put(job_a)
+        store = JobStore()
+        job_a = {"id": "job_a1", "status": "completed", "created_at": "2026-11-08T00:00:00Z", "user_id": "user_a"}
+        store.put(job_a)
 
-            # user_a can read job_a
-            self.assertIsNotNone(store.snapshot("job_a1", user_id="user_a"))
-            # user_b cannot read job_a
-            self.assertIsNone(store.snapshot("job_a1", user_id="user_b"))
-            # unassigned user cannot cancel job_a
-            self.assertFalse(store.cancel("job_a1", user_id="user_b"))
+        # user_a can read job_a
+        self.assertIsNotNone(store.snapshot("job_a1", user_id="user_a"))
+        # user_b cannot read job_a
+        self.assertIsNone(store.snapshot("job_a1", user_id="user_b"))
+        # unassigned user cannot cancel job_a
+        self.assertFalse(store.cancel("job_a1", user_id="user_b"))
 
-            # list_jobs isolation
-            jobs_a = store.list_jobs(user_id="user_a")
-            self.assertEqual(len(jobs_a), 1)
-            self.assertEqual(jobs_a[0]["id"], "job_a1")
-            self.assertEqual(len(store.list_jobs(user_id="user_b")), 0)
+        # list_jobs isolation
+        jobs_a = store.list_jobs(user_id="user_a")
+        self.assertEqual(len(jobs_a), 1)
+        self.assertEqual(jobs_a[0]["id"], "job_a1")
+        self.assertEqual(len(store.list_jobs(user_id="user_b")), 0)
 
-            # delete job
-            self.assertFalse(store.delete("job_a1", user_id="user_b"))
-            self.assertTrue(store.delete("job_a1", user_id="user_a"))
-            self.assertEqual(len(store.list_jobs(user_id="user_a")), 0)
+        # delete job
+        self.assertFalse(store.delete("job_a1", user_id="user_b"))
+        self.assertTrue(store.delete("job_a1", user_id="user_a"))
+        self.assertEqual(len(store.list_jobs(user_id="user_a")), 0)
 
     def test_max_videos_env_fallback(self):
         from tools.app.backend.server import _int
@@ -373,13 +366,11 @@ class BackendTests(unittest.TestCase):
         from tools.loop.viral_analyzer.pipeline import fetch_target_reels
         import subprocess
         with tempfile.TemporaryDirectory() as tmp:
-            db_file = Path(tmp) / "traffic_pools.db"
             fake_reels = [{"video_id": "99", "url": "https://facebook.com/reel/99", "view_count": 1000}]
-            write_cached_reels("testhandle", fake_reels, db_path=db_file)
+            write_cached_reels("testhandle", fake_reels)
 
             config = load_config({
                 "storage": {
-                    "db_path": str(db_file),
                     "video_dir": str(Path(tmp) / "videos"),
                     "output_file": str(Path(tmp) / "out.json"),
                 },
@@ -392,13 +383,13 @@ class BackendTests(unittest.TestCase):
                 config,
                 progress_cb=logs.append,
             )
-            # Must read directly from SQLite cache without subprocess/network call
+            # Must read directly from Postgres cache without subprocess/network call
             self.assertEqual(len(reels), 1)
             self.assertEqual(reels[0]["video_id"], "99")
             self.assertTrue(any("[cache]" in line for line in logs))
 
             # Test TTL expiration fallback on error
-            write_cached_reels("testhandle", fake_reels, db_path=db_file, fetched_at=time.time() - 100000)
+            write_cached_reels("testhandle", fake_reels, fetched_at=time.time() - 100000)
             logs_expired = []
             with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 1, stdout="err", stderr="err")):
                 reels_expired = fetch_target_reels(
@@ -416,10 +407,8 @@ class BackendTests(unittest.TestCase):
         import unittest.mock as mock
 
         with tempfile.TemporaryDirectory() as tmp:
-            db_file = Path(tmp) / "traffic_pools.db"
             config = load_config({
                 "storage": {
-                    "db_path": str(db_file),
                     "video_dir": str(Path(tmp) / "videos"),
                     "output_file": str(Path(tmp) / "out.json"),
                 },
@@ -450,8 +439,8 @@ class BackendTests(unittest.TestCase):
                 self.assertEqual(len(reels_1), 1)
                 self.assertEqual(reels_1[0]["video_id"], "vid_1")
                 self.assertTrue(any("[api] Gọi Glasser" in log for log in logs_1))
-                # Entry must have been persisted into centralized SQLite profile_cache
-                cached_entry = read_cached_reels("my_channel", db_path=db_file)
+                # Entry must have been persisted into centralized Postgres profile_cache
+                cached_entry = read_cached_reels("my_channel")
                 self.assertIsNotNone(cached_entry)
                 self.assertEqual(len(cached_entry[0]), 1)
 
@@ -475,7 +464,6 @@ class BackendTests(unittest.TestCase):
 
             config = load_config({
                 "storage": {
-                    "db_path": str(root / "db.sqlite"),
                     "video_dir": str(root / "videos"),
                     "output_file": str(root / "out.json"),
                 },
@@ -825,12 +813,10 @@ class BackendTests(unittest.TestCase):
             self.assertIn("Chưa cấu hình hoặc thiếu GLASSER_API_KEY", target_sheet["notice"])
             self.assertIn("GLASSER_API_KEY", target_sheet["error"])
 
-    def test_centralized_cache_and_migration(self):
-        import sqlite3
+    def test_centralized_cache(self):
         from tools.loop.viral_analyzer.cache import (
             connect_db,
             get_cached_transcript,
-            migrate_fragmented_storage,
             persist_to_database,
             read_cached_reels,
             write_cached_reels,
@@ -838,20 +824,19 @@ class BackendTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            central_db = root / "traffic_pools.db"
 
             # 1. Negative cache for 404 channels (empty reels, status='not_found') must hit cache
-            write_cached_reels("dead_channel", [], status="not_found", db_path=central_db)
-            hit = read_cached_reels("dead_channel", db_path=central_db)
+            write_cached_reels("dead_channel_test", [], status="not_found")
+            hit = read_cached_reels("dead_channel_test")
             self.assertIsNotNone(hit)
             self.assertEqual(hit[0], [])
             self.assertEqual(hit[1], "not_found")
 
             # 2. Cross-run persistence preserves transcript & computes acceleration
             reel_run_1 = [{
-                "video_id": "v100",
-                "url": "https://facebook.com/reel/v100",
-                "author_handle": "chef",
+                "video_id": "v100_test",
+                "url": "https://facebook.com/reel/v100_test",
+                "author_handle": "chef_test",
                 "title": "Món ngon",
                 "views": 1000,
                 "likes": 50,
@@ -863,8 +848,8 @@ class BackendTests(unittest.TestCase):
                 "comment_ratio": 0.1,
                 "transcript": "Xin chào các bạn",
             }]
-            persist_to_database(reel_run_1, central_db)
-            self.assertEqual(get_cached_transcript("v100", central_db), "Xin chào các bạn")
+            persist_to_database(reel_run_1)
+            self.assertEqual(get_cached_transcript("v100_test"), "Xin chào các bạn")
 
             reel_run_2 = [{
                 **reel_run_1[0],
@@ -873,33 +858,102 @@ class BackendTests(unittest.TestCase):
                 "velocity_per_hour": 250.0,
                 "transcript": None,  # Must not overwrite existing transcript with None
             }]
-            persist_to_database(reel_run_2, central_db)
-            self.assertEqual(get_cached_transcript("v100", central_db), "Xin chào các bạn")
+            persist_to_database(reel_run_2)
+            self.assertEqual(get_cached_transcript("v100_test"), "Xin chào các bạn")
 
-            with connect_db(central_db) as conn:
+            with connect_db() as conn:
                 snaps = conn.execute(
-                    "SELECT velocity_per_hour, acceleration FROM metric_snapshots WHERE video_id = 'facebook:v100' ORDER BY id ASC"
+                    "SELECT velocity_per_hour, acceleration FROM metric_snapshots WHERE video_id = 'facebook:v100_test' ORDER BY id ASC"
                 ).fetchall()
                 self.assertEqual(len(snaps), 2)
                 self.assertEqual(snaps[0], (100.0, 0.0))
                 self.assertEqual(snaps[1], (250.0, 150.0))
 
-            # 3. Migration from fragmented per-sheet DBs and loose JSON files
-            frag_sheet = root / "job1" / "sheets" / "s1"
-            frag_sheet.mkdir(parents=True)
-            frag_db = frag_sheet / "traffic_pools.db"
-            persist_to_database([{**reel_run_1[0], "video_id": "v200", "url": "https://facebook.com/reel/v200"}], frag_db)
-            (frag_sheet / "glasser_migrated_chan.json").write_text(
-                json.dumps({"reels": [{"video_id": "v300"}]}), encoding="utf-8"
+            # 3. Legacy JSON auto-import into PostgreSQL cache
+            legacy_file = root / "glasser_legacy_chan_test.json"
+            legacy_file.write_text(
+                json.dumps({"reels": [{"video_id": "v300_test"}], "status": "ok"}), encoding="utf-8"
             )
+            hit_legacy = read_cached_reels("legacy_chan_test", cache_dir=root)
+            self.assertIsNotNone(hit_legacy)
+            self.assertEqual(len(hit_legacy[0]), 1)
+            self.assertEqual(hit_legacy[0][0]["video_id"], "v300_test")
 
-            stats = migrate_fragmented_storage(runs_root=root, central_db=central_db, cleanup=True)
-            self.assertEqual(stats["migrated_dbs"], 1)
-            self.assertEqual(stats["migrated_json_caches"], 1)
-            self.assertFalse(frag_db.exists())
-            self.assertFalse((frag_sheet / "glasser_migrated_chan.json").exists())
-            self.assertIsNotNone(read_cached_reels("migrated_chan", db_path=central_db))
-            self.assertEqual(get_cached_transcript("v200", central_db), "Xin chào các bạn")
+    def test_run_job_and_purge_and_bounded_server(self):
+        import concurrent.futures
+        import threading
+        import urllib.request
+        from tools.app.backend import blobs, db, handler, research, server, video_jobs
+
+        # Phase 5: schema applies twice cleanly
+        db.init_schema()
+        db.init_schema()
+
+        # Phase 4: run_job completes with RUNS_ROOT unused and uploads result.json
+        payload = {"sheets": [{"name": "Sheet 1", "targets": []}]}
+        job = create_job(
+            json.dumps(payload).encode("utf-8"),
+            "test.json",
+            {"agent": "agy", "window_hours": 48},
+            "client-1",
+            user_id="u_run",
+        )
+        research.run_job(job)
+        snap = self._store.snapshot(job["id"], user_id="u_run")
+        self.assertEqual(snap["status"], "completed")
+        self.assertFalse(self._runs_root.exists())
+        res_blob = json.loads(blobs.get(f"runs/{job['id']}/result.json"))
+        self.assertEqual(res_blob["sheet"], "Sheet 1")
+
+        # Phase 9: purge_expired removes expired jobs and video_jobs from DB and bucket
+        old_ts = "2020-01-01T00:00:00+00:00"
+        self._store.put({"id": "exp_job", "status": "completed", "created_at": old_ts, "user_id": "u_run", "sheets": []})
+        blobs.put("runs/exp_job/result.json", b"{}")
+        with db.tx() as conn:
+            conn.execute(
+                "INSERT INTO video_jobs (id, user_id, prompt, profile_media_id, cost, status, blob_key, created_at) "
+                "VALUES ('exp_vjob', 'u_run', 'p', 'm1', 100, 'completed', 'videos/u_run/exp_vjob/output.mp4', %s)",
+                (old_ts,),
+            )
+        blobs.put("videos/u_run/exp_vjob/output.mp4", b"mp4")
+        handler.purge_expired()
+        self.assertIsNone(self._store.snapshot("exp_job"))
+        self.assertIsNone(video_jobs.VIDEO_STORE.get_job("u_run", "exp_vjob"))
+        with self.assertRaises(FileNotFoundError):
+            blobs.get("runs/exp_job/result.json")
+        with self.assertRaises(FileNotFoundError):
+            blobs.get("videos/u_run/exp_vjob/output.mp4")
+
+        # Phase 8: BoundedHTTPServer caps concurrent request threads at max_workers
+        active, max_active = 0, 0
+        lock = threading.Lock()
+
+        class SlowHandler(server.BaseHTTPRequestHandler):
+            def do_GET(self_h):
+                nonlocal active, max_active
+                with lock:
+                    active += 1
+                    max_active = max(max_active, active)
+                time.sleep(0.02)
+                with lock:
+                    active -= 1
+                self_h.send_response(200)
+                self_h.end_headers()
+                self_h.wfile.write(b"ok")
+
+            def log_message(self_h, *args):
+                pass
+
+        httpd = server.BoundedHTTPServer(("127.0.0.1", 0), SlowHandler, max_workers=16)
+        port = httpd.server_address[1]
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=200) as ex:
+                statuses = list(ex.map(lambda _: urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=30).status, range(200)))
+            self.assertEqual(len(statuses), 200)
+            self.assertLessEqual(max_active, 16)
+        finally:
+            httpd.server_close()
 
 
 if __name__ == "__main__":

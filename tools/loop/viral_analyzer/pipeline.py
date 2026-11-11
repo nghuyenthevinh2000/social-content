@@ -6,7 +6,7 @@ Executes the complete operational flow from one input config:
 3. Classifies Reels into 5 Traffic Pools according to configured view boundaries.
 4. Downloads video files into persistent local cache (retained for 1 week before deletion).
 5. Transcribes speech using Qwen3-ASR (Apple Silicon MLX Metal GPU acceleration).
-6. Persists structured results into unified JSON and SQLite database.
+6. Persists structured results into unified JSON and PostgreSQL database.
 """
 
 import argparse
@@ -15,7 +15,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -300,8 +299,8 @@ def run_analyzer_pipeline(
         else:
             print(f"    [*] Found in cache: {video_path.name}")
 
-        # Check existing transcript in centralized SQLite DB first
-        existing_tr = get_cached_transcript(vid, config.storage.db_path)
+        # Check existing transcript in centralized DB first
+        existing_tr = get_cached_transcript(vid)
 
         if existing_tr:
             print(f"    [*] Transcript already present in DB ({len(existing_tr)} chars).")
@@ -379,7 +378,7 @@ def run_analyzer_pipeline(
         json.dump(summary_payload, out_f, ensure_ascii=False, indent=2)
 
     # 5. Database Persistence
-    persist_to_database(extracted_reels, config.storage.db_path)
+    persist_to_database(extracted_reels)
 
     print("\n" + "=" * 80)
     print(" VIRAL ANALYZER EXECUTION COMPLETED")
@@ -391,7 +390,6 @@ def run_analyzer_pipeline(
     if profiles_empty:
         print(f"Empty Targets   : {len(profiles_empty)} kênh ({', '.join(profiles_empty)})")
     print(f"Saved Output    : {config.storage.output_file}")
-    print(f"Database Target : {config.storage.db_path}")
     print(f"Cached Videos   : {len(list(config.storage.video_dir.glob('*.mp4')))} stored in {config.storage.video_dir} (1-week retention)")
     print("=" * 80)
     progress_cb and progress_cb(f"Hoàn tất: {len(extracted_reels)} reel, {len(list(config.storage.video_dir.glob('*.mp4')))} video trong cache.")

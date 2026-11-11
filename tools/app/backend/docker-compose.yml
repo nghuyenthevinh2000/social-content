@@ -1,4 +1,63 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: aibrand-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=aibrand
+    volumes:
+      - ../../../local/aibrand/data/postgres:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aibrand"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: aibrand-rustfs
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - RUSTFS_VOLUMES=/data
+      - RUSTFS_ADDRESS=:9000
+      - RUSTFS_CONSOLE_ADDRESS=:9001
+      - RUSTFS_ACCESS_KEY=${BLOB_ACCESS_KEY:-rustfsadmin}
+      - RUSTFS_SECRET_KEY=${BLOB_SECRET_KEY:-rustfsadmin}
+    volumes:
+      - ../../../local/aibrand/data/rustfs:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rustfs-init:
+    image: amazon/aws-cli:latest
+    container_name: aibrand-rustfs-init
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=${BLOB_ACCESS_KEY:-rustfsadmin}
+      - AWS_SECRET_ACCESS_KEY=${BLOB_SECRET_KEY:-rustfsadmin}
+      - AWS_DEFAULT_REGION=${BLOB_REGION:-us-east-1}
+      - BLOB_BUCKET=${BLOB_BUCKET:-aibrand}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        aws --endpoint-url http://rustfs:9000 s3 mb s3://$${BLOB_BUCKET:-aibrand} || true
+        aws --endpoint-url http://rustfs:9000 s3 mb s3://test-$${BLOB_BUCKET:-aibrand} || true
+    restart: "no"
+
   backend:
     build:
       context: ../../../
@@ -7,19 +66,37 @@ services:
     restart: unless-stopped
     ports:
       - "${PORT:-8765}:8765"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs-init:
+        condition: service_completed_successfully
     env_file:
       - path: .env
         required: false
     environment:
       - PORT=8765
       - ROLE=${ROLE:-all}
-      - VIRAL_APP_RUNS=/data/runs
       - VIRAL_APP_AGENT=${VIRAL_APP_AGENT:-opencode}
       - GLASSER_API_KEY=${GLASSER_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/aibrand
+      - BLOB_ENDPOINT=http://rustfs:9000
+      - BLOB_PUBLIC_ENDPOINT=${BLOB_PUBLIC_ENDPOINT:-http://localhost:9000}
+      - BLOB_BUCKET=${BLOB_BUCKET:-aibrand}
+      - BLOB_ACCESS_KEY=${BLOB_ACCESS_KEY:-rustfsadmin}
+      - BLOB_SECRET_KEY=${BLOB_SECRET_KEY:-rustfsadmin}
+      - BLOB_REGION=${BLOB_REGION:-us-east-1}
+      - RETENTION_DAYS=${RETENTION_DAYS:-30}
+      - API_THREADS=${API_THREADS:-64}
+      - DB_POOL_MAX=${DB_POOL_MAX:-10}
+      - VERTEX_VIDEO_API_KEY=${VERTEX_VIDEO_API_KEY:-}
+      - VERTEX_VIDEO_MODEL=${VERTEX_VIDEO_MODEL:-gemini-omni-1.2-flash}
+      - VERTEX_PROJECT=${VERTEX_PROJECT:-}
+      - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
+      - VIDEO_GENERATION_DURATION=${VIDEO_GENERATION_DURATION:-15}
     volumes:
-      - aibrand-data:/data
       - aibrand-hf:/home/app/.cache/huggingface
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/health')"]
@@ -40,5 +117,4 @@ services:
       - tools
 
 volumes:
-  aibrand-data:
   aibrand-hf:

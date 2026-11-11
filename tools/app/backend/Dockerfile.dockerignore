@@ -1,6 +1,7 @@
 *
 !tools/loop
 !tools/app/backend
+!tools/app/browser-app/dist
 **/__pycache__
 tools/loop/tests
 tools/app/backend/.env
