@@ -304,17 +304,27 @@
   color: #868e96;
 }
 
-.media-action-btn.download-btn {
-  color: var(--accent);
-  border-color: var(--accent-soft);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
+.video-card-head-right .media-action-btn {
+  height: 28px;
+  min-width: 60px;
+  padding: 0 10px;
 }
 
-.media-action-btn.download-btn:hover {
-  background: var(--accent-soft);
+.media-action-btn.download-btn,
+.ab a.media-action-btn.download-btn {
   color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.media-action-btn.download-btn:hover,
+.ab a.media-action-btn.download-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .video-player-box {
@@ -328,32 +338,6 @@
   max-height: 480px;
   border-radius: 12px;
   background: #000;
-}
-
-.video-player-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-
-.download-video-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  background: var(--accent);
-  text-decoration: none;
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-
-.download-video-action:hover {
-  opacity: 0.9;
 }
 
 .video-prompt-box {

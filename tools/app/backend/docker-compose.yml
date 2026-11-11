@@ -78,6 +78,8 @@ services:
       - PORT=8765
       - ROLE=${ROLE:-all}
       - VIRAL_APP_AGENT=${VIRAL_APP_AGENT:-opencode}
+      - VIRAL_APP_AGY_MODEL=${VIRAL_APP_AGY_MODEL:-gemini-3.8-flash-low}
+      - OPENCODE_CONFIG_CONTENT=${OPENCODE_CONFIG_CONTENT:-}
       - GLASSER_API_KEY=${GLASSER_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -91,14 +93,16 @@ services:
       - RETENTION_DAYS=${RETENTION_DAYS:-30}
       - API_THREADS=${API_THREADS:-64}
       - DB_POOL_MAX=${DB_POOL_MAX:-10}
-      - VERTEX_VIDEO_API_KEY=${VERTEX_VIDEO_API_KEY:-}
-      - VERTEX_VIDEO_MODEL=${VERTEX_VIDEO_MODEL:-gemini-omni-1.2-flash}
-      - VERTEX_PROJECT=${VERTEX_PROJECT:-}
-      - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
+      - GOOGLE_GENAI_USE_ENTERPRISE=${GOOGLE_GENAI_USE_ENTERPRISE:-true}
+      - AGENT_PLATFORM_MODEL=${AGENT_PLATFORM_MODEL:-gemini-omni-1.2-flash}
+      - AGENT_PLATFORM_PROJECT=${AGENT_PLATFORM_PROJECT:-}
+      - AGENT_PLATFORM_LOCATION=${AGENT_PLATFORM_LOCATION:-global}
       - VIDEO_GENERATION_DURATION=${VIDEO_GENERATION_DURATION:-15}
       - RATE_PER_SEC_MICRO=${RATE_PER_SEC_MICRO:-23000}
     volumes:
       - aibrand-hf:/home/app/.cache/huggingface
+      - ${HOME:-/home/vinh}/.local/bin/agy:/usr/local/bin/agy:ro
+      - ${HOME:-/home/vinh}/.gemini:/home/app/.gemini
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/health')"]
       interval: 30s

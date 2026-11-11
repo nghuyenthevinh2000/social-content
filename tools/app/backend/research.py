@@ -94,7 +94,10 @@ def configured_agent() -> Dict[str, Any]:
     """Harness from VIRAL_APP_AGENT, else the first installed preset."""
     agent_id = os.environ.get("VIRAL_APP_AGENT")
     if agent_id:
-        return resolve_agent(agent_id)
+        try:
+            return resolve_agent(agent_id)
+        except ACPError:
+            pass
     for preset in AGENT_PRESETS:
         if shutil.which(preset["detect"]):
             return resolve_agent(preset["id"])
@@ -694,8 +697,16 @@ def _process_sheet(
                 notice = f"Không tìm thấy reel mới nào trong {window_hours} giờ qua. Vui lòng cập nhật thêm danh sách kênh."
                 log(notice)
     else:
+        agent_choice = options.get("agent") or os.environ.get("VIRAL_APP_AGENT") or "agy"
+        try:
+            resolve_agent(agent_choice)
+        except ACPError:
+            for preset in AGENT_PRESETS:
+                if shutil.which(preset["detect"]):
+                    agent_choice = preset["id"]
+                    break
         topics, topic_error = suggest_topics(
-            options.get("agent", "agy"),
+            agent_choice,
             sheet_name,
             sheet["targets"],
             reels,
@@ -705,7 +716,7 @@ def _process_sheet(
             model=options.get("agy_model") or options.get("model"),
         )
         if topic_error and not error:
-            acp_err = handle_acp_error(topic_error, agent_id=options.get("agent", "agy"), log=log)
+            acp_err = handle_acp_error(topic_error, agent_id=agent_choice, log=log)
             aggregator.add(acp_err)
             error = acp_err.message
 

@@ -90,11 +90,12 @@ def test_server_video_and_media_routes():
     media_ctx = json.loads(h.wfile.getvalue().decode())["media"]
     assert media_ctx["kind"] == "context"
 
-    # 3b. Browser <img> tag GET /api/media/<id>?uid=u_test_1 (no headers!) -> 302
+    # 3b. Browser <img> tag GET /api/media/<id>?uid=u_test_1 (no headers!) -> 200 direct image bytes
     h = DummyHandler("GET", f"/api/media/{media_prof['id']}?uid=u_test_1", {})
     h.do_GET()
-    assert h.response_status == 302
-    assert "location" in h.response_headers
+    assert h.response_status == 200
+    assert len(h.wfile.getvalue()) > 0
+    assert h.response_headers.get("content-type") == "image/jpeg"
 
     # 3c. Unauthenticated GET /api/media/<id> (no header, no uid) -> 401
     h = DummyHandler("GET", f"/api/media/{media_prof['id']}", {})
@@ -150,14 +151,16 @@ def test_server_video_and_media_routes():
 
     h = DummyHandler("GET", f"/api/videos/{created_job['id']}/file?uid=u_test_1", {})
     h.do_GET()
-    assert h.response_status == 302
-    assert "location" in h.response_headers
+    assert h.response_status in (200, 302)
 
-    # 8b. Test download=1 sets Content-Disposition attachment in presigned URL
+    # 8b. Test download=1 sets Content-Disposition attachment
     h = DummyHandler("GET", f"/api/videos/{created_job['id']}/file?uid=u_test_1&download=1", {})
     h.do_GET()
-    assert h.response_status == 302
-    assert f'video-{created_job["id"]}.mp4' in h.response_headers["location"]
+    assert h.response_status in (200, 302)
+    if h.response_status == 200:
+        assert f'video-{created_job["id"]}.mp4' in h.response_headers.get("content-disposition", "")
+    else:
+        assert f'video-{created_job["id"]}.mp4' in h.response_headers["location"]
 
     # 9. Create a second job and cancel while pending -> refunds credits
     h = DummyHandler("POST", "/api/videos", job_hdr, body=body_job)

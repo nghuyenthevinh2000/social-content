@@ -107,6 +107,33 @@ class CreditStore:
             )
             return int(row[0]) if row else 0
 
+    def claim_email_credits(self, email: str, user_id: str) -> None:
+        """Transfer any balance granted to an email address to the user's authenticated UID."""
+        if not email or not user_id or email == user_id:
+            return
+        with tx() as conn:
+            cur = conn.execute("SELECT balance FROM user_credits WHERE user_id = %s FOR UPDATE", (email,))
+            row = cur.fetchone()
+            if not row or row[0] <= 0:
+                return
+            amount = row[0]
+            conn.execute("UPDATE user_credits SET balance = 0 WHERE user_id = %s", (email,))
+            conn.execute(
+                """
+                INSERT INTO user_credits (user_id, balance) VALUES (%s, %s)
+                ON CONFLICT(user_id) DO UPDATE SET balance = user_credits.balance + EXCLUDED.balance
+                """,
+                (user_id, amount),
+            )
+            conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, created_at) VALUES (%s, %s, %s, %s)",
+                (user_id, amount, f"claim_from_email:{email}", now_iso()),
+            )
+            conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, created_at) VALUES (%s, %s, %s, %s)",
+                (email, -amount, f"transferred_to_uid:{user_id}", now_iso()),
+            )
+
     def estimate(self, user_id: Optional[str] = None, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
         dur = get_video_duration()
         rate = get_rate_per_sec_micro()

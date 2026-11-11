@@ -90,3 +90,16 @@ def test_get_rate_per_sec_micro(monkeypatch):
     assert get_rate_per_sec_micro() == 23000
 
 
+def test_claim_email_credits():
+    store = CreditStore()
+    store.grant("test_user@example.com", 1000000, reason="admin_grant")
+    assert store.get_balance("test_user@example.com") == 1000000
+    assert store.get_balance("uid_12345") == 0
+
+    # Claim credits for authenticated UID
+    store.claim_email_credits("test_user@example.com", "uid_12345")
+    assert store.get_balance("test_user@example.com") == 0
+    assert store.get_balance("uid_12345") == 1000000
+
+
+

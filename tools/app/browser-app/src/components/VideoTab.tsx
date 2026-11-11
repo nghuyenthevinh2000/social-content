@@ -292,7 +292,7 @@ export function VideoTab({
         <div className="credits-badge">
           <span>💰</span>
           <span>
-            ${(balance / 1000000).toFixed(2)} ({balance.toLocaleString()} credits)
+            ${(balance / 1000000).toFixed(2)}
           </span>
         </div>
       </div>
@@ -399,7 +399,7 @@ export function VideoTab({
 
         {!canAfford && (
           <div style={{ color: '#c92a2a', fontSize: 13, marginBottom: 12 }}>
-            ⚠️ Số dư không đủ (${costUsd.toFixed(2)}). Vui lòng nạp thêm credit để tạo video.
+            ⚠️ Số dư không đủ (${costUsd.toFixed(2)}). Vui lòng nạp thêm để tạo video.
           </div>
         )}
 
@@ -419,8 +419,7 @@ export function VideoTab({
           <div className="confirm-dialog">
             <h3>Xác nhận tạo video AI</h3>
             <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-              Hệ thống sẽ giữ <strong>${costUsd.toFixed(2)}</strong> ({costMicro.toLocaleString()} credits) để tạo 1
-              video ngắn {duration} giây. Nếu thất bại, toàn bộ credit sẽ được hoàn lại tự động.
+              Hệ thống sẽ giữ <strong>${costUsd.toFixed(2)}</strong> để tạo 1 video ngắn {duration} giây. Nếu thất bại, toàn bộ chi phí sẽ được hoàn lại tự động.
             </p>
 
             <div className="confirm-details">
@@ -573,16 +572,6 @@ export function VideoTab({
                     {j.status === 'completed' && j.video_path && (
                       <div className="video-player-box">
                         <video controls playsInline className="video-player" src={videoFileUrl(j)} />
-                        <div className="video-player-toolbar">
-                          <a
-                            href={videoDownloadUrl(j)}
-                            download={`video-${j.id}.mp4`}
-                            className="download-video-action"
-                            title="Tải video định dạng .mp4 về máy"
-                          >
-                            ⬇ Tải video về máy (.mp4)
-                          </a>
-                        </div>
                       </div>
                     )}
 
@@ -590,7 +579,7 @@ export function VideoTab({
                       <div className="video-error-text">
                         Lỗi: {j.error || 'Có lỗi xảy ra khi tạo video.'}
                         <div style={{ color: '#2b8a3e', marginTop: 4 }}>
-                          ✓ Đã hoàn lại {j.cost_usd ? `${j.cost_usd} USD` : `${(j.cost / 1000000).toFixed(2)} USD`} ({j.cost?.toLocaleString()} credits) vào số dư của bạn.
+                          ✓ Đã hoàn lại ${j.cost_usd ? `${j.cost_usd}` : `${(j.cost / 1000000).toFixed(2)}`} vào số dư của bạn.
                         </div>
                       </div>
                     )}

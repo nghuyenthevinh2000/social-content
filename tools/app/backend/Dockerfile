@@ -17,7 +17,7 @@ RUN apt-get update \
 
 RUN npm install -g @glasser-ai/cli@latest opencode-ai@latest && npm cache clean --force
 
-RUN pip install --no-cache-dir openpyxl yt-dlp imageio-ffmpeg "psycopg[binary,pool]" boto3
+RUN pip install --no-cache-dir openpyxl yt-dlp imageio-ffmpeg "psycopg[binary,pool]" boto3 google-genai
 
 # Speech-to-text on Linux uses transformers Qwen3-ASR (CPU). WITH_ASR=0 skips it for a much smaller image.
 ARG WITH_ASR=1

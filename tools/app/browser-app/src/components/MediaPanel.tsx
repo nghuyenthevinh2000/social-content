@@ -120,7 +120,7 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
             <strong>Số dư Video AI</strong>
           </div>
           <strong style={{ color: 'var(--accent)', fontSize: 15 }}>
-            ${(balance / 1000000).toFixed(2)} ({balance.toLocaleString()} credits)
+            ${(balance / 1000000).toFixed(2)}
           </strong>
         </div>
       )}

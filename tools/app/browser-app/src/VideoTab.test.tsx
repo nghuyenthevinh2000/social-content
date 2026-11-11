@@ -274,7 +274,7 @@ describe('VideoTab and MediaPanel', () => {
     const { container } = render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/500,000 credits/)).toBeDefined();
+      expect(screen.getByText(/\$0\.50/)).toBeDefined();
       expect(screen.getByText('Đã chọn ảnh đại diện mẫu')).toBeDefined();
       expect(screen.getAllByText(/Prompt test video/)[0]).toBeDefined();
       expect(screen.getByText('Hoàn tất')).toBeDefined();
@@ -289,18 +289,13 @@ describe('VideoTab and MediaPanel', () => {
     const videoEl = container.querySelector('video.video-player') as HTMLVideoElement;
     expect(videoEl?.getAttribute('src')).toBe('/api/videos/vj_done/file?uid=test_uid_123');
 
-    // Verify download links are present for completed jobs
+    // Verify download link is present in card header and redundant player toolbar link is removed
     const headerDownloadLink = container.querySelector('.video-card-head-right a.download-btn') as HTMLAnchorElement;
     expect(headerDownloadLink).toBeDefined();
     expect(headerDownloadLink?.getAttribute('href')).toBe('/api/videos/vj_done/file?uid=test_uid_123&download=1');
     expect(headerDownloadLink?.getAttribute('download')).toBe('video-vj_done.mp4');
-    expect(headerDownloadLink?.textContent).toContain('Tải về');
-
-    const bodyDownloadLink = container.querySelector('a.download-video-action') as HTMLAnchorElement;
-    expect(bodyDownloadLink).toBeDefined();
-    expect(bodyDownloadLink?.getAttribute('href')).toBe('/api/videos/vj_done/file?uid=test_uid_123&download=1');
-    expect(bodyDownloadLink?.getAttribute('download')).toBe('video-vj_done.mp4');
-    expect(bodyDownloadLink?.textContent).toContain('Tải video về máy');
+    expect(headerDownloadLink?.textContent).toBe('Tải về');
+    expect(container.querySelector('a.download-video-action')).toBeNull();
 
     // Pending and failed cards do not have download links
     const pendingCard = screen.getAllByText('Video đang chờ')[0].closest('.video-card');
@@ -391,7 +386,7 @@ describe('VideoTab and MediaPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Ảnh chân dung mẫu (Profile)')).toBeDefined();
       expect(screen.getByText('Ảnh bối cảnh / Sản phẩm (Context)')).toBeDefined();
-      expect(screen.getByText(/230,000 credits/)).toBeDefined();
+      expect(screen.getByText(/\$0\.23/)).toBeDefined();
     });
 
     const imgs = Array.from(container.querySelectorAll('img')).map((img) => img.getAttribute('src'));

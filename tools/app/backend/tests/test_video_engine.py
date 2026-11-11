@@ -164,3 +164,36 @@ def test_generate_video_stubbed_and_safety_retry():
         assert len(client_safety.calls) == 2
         # The second call prompt should use safe fallback
         assert "Xin chào các bạn" in client_safety.calls[1]["input"][-1]["text"]
+
+
+def test_get_agent_platform_credentials_antigravity_fallback(tmp_path, monkeypatch):
+    import json
+    from tools.app.backend.video_engine import _get_agent_platform_credentials
+
+    # Clear env
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+    monkeypatch.setenv("CLOUDSDK_CONFIG", str(tmp_path / "no-gcloud"))
+
+    fake_token_file = tmp_path / "antigravity-oauth-token"
+    fake_token_file.write_text(
+        json.dumps({
+            "token": {
+                "access_token": "ya29.test_token_123",
+                "expiry": "2099-01-01T00:00:00Z",
+            }
+        }),
+        encoding="utf-8",
+    )
+
+    # Monkeypatch candidates
+    monkeypatch.setattr(
+        "tools.app.backend.video_engine.Path.home",
+        lambda: tmp_path,
+    )
+    fake_gemini_dir = tmp_path / ".gemini/antigravity-cli"
+    fake_gemini_dir.mkdir(parents=True, exist_ok=True)
+    (fake_gemini_dir / "antigravity-oauth-token").write_text(fake_token_file.read_text())
+
+    creds = _get_agent_platform_credentials()
+    assert creds is not None
+    assert creds.token == "ya29.test_token_123"

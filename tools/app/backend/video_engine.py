@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import base64
+import datetime
+import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -32,6 +35,52 @@ def _load_env() -> None:
             continue
         k, v = line.split("=", 1)
         os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+
+
+def _get_agent_platform_credentials() -> Optional[Any]:
+    """Resolve credentials for Gemini Agent Platform: standard ADC or Antigravity OAuth fallback."""
+    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        return None
+
+    gcloud_adc = Path(os.environ.get("CLOUDSDK_CONFIG", Path.home() / ".config/gcloud")) / "application_default_credentials.json"
+    if gcloud_adc.is_file():
+        return None
+
+    token_candidates = [
+        Path.home() / ".gemini/antigravity-cli/antigravity-oauth-token",
+        Path("/home/app/.gemini/antigravity-cli/antigravity-oauth-token"),
+        Path("/home/vinh/.gemini/antigravity-cli/antigravity-oauth-token"),
+    ]
+    for candidate in token_candidates:
+        if candidate.is_file():
+            try:
+                from google.oauth2.credentials import Credentials
+
+                raw = json.loads(candidate.read_text(encoding="utf-8"))
+                tok = raw.get("token", {})
+                expiry_str = tok.get("expiry")
+                needs_refresh = False
+                if expiry_str:
+                    try:
+                        exp_dt = datetime.datetime.fromisoformat(expiry_str)
+                        if exp_dt.tzinfo is None:
+                            exp_dt = exp_dt.replace(tzinfo=datetime.timezone.utc)
+                        if datetime.datetime.now(exp_dt.tzinfo) >= exp_dt - datetime.timedelta(seconds=60):
+                            needs_refresh = True
+                    except Exception:
+                        pass
+                if needs_refresh and shutil.which("agy"):
+                    subprocess.run(["agy", "-p", "ping"], capture_output=True, timeout=15)
+                    raw = json.loads(candidate.read_text(encoding="utf-8"))
+                    tok = raw.get("token", {})
+
+                access_token = tok.get("access_token")
+                if access_token:
+                    return Credentials(token=access_token)
+            except Exception:
+                pass
+
+    return None
 
 
 def _detect_mime(data: bytes) -> str:
@@ -191,21 +240,23 @@ def generate_video(
         from google import genai
 
         project = (
-            os.environ.get("VERTEX_PROJECT")
+            os.environ.get("AGENT_PLATFORM_PROJECT")
             or os.environ.get("GOOGLE_CLOUD_PROJECT")
             or "gen-lang-client-0582170752"
         )
-        location = os.environ.get("VERTEX_LOCATION", "global")
-        api_key = os.environ.get("VERTEX_VIDEO_API_KEY")
+        location = (
+            os.environ.get("AGENT_PLATFORM_LOCATION")
+            or os.environ.get("GOOGLE_CLOUD_LOCATION")
+            or "global"
+        )
 
-        # For Vertex AI with Omni Interactions, Vertex ADC with location="global" and project is required.
-        # If a non-Express API key is provided, pass it; otherwise use project & location.
-        if api_key and not api_key.startswith("AQ."):
-            client = genai.Client(vertexai=True, project=project, location=location, api_key=api_key)
+        creds = _get_agent_platform_credentials()
+        if creds is not None:
+            client = genai.Client(enterprise=True, project=project, location=location, credentials=creds)
         else:
-            client = genai.Client(vertexai=True, project=project, location=location)
+            client = genai.Client(enterprise=True, project=project, location=location)
 
-    model = os.environ.get("VERTEX_VIDEO_MODEL", DEFAULT_MODEL)
+    model = os.environ.get("AGENT_PLATFORM_MODEL", DEFAULT_MODEL)
     kwargs = {
         "model": model,
         "input": inputs,

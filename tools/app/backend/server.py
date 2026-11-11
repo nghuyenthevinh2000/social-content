@@ -170,14 +170,17 @@ class Handler(BaseHTTPRequestHandler):
                     pass
         if not uid:
             header_uid = self.headers.get("X-User-Id") or ""
-            if header_uid and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", header_uid):
+            if header_uid and re.fullmatch(r"[A-Za-z0-9_.@-]{1,128}", header_uid):
                 uid = header_uid
                 email = self.headers.get("X-User-Email") or None
         if not uid:
             qs = parse_qs(urlparse(self.path).query)
             query_uid = (qs.get("uid") or [""])[0]
-            if query_uid and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", query_uid):
+            if query_uid and re.fullmatch(r"[A-Za-z0-9_.@-]{1,128}", query_uid):
                 uid = query_uid
+
+        if uid and email and uid != email:
+            CREDIT_STORE.claim_email_credits(email, uid)
 
         if uid and (email and ("hieu" in str(email).lower()) or ("hieu" in (self.headers.get("X-User-Email") or "").lower())):
             PROFILE_STORE.claim_legacy_topics(uid)
@@ -287,12 +290,28 @@ class Handler(BaseHTTPRequestHandler):
             if not media:
                 _json(self, 404, {"error": "Không tìm thấy file phương tiện."})
                 return
-            media_url = blobs.url(media["path"])
-            self.send_response(302)
-            self.send_header("Location", media_url)
+            public_endpoint = os.environ.get("BLOB_PUBLIC_ENDPOINT", "")
+            is_internal = not public_endpoint or "localhost" in public_endpoint or "127.0.0.1" in public_endpoint or "rustfs" in public_endpoint
+            if not is_internal and "redirect" in parse_qs(parsed.query):
+                media_url = blobs.url(media["path"])
+                self.send_response(302)
+                self.send_header("Location", media_url)
+                self.send_header("Cache-Control", "public, max-age=86400")
+                self._cors()
+                self.end_headers()
+                return
+            try:
+                data = blobs.get(media["path"])
+            except Exception:
+                _json(self, 404, {"error": "Không tìm thấy file phương tiện trên kho lưu trữ."})
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", media["mime"])
+            self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "public, max-age=86400")
             self._cors()
             self.end_headers()
+            self.wfile.write(data)
             return
         if parsed.path == "/api/credits":
             user_id = self._user_id()
@@ -339,11 +358,29 @@ class Handler(BaseHTTPRequestHandler):
                 return
             is_download = "download" in parse_qs(parsed.query)
             filename = f"video-{match.group(1)}.mp4" if is_download else None
-            video_url = blobs.url(job["video_path"], ttl=3600, filename=filename)
-            self.send_response(302)
-            self.send_header("Location", video_url)
+            public_endpoint = os.environ.get("BLOB_PUBLIC_ENDPOINT", "")
+            is_internal = not public_endpoint or "localhost" in public_endpoint or "127.0.0.1" in public_endpoint or "rustfs" in public_endpoint
+            if not is_internal:
+                video_url = blobs.url(job["video_path"], ttl=3600, filename=filename)
+                self.send_response(302)
+                self.send_header("Location", video_url)
+                self._cors()
+                self.end_headers()
+                return
+            try:
+                data = blobs.get(job["video_path"])
+            except Exception:
+                _json(self, 404, {"error": "Video file không tồn tại trên kho lưu trữ."})
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Length", str(len(data)))
+            if is_download:
+                self.send_header("Content-Disposition", f'attachment; filename="video-{match.group(1)}.mp4"')
+            self.send_header("Accept-Ranges", "bytes")
             self._cors()
             self.end_headers()
+            self.wfile.write(data)
             return
         self._serve_static(parsed.path)
 
