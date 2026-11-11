@@ -1,132 +1,64 @@
 ---
 name: beautiful-html-templates
-description: "A library of 34+ reusable, production-ready HTML slide deck templates and styling systems. Use when the user asks to build, design, generate, or adapt an HTML slide presentation or pitch deck, convert topics into visual decks, or customize presentation templates with specific tones, aesthetics, and slide layouts."
-metadata:
-  tags: html, presentation, slides, pitch-deck, templates, design-system, visual-deck
+description: "Library of 34 curated HTML slide deck templates. Guides tone-first template selection, interactive previewing, content adaptation, and vector PDF export."
 ---
 
-# beautiful-html-templates: HTML Slide Deck Creation & Adaptation
+# HTML Slide Deck Creation & Adaptation
 
-A comprehensive collection of 34 curated, self-contained HTML slide deck templates spanning diverse aesthetics (editorial, brutalist, minimal, playful, retro, technical, bold). This skill guides agents through tone-first template selection, interactive previewing, and content adaptation into production-ready presentations.
+```text
+Clarify Occasion & Mood -> Shortlist 3 Candidates -> Generate Previews -> User Gate -> Build Full Deck -> Review & Export PDF
+```
 
----
+## Core Workflow & Execution Gates
 
-## When to Use This Skill
+| Step | Phase | Action & Protocols | Gate / Requirement |
+|---|---|---|---|
+| 1 | Clarify Brief | Inquire: (1) Occasion (e.g., pitch, workshop, synthesis) and (2) Mood/vibe (e.g., punchy, literary, warm, technical). | Do not pick templates before receiving occasion and mood. |
+| 2 | Shortlist Candidates | Search `index.json` matching `mood`, `tone`, `occasion`, `formality`. Select 3 stylistically distinct candidates. | Require 3 distinct styles (e.g., editorial, warm, wildcard). |
+| 3 | Title-Slide Previews | Extract cover slide from each candidate `templates/<slug>/template.html`; populate with actual title, subtitle, author, date. | Save to `topics/<topic-slug>/previews/01-<slug>.html`. |
+| 4 | Present Previews | Open previews in browser (`open <path>`); provide clickable file paths and concise tone descriptions. | **STRICT USER GATE:** Await user selection before building full deck. |
+| 5 | Build Presentation | Copy selected template to `topics/<topic-slug>/`; replace content per adaptation rules; adjust slide counts (`NN / TT`). | Maintain design system; synthesize missing layouts from tokens. |
+| 6 | Review & Deliver | Open finished presentation (`open topics/<topic-slug>/template.html`); share absolute file path and visual choices. | Ensure keyboard navigation and 16:9 stage layout render cleanly. |
+| 7 | Export PDF (Optional) | Execute export script: `node scripts/export-pdf.mjs topics/<topic-slug>/template.html`. | Auto-detects `<deck-stage>` or step-by-step capture. |
 
-Use this skill whenever:
-- The user requests an HTML slide presentation, deck, pitch, keynote, or workshop slides.
-- The user wants to adapt or convert researched topics into a presentation format.
-- The user asks to explore or browse presentation design templates.
-- The user wants a custom visual slide deck with interactive keyboard navigation.
+## Skill Paths & Directory Structure
 
----
-
-## Skill Paths & Structure
-
-All paths are relative to the repository root:
-
-- **Skill Root**: `.agents/skills/beautiful-html-templates/`
-- **Catalog Index**: `.agents/skills/beautiful-html-templates/index.json` (34 templates with mood, tone, occasion, density, formality metadata)
-- **Templates Directory**: `.agents/skills/beautiful-html-templates/templates/<template-slug>/`
-  - `template.html`: Self-contained HTML presentation
-  - `template.json`: Template metadata and color tokens
-  - `design.md`: Design system documentation (typography, colors, components, layout specs)
-  - `deck-stage.js` (if applicable): Keyboard and stage navigation runtime
-- **Shared Runtime**: `.agents/skills/beautiful-html-templates/runtime/deck-stage.js`
-- **Export Scripts**:
-  - `.agents/skills/beautiful-html-templates/scripts/export-pdf.mjs`: Universal 16:9 PDF exporter (Node.js + Chrome CDP)
-  - `.agents/skills/beautiful-html-templates/scripts/export-pdf.sh`: Shell executable wrapper
-- **Output Directory**: Save final presentations under `topics/<topic-slug>/` (or as specified by user).
-
----
-
-## The 6-Step Workflow
-
-Follow this sequence for deck-building requests.
-
-### Step 1 — Clarify Occasion & Mood
-
-If not already specified by the user's brief, ask:
-1. **What's the occasion?** (e.g. founder pitch, technical workshop, research synthesis, brand manifesto, quarterly review)
-2. **What mood / vibe do you want?** (e.g. confident & punchy, quiet & literary, warm & playful, dark & technical)
-
-### Step 2 — Search `index.json` & Shortlist 3 Candidates
-
-Read `.agents/skills/beautiful-html-templates/index.json`. Match the user's occasion and mood against template attributes (`mood`, `tone`, `best_for`, `formality`, `scheme`):
-- Pick **three distinct templates** that suit the tone.
-- Ensure stylistic variety among the 3 candidates (e.g., one editorial, one warm/approachable, one bold/wildcard).
-
-### Step 3 — Generate Title-Slide Previews
-
-For each candidate:
-1. Read `templates/<slug>/template.html` and its `design.md`.
-2. Extract the first slide (cover / title slide).
-3. Populate it with the user's real topic title, subtitle, author, and date.
-4. Save preview files in a temporary location (e.g. `topics/<topic-slug>/previews/01-<slug>.html` or `scratch/previews/`). Include any needed runtime scripts or assets.
-
-### Step 4 — Present Previews to User
-
-Present the 3 choices with concise tone descriptions:
-- Open preview files locally (`open <path>` on macOS) so the user can see them immediately.
-- List clickable file paths and descriptions for the user to choose.
-
-### Step 5 — Build Full Presentation
-
-Once the template is selected:
-1. Copy the selected template folder to the destination directory (e.g. `topics/<topic-slug>/`):
-   ```bash
-   cp -r .agents/skills/beautiful-html-templates/templates/<slug>/ topics/<topic-slug>/
-   ```
-2. Adapt all slides following the **Preserve / Replace / Extend** rules below.
-3. If more slides are needed, duplicate existing slide layouts. If fewer slides are needed, remove trailing slides. Update slide page numbers (`NN / TT`).
-4. If a required layout does not exist (e.g. comparison matrix, timeline), design it from scratch using the template's exact design system tokens.
-
-### Step 6 — Review & Deliver
-
-1. Open the finished deck in the browser (`open topics/<topic-slug>/template.html`).
-2. Provide the absolute path to the user along with a concise summary of the visual choices.
-
-### Step 7 — Export to PDF (Optional)
-
-When the user requests a PDF version of the presentation:
-1. Run the universal export script:
-   ```bash
-   node .agents/skills/beautiful-html-templates/scripts/export-pdf.mjs topics/<topic-slug>/template.html
-   # Or using the shell wrapper:
-   .agents/skills/beautiful-html-templates/scripts/export-pdf.sh topics/<topic-slug>/template.html [custom-output.pdf]
-   ```
-2. The script automatically detects the template engine:
-   - `<deck-stage>` decks are printed in a single pass at 16:9 widescreen ratio.
-   - Screen-only/interactive decks are automatically stepped through slide-by-slide via keyboard navigation and merged with `pdfunite`.
-3. Open or link the resulting PDF for the user.
-
----
+| Category | File / Directory Path | Purpose & Assets |
+|---|---|---|
+| Root & Catalog | `.agents/skills/beautiful-html-templates/index.json` | 34 templates indexed with mood, tone, formality, and slide count metadata. |
+| Templates | `.agents/skills/beautiful-html-templates/templates/<slug>/` | Contains `template.html`, `template.json`, `design.md`, and local assets. |
+| Shared Runtime | `.agents/skills/beautiful-html-templates/runtime/deck-stage.js` | Keyboard navigation (`←`/`→`, space, fullscreen) and stage layout runtime. |
+| Export Tooling | `.agents/skills/beautiful-html-templates/scripts/export-pdf.mjs` | Universal 16:9 vector PDF export engine (Node.js + Chrome CDP). |
+| Shell Wrapper | `.agents/skills/beautiful-html-templates/scripts/export-pdf.sh` | Shell executable wrapper around Node export script. |
+| Project Output | `topics/<topic-slug>/` | Standard output destination for generated presentations and previews. |
 
 ## Template Adaptation Rules
 
-### Always Preserve (The Design System)
-- **Fonts**: Keep exact Google Fonts imports and font families (`font-family`). Never substitute fonts.
-- **Palette**: Keep `:root` CSS color variables. Never introduce arbitrary new colors.
-- **Layout Grid**: Preserve column structures, flex hierarchies, margins, and paddings.
-- **Slide Classes**: Retain layout classes (`.slide`, `.layout-cover`, `.s-toc`, etc.).
-- **Decorative Elements**: Retain textures, corner brackets, paper grains, badges, dividers, and SVG ornaments.
-- **Navigation Runtime**: Keep `deck-stage.js` or inline keyboard navigation intact.
+| Area | Invariant Protocol | Elements & Actions |
+|---|---|---|
+| **Preserve (Design System)** | Strictly maintain visual tokens and structure. | Google Fonts imports, `:root` CSS variables, column grids, layout classes (`.slide`, `.layout-cover`), decorative badges/textures, and navigation scripts. |
+| **Replace (User Content)** | Swap out all placeholder material. | Headlines (`<h1>`–`<h3>`), body copy (`<p>`, `<li>`), data metrics/stats, metadata (author, date, footer, pagination), and image placeholders. |
+| **Extend (New Layouts)** | Synthesize unrepresented slide structures seamlessly. | Re-use typography hierarchy, CSS variables, card border styles, and spacing rhythm so new layouts look native. |
 
-### Always Replace (The User Content)
-- Headlines (`<h1>`, `<h2>`, `<h3>`)
-- Body paragraphs and bullet points (`<p>`, `<li>`)
-- Stat numbers and metrics (`+45%`, `$2.4M`, etc.)
-- Metadata: Authors, dates, topic slugs, footers, pagination
-- Image placeholders: Replace with user graphics or maintain clean placeholder styling
+## Minimalism & Anti-Duplication Rules
 
-### Extending Templates with Missing Layouts
-When the user needs a slide type not present in the demo deck:
-- Re-use typography hierarchy (same headline and body font styles).
-- Re-use color tokens and component styling (cards, borders, badges).
-- Re-use decorative rules and rhythm (same margins, padding, and spacing).
-- Ensure the new slide integrates seamlessly into the navigation runtime.
+| Anti-Pattern | LLM Failure Mode | Mandatory Invariant Standard |
+|---|---|---|
+| **Icon Inflation** | Slapping Lucide, FontAwesome, or SVG icons on every bullet, title, or card | **Forbid icon spam.** Keep only icons present in original template; max 1 icon or illustration per slide; never bullet with icons. |
+| **Box-in-a-Box Nesting** | Wrapping every paragraph or item in bordered, shaded cards or containers | **Flatten hierarchy.** Prefer whitespace, CSS grid gap, and typographic scale over nested borders, boxes, and cards. |
+| **Content Echo & Duplication** | Repeating title words in subtitle, section headers, or body bullets | **Zero content echoing.** Subtitles must state new info or be omitted. Never rephrase or duplicate points across slides. |
+| **Badge / Chip Spam** | Adding category pills (`[FEATURE]`, `[PHASE]`, `[KEY]`) over every item | **Eliminate chip clutter.** Maximum 1 eyebrow tag per slide; never place redundant tags above every list or card item. |
+| **Filler & AI Prose** | Adding introductory fluff, meta-announcements, or obvious summary points | **High signal density.** Cut filler phrases ("It is crucial to note", "In today's landscape"). Write punchy, verifiable assertions. |
+| **Canvas Overcrowding** | Cramming extra elements into spare space rather than letting layout breathe | **Preserve negative space.** Maintain 30%+ breathing room. Do not invent new cards or sections to fill empty canvas space. |
 
----
+## CLI Commands Reference
+
+| Action | Command Syntax | Notes |
+|---|---|---|
+| Copy Template | `cp -r .agents/skills/beautiful-html-templates/templates/<slug>/ topics/<topic-slug>/` | Sets up project deck directory. |
+| Preview Deck | `open topics/<topic-slug>/previews/01-<slug>.html` | Launches local preview in default browser. |
+| Export PDF (Node) | `node .agents/skills/beautiful-html-templates/scripts/export-pdf.mjs topics/<topic-slug>/template.html` | Prints 16:9 PDF with engine auto-detection. |
+| Export PDF (Shell) | `.agents/skills/beautiful-html-templates/scripts/export-pdf.sh topics/<topic-slug>/template.html [output.pdf]` | Convenience wrapper with optional custom filename. |
 
 ## Template Catalog Overview
 
