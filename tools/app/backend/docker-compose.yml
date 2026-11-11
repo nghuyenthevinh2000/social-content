@@ -96,6 +96,7 @@ services:
       - VERTEX_PROJECT=${VERTEX_PROJECT:-}
       - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
       - VIDEO_GENERATION_DURATION=${VIDEO_GENERATION_DURATION:-15}
+      - RATE_PER_SEC_MICRO=${RATE_PER_SEC_MICRO:-23000}
     volumes:
       - aibrand-hf:/home/app/.cache/huggingface
     healthcheck:
@@ -105,16 +106,16 @@ services:
       retries: 3
       start_period: 15s
 
-  download-models:
-    build:
-      context: ../../../
-      dockerfile: tools/app/backend/Dockerfile
-    container_name: aibrand-download-models
-    command: ["python", "tools/app/backend/download_models.py"]
-    volumes:
-      - aibrand-hf:/home/app/.cache/huggingface
-    profiles:
-      - tools
+  # download-models:
+  #   build:
+  #     context: ../../../
+  #     dockerfile: tools/app/backend/Dockerfile
+  #   container_name: aibrand-download-models
+  #   command: ["python", "tools/app/backend/download_models.py"]
+  #   volumes:
+  #     - aibrand-hf:/home/app/.cache/huggingface
+  #   profiles:
+  #     - tools
 
 volumes:
   aibrand-hf:

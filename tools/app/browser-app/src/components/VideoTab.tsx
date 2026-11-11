@@ -31,9 +31,6 @@ type VideoTabProps = {
 };
 
 export const DEFAULT_VIDEO_DURATION = Number(import.meta.env.VITE_VIDEO_GENERATION_DURATION) || 15;
-const RATE_PER_SEC_MICRO = 23000;
-const DEFAULT_COST_MICRO = DEFAULT_VIDEO_DURATION * RATE_PER_SEC_MICRO;
-const DEFAULT_COST_USD = Number((DEFAULT_COST_MICRO / 1000000).toFixed(2));
 
 export function videoFileUrl(job: VideoJob): string {
   const uidParam = job.user_id ? `?uid=${encodeURIComponent(job.user_id)}` : '';
@@ -70,8 +67,9 @@ export function VideoTab({
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
   const [balance, setBalance] = useState<number>(0);
-  const [costMicro, setCostMicro] = useState<number>(DEFAULT_COST_MICRO);
-  const [costUsd, setCostUsd] = useState<number>(DEFAULT_COST_USD);
+  const [ratePerSecMicro, setRatePerSecMicro] = useState<number>(0);
+  const [costMicro, setCostMicro] = useState<number>(0);
+  const [costUsd, setCostUsd] = useState<number>(0);
   const [jobs, setJobs] = useState<VideoJob[]>([]);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [starting, setStarting] = useState(false);
@@ -81,7 +79,7 @@ export function VideoTab({
   const profileMediaList = mediaList.filter((m) => m.kind === 'profile');
   const contextMediaList = mediaList.filter((m) => m.kind === 'context');
   const selectedProfile = profileMediaList.find((m) => m.id === selectedProfileId) || null;
-  const canAfford = balance >= costMicro;
+  const canAfford = costMicro > 0 ? balance >= costMicro : true;
   const canGenerate = canAfford && !!selectedProfile && !!prompt.trim();
 
   const isJobExpanded = (job: VideoJob): boolean => {
@@ -132,6 +130,7 @@ export function VideoTab({
         ok: boolean;
         cost_micro?: number;
         cost_usd?: number;
+        rate_per_sec_micro?: number;
         balance?: number;
       }>('/api/videos/estimate', {
         method: 'POST',
@@ -140,20 +139,35 @@ export function VideoTab({
         setBalance(est.balance);
         if (typeof est.cost_micro === 'number') setCostMicro(est.cost_micro);
         if (typeof est.cost_usd === 'number') setCostUsd(est.cost_usd);
+        if (typeof est.rate_per_sec_micro === 'number') setRatePerSecMicro(est.rate_per_sec_micro);
         return;
       }
     } catch {
       // fallback to /api/credits
     }
     try {
-      const res = await apiJson<{ ok: boolean; balance: number }>('/api/credits');
+      const res = await apiJson<{ ok: boolean; balance: number; rate_per_sec_micro?: number }>('/api/credits');
       if (res.ok && typeof res.balance === 'number') {
         setBalance(res.balance);
+        if (typeof res.rate_per_sec_micro === 'number') {
+          setRatePerSecMicro(res.rate_per_sec_micro);
+          const computedCost = duration * res.rate_per_sec_micro;
+          setCostMicro(computedCost);
+          setCostUsd(Number((computedCost / 1000000).toFixed(2)));
+        }
       }
     } catch {
       // ignore
     }
   };
+
+  useEffect(() => {
+    if (ratePerSecMicro > 0) {
+      const computedCost = duration * ratePerSecMicro;
+      setCostMicro(computedCost);
+      setCostUsd(Number((computedCost / 1000000).toFixed(2)));
+    }
+  }, [duration, ratePerSecMicro]);
 
   const fetchJobs = async () => {
     try {
@@ -380,10 +394,6 @@ export function VideoTab({
             <div>
               Thời lượng: <strong>{duration} giây</strong> (360p)
             </div>
-            <small className="muted">Voice tiếng Việt tự nhiên (Omni Flash 1.2 • {duration}s)</small>
-          </div>
-          <div className="cost-highlight">
-            ${costUsd.toFixed(2)} <small className="muted">({costMicro.toLocaleString()} credits)</small>
           </div>
         </div>
 
@@ -486,7 +496,7 @@ export function VideoTab({
                                 ? 'Thất bại'
                                 : 'Đã huỷ'}
                       </span>
-                      <span className="duration-tag">{Math.round(j.cost / RATE_PER_SEC_MICRO) || duration}s</span>
+                      <span className="duration-tag">{ratePerSecMicro > 0 ? Math.round(j.cost / ratePerSecMicro) : duration}s</span>
                       {!expanded && <span className="video-card-preview-prompt">{j.prompt}</span>}
                     </div>
 
@@ -580,7 +590,7 @@ export function VideoTab({
                       <div className="video-error-text">
                         Lỗi: {j.error || 'Có lỗi xảy ra khi tạo video.'}
                         <div style={{ color: '#2b8a3e', marginTop: 4 }}>
-                          ✓ Đã hoàn lại 0.23 USD (230,000 credits) vào số dư của bạn.
+                          ✓ Đã hoàn lại {j.cost_usd ? `${j.cost_usd} USD` : `${(j.cost / 1000000).toFixed(2)} USD`} ({j.cost?.toLocaleString()} credits) vào số dư của bạn.
                         </div>
                       </div>
                     )}

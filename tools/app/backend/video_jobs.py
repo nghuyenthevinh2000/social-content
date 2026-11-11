@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional
 import uuid
 
 from tools.app.backend import blobs
-from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO
+from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate_per_sec_micro
 from tools.app.backend.db import ro, tx
 from tools.app.backend.media import MEDIA_STORE
 from tools.app.backend.profiles import now_iso
@@ -21,7 +21,13 @@ from tools.app.backend.video_engine import generate_video, get_video_duration
 
 DEFAULT_MAX_GLOBAL_JOBS = 2
 DEFAULT_MAX_PER_USER_JOBS = 1
-VIDEO_COST_MICRO = get_video_duration() * RATE_PER_SEC_MICRO
+
+
+def get_video_cost_micro() -> int:
+    return get_video_duration() * get_rate_per_sec_micro()
+
+
+VIDEO_COST_MICRO = get_video_cost_micro()
 
 
 class VideoJobStore:
@@ -34,13 +40,15 @@ class VideoJobStore:
         prompt: str,
         profile_media_id: str,
         context_media_ids: Optional[List[str]] = None,
-        cost_micro: int = VIDEO_COST_MICRO,
+        cost_micro: Optional[int] = None,
     ) -> Dict[str, Any]:
         prompt = prompt.strip()
         if not prompt:
             raise ValueError("Prompt is required.")
         if not profile_media_id:
             raise ValueError("Profile media ID is required.")
+        if cost_micro is None:
+            cost_micro = get_video_cost_micro()
 
         job_id = uuid.uuid4().hex[:12]
 

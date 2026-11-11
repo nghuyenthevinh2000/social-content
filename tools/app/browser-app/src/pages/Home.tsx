@@ -630,6 +630,16 @@ const Home: React.FC = () => {
               </section>
 
               {user && (
+                <section className="panel">
+                  <h2>Ảnh mẫu khuôn mặt & Bối cảnh</h2>
+                  <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                    Tải lên ảnh chân dung rõ mặt để AI giữ nhất quán khuôn mặt của bạn trong các video tạo ra.
+                  </p>
+                  <MediaPanel />
+                </section>
+              )}
+
+              {user && (
                 <details className="panel creator-store">
                 <summary className="store-summary">
                   <div className="store-header-wrap">
@@ -686,16 +696,6 @@ const Home: React.FC = () => {
                   })}
                 </div>
                 </details>
-              )}
-
-              {user && (
-                <section className="panel">
-                  <h2>Ảnh mẫu khuôn mặt & Bối cảnh</h2>
-                  <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-                    Tải lên ảnh chân dung rõ mặt để AI giữ nhất quán khuôn mặt của bạn trong các video tạo ra.
-                  </p>
-                  <MediaPanel />
-                </section>
               )}
             </>
           ) : tab === 'video' ? (

@@ -1,7 +1,7 @@
 # AIBrand — Excel → viral research → 3 topics per sheet
 
 | Question | Answer |
-|---|---|
+| --- | --- |
 | What it does | Reads every sheet of an Excel spy file, runs the 48h viral pipeline for that sheet's Facebook channels, then asks an ACP agent harness for exactly 3 viral topics. |
 | App | Tauri v2 desktop window (React frontend + Rust shell). |
 | Backend | Python API server bundled as a Tauri sidecar with PyInstaller; no Python install needed. |
@@ -25,7 +25,7 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 ## Run
 
 | Step | Command |
-|---|---|
+| --- | --- |
 | **Build the app** | `cd tools/app/desktop-app && npm run tauri build` |
 | **Open the app (macOS)** | Double-click `tools/app/desktop-app/AIBrand.app` (symlink to the Tauri bundle). |
 | Build output (macOS) | `tools/app/desktop-app/src-tauri/target/release/bundle/macos/AIBrand.app` |
@@ -38,9 +38,8 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 ## Docker deployment (backend)
 
 | Step | Command |
-|---|---|
+| --- | --- |
 | **Configure** | `cp tools/app/backend/.env.example tools/app/backend/.env` |
-| **Pre-download ASR weights** | `docker compose -f tools/app/backend/docker-compose.yml run --rm download-models` |
 | **Start backend** | `docker compose -f tools/app/backend/docker-compose.yml up -d` |
 | **Check logs** | `docker compose -f tools/app/backend/docker-compose.yml logs -f` |
 | **Stop** | `docker compose -f tools/app/backend/docker-compose.yml down` |
@@ -48,7 +47,7 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 ## Windows build
 
 | Step | Command / requirement |
-|---|---|
+| --- | --- |
 | Prerequisites | Node 20+, Rust stable MSVC, `uv`, WebView2 (built into Windows 10/11), Visual Studio Build Tools. |
 | Install | `cd tools/app && npm ci` |
 | Build | `npm run tauri build` |
@@ -59,7 +58,7 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 | CI | `.github/workflows/release-app.yml` builds macOS (DMG, ZIP) + Windows (MSI, NSIS) and creates GitHub releases on the `releases` branch. |
 
 | Packaging detail | Behaviour |
-|---|---|
+| --- | --- |
 | Sidecar | `src-tauri/binaries/viral-server-<target-triple>[.exe]` is built by `build_sidecar.mjs`; Tauri starts it on a free local port. |
 | Rust bridge | `api_base` command gives the WebView the sidecar URL; all API calls use that base. |
 | Lifecycle | Closing the window or quitting kills the sidecar; the sidecar also exits if the Tauri process disappears. |
@@ -71,7 +70,7 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 ## Options
 
 | UI option | Default | Effect |
-|---|---:|---|
+| --- | ---: | --- |
 | Harness ACP | `VIRAL_APP_AGENT` env (`agy`, `opencode`, `claude`, `codex`); unset = first installed | Backend-only config for the agent that writes the 3 topics. If it is not logged in, the app falls back to data-driven suggestions. |
 | Video tối đa / sheet | `5` | Caps downloads per sheet. `0` means no cap. |
 | Tải video + transcribe | on | Runs download + speech-to-text. If ASR is not installed, the pipeline continues without transcripts. |
@@ -79,14 +78,14 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 ## ACP harnesses
 
 | Harness | Command | Login check |
-|---|---|---|
+| --- | --- | --- |
 | Antigravity | `agy acp` | `agy` |
 | OpenCode | `opencode acp` | `opencode auth login` |
 | Claude Code | `npx -y @zed-industries/claude-code-acp` | `claude` |
 | Codex | `npx -y @zed-industries/codex-acp` | `codex login` |
 
 | ACP detail | Behaviour |
-|---|---|
+| --- | --- |
 | Transport | JSON-RPC 2.0 over stdio, newline-delimited. |
 | Flow | `initialize` → `session/new` → `session/prompt`. |
 | Permissions | Client auto-approves `allow_once`; agents should only need to read the prompt. |
@@ -95,7 +94,7 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 ## Costs and limits
 
 | Limit | Note |
-|---|---|
+| --- | --- |
 | Glasser calls | One paid profile-reels call per unique channel per job; duplicate channels reuse the job cache. |
 | Time | An 18-sheet file with 5 videos/sheet can take tens of minutes. Polling UI stays live. |
 | Storage | Videos, JSON and databases live under the platform data directory and are not committed. |
@@ -106,10 +105,10 @@ Excel sheets ──> parse Facebook links ──> pipeline.py per sheet
 ## Files
 
 | Path | Purpose |
-|---|---|
+| --- | --- |
 | `tools/app/backend/server.py` | Python API server, bundled as the Tauri sidecar. |
 | `tools/app/backend/docker-compose.yml` | Docker Compose spec for containerized backend and worker. |
-| `tools/app/backend/download_models.py` | Pre-downloads Qwen3-ASR model weights into Hugging Face cache. |
+| `tools/app/backend/download_models.py` | [OBSOLETE] Pre-downloads Qwen3-ASR model weights into Hugging Face cache. |
 | `tools/app/backend/research.py` | Excel parsing, per-sheet jobs, topic prompt/parse/fallback. |
 | `tools/app/backend/acp.py` | Minimal ACP stdio client. |
 | `tools/app/src/api.ts` | Resolves the sidecar URL inside Tauri; relative `/api` in browser dev. |

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Pre-download ASR model weights for the viral research backend."""
+"""Pre-download ASR model weights for the viral research backend.
+
+@deprecated [OBSOLETE]: Local video download + ASR transcription (Qwen3-ASR / faster-whisper)
+is flagged obsolete compared to direct API transcription (e.g. Glasser.ai / ScrapeCreators).
+Retained for backward-compat; do not delete.
+"""
 
 from __future__ import annotations
 
@@ -45,7 +50,8 @@ def download_model(model_id: str = DEFAULT_MODEL, cache_dir: Path | None = None)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Download model weights for ASR transcription")
+    print("[!] WARNING: download_models.py is obsolete: local ASR models are no longer required.", file=sys.stderr)
+    parser = argparse.ArgumentParser(description="[OBSOLETE] Download model weights for ASR transcription")
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Hugging Face model ID (default: {DEFAULT_MODEL})")
     parser.add_argument("--cache-dir", type=Path, default=None, help="Hugging Face cache dir (default: standard HF cache)")
     args = parser.parse_args()

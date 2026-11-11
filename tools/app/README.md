@@ -9,6 +9,13 @@ Agnostic backend with multi-client applications.
 | [`backend/`](./backend/) | Shared, client-agnostic API server, SQLite job queue, and viral research worker | Python 3.12+, ThreadingHTTPServer, Docker |
 | [`desktop-app/`](./desktop-app/) | Native desktop application for macOS and Windows | Tauri v2, React 19, TypeScript, Vite |
 | [`browser-app/`](./browser-app/) | Mobile-first browser application with native iOS & Android feel | Ionic Framework 8, React, TypeScript, Vite, Capacitor |
+| [`adr/`](./adr/) | Architecture Decision Records for application design choices | Markdown |
+
+## Architecture Decision Records (ADRs)
+
+| ADR | Title | Status |
+|---|---|---|
+| [`0001`](./adr/0001-use-glasser-api-transcription-over-local-asr.md) | Adopt Glasser.ai API transcription in place of local offline ASR | Accepted |
 
 ## Running the Backend
 

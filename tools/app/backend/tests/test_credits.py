@@ -6,7 +6,7 @@ import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
 import pytest
-from tools.app.backend.credits import CreditStore, RATE_PER_SEC_MICRO
+from tools.app.backend.credits import CreditStore, RATE_PER_SEC_MICRO, get_rate_per_sec_micro
 
 def test_credit_lifecycle():
     store = CreditStore()
@@ -77,5 +77,16 @@ def test_concurrent_reserves_never_go_negative():
     assert results.count(True) == 3
     assert results.count(False) == 7
     assert store.get_balance("user_concurrent") == 0
+
+
+def test_get_rate_per_sec_micro(monkeypatch):
+    monkeypatch.delenv("RATE_PER_SEC_MICRO", raising=False)
+    assert get_rate_per_sec_micro() == 23000
+
+    monkeypatch.setenv("RATE_PER_SEC_MICRO", "30000")
+    assert get_rate_per_sec_micro() == 30000
+
+    monkeypatch.setenv("RATE_PER_SEC_MICRO", "invalid")
+    assert get_rate_per_sec_micro() == 23000
 
 

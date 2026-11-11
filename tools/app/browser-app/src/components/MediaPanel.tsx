@@ -118,7 +118,6 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
         <div className="profile-card" style={{ justifyContent: 'space-between' }}>
           <div>
             <strong>Số dư Video AI</strong>
-            <small className="muted" style={{ display: 'block' }}>Chi phí: $0.23 / video 10 giây (360p)</small>
           </div>
           <strong style={{ color: 'var(--accent)', fontSize: 15 }}>
             ${(balance / 1000000).toFixed(2)} ({balance.toLocaleString()} credits)
@@ -141,7 +140,7 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
 
           <div className="profile-info">
             <strong>{profile ? 'Ảnh mẫu chính' : 'Chưa có ảnh chân dung'}</strong>
-            <small>{profile ? `${(profile.bytes / 1024).toFixed(0)} KB` : 'Dùng để khớp khuôn mặt trong video (10s)'}</small>
+            <small>{profile ? `${(profile.bytes / 1024).toFixed(0)} KB` : 'Dùng để khớp khuôn mặt trong video'}</small>
 
             <div className="media-btn-row">
               <input

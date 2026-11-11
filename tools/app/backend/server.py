@@ -38,7 +38,7 @@ sys.path.insert(0, str(WORKSPACE))
 from tools.app.backend import blobs  # noqa: E402
 from tools.app.backend.handler import run_worker  # noqa: E402
 from tools.app.backend.media import MEDIA_STORE  # noqa: E402
-from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO  # noqa: E402
+from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate_per_sec_micro  # noqa: E402
 from tools.app.backend.video_jobs import VIDEO_STORE, VIDEO_RUNNER  # noqa: E402
 from tools.app.backend.video_engine import get_video_duration  # noqa: E402
 from tools.app.backend.profiles import PROFILE_STORE  # noqa: E402
@@ -304,7 +304,7 @@ class Handler(BaseHTTPRequestHandler):
                 "ok": True,
                 "balance": bal,
                 "balance_usd": round(bal / 1_000_000, 4),
-                "rate_per_sec_micro": RATE_PER_SEC_MICRO,
+                "rate_per_sec_micro": get_rate_per_sec_micro(),
                 "ledger": CREDIT_STORE.get_ledger(user_id=user_id),
             })
             return
@@ -539,7 +539,7 @@ class Handler(BaseHTTPRequestHandler):
                 profile_media_id = body.get("profile_media_id", "")
                 context_media_ids = body.get("context_media_ids", [])
                 duration = get_video_duration()
-                cost_micro = duration * RATE_PER_SEC_MICRO
+                cost_micro = duration * get_rate_per_sec_micro()
                 if not profile_media_id:
                     _json(self, 400, {"error": "Thiếu ảnh chân dung mẫu (profile_media_id)."})
                     return

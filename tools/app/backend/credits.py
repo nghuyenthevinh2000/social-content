@@ -3,13 +3,24 @@
 from __future__ import annotations
 
 import argparse
+import os
 from typing import Any, Dict, List, Optional
 
 from tools.app.backend.db import ro, tx
 from tools.app.backend.profiles import now_iso
-from tools.app.backend.video_engine import get_video_duration
+from tools.app.backend.video_engine import _load_env, get_video_duration
 
-RATE_PER_SEC_MICRO = 23000  # $0.023/s, 10s = 230,000 micro-USD = $0.23
+
+def get_rate_per_sec_micro() -> int:
+    """Return rate per second in micro-USD enforced by RATE_PER_SEC_MICRO (default 23000)."""
+    _load_env()
+    try:
+        return int(os.environ.get("RATE_PER_SEC_MICRO", 23000))
+    except (ValueError, TypeError):
+        return 23000
+
+
+RATE_PER_SEC_MICRO = get_rate_per_sec_micro()
 
 
 class CreditStore:
@@ -98,11 +109,13 @@ class CreditStore:
 
     def estimate(self, user_id: Optional[str] = None, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
         dur = get_video_duration()
-        cost_micro = dur * RATE_PER_SEC_MICRO
+        rate = get_rate_per_sec_micro()
+        cost_micro = dur * rate
         balance = self.get_balance(user_id) if user_id else 0
         return {
             "cost_micro": cost_micro,
             "cost_usd": round(cost_micro / 1_000_000, 4),
+            "rate_per_sec_micro": rate,
             "duration_sec": dur,
             "balance": balance,
             "balance_usd": round(balance / 1_000_000, 4),
