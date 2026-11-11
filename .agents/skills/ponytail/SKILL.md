@@ -123,6 +123,7 @@ test, YAGNI applies to tests too.
 ## References
 
 - [`references/local-website-deployment.md`](references/local-website-deployment.md): Zero-dependency local website deployment and remote tunneling. Covers Python stdlib `ThreadingHTTPServer`, macOS port 5000 AirPlay collision, SSE concurrency deadlocks, CORS, and HTTP 206 video range streaming.
+- [`references/github-page-deployment.md`](references/github-page-deployment.md): GitHub Pages subpath deployment and 404 traps. Covers root-absolute path errors (`/slides/...`), VitePress `base` configuration, relative iframe embedding, and remote verification.
 
 ## Boundaries
 
