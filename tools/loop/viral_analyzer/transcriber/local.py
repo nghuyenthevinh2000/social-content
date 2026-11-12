@@ -17,12 +17,12 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import urllib.request
 from typing import Any, Callable, Dict, List, Optional
 
 from tools.loop.viral_analyzer.cache import get_cached_transcript
 from tools.loop.viral_analyzer.config import ViralAnalyzerConfig
 from tools.loop.viral_analyzer.retention import register_video
+from tools.loop.viral_analyzer.video_download import download_video_stream
 
 FFMPEG_BIN = "/opt/homebrew/bin/ffmpeg"
 
@@ -60,60 +60,6 @@ def extract_audio_ffmpeg(
     ]
     proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return proc.returncode == 0 and audio_path.exists() and audio_path.stat().st_size > 100
-
-
-def download_video_stream(
-    url_or_cdn: str,
-    target_path: Path,
-    is_reel_page: bool = False,
-    max_bytes: int = 80 * 1024 * 1024,
-) -> bool:
-    """Download video stream with direct CDN streaming and yt-dlp fallback."""
-    if not is_reel_page and (url_or_cdn.startswith("http://") or url_or_cdn.startswith("https://")):
-        try:
-            req = urllib.request.Request(
-                url_or_cdn,
-                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"},
-            )
-            downloaded = 0
-            with urllib.request.urlopen(req, timeout=60) as resp, open(target_path, "wb") as out:
-                while chunk := resp.read(64 * 1024):
-                    out.write(chunk)
-                    downloaded += len(chunk)
-                    if downloaded >= max_bytes:
-                        break
-            return target_path.exists() and target_path.stat().st_size > 1000
-        except Exception:
-            pass
-
-    try:
-        from yt_dlp import YoutubeDL
-
-        with YoutubeDL({
-            "outtmpl": str(target_path),
-            "format": "best[ext=mp4]/best",
-            "quiet": True,
-            "noplaylist": True,
-        }) as ydl:
-            ydl.download([url_or_cdn])
-        if target_path.exists() and target_path.stat().st_size > 1000:
-            return True
-    except Exception:
-        pass
-
-    cmd = [
-        "uv", "run", "yt-dlp",
-        "--skip-download", "false",
-        "-f", "best[ext=mp4]/best",
-        "-o", str(target_path),
-        "--quiet",
-        url_or_cdn,
-    ]
-    try:
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
-        return res.returncode == 0 and target_path.exists() and target_path.stat().st_size > 1000
-    except Exception:
-        return False
 
 
 class UnifiedTranscriber:

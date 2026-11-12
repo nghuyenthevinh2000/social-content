@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
 from typing import Any, Callable, Dict, List, Optional, Tuple
 import urllib.error
 import urllib.parse
@@ -25,6 +26,18 @@ from tools.app.backend.video_engine import get_video_duration
 from tools.loop.viral_analyzer.transcriber import fetch_reel_transcript, fetch_top_reels_transcripts
 
 logger = logging.getLogger("reel_research")
+
+# Temporary videos live under the repo's local data dir and are deleted after analysis.
+TEMP_DIR = Path(os.environ.get("VIRAL_APP_TEMP", Path(__file__).resolve().parents[4] / "local" / "aibrand" / "temp"))
+
+VISUAL_PROMPT = """Bạn nhận được các khung hình trích từ một video Reel. Phân tích và mô tả NGẮN GỌN bằng tiếng Việt, chỉ dựa trên những gì nhìn thấy:
+- Bối cảnh/không gian, ánh sáng, tông màu
+- Góc máy, khung hình, chuyển động camera (nếu suy ra được từ các khung hình)
+- Người xuất hiện (giới tính, độ tuổi ước lượng, trang phục), hành động chính
+- Đạo cụ, sản phẩm, chữ/overlay trên màn hình
+- Nhịp cắt cảnh và phong cách hình ảnh tổng thể
+Trả về một đoạn văn 4-6 câu, không markdown, không nhận xét ngoài nội dung video."""
+
 
 # Supported Reel, Short-Form, and Video Share URL patterns
 REEL_PATTERNS = [
@@ -123,10 +136,12 @@ def _reel_digest(reels: List[Dict[str, Any]], limit: int = 12) -> str:
         if not reel_url and reel.get("video_id"):
             reel_url = f"https://www.facebook.com/reel/{reel['video_id']}"
         url_part = f" | reel_url: {reel_url}" if reel_url else ""
+        visual = str(reel.get("visual") or "").strip().replace("\n", " ")
+        visual_part = f" | hình ảnh: {visual[:600]}" if visual else ""
         lines.append(
             f"{index}. [P{reel.get('current_pool', 0)} | {int(reel.get('views') or 0):,} views | "
             f"{float(reel.get('velocity_per_hour') or 0):,.0f} views/h | @{reel.get('author_handle', 'reel')}{url_part}] "
-            f"{title}{transcript}"
+            f"{title}{transcript}{visual_part}"
         )
     return "\n".join(lines)
 
@@ -167,6 +182,9 @@ def format_director_prompt(
     dialogue_text = ". ".join(dialogue_parts).replace("..", ".")
 
     env_text = f"Không gian làm việc chân thực phù hợp chủ đề '{sheet_name or title}'. Ánh sáng tự nhiên rõ nét, bố cục gọn gàng, tự nhiên."
+    visual = str(item.get("visual") or "").strip()
+    if visual:
+        env_text = f"{env_text} Tham chiếu hình ảnh thật từ video gốc: {visual}"
     action_hook = f"Presenter nhìn thẳng ống kính camera cười tươi, mở đầu lôi cuốn: \"{hook or title}\"."
     action_body = f"Presenter thao tác tự nhiên, diễn giải các ý chính: {outline_summary or angle or title}."
     action_cta = "Presenter cười thân thiện, gật đầu và ra hiệu kêu gọi người xem lưu lại và tương tác."
@@ -259,6 +277,7 @@ Giọng {gender_vn} ({age} tuổi), giọng {tone_str}, lời thoại tiếng Vi
 Yêu cầu:
 - 3 chủ đề phải khác nhau rõ rệt về góc khai thác, không trùng ý.
 - Dựa trên bằng chứng thật từ dữ liệu trên (view, velocity, pool, transcript, tên kênh, reel_url).
+- Nếu có mô tả hình ảnh, bám sát bối cảnh, góc máy, ánh sáng, đạo cụ và chữ trên màn hình thật của video.
 - Cụ thể, có thể bấm máy quay làm ngay; không viết chung chung.
 - Viết tiếng Việt.
 - Trả về DUY NHẤT một JSON array, không markdown, không giải thích ngoài JSON.
@@ -381,6 +400,7 @@ def normalize_topics(
         t_handle = str((matched_reel.get("author_handle") if matched_reel else fb_item.get("author_handle")) or "")
         t_name = str((matched_reel.get("author_name") if matched_reel else fb_item.get("author_name")) or "")
         t_transcript = str((matched_reel.get("transcript") if matched_reel else fb_item.get("transcript")) or "").strip()
+        t_visual = str((matched_reel.get("visual") if matched_reel else fb_item.get("visual")) or "").strip()
 
         topics.append(
             {
@@ -403,6 +423,7 @@ def normalize_topics(
                 "author_handle": t_handle,
                 "author_name": t_name,
                 "transcript": t_transcript,
+                "visual": t_visual,
                 "prompt": prompt_val,
                 "generated_by": "agent",
             }
@@ -504,6 +525,7 @@ def heuristic_topics(
             "author_handle": str(reel.get("author_handle") or ""),
             "author_name": str(reel.get("author_name") or ""),
             "transcript": str(reel.get("transcript") or "").strip(),
+            "visual": str(reel.get("visual") or "").strip(),
             "generated_by": "heuristic",
         }
         t["prompt"] = format_director_prompt(t, sheet_name=sheet_name, actor_profile=actor_profile)
@@ -600,6 +622,86 @@ def suggest_topics(
                 client.close()
 
 
+def _download_reel_video(
+    reel_url: str,
+    video_id: Optional[str],
+    log: Callable[[str], None],
+) -> Optional[Path]:
+    from tools.loop.viral_analyzer.video_download import download_video_stream
+
+    target = TEMP_DIR / f"reel_{video_id or 'saved'}.mp4"
+    if target.exists() and target.stat().st_size > 1000:
+        return target
+    log(f"Tải video để phân tích hình ảnh: {target}")
+    if download_video_stream(reel_url, target, is_reel_page=True):
+        return target
+    log("Không tải được video; bỏ qua phân tích hình ảnh.")
+    return None
+
+
+def _extract_video_frames(video_path: Path, frame_dir: Path, count: int = 4) -> List[Path]:
+    """Sample up to `count` frames (one every 3s) from a local video with FFmpeg."""
+    from tools.loop.viral_analyzer.transcriber.local import ffmpeg_bin
+
+    frame_dir.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        ffmpeg_bin(),
+        "-y",
+        "-i", str(video_path),
+        "-vf", "fps=1/3,scale=720:-2",
+        "-frames:v", str(count),
+        str(frame_dir / "frame_%02d.jpg"),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        return []
+    return sorted(frame_dir.glob("frame_*.jpg"))
+
+
+def analyze_video_visuals(
+    video_path: Path,
+    agent_id: str,
+    cwd: Path,
+    timeout_sec: float,
+    log: Callable[[str], None],
+    model: Optional[str] = None,
+) -> str:
+    """Describe the downloaded Reel's on-screen visuals with the local CLI harness."""
+    from tools.app.backend.research_engine.research import _harness_lock, resolve_agent
+
+    frame_dir = video_path.parent / f"{video_path.stem}_frames"
+    frames = _extract_video_frames(video_path, frame_dir)
+    if not frames:
+        log("Không trích xuất được khung hình video.")
+        return ""
+
+    client = None
+    try:
+        with _harness_lock(log):
+            preset = resolve_agent(agent_id, model=model)
+            log(f"Phân tích hình ảnh bằng harness {preset['label']}...")
+            client = ACPClient(preset["command"], cwd=cwd, timeout_sec=timeout_sec, log=log)
+            client.initialize()
+            session_id = client.new_session()
+            images = [(frame.read_bytes(), "image/jpeg") for frame in frames]
+            return client.prompt(session_id, VISUAL_PROMPT, images=images).strip()
+    except Exception as exc:
+        log(f"Phân tích hình ảnh bằng harness thất bại: {exc}")
+        return ""
+    finally:
+        if client is not None:
+            client.close()
+        for frame in frames:
+            try:
+                frame.unlink()
+            except OSError:
+                pass
+        try:
+            frame_dir.rmdir()
+        except OSError:
+            pass
+
+
 def research_single_reel(
     reel_url: str,
     sheet_name: str = "Reel đã lưu",
@@ -615,7 +717,8 @@ def research_single_reel(
     Steps:
     1. Canonicalize the Reel URL (e.g. resolve /share/v/ redirects).
     2. Retrieve transcript via Glasser or local ASR engine.
-    3. Analyze viral structure, hook, angle, outline, format, and generate Director Prompt.
+    3. Download the video to the local temp dir and describe its visuals with the CLI harness.
+    4. Analyze viral structure, hook, angle, outline, format, and generate Director Prompt.
     """
     _log = log or (lambda msg: logger.info(msg))
     canon_res = canonicalize_reel_url(reel_url)
@@ -632,6 +735,26 @@ def research_single_reel(
     else:
         _log("Không tìm thấy transcript; tiến hành phân tích qua cấu trúc video và hook.")
 
+    # Download the video for visual analysis, then delete it once described.
+    visual = ""
+    if agent_id and cwd:
+        video_path = _download_reel_video(clean_url, vid, _log)
+        if video_path:
+            visual = analyze_video_visuals(
+                video_path, agent_id, cwd, timeout_sec, _log, model=model
+            )
+            if visual:
+                _log(f"Đã phân tích hình ảnh video ({len(visual)} ký tự).")
+                try:
+                    video_path.unlink()
+                    _log("Đã xoá video tạm sau khi phân tích.")
+                except OSError:
+                    pass
+            else:
+                _log(f"Chưa phân tích được hình ảnh; giữ video tạm để kiểm tra: {video_path}")
+    else:
+        _log("Không có harness để phân tích hình ảnh video; bỏ qua.")
+
     reel_obj: Dict[str, Any] = {
         "url": clean_url,
         "reel_url": clean_url,
@@ -639,6 +762,7 @@ def research_single_reel(
         "platform": platform,
         "title": sheet_name or f"Reel {vid or ''}",
         "transcript": transcript or "",
+        "visual": visual,
         "views": 0,
         "velocity_per_hour": 0,
         "current_pool": 0,
@@ -646,7 +770,7 @@ def research_single_reel(
         "author_handle": "saved_reel",
     }
 
-    # Generate 3 topics and prompts focused on this reel
+    # A saved Reel maps to exactly one director prompt.
     topics: List[Dict[str, Any]] = []
     error: Optional[str] = None
 
@@ -663,13 +787,15 @@ def research_single_reel(
             model=model,
             actor_profile=actor_profile,
         )
+        topics = topics[:1]
 
     if not topics:
-        topics = heuristic_topics(sheet_name, [reel_obj], actor_profile=actor_profile, limit=3)
+        topics = heuristic_topics(sheet_name, [reel_obj], actor_profile=actor_profile, limit=1)
         for t in topics:
             t["source_urls"] = [clean_url]
             t["reel_url"] = clean_url
             t["transcript"] = transcript or ""
+            t["visual"] = visual
 
     return {
         "ok": True,
@@ -677,6 +803,7 @@ def research_single_reel(
         "video_id": vid,
         "platform": platform,
         "transcript": transcript,
+        "visual": visual,
         "topics": topics,
         "error": error,
     }

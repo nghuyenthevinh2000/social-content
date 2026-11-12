@@ -15,10 +15,10 @@ from tools.loop.viral_analyzer.transcriber.glasser import (
     fetch_top_reels_transcripts,
     transcribe_reels_glasser,
 )
+from tools.loop.viral_analyzer.video_download import download_video_stream
 from tools.loop.viral_analyzer.transcriber.local import (
     LocalTranscriber,
     UnifiedTranscriber,
-    download_video_stream,
     extract_audio_ffmpeg,
     ffmpeg_bin,
     transcribe_reels_local,

@@ -75,6 +75,19 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(first["targets"][1]["handle"], "bepongbay")
             self.assertEqual(sheets[1]["targets"], [])
 
+    def test_parse_workbook_preserves_saved_reel_urls(self):
+        payload = {
+            "sheets": [
+                {
+                    "name": "Reel đã lưu",
+                    "targets": [{"name": "Saved", "url": "https://www.facebook.com/reel/1963371435020478"}],
+                }
+            ]
+        }
+        raw, _ = resolve_xlsx_bytes(json.dumps(payload).encode("utf-8"), "saved-reels")
+        targets = parse_workbook(raw)[0]["targets"]
+        self.assertEqual([t["url"] for t in targets], ["https://www.facebook.com/reel/1963371435020478"])
+
     def test_slugify(self):
         self.assertEqual(slugify("tổng hợp"), "tong-hop")
         self.assertEqual(slugify("mẹ chồng - nàng dâu"), "me-chong-nang-dau")
@@ -879,8 +892,9 @@ class BackendTests(unittest.TestCase):
                 "source_urls": ["https://www.facebook.com/reel/1963371435020478"],
             }
             with mock.patch("tools.app.backend.research_engine.reel_research.fetch_reel_transcript", return_value="Nội dung transcript mẫu"):
-                with mock.patch("tools.app.backend.research_engine.reel_research.suggest_topics", return_value=([mock_topic], None)):
-                    _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
+                with mock.patch("tools.app.backend.research_engine.reel_research._download_reel_video", return_value=None):
+                    with mock.patch("tools.app.backend.research_engine.reel_research.suggest_topics", return_value=([mock_topic], None)):
+                        _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
 
             snap = self._store.snapshot(job_id)
             target_sheet = snap["sheets"][0]
@@ -890,6 +904,61 @@ class BackendTests(unittest.TestCase):
             self.assertIsNone(target_sheet["error"])
             self.assertIn("https://www.facebook.com/reel/1963371435020478", target_sheet["topics"][0]["source_urls"])
             self.assertTrue(bool(target_sheet["topics"][0].get("prompt")))
+
+    def test_research_single_reel_returns_one_prompt(self):
+        from tools.app.backend.research_engine import reel_research
+
+        url = "https://www.facebook.com/reel/1963371435020478"
+        fake_topics = [{"title": f"T{i}", "prompt": "p", "source_urls": [url]} for i in range(3)]
+        with mock.patch.object(reel_research, "fetch_reel_transcript", return_value="Nội dung"):
+            with mock.patch.object(reel_research, "fetch_top_reels_transcripts", return_value=None):
+                with mock.patch.object(reel_research, "_download_reel_video", return_value=None):
+                    with mock.patch.object(reel_research, "suggest_topics", return_value=(fake_topics, None)):
+                        agent_res = reel_research.research_single_reel(url, agent_id="agy", cwd=Path("."))
+                    heuristic_res = reel_research.research_single_reel(url, agent_id=None)
+
+        self.assertEqual(len(agent_res["topics"]), 1)
+        self.assertEqual(len(heuristic_res["topics"]), 1)
+        self.assertTrue(agent_res["topics"][0]["prompt"])
+
+    def test_research_single_reel_analyzes_and_deletes_video(self):
+        from tools.app.backend.research_engine import reel_research
+
+        url = "https://www.facebook.com/reel/1963371435020478"
+        with tempfile.TemporaryDirectory() as tmp:
+            video = Path(tmp) / "reel_1963371435020478.mp4"
+            video.write_bytes(b"video-bytes")
+            with mock.patch.object(reel_research, "fetch_reel_transcript", return_value="Nội dung"):
+                with mock.patch.object(reel_research, "fetch_top_reels_transcripts", return_value=None):
+                    with mock.patch.object(reel_research, "_download_reel_video", return_value=video):
+                        with mock.patch.object(
+                            reel_research,
+                            "analyze_video_visuals",
+                            return_value="Bối cảnh bếp sáng, góc máy cận cảnh, có chữ overlay.",
+                        ):
+                            with mock.patch.object(reel_research, "suggest_topics", return_value=([], None)):
+                                res = reel_research.research_single_reel(
+                                    url, agent_id="agy", cwd=Path(".")
+                                )
+
+        self.assertFalse(video.exists())
+        self.assertIn("bếp", res["visual"])
+        self.assertIn("bếp", res["topics"][0]["prompt"])
+
+    def test_acp_prompt_sends_image_blocks(self):
+        from tools.app.backend.acp import ACPClient
+
+        client = object.__new__(ACPClient)
+        client.timeout_sec = 1
+        sent = {}
+        client.request = lambda method, params, timeout=None: sent.update(params) or {}
+
+        client.prompt("session-1", "mô tả video", images=[(b"frame-bytes", "image/jpeg")])
+
+        self.assertEqual(sent["prompt"][0], {"type": "text", "text": "mô tả video"})
+        self.assertEqual(sent["prompt"][1]["type"], "image")
+        self.assertEqual(sent["prompt"][1]["mimeType"], "image/jpeg")
+        self.assertTrue(sent["prompt"][1]["data"])
 
     def test_centralized_cache(self):
         from tools.loop.viral_analyzer.cache import (

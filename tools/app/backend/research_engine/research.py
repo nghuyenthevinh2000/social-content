@@ -314,6 +314,7 @@ def _process_sheet(
                     "video_id": res.get("video_id") or "",
                     "title": t_name,
                     "transcript": res.get("transcript") or "",
+                    "visual": res.get("visual") or "",
                     "platform": res.get("platform") or "facebook",
                 })
             except Exception as exc:

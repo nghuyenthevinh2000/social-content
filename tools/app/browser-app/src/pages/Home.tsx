@@ -424,19 +424,18 @@ const Home: React.FC = () => {
   };
 
   const handleRunSavedReel = (reel: SavedReel) => {
-    const topicTitle = reel.sender_name ? `Reel từ ${reel.sender_name}` : 'Reel đã lưu';
     const item: TopicItem = {
-      name: topicTitle,
+      name: 'Reel đã lưu',
       slug: `saved-reel-${reel.id}`,
       targets: [{ name: reel.message_text ? reel.message_text.slice(0, 40) : reel.reel_url, url: reel.reel_url }],
     };
-    run([item], topicTitle);
+    run([item], 'Reel đã lưu');
   };
 
   const handleRunAllSavedReels = () => {
     if (!savedReels.length) return;
     const items: TopicItem[] = savedReels.map((reel) => ({
-      name: reel.sender_name ? `Reel từ ${reel.sender_name}` : 'Reel đã lưu',
+      name: 'Reel đã lưu',
       slug: `saved-reel-${reel.id}`,
       targets: [{ name: reel.message_text ? reel.message_text.slice(0, 40) : reel.reel_url, url: reel.reel_url }],
     }));

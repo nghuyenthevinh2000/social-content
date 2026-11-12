@@ -7,13 +7,14 @@ about the three topic suggestions.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 from pathlib import Path
 import queue
 import subprocess
 import threading
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 class ACPError(RuntimeError):
@@ -151,8 +152,13 @@ class ACPClient:
             raise ACPError("Agent không trả về sessionId")
         return session_id
 
-    def prompt(self, session_id: str, text: str) -> str:
-        """Send a prompt and return the concatenated agent message text."""
+    def prompt(
+        self,
+        session_id: str,
+        text: str,
+        images: Optional[List[Tuple[bytes, str]]] = None,
+    ) -> str:
+        """Send a prompt (text plus optional images) and return the agent's text."""
         chunks: List[str] = []
         chunks_lock = threading.Lock()
 
@@ -164,13 +170,22 @@ class ACPClient:
                     with chunks_lock:
                         chunks.append(content.get("text", ""))
 
+        blocks: List[Dict[str, Any]] = [{"type": "text", "text": text}]
+        for data, mime_type in images or []:
+            if data:
+                blocks.append({
+                    "type": "image",
+                    "mimeType": mime_type,
+                    "data": base64.b64encode(data).decode("ascii"),
+                })
+
         self._notification_hook = collect
         try:
             self.request(
                 "session/prompt",
                 {
                     "sessionId": session_id,
-                    "prompt": [{"type": "text", "text": text}],
+                    "prompt": blocks,
                 },
                 timeout=self.timeout_sec,
             )

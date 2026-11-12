@@ -18,6 +18,8 @@ from urllib.parse import parse_qs, urlparse
 
 import openpyxl
 
+from tools.facebook_agent.dm_crawl.crawler import canonicalize_reel_url
+
 WORKSPACE = Path(__file__).resolve().parents[3]
 custom_runs = os.environ.get("VIRAL_APP_RUNS")
 if custom_runs:
@@ -88,11 +90,24 @@ def parse_workbook(source: Union[Path, bytes, io.BytesIO, str]) -> List[Dict[str
             seen = set()
             for row in worksheet.iter_rows(values_only=True):
                 raw_cells = [clean_name(str(cell)) if cell is not None else "" for cell in row]
-                url_index = next((i for i, cell in enumerate(raw_cells) if is_facebook_url(cell)), None)
+                url_index = next(
+                    (
+                        i
+                        for i, cell in enumerate(raw_cells)
+                        if is_facebook_url(cell) or canonicalize_reel_url(cell, resolve_redirects=False)
+                    ),
+                    None,
+                )
                 if url_index is None:
                     continue
                 url = raw_cells[url_index]
-                handle, canonical = facebook_handle(url)
+                # Keep direct Reel/video permalinks intact: profile canonicalization
+                # would strip the id and turn saved-reel analysis into profile crawling.
+                direct = canonicalize_reel_url(url, resolve_redirects=False)
+                if direct:
+                    handle, canonical = direct[1], direct[0]
+                else:
+                    handle, canonical = facebook_handle(url)
                 if canonical in seen:
                     continue
                 seen.add(canonical)
