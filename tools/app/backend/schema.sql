@@ -137,3 +137,34 @@ CREATE TABLE IF NOT EXISTS metric_snapshots (
     engagement_rate DOUBLE PRECISION DEFAULT 0.0
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_video ON metric_snapshots (video_id, timestamp);
+
+CREATE TABLE IF NOT EXISTS facebook_user_mappings (
+    psid TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    fb_name TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fb_mappings_user_id ON facebook_user_mappings (user_id);
+
+CREATE TABLE IF NOT EXISTS saved_reels (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    reel_url TEXT NOT NULL,
+    original_url TEXT,
+    platform TEXT NOT NULL,
+    share_type TEXT NOT NULL,
+    sender_psid TEXT NOT NULL,
+    sender_name TEXT,
+    message_text TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE (user_id, reel_url)
+);
+CREATE INDEX IF NOT EXISTS idx_saved_reels_user_created ON saved_reels (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS account_link_codes (
+    code TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_link_codes_user ON account_link_codes (user_id);

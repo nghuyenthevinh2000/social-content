@@ -3,7 +3,11 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  linkWithPopup,
+  updateProfile,
   signOut,
+  FacebookAuthProvider,
   onAuthStateChanged as firebaseOnAuthStateChanged,
   type User,
 } from 'firebase/auth';
@@ -31,5 +35,13 @@ export function onAuthStateChanged(authInstance: any, cb: (user: User | null) =>
   return firebaseOnAuthStateChanged(authInstance, cb);
 }
 
-export { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
+export {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  linkWithPopup,
+  updateProfile,
+  signOut,
+  FacebookAuthProvider,
+};
 export type { User };

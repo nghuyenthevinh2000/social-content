@@ -58,6 +58,56 @@
   margin-bottom: 16px;
 }
 
+.auth-facebook-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  background-color: #1877f2;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.auth-facebook-btn:hover:not(:disabled) {
+  background-color: #166fe5;
+}
+
+.auth-facebook-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fb-svg {
+  flex-shrink: 0;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 16px 0 12px 0;
+  color: var(--muted, #9ca3af);
+  font-size: 12px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--line, #e5e7eb);
+}
+
+.auth-divider span {
+  padding: 0 10px;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;

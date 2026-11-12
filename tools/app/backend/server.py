@@ -336,6 +336,54 @@ class Handler(BaseHTTPRequestHandler):
             prof = USER_PROFILE_STORE.get_profile(user_id)
             _json(self, 200, {"ok": True, "profile": prof})
             return
+        if parsed.path == "/api/facebook/link-code":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            from tools.app.backend.services.dm_service import create_link_code
+            code = create_link_code(user_id)
+            _json(self, 200, {"ok": True, "code": code, "page_url": "https://m.me/1216806404853891"})
+            return
+        if parsed.path == "/api/facebook/status":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            with ro() as conn:
+                cur = conn.execute("SELECT psid, fb_name, created_at FROM facebook_user_mappings WHERE user_id = %s", (user_id,))
+                row = cur.fetchone()
+                if row:
+                    _json(self, 200, {"ok": True, "linked": True, "psid": row[0], "fb_name": row[1], "linked_at": row[2]})
+                else:
+                    _json(self, 200, {"ok": True, "linked": False})
+            return
+        if parsed.path == "/api/saved-reels":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            with ro() as conn:
+                cur = conn.execute(
+                    "SELECT id, reel_url, original_url, platform, share_type, sender_name, message_text, created_at "
+                    "FROM saved_reels WHERE user_id = %s ORDER BY created_at DESC LIMIT 100",
+                    (user_id,),
+                )
+                reels = [
+                    {
+                        "id": r[0],
+                        "reel_url": r[1],
+                        "original_url": r[2],
+                        "platform": r[3],
+                        "share_type": r[4],
+                        "sender_name": r[5],
+                        "message_text": r[6],
+                        "created_at": r[7],
+                    }
+                    for r in cur.fetchall()
+                ]
+                _json(self, 200, {"ok": True, "reels": reels})
+            return
         if parsed.path == "/api/videos":
             user_id = self._user_id()
             if not user_id:
@@ -395,6 +443,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/api/facebook/unlink":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            with tx() as conn:
+                conn.execute("DELETE FROM facebook_user_mappings WHERE user_id = %s", (user_id,))
+            _json(self, 200, {"ok": True, "message": "Đã hủy liên kết Facebook Messenger."})
+            return
         if parsed.path == "/api/sources/parse":
             user_id = self._user_id()
             if not user_id:
@@ -917,6 +974,14 @@ def main() -> None:
 
     VIDEO_STORE.recover_stale_jobs()
     VIDEO_RUNNER.trigger()
+
+    if os.environ.get("ENABLE_DM_POLLER", "1") == "1":
+        try:
+            from tools.app.backend.services.dm_service import start_dm_service
+            start_dm_service(daemon=True)
+            print("24/7 Facebook DM poller service: started background worker")
+        except Exception as exc:
+            print(f"Facebook DM poller warning: {exc}")
 
     BoundedHTTPServer.allow_reuse_address = True
     api_threads = int(os.environ.get("API_THREADS", "64"))

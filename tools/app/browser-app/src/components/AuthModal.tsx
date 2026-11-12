@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 
-import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase';
+import {
+  auth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  FacebookAuthProvider,
+} from '../firebase';
 import './AuthModal.css';
 
 interface AuthModalProps {
@@ -16,6 +22,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleFacebookLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const provider = new FacebookAuthProvider();
+      provider.addScope('public_profile');
+      provider.addScope('email');
+      await signInWithPopup(auth, provider);
+      onClose();
+    } catch (err: any) {
+      let msg = err.message || 'Đã xảy ra lỗi khi đăng nhập bằng Facebook.';
+      if (err.code === 'auth/popup-closed-by-user') msg = 'Bạn đã đóng cửa sổ đăng nhập.';
+      if (err.code === 'auth/cancelled-popup-request') msg = 'Yêu cầu đăng nhập đã bị hủy.';
+      if (err.code === 'auth/account-exists-with-different-credential')
+        msg = 'Email của tài khoản Facebook này đã tồn tại với một phương thức đăng nhập khác.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +84,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {error && <div className="alert error auth-alert">{error}</div>}
+
+        <button
+          type="button"
+          className="auth-facebook-btn"
+          onClick={handleFacebookLogin}
+          disabled={loading}
+        >
+          <svg className="fb-svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+          </svg>
+          Tiếp tục với Facebook
+        </button>
+
+        <div className="auth-divider">
+          <span>hoặc dùng email</span>
+        </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <label className="auth-label">
