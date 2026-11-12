@@ -122,6 +122,29 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(topics[0]["source_urls"], ["https://www.facebook.com/reel/123456"])
         self.assertEqual(topics[1]["source_urls"], ["https://www.facebook.com/reel/789101"])
 
+    def test_normalize_topics_cross_checks_actor_profile(self):
+        fallback = heuristic_topics("hôn nhân", [])
+        agent_data = [
+            {
+                "title": "Chủ đề hôn nhân",
+                "prompt": (
+                    "[CAMERA & COMPOSITION]\nVertical 9:16\n\n"
+                    "[ENVIRONMENT & ATMOSPHERE]\nPhòng khách\n\n"
+                    "[SUBJECT & CONTINUITY]\nNgười dẫn nữ 35 tuổi, áo sơ mi, nhìn thẳng ống kính (<IMAGE_REF_0>).\n\n"
+                    "[ACTION & TIMECODE]\n00:00 - 00:15: Chia sẻ\n\n"
+                    "[AUDIO & DIALOGUE]\nGiọng nữ (35 tuổi), lời thoại tiếng Việt: \"Xin chào\"."
+                ),
+            }
+        ]
+        actor_prof = {"gender": "male", "age": 28, "voice_tone": "Bắc"}
+        topics = normalize_topics(agent_data, fallback, actor_profile=actor_prof)
+        prompt = topics[0]["prompt"]
+        self.assertIn("Người dẫn nam 28 tuổi", prompt)
+        self.assertIn("Giọng nam (28 tuổi)", prompt)
+        self.assertIn("Ngoại hình nhất quán của người dẫn nam (28 tuổi)", prompt)
+        self.assertIn("chất giọng Bắc", prompt)
+        self.assertIn("<IMAGE_REF_0>", prompt)
+
     def test_pipeline_reads_job_cache_without_network(self):
         from datetime import datetime, timezone
 

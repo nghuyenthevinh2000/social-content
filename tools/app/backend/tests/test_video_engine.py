@@ -35,8 +35,8 @@ def test_build_prompt():
     assert "[AUDIO & DIALOGUE]" in p
     assert "00:00 - 00:03" in p
     assert "00:15" in p
-    assert "Vertical 9:16" in p
-    assert "Spoken Vietnamese" in p
+    assert "Khung hình dọc 9:16" in p
+    assert "Lời thoại tiếng Việt" in p
 
     # If prompt is already structured, build_prompt preserves it directly
     already_structured = "[CAMERA & COMPOSITION]\nPOV 9:16\n\n[ACTION & TIMECODE]\n00:00 - 00:15"
@@ -45,6 +45,50 @@ def test_build_prompt():
     p_safe = build_prompt(prompt, safe_fallback=True, duration_sec=15)
     assert "Xin chào các bạn" in p_safe
     assert "[ACTION & TIMECODE]" in p_safe
+
+
+def test_build_prompt_with_actor_profile():
+    raw_prompt = "Mẹo tiết kiệm chi phí sinh hoạt"
+    male_prof = {"gender": "male", "age": 30, "voice_tone": "warm"}
+    p_male = build_prompt(raw_prompt, actor_profile=male_prof)
+    assert "người dẫn nam (30 tuổi)" in p_male
+    assert "Giọng nam chuẩn tiếng Việt (30 tuổi)" in p_male
+    assert "tông giọng warm" in p_male
+    assert "<IMAGE_REF_0>" in p_male
+
+    female_prof = {"gender": "female", "age": 24, "voice_tone": "energetic"}
+    p_female = build_prompt(raw_prompt, actor_profile=female_prof)
+    assert "người dẫn nữ (24 tuổi)" in p_female
+    assert "Giọng nữ chuẩn tiếng Việt (24 tuổi)" in p_female
+    assert "tông giọng energetic" in p_female
+    assert "<IMAGE_REF_0>" in p_female
+
+    structured = (
+        "[CAMERA & COMPOSITION]\nVertical 9:16\n\n"
+        "[ENVIRONMENT & ATMOSPHERE]\nStudio sáng\n\n"
+        "[SUBJECT & CONTINUITY]\nNgười dẫn nhìn vào camera.\n\n"
+        "[ACTION & TIMECODE]\n00:00 - 00:15: Chia sẻ mẹo hay\n\n"
+        "[AUDIO & DIALOGUE]\nLời thoại tiếng Việt: \"Xin chào mọi người\"."
+    )
+    p_struct = build_prompt(structured, actor_profile=male_prof)
+    assert "Ngoại hình nhất quán của người dẫn nam (30 tuổi)" in p_struct
+    assert "Giọng nam chuẩn tiếng Việt (30 tuổi)" in p_struct
+    assert "<IMAGE_REF_0>" in p_struct
+
+    # Conflict resolution: prompt generated with female 35, actor profile is male 28
+    conflict_structured = (
+        "[CAMERA & COMPOSITION]\nVertical 9:16\n\n"
+        "[ENVIRONMENT & ATMOSPHERE]\nPhòng khách\n\n"
+        "[SUBJECT & CONTINUITY]\nNgười dẫn nữ 35 tuổi nhìn thẳng ống kính.\n\n"
+        "[ACTION & TIMECODE]\n00:00 - 00:15: Chia sẻ\n\n"
+        "[AUDIO & DIALOGUE]\nGiọng nữ (35 tuổi), lời thoại tiếng Việt: \"Xin chào\"."
+    )
+    p_resolved = build_prompt(conflict_structured, actor_profile={"gender": "male", "age": 28, "voice_tone": "Bắc"})
+    assert "Người dẫn nam 28 tuổi" in p_resolved
+    assert "Giọng nam (28 tuổi)" in p_resolved
+    assert "Ngoại hình nhất quán của người dẫn nam (28 tuổi)" in p_resolved
+    assert "Giọng nam chuẩn tiếng Việt (28 tuổi) với chất giọng Bắc" in p_resolved
+    assert "<IMAGE_REF_0>" in p_resolved
 
 
 def test_normalize_video():
@@ -150,6 +194,23 @@ def test_generate_video_stubbed_and_safety_retry():
         assert client.calls[0]["response_format"]["duration"] == "15s"
         # 1 profile + 1 context + 1 prompt text
         assert len(client.calls[0]["input"]) == 3
+        text_input = [x for x in client.calls[0]["input"] if x["type"] == "text"][0]["text"]
+        assert "người dẫn nam" in text_input
+        assert "Giọng nam chuẩn tiếng Việt" in text_input
+
+        # Call with explicit female actor profile
+        client_female = StubClient(sample_video_bytes)
+        out_female = tmp_path / "out_female.mp4"
+        generate_video(
+            prompt="Hướng dẫn cắm hoa",
+            profile_image_bytes=b"fakejpeg",
+            output_path=out_female,
+            client=client_female,
+            actor_profile={"gender": "female", "age": 25},
+        )
+        female_text = [x for x in client_female.calls[0]["input"] if x["type"] == "text"][0]["text"]
+        assert "người dẫn nữ" in female_text
+        assert "Giọng nữ chuẩn tiếng Việt (25 tuổi)" in female_text
 
         # 2. Safety retry call
         client_safety = StubClient(sample_video_bytes, fail_safety_first=True)

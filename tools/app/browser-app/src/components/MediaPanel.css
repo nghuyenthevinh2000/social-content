@@ -154,3 +154,109 @@
 .context-upload-card span {
   font-size: 20px;
 }
+
+.actor-profile-box {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--paper, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--line, #2a2a2a);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.actor-profile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.actor-profile-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink, #fff);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.actor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.actor-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #eee);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.actor-field-hint {
+  font-size: 12px;
+  color: var(--muted, #888);
+  line-height: 1.4;
+}
+
+.actor-field-hint code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.actor-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.actor-chip {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid var(--line, #444);
+  background: var(--card, rgba(255, 255, 255, 0.05));
+  color: var(--ink, #ddd);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.actor-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent, #3b82f6);
+}
+
+.actor-chip.selected {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  border-color: var(--accent, #3b82f6);
+}
+
+.actor-preview-box {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px dashed var(--line, #333);
+  font-size: 12px;
+  color: var(--muted, #aaa);
+  line-height: 1.5;
+}
+
+.actor-text-input {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line, #444);
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.actor-text-input:focus {
+  border-color: var(--accent, #3b82f6);
+}

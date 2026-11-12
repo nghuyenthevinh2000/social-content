@@ -103,6 +103,8 @@ services:
       - aibrand-hf:/home/app/.cache/huggingface
       - ${HOME:-/home/vinh}/.local/bin/agy:/usr/local/bin/agy:ro
       - ${HOME:-/home/vinh}/.gemini:/home/app/.gemini
+      - .:/app/tools/app/backend
+      - ../../loop:/app/tools/loop
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/health')"]
       interval: 30s

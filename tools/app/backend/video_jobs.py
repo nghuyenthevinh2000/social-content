@@ -292,6 +292,9 @@ class VideoRunner:
             cost = int(job.get("cost") or VIDEO_COST_MICRO)
             duration_sec = get_video_duration()
 
+            from tools.app.backend.user_profile import USER_PROFILE_STORE
+            actor_profile = USER_PROFILE_STORE.get_profile(user_id)
+
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
                 temp_mp4 = Path(f.name)
 
@@ -302,14 +305,24 @@ class VideoRunner:
                     context_images_bytes=context_bytes_list,
                     output_path=temp_mp4,
                     duration_sec=duration_sec,
+                    actor_profile=actor_profile,
                 )
             except TypeError:
-                self.generator(
-                    prompt=prompt,
-                    profile_image_bytes=profile_bytes,
-                    context_images_bytes=context_bytes_list,
-                    output_path=temp_mp4,
-                )
+                try:
+                    self.generator(
+                        prompt=prompt,
+                        profile_image_bytes=profile_bytes,
+                        context_images_bytes=context_bytes_list,
+                        output_path=temp_mp4,
+                        actor_profile=actor_profile,
+                    )
+                except TypeError:
+                    self.generator(
+                        prompt=prompt,
+                        profile_image_bytes=profile_bytes,
+                        context_images_bytes=context_bytes_list,
+                        output_path=temp_mp4,
+                    )
 
             blob_key = f"videos/{user_id}/{job_id}/output.mp4"
             blobs.upload_file(blob_key, temp_mp4, content_type="video/mp4")

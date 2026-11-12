@@ -20,12 +20,34 @@ type MediaPanelProps = {
   onMediaUpdated?: () => void;
 };
 
+const ACTOR_PROFILE_KEY = 'aibrand_actor_profile';
+
+function loadCachedProfile(): { gender?: 'male' | 'female'; age?: number; name?: string; voice_tone?: string } | null {
+  try {
+    const raw = localStorage.getItem(ACTOR_PROFILE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
 export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
+  const cached = loadCachedProfile();
   const [profile, setProfile] = useState<MediaItem | null>(null);
   const [contextList, setContextList] = useState<MediaItem[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actorGender, setActorGender] = useState<'male' | 'female'>(
+    cached?.gender === 'female' ? 'female' : 'male'
+  );
+  const [actorAge, setActorAge] = useState<number>(
+    typeof cached?.age === 'number' && cached.age >= 15 && cached.age <= 80 ? cached.age : 28
+  );
+  const [actorName, setActorName] = useState<string>(cached?.name || '');
+  const [actorTone, setActorTone] = useState<string>(
+    cached?.voice_tone && ['Bắc', 'Trung', 'Nam'].includes(cached.voice_tone) ? cached.voice_tone : 'Bắc'
+  );
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const profileInputRef = useRef<HTMLInputElement>(null);
   const contextInputRef = useRef<HTMLInputElement>(null);
@@ -59,9 +81,89 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
     }
   };
 
+  const fetchActorProfile = async () => {
+    try {
+      const res = await apiJson<{
+        ok: boolean;
+        profile: {
+          gender?: 'male' | 'female';
+          age?: number;
+          name?: string;
+          voice_tone?: string;
+        };
+      }>('/api/user/profile');
+      if (res.ok && res.profile) {
+        const p = res.profile;
+        if (p.gender === 'male' || p.gender === 'female') setActorGender(p.gender);
+        if (typeof p.age === 'number' && p.age >= 15 && p.age <= 80) setActorAge(p.age);
+        if (p.name !== undefined) setActorName(p.name);
+        const tone = p.voice_tone && ['Bắc', 'Trung', 'Nam'].includes(p.voice_tone) ? p.voice_tone : 'Bắc';
+        setActorTone(tone);
+        try {
+          localStorage.setItem(
+            ACTOR_PROFILE_KEY,
+            JSON.stringify({
+              gender: p.gender || 'male',
+              age: typeof p.age === 'number' ? p.age : 28,
+              name: p.name || '',
+              voice_tone: tone,
+            })
+          );
+        } catch {}
+      }
+    } catch {
+      // ignore network errors, preserve cached state
+    }
+  };
+
+  const handleUpdateActorProfile = async (
+    updates: Partial<{ gender: 'male' | 'female'; age: number; name: string; voice_tone: string }>
+  ) => {
+    const nextGender = updates.gender ?? actorGender;
+    const nextAge = updates.age ?? actorAge;
+    const nextName = updates.name !== undefined ? updates.name : actorName;
+    const nextTone = updates.voice_tone ?? actorTone;
+
+    if (updates.gender !== undefined) setActorGender(nextGender);
+    if (updates.age !== undefined) setActorAge(nextAge);
+    if (updates.name !== undefined) setActorName(nextName);
+    if (updates.voice_tone !== undefined) setActorTone(nextTone);
+
+    try {
+      localStorage.setItem(
+        ACTOR_PROFILE_KEY,
+        JSON.stringify({
+          gender: nextGender,
+          age: nextAge,
+          name: nextName,
+          voice_tone: nextTone,
+        })
+      );
+    } catch {}
+
+    try {
+      setSavingProfile(true);
+      await apiJson('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gender: nextGender,
+          age: nextAge,
+          name: nextName,
+          voice_tone: nextTone,
+        }),
+      });
+    } catch (err: any) {
+      setError(err?.message || 'Không thể lưu thông tin diễn viên');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   useEffect(() => {
     fetchMedia();
     fetchCredits();
+    fetchActorProfile();
   }, []);
 
   const handleUpload = async (kind: 'profile' | 'context', file: File) => {
@@ -174,6 +276,110 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="actor-profile-box">
+          <div className="actor-profile-head">
+            <span className="actor-profile-title">
+              <span>🎭</span>
+              <span>Thông tin diễn viên & Giọng đọc AI</span>
+            </span>
+            <small className="muted">{savingProfile ? 'Đang lưu…' : 'Tự động đồng bộ với AI'}</small>
+          </div>
+
+          <p className="actor-field-hint" style={{ margin: 0 }}>
+            Cung cấp thông tin nhân vật mẫu để AI tự động chọn <strong>giọng đọc chuẩn xác</strong> (nam/nữ, độ tuổi, âm điệu) và phong thái phù hợp với ảnh chân dung, không bị nhầm lẫn giọng.
+          </p>
+
+          {/* 1. Giới tính */}
+          <div className="actor-field">
+            <div className="actor-field-label">
+              <span>Giới tính diễn viên:</span>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                className={`actor-chip ${actorGender === 'male' ? 'selected' : ''}`}
+                onClick={() => handleUpdateActorProfile({ gender: 'male' })}
+                style={{ flex: 1, padding: '8px 12px', fontSize: 13, fontWeight: 600 }}
+              >
+                👨 Nam (Male Voice)
+              </button>
+              <button
+                type="button"
+                className={`actor-chip ${actorGender === 'female' ? 'selected' : ''}`}
+                onClick={() => handleUpdateActorProfile({ gender: 'female' })}
+                style={{ flex: 1, padding: '8px 12px', fontSize: 13, fontWeight: 600 }}
+              >
+                👩 Nữ (Female Voice)
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Độ tuổi */}
+          <div className="actor-field">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="actor-field-label" style={{ margin: 0 }}>Độ tuổi diễn viên:</span>
+              <input
+                type="number"
+                min={15}
+                max={80}
+                className="actor-text-input"
+                value={actorAge}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) {
+                    setActorAge(val);
+                    handleUpdateActorProfile({ age: val });
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) handleUpdateActorProfile({ age: val });
+                }}
+                style={{ width: 65, textAlign: 'center', fontWeight: 600 }}
+              />
+              <span style={{ fontSize: 13 }} className="muted">tuổi</span>
+            </div>
+          </div>
+
+          {/* 3. Giọng đọc (Vùng miền) */}
+          <div className="actor-field">
+            <div className="actor-field-label">
+              <span>Giọng đọc (Bắc - Trung - Nam):</span>
+            </div>
+            <div className="actor-chips-row">
+              {(['Bắc', 'Trung', 'Nam'] as const).map((region) => (
+                <button
+                  key={region}
+                  type="button"
+                  className={`actor-chip ${actorTone === region ? 'selected' : ''}`}
+                  onClick={() => handleUpdateActorProfile({ voice_tone: region })}
+                  style={{ minWidth: 70, textAlign: 'center', fontWeight: 600 }}
+                >
+                  {region}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 4. Tên / Danh xưng diễn viên (tùy chọn) */}
+          <div className="actor-field">
+            <div className="actor-field-label">
+              <span>Tên / Danh xưng người dẫn <span className="muted" style={{ fontWeight: 400 }}>(tùy chọn):</span></span>
+            </div>
+            <input
+              type="text"
+              className="actor-text-input"
+              placeholder="Ví dụ: Minh Quân, Thu Hà, MC Nam, Host..."
+              value={actorName}
+              onChange={(e) => setActorName(e.target.value)}
+              onBlur={(e) => handleUpdateActorProfile({ name: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleUpdateActorProfile({ name: (e.target as HTMLInputElement).value });
+              }}
+            />
           </div>
         </div>
       </div>

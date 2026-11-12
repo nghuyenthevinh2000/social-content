@@ -64,6 +64,15 @@ CREATE TABLE IF NOT EXISTS user_media (
 );
 CREATE INDEX IF NOT EXISTS idx_user_media_user_kind ON user_media (user_id, kind);
 
+CREATE TABLE IF NOT EXISTS user_profiles (
+    user_id TEXT PRIMARY KEY,
+    gender TEXT NOT NULL DEFAULT 'male',
+    age INTEGER NOT NULL DEFAULT 28,
+    name TEXT,
+    voice_tone TEXT DEFAULT 'natural',
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS topics (
     user_id TEXT NOT NULL,
     slug TEXT NOT NULL,

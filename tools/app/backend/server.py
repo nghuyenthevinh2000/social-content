@@ -42,6 +42,7 @@ from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate
 from tools.app.backend.video_jobs import VIDEO_STORE, VIDEO_RUNNER  # noqa: E402
 from tools.app.backend.video_engine import get_video_duration  # noqa: E402
 from tools.app.backend.profiles import PROFILE_STORE  # noqa: E402
+from tools.app.backend.user_profile import USER_PROFILE_STORE  # noqa: E402
 from tools.app.backend.research import (  # noqa: E402
     configured_agent,
     create_job,
@@ -327,6 +328,14 @@ class Handler(BaseHTTPRequestHandler):
                 "ledger": CREDIT_STORE.get_ledger(user_id=user_id),
             })
             return
+        if parsed.path in ("/api/user/profile", "/api/profile"):
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            prof = USER_PROFILE_STORE.get_profile(user_id)
+            _json(self, 200, {"ok": True, "profile": prof})
+            return
         if parsed.path == "/api/videos":
             user_id = self._user_id()
             if not user_id:
@@ -564,6 +573,19 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 _json(self, 400, {"error": str(exc)})
             return
+        if parsed.path in ("/api/user/profile", "/api/profile"):
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                prof = USER_PROFILE_STORE.save_profile(user_id, body)
+                _json(self, 200, {"ok": True, "profile": prof})
+            except Exception as exc:
+                _json(self, 400, {"error": str(exc)})
+            return
         if parsed.path == "/api/videos":
             user_id = self._user_id()
             if not user_id:
@@ -577,6 +599,17 @@ class Handler(BaseHTTPRequestHandler):
                 context_media_ids = body.get("context_media_ids", [])
                 duration = get_video_duration()
                 cost_micro = duration * get_rate_per_sec_micro()
+
+                actor_profile = body.get("actor_profile")
+                if not actor_profile and (body.get("gender") or body.get("age")):
+                    actor_profile = {
+                        "gender": body.get("gender"),
+                        "age": body.get("age"),
+                        "name": body.get("name"),
+                        "voice_tone": body.get("voice_tone"),
+                    }
+                if actor_profile:
+                    USER_PROFILE_STORE.save_profile(user_id, actor_profile)
                 if not profile_media_id:
                     _json(self, 400, {"error": "Thiếu ảnh chân dung mẫu (profile_media_id)."})
                     return

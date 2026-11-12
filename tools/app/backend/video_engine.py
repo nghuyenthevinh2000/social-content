@@ -7,11 +7,12 @@ import datetime
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 DEFAULT_MODEL = "gemini-omni-1.2-flash"
 
@@ -91,40 +92,174 @@ def _detect_mime(data: bytes) -> str:
     return "image/jpeg"
 
 
-def build_prompt(prompt: str, safe_fallback: bool = False, *_args: Any, **_kwargs: Any) -> str:
+def _format_actor_cue(actor_profile: Optional[Dict[str, Any]]) -> Tuple[str, str]:
+    from tools.app.backend.user_profile import normalize_actor_profile
+
+    norm = normalize_actor_profile(actor_profile)
+    gender = norm["gender"]
+    age = norm["age"]
+    tone = norm["voice_tone"]
+    if tone.lower() in ("bắc", "bac", "north", "northern"):
+        tone_desc = "chất giọng Bắc"
+    elif tone.lower() in ("nam", "south", "southern"):
+        tone_desc = "chất giọng Nam"
+    elif tone.lower() in ("trung", "central"):
+        tone_desc = "chất giọng Trung"
+    else:
+        tone_desc = f"tông giọng {tone}"
+
+    gender_noun = "người dẫn nam" if gender == "male" else "người dẫn nữ"
+    gender_voice = "nam" if gender == "male" else "nữ"
+
+    actor_cue = f"Ngoại hình nhất quán của {gender_noun} ({age} tuổi) đồng bộ chính xác với ảnh chân dung mẫu <IMAGE_REF_0>, biểu cảm thân thiện kết nối trực tiếp với ống kính."
+    voice_cue = (
+        f"Giọng {gender_voice} chuẩn tiếng Việt ({age} tuổi) với {tone_desc}, âm thanh rõ nét chuẩn phòng thu. "
+        f"Giọng đọc khớp hoàn toàn với khẩu hình và biểu cảm của {gender_noun} trên màn hình."
+    )
+    return actor_cue, voice_cue
+
+
+def _apply_actor_profile_to_structured_prompt(prompt: str, actor_profile: Optional[Dict[str, Any]]) -> str:
+    actor_cue, voice_cue = _format_actor_cue(actor_profile)
+    from tools.app.backend.user_profile import normalize_actor_profile
+
+    norm = normalize_actor_profile(actor_profile)
+    gender = norm["gender"]
+    gender_vn = "nam" if gender == "male" else "nữ"
+    opposite_vn = "nữ" if gender == "male" else "nam"
+    age = norm["age"]
+
+    res = prompt
+
+    # 1. Align [SUBJECT & CONTINUITY]
+    if "[SUBJECT & CONTINUITY]" in res:
+        subject_pattern = r"(\[SUBJECT & CONTINUITY\]\s*)([\s\S]*?)(?=\n\n\[|\Z)"
+        match = re.search(subject_pattern, res)
+        if match:
+            content = match.group(2).strip()
+            # Replace conflicting gender/age mentions
+            content = re.sub(
+                r"(\b(?:người dẫn|presenter|diễn viên)\s+)" + opposite_vn,
+                r"\g<1>" + gender_vn,
+                content,
+                flags=re.IGNORECASE,
+            )
+            content = re.sub(
+                r"(\b(?:người dẫn|presenter|diễn viên)\s+(?:nam|nữ)?\s*)\d+\s*tuổi",
+                f"\\g<1>{age} tuổi",
+                content,
+                flags=re.IGNORECASE,
+            )
+            # Ensure reference image is cited
+            if "<IMAGE_REF_0>" not in content:
+                content += " (<IMAGE_REF_0>)"
+            # Ensure actor cue is explicitly added/updated in Vietnamese
+            if re.search(r"(?:Đặc tả diễn viên|Actor specification):", content, flags=re.IGNORECASE):
+                content = re.sub(
+                    r"(?:Đặc tả diễn viên|Actor specification):[^\n]*",
+                    f"Đặc tả diễn viên: {actor_cue}",
+                    content,
+                    flags=re.IGNORECASE,
+                )
+            else:
+                content = f"{content}\nĐặc tả diễn viên: {actor_cue}"
+            res = res[:match.start(2)] + content + res[match.end(2):]
+    else:
+        res += f"\n\n[SUBJECT & CONTINUITY]\nNgười dẫn {gender_vn} ({age} tuổi) nhìn thẳng ống kính camera (<IMAGE_REF_0>).\nĐặc tả diễn viên: {actor_cue}"
+
+    # 2. Align [AUDIO & DIALOGUE]
+    if "[AUDIO & DIALOGUE]" in res:
+        audio_pattern = r"(\[AUDIO & DIALOGUE\]\s*)([\s\S]*?)(?=\n\n\[|\Z)"
+        match = re.search(audio_pattern, res)
+        if match:
+            content = match.group(2).strip()
+            # Replace conflicting gender in voice mentions
+            content = re.sub(
+                r"(\bgiọng\s+)" + opposite_vn,
+                r"\g<1>" + gender_vn,
+                content,
+                flags=re.IGNORECASE,
+            )
+            content = re.sub(
+                r"(\bgiọng\s+(?:nam|nữ)?\s*\(?)\d+(\s*tuổi\b)",
+                f"\\g<1>{age}\\g<2>",
+                content,
+                flags=re.IGNORECASE,
+            )
+            # Ensure voice cue is explicitly added/updated in Vietnamese
+            if re.search(r"(?:Đặc tả giọng đọc|Voice specification):", content, flags=re.IGNORECASE):
+                content = re.sub(
+                    r"(?:Đặc tả giọng đọc|Voice specification):[^\n]*",
+                    f"Đặc tả giọng đọc: {voice_cue}",
+                    content,
+                    flags=re.IGNORECASE,
+                )
+            else:
+                content = f"{content}\nĐặc tả giọng đọc: {voice_cue}"
+            res = res[:match.start(2)] + content + res[match.end(2):]
+    else:
+        res += f"\n\n[AUDIO & DIALOGUE]\nĐặc tả giọng đọc: {voice_cue}"
+
+    return res.strip()
+
+
+def build_prompt(
+    prompt: str,
+    safe_fallback: bool = False,
+    actor_profile: Optional[Dict[str, Any]] = None,
+    *_args: Any,
+    **_kwargs: Any,
+) -> str:
     dur = get_video_duration()
     hook_end = "03"
     cta_start = f"{max(4, dur - 4):02d}"
+    actor_cue, voice_cue = _format_actor_cue(actor_profile)
 
     if safe_fallback:
         spoken = "Xin chào các bạn, hôm nay chúng ta cùng chia sẻ những điều hữu ích và tích cực."
         action = (
-            f"00:00 - 00:{hook_end}: Subject looks directly into camera lens with a warm engaging smile.\n"
-            f"00:{hook_end} - 00:{cta_start}: Subject shares practical advice with gentle, natural hand gestures.\n"
-            f"00:{cta_start} - 00:{dur:02d}: Subject smiles warmly and invites viewers to save and apply the tips."
+            f"00:00 - 00:{hook_end}: Người dẫn nhìn thẳng ống kính camera với nụ cười thân thiện, thu hút sự chú ý.\n"
+            f"00:{hook_end} - 00:{cta_start}: Người dẫn chia sẻ lời khuyên hữu ích với cử chỉ tay nhẹ nhàng, tự nhiên.\n"
+            f"00:{cta_start} - 00:{dur:02d}: Người dẫn mỉm cười thân thiện và mời người xem lưu lại và áp dụng mẹo hay."
         )
-    elif "[CAMERA & COMPOSITION]" in prompt or "[ACTION & TIMECODE]" in prompt:
+        return (
+            f"[CAMERA & COMPOSITION]\n"
+            f"Khung hình dọc 9:16 góc nhìn điện thoại (POV), máy cầm tay ngang tầm mắt, góc quay cận cảnh tự nhiên theo dõi người dẫn và thao tác, phong cách đời thường chân thực (BTS), video sạch sẽ, không watermark, logo hay chữ chèn đè.\n\n"
+            f"[ENVIRONMENT & ATMOSPHERE]\n"
+            f"Không gian làm việc chân thực, gọn gàng với ánh sáng tự nhiên phù hợp chủ đề.\n\n"
+            f"[SUBJECT & CONTINUITY]\n"
+            f"Đặc tả diễn viên: {actor_cue}\n\n"
+            f"[ACTION & TIMECODE]\n"
+            f"{action}\n\n"
+            f"[AUDIO & DIALOGUE]\n"
+            f"Lời thoại tiếng Việt: \"{spoken}\"\n"
+            f"Đặc tả giọng đọc: {voice_cue}"
+        )
+
+    if "[CAMERA & COMPOSITION]" in prompt or "[ACTION & TIMECODE]" in prompt:
+        if actor_profile is not None:
+            return _apply_actor_profile_to_structured_prompt(prompt.strip(), actor_profile)
         return prompt.strip()
-    else:
-        spoken = prompt.strip()
-        action = (
-            f"00:00 - 00:{hook_end}: Subject looks directly into camera lens with an engaging, confident smile.\n"
-            f"00:{hook_end} - 00:{cta_start}: Subject delivers the core message with expressive facial micro-expressions and natural hand gestures.\n"
-            f"00:{cta_start} - 00:{dur:02d}: Subject smiles warmly and makes a welcoming gesture toward viewer."
-        )
+
+    spoken = prompt.strip()
+    action = (
+        f"00:00 - 00:{hook_end}: Người dẫn nhìn thẳng ống kính camera với nụ cười tự tin, mở đầu lôi cuốn.\n"
+        f"00:{hook_end} - 00:{cta_start}: Người dẫn truyền tải thông điệp chính với cử chỉ tay và biểu cảm gương mặt tự nhiên.\n"
+        f"00:{cta_start} - 00:{dur:02d}: Người dẫn mỉm cười thân thiện, ra hiệu chào và kêu gọi người xem tương tác."
+    )
 
     return (
         f"[CAMERA & COMPOSITION]\n"
-        f"Vertical 9:16 portrait orientation, clear medium close-up framing, sharp eye-level focus. Natural handheld motion, clean social media documentary style. Pristine clean video, no watermarks, no logos, no text overlays.\n\n"
+        f"Khung hình dọc 9:16 góc nhìn điện thoại (POV), máy cầm tay ngang tầm mắt, góc quay cận cảnh tự nhiên theo dõi người dẫn và thao tác, phong cách đời thường chân thực (BTS), video sạch sẽ, không watermark, logo hay chữ chèn đè.\n\n"
         f"[ENVIRONMENT & ATMOSPHERE]\n"
-        f"Clean, realistic workspace setting with natural background lighting matching the scene context.\n\n"
+        f"Không gian làm việc chân thực, gọn gàng với ánh sáng tự nhiên phù hợp chủ đề.\n\n"
         f"[SUBJECT & CONTINUITY]\n"
-        f"Consistent appearance faithfully matching reference portrait <IMAGE_REF_0>, smiling warmly and engaging directly with camera.\n\n"
+        f"Đặc tả diễn viên: {actor_cue}\n\n"
         f"[ACTION & TIMECODE]\n"
         f"{action}\n\n"
         f"[AUDIO & DIALOGUE]\n"
-        f"Spoken Vietnamese: \"{spoken}\"\n"
-        f"Authentic Vietnamese spoken audio with natural intonation, cadence, and studio sound clarity."
+        f"Lời thoại tiếng Việt: \"{spoken}\"\n"
+        f"Đặc tả giọng đọc: {voice_cue}"
     )
 
 
@@ -201,6 +336,7 @@ def generate_video(
     output_path: Optional[Path] = None,
     client: Optional[Any] = None,
     duration_sec: Optional[int] = None,
+    actor_profile: Optional[Dict[str, Any]] = None,
 ) -> Path:
     if not prompt or not prompt.strip():
         raise ValueError("Prompt must not be empty.")
@@ -233,7 +369,7 @@ def generate_video(
                     }
                 )
 
-    inputs.append({"type": "text", "text": build_prompt(prompt, safe_fallback=False)})
+    inputs.append({"type": "text", "text": build_prompt(prompt, safe_fallback=False, actor_profile=actor_profile)})
 
     _load_env()
     if client is None:
@@ -274,7 +410,7 @@ def generate_video(
     except Exception as exc:
         err_msg = str(exc).lower()
         if "safety" in err_msg or "harmful" in err_msg:
-            inputs[-1] = {"type": "text", "text": build_prompt(prompt, safe_fallback=True)}
+            inputs[-1] = {"type": "text", "text": build_prompt(prompt, safe_fallback=True, actor_profile=actor_profile)}
             interaction = client.interactions.create(**kwargs)
         else:
             raise

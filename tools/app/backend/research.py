@@ -154,9 +154,16 @@ def _reel_digest(reels: List[Dict[str, Any]], limit: int = 12) -> str:
 def format_director_prompt(
     item: Dict[str, Any],
     sheet_name: str = "",
+    actor_profile: Optional[Dict[str, Any]] = None,
     *_args: Any,
     **_kwargs: Any,
 ) -> str:
+    from tools.app.backend.user_profile import normalize_actor_profile
+
+    norm = normalize_actor_profile(actor_profile)
+    gender_vn = "nam" if norm["gender"] == "male" else "nữ"
+    age = norm["age"]
+
     dur = get_video_duration()
     hook_end = "03"
     cta_start = f"{max(4, dur - 4):02d}"
@@ -190,21 +197,44 @@ def format_director_prompt(
         f"00:{cta_start} - 00:{dur:02d}: {action_cta}"
     )
 
+    tone = norm.get("voice_tone") or "Bắc"
+    if tone.lower() in ("bắc", "bac", "north", "northern"):
+        tone_desc = "chất giọng Bắc"
+    elif tone.lower() in ("nam", "south", "southern"):
+        tone_desc = "chất giọng Nam"
+    elif tone.lower() in ("trung", "central"):
+        tone_desc = "chất giọng Trung"
+    else:
+        tone_desc = f"tông giọng {tone}"
+
     return (
         f"[CAMERA & COMPOSITION]\n"
-        f"Vertical 9:16 mobile POV, góc quay chân thực, cận cảnh vừa phải theo dõi người dẫn và thao tác, raw BTS social video style. Video sạch sẽ, không watermark, không logo, không text overlay.\n\n"
+        f"Khung hình dọc 9:16 góc nhìn điện thoại (POV), máy cầm tay ngang tầm mắt, góc quay cận cảnh tự nhiên theo dõi người dẫn và thao tác, phong cách đời thường chân thực (BTS), video sạch sẽ, không watermark, logo hay chữ chèn đè.\n\n"
         f"[ENVIRONMENT & ATMOSPHERE]\n"
         f"{env_text}\n\n"
         f"[SUBJECT & CONTINUITY]\n"
-        f"Người dẫn nhìn thẳng ống kính, cử chỉ tự nhiên, kết nối trực tiếp với người xem matching reference portrait <IMAGE_REF_0>.\n\n"
+        f"Người dẫn ({gender_vn}, {age} tuổi) nhìn thẳng ống kính, cử chỉ tự nhiên, kết nối trực tiếp với người xem đồng bộ với ảnh mẫu <IMAGE_REF_0>.\n\n"
         f"[ACTION & TIMECODE]\n"
         f"{actions}\n\n"
         f"[AUDIO & DIALOGUE]\n"
-        f"Lời thoại tiếng Việt tự nhiên, chuẩn nhịp điệu: \"{dialogue_text}\". Âm thanh nền chân thực."
+        f"Giọng {gender_vn} ({age} tuổi), {tone_desc}, lời thoại tiếng Việt tự nhiên, chuẩn nhịp điệu: \"{dialogue_text}\". Âm thanh nền chân thực."
     )
 
 
-def build_topic_prompt(sheet_name: str, targets: List[Dict[str, Any]], reels: List[Dict[str, Any]]) -> str:
+def build_topic_prompt(
+    sheet_name: str,
+    targets: List[Dict[str, Any]],
+    reels: List[Dict[str, Any]],
+    actor_profile: Optional[Dict[str, Any]] = None,
+) -> str:
+    from tools.app.backend.user_profile import normalize_actor_profile
+
+    norm = normalize_actor_profile(actor_profile)
+    gender_vn = "nam" if norm["gender"] == "male" else "nữ"
+    age = norm["age"]
+    tone_str = norm.get("voice_tone") or "Bắc"
+    name_str = f", tên: {norm['name']}" if norm.get("name") else ""
+
     channels = ", ".join(target.get("name") or target.get("handle", "") for target in targets[:20]) or "(chưa có kênh)"
     pools: Dict[str, int] = {}
     for reel in reels:
@@ -229,13 +259,13 @@ Mỗi chủ đề phải đi kèm trường "prompt" chứa kịch bản đạo 
 
 CẤU TRÚC PROMPT ĐẠO DIỄN (bắt buộc đúng 5 phần theo chuẩn UGC):
 [CAMERA & COMPOSITION]
-Vertical 9:16 mobile POV, góc quay cận cảnh tự nhiên theo dõi người dẫn và thao tác, raw BTS social style, không watermark, logo, text overlay.
+Khung hình dọc 9:16 góc nhìn điện thoại (POV), máy cầm tay ngang tầm mắt, góc quay cận cảnh tự nhiên theo dõi người dẫn và thao tác, phong cách đời thường chân thực (BTS), không watermark, logo hay chữ chèn đè.
 
 [ENVIRONMENT & ATMOSPHERE]
 Bối cảnh thực tế phù hợp chủ đề (xưởng, văn phòng, nhà bếp, studio...), ánh sáng tự nhiên, chân thực.
 
 [SUBJECT & CONTINUITY]
-Người dẫn nhìn thẳng ống kính, biểu cảm thân thiện kết nối trực tiếp với người xem (<IMAGE_REF_0>).
+Người dẫn ({gender_vn}, {age} tuổi{name_str}) nhìn thẳng ống kính, biểu cảm thân thiện kết nối trực tiếp với người xem (<IMAGE_REF_0>).
 
 [ACTION & TIMECODE]
 Phân chia nhịp thời gian chính xác trong đúng {dur} giây:
@@ -244,7 +274,7 @@ Phân chia nhịp thời gian chính xác trong đúng {dur} giây:
 - 00:{cta_start} - 00:{dur:02d}: Kết luận và kêu gọi hành động (CTA)
 
 [AUDIO & DIALOGUE]
-Lời thoại tiếng Việt tự nhiên, súc tích, nhịp điệu nhanh vừa khớp thời lượng {dur} giây.
+Giọng {gender_vn} ({age} tuổi), giọng {tone_str}, lời thoại tiếng Việt tự nhiên, súc tích, nhịp điệu nhanh vừa khớp thời lượng {dur} giây.
 
 Yêu cầu:
 - 3 chủ đề phải khác nhau rõ rệt về góc khai thác, không trùng ý.
@@ -316,6 +346,7 @@ def normalize_topics(
     fallback: List[Dict[str, Any]],
     reels: Optional[List[Dict[str, Any]]] = None,
     sheet_name: str = "",
+    actor_profile: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     if isinstance(data, dict):
         data = data.get("topics") or data.get("ideas") or [data]
@@ -336,7 +367,10 @@ def normalize_topics(
                 sources = [top_url]
         prompt_val = str(item.get("prompt") or item.get("director_prompt") or "").strip()
         if not prompt_val:
-            prompt_val = format_director_prompt(item, sheet_name=sheet_name)
+            prompt_val = format_director_prompt(item, sheet_name=sheet_name, actor_profile=actor_profile)
+        elif actor_profile:
+            from tools.app.backend.video_engine import _apply_actor_profile_to_structured_prompt
+            prompt_val = _apply_actor_profile_to_structured_prompt(prompt_val, actor_profile)
         topics.append(
             {
                 "title": str(item.get("title") or "").strip() or (fallback[index]["title"] if index < len(fallback) else "Chủ đề mới"),
@@ -373,19 +407,24 @@ def parse_topics(
     fallback: List[Dict[str, Any]],
     reels: Optional[List[Dict[str, Any]]] = None,
     sheet_name: str = "",
+    actor_profile: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     for candidate in _extract_json_candidates(text):
         try:
             data = json.loads(candidate)
         except json.JSONDecodeError:
             continue
-        topics = normalize_topics(data, fallback, reels=reels, sheet_name=sheet_name)
+        topics = normalize_topics(data, fallback, reels=reels, sheet_name=sheet_name, actor_profile=actor_profile)
         if topics:
             return topics
     return fallback
 
 
-def heuristic_topics(sheet_name: str, reels: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def heuristic_topics(
+    sheet_name: str,
+    reels: List[Dict[str, Any]],
+    actor_profile: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
     dur = get_video_duration()
     ranked = sorted(
         reels,
@@ -415,7 +454,7 @@ def heuristic_topics(sheet_name: str, reels: List[Dict[str, Any]]) -> List[Dict[
             "source_urls": [reel.get("url")] if reel.get("url") else [],
             "generated_by": "heuristic",
         }
-        t["prompt"] = format_director_prompt(t, sheet_name=sheet_name)
+        t["prompt"] = format_director_prompt(t, sheet_name=sheet_name, actor_profile=actor_profile)
         topics.append(t)
 
     generic = [
@@ -451,7 +490,7 @@ def heuristic_topics(sheet_name: str, reels: List[Dict[str, Any]]) -> List[Dict[
         },
     ]
     for g in generic:
-        g["prompt"] = format_director_prompt(g, sheet_name=sheet_name)
+        g["prompt"] = format_director_prompt(g, sheet_name=sheet_name, actor_profile=actor_profile)
     while len(topics) < 3:
         topics.append(generic[len(topics)])
     return topics[:3]
@@ -466,12 +505,13 @@ def suggest_topics(
     timeout_sec: float,
     log: Callable[[str], None],
     model: Optional[str] = None,
+    actor_profile: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     if not reels:
         log(f"Không có reel nào trong 48 giờ cho '{sheet_name}'; bỏ qua gợi ý chủ đề.")
         return [], None
-    fallback = heuristic_topics(sheet_name, reels)
-    prompt = build_topic_prompt(sheet_name, targets, reels)
+    fallback = heuristic_topics(sheet_name, reels, actor_profile=actor_profile)
+    prompt = build_topic_prompt(sheet_name, targets, reels, actor_profile=actor_profile)
     client = None
     with _harness_lock(log):
         try:
@@ -484,7 +524,7 @@ def suggest_topics(
             text = client.prompt(session_id, prompt)
             if not text.strip():
                 raise ACPError("Agent trả về nội dung rỗng.")
-            topics = parse_topics(text, fallback, reels=reels, sheet_name=sheet_name)
+            topics = parse_topics(text, fallback, reels=reels, sheet_name=sheet_name, actor_profile=actor_profile)
             if topics and topics[0].get("generated_by") == "agent":
                 log("Agent đã trả về 3 chủ đề.")
             else:
@@ -547,10 +587,18 @@ def create_job(
         filename = sheets[0]["name"]
     elif filename:
         filename = filename.removesuffix(".json").removesuffix(".xlsx")
+    actor_prof = options.get("actor_profile")
+    if not actor_prof and user_id:
+        try:
+            from tools.app.backend.user_profile import USER_PROFILE_STORE
+            actor_prof = USER_PROFILE_STORE.get_profile(user_id)
+        except Exception:
+            actor_prof = None
     job = {
         "id": job_id,
         "client_id": client_id,
         "user_id": user_id,
+        "actor_profile": actor_prof,
         "status": "queued",
         "filename": filename,
         "agent": options.get("agent"),
@@ -588,6 +636,13 @@ def create_job(
 
 def run_job(job: Dict[str, Any]) -> None:
     job_id, options = job["id"], job["options"]
+    actor_profile = job.get("actor_profile") or options.get("actor_profile")
+    if not actor_profile and job.get("user_id"):
+        try:
+            from tools.app.backend.user_profile import USER_PROFILE_STORE
+            actor_profile = USER_PROFILE_STORE.get_profile(job["user_id"])
+        except Exception:
+            actor_profile = None
     with tempfile.TemporaryDirectory(prefix=f"job-{job_id}-") as tmpdir:
         run_dir = Path(tmpdir)
         try:
@@ -600,7 +655,7 @@ def run_job(job: Dict[str, Any]) -> None:
                     STORE.update(job_id, status="cancelled", finished_at=now_iso())
                     STORE.log(job_id, "Đã dừng theo yêu cầu.")
                     return
-                _process_sheet(job_id, index, len(sheets), sheet, run_dir, options)
+                _process_sheet(job_id, index, len(sheets), sheet, run_dir, options, actor_profile=actor_profile)
             STORE.update(job_id, status="completed", current_sheet=None, finished_at=now_iso())
             STORE.log(job_id, "Hoàn tất toàn bộ sheet.")
         except Exception as exc:  # keep the job inspectable on unexpected failure
@@ -615,6 +670,7 @@ def _process_sheet(
     sheet: Dict[str, Any],
     run_dir: Path,
     options: Dict[str, Any],
+    actor_profile: Optional[Dict[str, Any]] = None,
 ) -> None:
     sheet_name = sheet["name"]
     STORE.update(job_id, current_sheet=sheet_name)
@@ -714,6 +770,7 @@ def _process_sheet(
             timeout_sec=float(options.get("acp_timeout", 240)),
             log=log,
             model=options.get("agy_model") or options.get("model"),
+            actor_profile=actor_profile,
         )
         if topic_error and not error:
             acp_err = handle_acp_error(topic_error, agent_id=agent_choice, log=log)

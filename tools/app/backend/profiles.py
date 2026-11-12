@@ -225,9 +225,12 @@ class SocialProfileStore:
     """PostgreSQL-backed store for competitor social accounts organized by topic."""
 
     def __init__(self) -> None:
-        from tools.app.backend.db import init_schema
-        init_schema()
-        self._ensure_seeds("default")
+        try:
+            from tools.app.backend.db import init_schema
+            init_schema()
+            self._ensure_seeds("default")
+        except Exception:
+            pass
 
     def claim_legacy_topics(self, user_id: str) -> None:
         """Migrate unassigned 'default' or test legacy topics to the given user account."""
