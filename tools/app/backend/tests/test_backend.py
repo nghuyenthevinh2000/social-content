@@ -223,7 +223,7 @@ class BackendTests(unittest.TestCase):
 
     def test_download_models_snapshot(self):
         from unittest.mock import MagicMock, patch
-        from tools.app.backend.download_models import download_model
+        from tools.app.backend.archive.download_models import download_model
 
         mock_hub = MagicMock()
         mock_hub.snapshot_download.return_value = "/tmp/fake_model"
