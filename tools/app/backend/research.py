@@ -45,6 +45,7 @@ from tools.app.backend.video_engine import get_video_duration
 from tools.loop.viral_analyzer.config import load_config
 from tools.loop.viral_analyzer.glasser import ensure_glasser_env
 from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
+from tools.loop.viral_analyzer.transcriber import fetch_top_reels_transcripts
 
 ensure_glasser_env()
 
@@ -347,6 +348,7 @@ def normalize_topics(
     reels: Optional[List[Dict[str, Any]]] = None,
     sheet_name: str = "",
     actor_profile: Optional[Dict[str, Any]] = None,
+    limit: int = 10,
 ) -> List[Dict[str, Any]]:
     if isinstance(data, dict):
         data = data.get("topics") or data.get("ideas") or [data]
@@ -354,6 +356,11 @@ def normalize_topics(
         return fallback
     topics = []
     dur = get_video_duration()
+    ranked_reels = sorted(
+        reels or [],
+        key=lambda r: (int(r.get("views") or 0), float(r.get("velocity_per_hour") or 0)),
+        reverse=True,
+    )
     for index, item in enumerate(data):
         if not isinstance(item, dict):
             continue
@@ -361,8 +368,8 @@ def normalize_topics(
         sources = [_resolve_to_reel_url(u, reels or []) for u in raw_sources if u]
         if not sources and index < len(fallback):
             sources = fallback[index].get("source_urls", [])
-        if not sources and reels and index < len(reels):
-            top_url = reels[index].get("url") or (f"https://www.facebook.com/reel/{reels[index]['video_id']}" if reels[index].get("video_id") else None)
+        if not sources and ranked_reels and index < len(ranked_reels):
+            top_url = ranked_reels[index].get("url") or (f"https://www.facebook.com/reel/{ranked_reels[index]['video_id']}" if ranked_reels[index].get("video_id") else None)
             if top_url:
                 sources = [top_url]
         prompt_val = str(item.get("prompt") or item.get("director_prompt") or "").strip()
@@ -371,6 +378,31 @@ def normalize_topics(
         elif actor_profile:
             from tools.app.backend.video_engine import _apply_actor_profile_to_structured_prompt
             prompt_val = _apply_actor_profile_to_structured_prompt(prompt_val, actor_profile)
+
+        matched_reel = None
+        if ranked_reels:
+            for r in ranked_reels:
+                r_url = r.get("url") or ""
+                r_id = str(r.get("video_id") or "")
+                if sources and any((r_url and r_url in s) or (r_id and r_id in s) for s in sources):
+                    matched_reel = r
+                    break
+            if not matched_reel and index < len(ranked_reels):
+                matched_reel = ranked_reels[index]
+
+        fb_item = fallback[index] if index < len(fallback) else {}
+        t_views = int((matched_reel.get("views") if matched_reel else fb_item.get("views")) or 0)
+        t_vel = float((matched_reel.get("velocity_per_hour") if matched_reel else fb_item.get("velocity_per_hour")) or 0)
+        t_pool = (matched_reel.get("current_pool") if matched_reel else fb_item.get("current_pool")) or 0
+        t_pool_name = str((matched_reel.get("pool_name") if matched_reel else fb_item.get("pool_name")) or "")
+        t_likes = int((matched_reel.get("likes") if matched_reel else fb_item.get("likes")) or 0)
+        t_comments = int((matched_reel.get("comments") if matched_reel else fb_item.get("comments")) or 0)
+        t_video_url = (matched_reel.get("video_url") if matched_reel else fb_item.get("video_url")) or None
+        t_video_id = str((matched_reel.get("video_id") if matched_reel else fb_item.get("video_id")) or "")
+        t_handle = str((matched_reel.get("author_handle") if matched_reel else fb_item.get("author_handle")) or "")
+        t_name = str((matched_reel.get("author_name") if matched_reel else fb_item.get("author_name")) or "")
+        t_transcript = str((matched_reel.get("transcript") if matched_reel else fb_item.get("transcript")) or "").strip()
+
         topics.append(
             {
                 "title": str(item.get("title") or "").strip() or (fallback[index]["title"] if index < len(fallback) else "Chủ đề mới"),
@@ -380,13 +412,40 @@ def normalize_topics(
                 "outline": _normalize_outline(item.get("outline")),
                 "format": str(item.get("format") or f"Reels {dur}s UGC").strip(),
                 "source_urls": sources,
+                "reel_url": sources[0] if sources else (matched_reel.get("url") if matched_reel else ""),
+                "video_url": t_video_url,
+                "video_id": t_video_id,
+                "views": t_views,
+                "velocity_per_hour": t_vel,
+                "current_pool": t_pool,
+                "pool_name": t_pool_name,
+                "likes": t_likes,
+                "comments": t_comments,
+                "author_handle": t_handle,
+                "author_name": t_name,
+                "transcript": t_transcript,
                 "prompt": prompt_val,
                 "generated_by": "agent",
             }
         )
-    while len(topics) < 3:
+    while len(topics) < len(fallback) and len(topics) < limit:
         topics.append(fallback[len(topics)])
-    return topics[:3]
+    while len(topics) < 3 and len(fallback) >= 3:
+        topics.append(fallback[len(topics)])
+
+    # Sort from highest views to lowest views
+    has_views = any((t.get("views") or 0) > 0 for t in topics)
+    if has_views:
+        topics.sort(
+            key=lambda x: (
+                int(x.get("views") or 0),
+                float(x.get("velocity_per_hour") or 0),
+            ),
+            reverse=True,
+        )
+    selected = topics[:limit]
+    fetch_top_reels_transcripts(selected)
+    return selected
 
 
 def _extract_json_candidates(text: str) -> List[str]:
@@ -424,34 +483,49 @@ def heuristic_topics(
     sheet_name: str,
     reels: List[Dict[str, Any]],
     actor_profile: Optional[Dict[str, Any]] = None,
+    limit: int = 10,
 ) -> List[Dict[str, Any]]:
     dur = get_video_duration()
     ranked = sorted(
         reels,
         key=lambda r: (
-            int(r.get("current_pool") or 0),
-            float(r.get("velocity_per_hour") or 0),
             int(r.get("views") or 0),
+            float(r.get("velocity_per_hour") or 0),
+            int(r.get("current_pool") or 0),
         ),
         reverse=True,
     )
     topics: List[Dict[str, Any]] = []
-    for reel in ranked[:3]:
-        title = str(reel.get("title") or "").strip() or f"Câu chuyện từ @{reel.get('author_handle')}"
+    for reel in ranked[:limit]:
+        title = str(reel.get("title") or "").strip() or f"Video từ @{reel.get('author_handle')}"
         views = int(reel.get("views") or 0)
         velocity = float(reel.get("velocity_per_hour") or 0)
+        reel_url = reel.get("url") or (f"https://www.facebook.com/reel/{reel['video_id']}" if reel.get("video_id") else "")
         t = {
             "title": f"Kể lại: {title[:90]}",
             "hook": f"Vì sao chuyện này đạt {views:,} lượt xem trong 48 giờ?",
-            "angle": f"Phân tích góc P{reel.get('current_pool')} - {reel.get('pool_name', '')}, tập trung vào cảm xúc và bình luận.",
-            "why_viral": f"{views:,} views, {velocity:,.0f} views/giờ, pool P{reel.get('current_pool')}.",
+            "angle": f"Phân tích góc P{reel.get('current_pool', 0)} - {reel.get('pool_name', '')}, tập trung vào cảm xúc và bình luận.",
+            "why_viral": f"{views:,} views, {velocity:,.0f} views/giờ, pool P{reel.get('current_pool', 0)}.",
             "outline": [
-                f"Mở bằng chi tiết gây tò mò từ video gốc của @{reel.get('author_handle')}",
+                f"Mở bằng chi tiết gây tò mò từ video gốc của @{reel.get('author_handle', '')}",
                 "Kể lại câu chuyện bằng hình ảnh/điện thoại, giữ nhịp nhanh",
                 "Kết bằng câu hỏi mở để kéo bình luận",
             ],
             "format": f"Reels {dur}s UGC",
-            "source_urls": [reel.get("url")] if reel.get("url") else [],
+            "source_urls": [reel_url] if reel_url else [],
+            "reel_url": reel_url,
+            "video_url": reel.get("video_url"),
+            "video_id": str(reel.get("video_id") or ""),
+            "views": views,
+            "velocity_per_hour": velocity,
+            "current_pool": reel.get("current_pool", 0),
+            "pool_name": str(reel.get("pool_name") or ""),
+            "likes": int(reel.get("likes") or 0),
+            "comments": int(reel.get("comments") or 0),
+            "shares": int(reel.get("shares") or 0),
+            "author_handle": str(reel.get("author_handle") or ""),
+            "author_name": str(reel.get("author_name") or ""),
+            "transcript": str(reel.get("transcript") or "").strip(),
             "generated_by": "heuristic",
         }
         t["prompt"] = format_director_prompt(t, sheet_name=sheet_name, actor_profile=actor_profile)
@@ -493,7 +567,9 @@ def heuristic_topics(
         g["prompt"] = format_director_prompt(g, sheet_name=sheet_name, actor_profile=actor_profile)
     while len(topics) < 3:
         topics.append(generic[len(topics)])
-    return topics[:3]
+    selected = topics[:limit]
+    fetch_top_reels_transcripts(selected)
+    return selected
 
 
 def suggest_topics(
@@ -699,7 +775,7 @@ def _process_sheet(
                     "video_dir": str(shared_cache / "videos"),
                     "output_file": str(sheet_dir / "viral_reels_48h.json"),
                 },
-                "transcription": {"engine": "qwen3", "model": "Qwen/Qwen3-ASR-0.6B", "language": None},
+                "transcription": {"engine": "local", "model": "Qwen/Qwen3-ASR-0.6B", "language": None},
                 "targets": sheet["targets"],
             }
         )

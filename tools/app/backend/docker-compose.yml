@@ -66,6 +66,9 @@ services:
     restart: unless-stopped
     ports:
       - "${PORT:-8765}:8765"
+    volumes:
+      - .:/app/tools/app/backend
+      - ../browser-app/dist:/app/tools/app/browser-app/dist
     depends_on:
       postgres:
         condition: service_healthy

@@ -152,6 +152,66 @@ class JobStore:
             logs = cur_logs.fetchall()
         job = data_val if isinstance(data_val, dict) else json.loads(data_val)
         sheets = job.get("sheets") or []
+        needs_enrich = any(t and (not t.get("video_url") or not t.get("transcript")) for s in sheets for t in s.get("topics", []))
+        if needs_enrich:
+            try:
+                from tools.app.backend import blobs
+                res_bytes = blobs.get(f"runs/{job_id}/result.json")
+                if res_bytes:
+                    res = json.loads(res_bytes.decode("utf-8"))
+                    reels = res.get("reels", [])
+                    reels_by_id = {str(r.get("video_id")): r for r in reels if r.get("video_id")}
+                    reels_by_url = {str(r.get("url")): r for r in reels if r.get("url")}
+                    for s in sheets:
+                        for t in s.get("topics", []):
+                            matched = None
+                            for src in t.get("source_urls") or []:
+                                for vid, r in reels_by_id.items():
+                                    if vid in src:
+                                        matched = r
+                                        break
+                                if not matched and src in reels_by_url:
+                                    matched = reels_by_url[src]
+                                if matched:
+                                    break
+                            if matched:
+                                if not t.get("video_url"):
+                                    t["video_url"] = matched.get("video_url")
+                                    t["video_id"] = str(matched.get("video_id") or "")
+                                    t["reel_url"] = matched.get("url") or (t.get("source_urls", [""])[0] if t.get("source_urls") else "")
+                                    t["views"] = int(matched.get("views") or 0)
+                                    t["velocity_per_hour"] = float(matched.get("velocity_per_hour") or 0)
+                                    t["current_pool"] = matched.get("current_pool", 0)
+                                    t["pool_name"] = str(matched.get("pool_name") or "")
+                                    t["author_handle"] = str(matched.get("author_handle") or "")
+                                if not t.get("transcript") and matched.get("transcript"):
+                                    t["transcript"] = str(matched.get("transcript") or "")
+
+                from tools.loop.viral_analyzer.cache import get_cached_transcript
+                from tools.loop.viral_analyzer.transcriber import fetch_top_reels_transcripts
+                all_topics = [t for s in sheets for t in s.get("topics", []) if isinstance(t, dict)]
+                for t in all_topics:
+                    vid = t.get("video_id")
+                    if not vid and t.get("source_urls"):
+                        import re
+                        m = re.search(r"/(?:reel|videos)/(\d+)", t["source_urls"][0])
+                        if m:
+                            vid = m.group(1)
+                            t["video_id"] = vid
+                    if vid and not t.get("transcript"):
+                        cached_tr = get_cached_transcript(vid)
+                        if cached_tr:
+                            t["transcript"] = cached_tr
+
+                missing_tr = [t for t in all_topics if not t.get("transcript")]
+                if missing_tr:
+                    fetch_top_reels_transcripts(missing_tr)
+
+                with tx() as conn:
+                    conn.execute("UPDATE jobs SET data = %s WHERE id = %s", (json.dumps(job), job_id))
+            except Exception:
+                pass
+
         if len(sheets) == 1 and sheets[0].get("name"):
             job["filename"] = sheets[0]["name"]
         elif job.get("filename"):

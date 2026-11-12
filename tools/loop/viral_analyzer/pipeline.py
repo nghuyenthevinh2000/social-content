@@ -26,7 +26,6 @@ CURRENT_DIR = Path(__file__).parent
 sys.path.append(str(CURRENT_DIR.parent.parent.parent))
 
 from tools.loop.viral_analyzer.cache import (
-    get_cached_transcript,
     persist_to_database,
 )
 from tools.loop.viral_analyzer.config import (
@@ -38,12 +37,13 @@ from tools.loop.viral_analyzer.retention import (
     purge_expired_videos,
     register_video,
 )
-from tools.loop.viral_analyzer.transcription import (
-    UnifiedTranscriber,
+from tools.loop.viral_analyzer.transcriber import (
+    download_video_stream,
     extract_audio_ffmpeg,
+    transcribe_reels_glasser,
+    transcribe_reels_local,
+    UnifiedTranscriber,
 )
-
-
 from tools.loop.viral_analyzer.glasser import (
     GlasserError,
     GlasserMissingKeyError,
@@ -52,55 +52,6 @@ from tools.loop.viral_analyzer.glasser import (
     check_glasser_status,
     fetch_target_reels,
 )
-
-
-def download_video_stream(url_or_cdn: str, target_path: Path, is_reel_page: bool = False, max_bytes: int = 80 * 1024 * 1024) -> bool:
-    """Download video stream with direct CDN streaming and yt-dlp fallback."""
-    if not is_reel_page and (url_or_cdn.startswith("http://") or url_or_cdn.startswith("https://")):
-        try:
-            req = urllib.request.Request(
-                url_or_cdn,
-                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"},
-            )
-            downloaded = 0
-            with urllib.request.urlopen(req, timeout=60) as resp, open(target_path, "wb") as out:
-                while chunk := resp.read(64 * 1024):
-                    out.write(chunk)
-                    downloaded += len(chunk)
-                    if downloaded >= max_bytes:
-                        break
-            return target_path.exists() and target_path.stat().st_size > 1000
-        except Exception:
-            pass
-
-    try:
-        from yt_dlp import YoutubeDL
-
-        with YoutubeDL({
-            "outtmpl": str(target_path),
-            "format": "best[ext=mp4]/best",
-            "quiet": True,
-            "noplaylist": True,
-        }) as ydl:
-            ydl.download([url_or_cdn])
-        if target_path.exists() and target_path.stat().st_size > 1000:
-            return True
-    except Exception:
-        pass
-
-    cmd = [
-        "uv", "run", "yt-dlp",
-        "--skip-download", "false",
-        "-f", "best[ext=mp4]/best",
-        "-o", str(target_path),
-        "--quiet",
-        url_or_cdn,
-    ]
-    try:
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
-        return res.returncode == 0 and target_path.exists() and target_path.stat().st_size > 1000
-    except Exception:
-        return False
 
 
 def classify_pool(views: int, config: ViralAnalyzerConfig) -> Tuple[int, str]:
@@ -121,12 +72,10 @@ def run_analyzer_pipeline(
     media: bool = True,
     legacy_cache: bool = True,
     progress_cb: Optional[Callable[[str], None]] = None,
+    transcriber_engine: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Execute the full end-to-end viral analyzer pipeline."""
-    def report(message: str) -> None:
-        print(message)
-        if progress_cb:
-            progress_cb(message)
+    resolved_transcriber = (transcriber_engine or config.transcription.engine or "local").strip().lower()
 
     now = datetime.now(timezone.utc)
     cutoff_time = now - timedelta(hours=config.window_hours)
@@ -139,7 +88,7 @@ def run_analyzer_pipeline(
     print(f"Video Retention : {config.retention_days} Days (1 Week) in {config.storage.video_dir}")
     pool_desc = ", ".join([f"P{k}:{v.min_views}-{v.max_views or '+'}" for k, v in config.pools.items()])
     print(f"Pool Thresholds : {pool_desc}")
-    print(f"AI Transcriber  : {config.transcription.engine} ({config.transcription.model})")
+    print(f"AI Transcriber  : {resolved_transcriber} ({config.transcription.model})")
     print(f"Target Accounts : {len(config.targets)} accounts")
     print("=" * 80)
 
@@ -252,88 +201,25 @@ def run_analyzer_pipeline(
     print(f"[*] {source_summary}")
     progress_cb and progress_cb(f"[*] {source_summary}")
 
-    # 3. Download & Audio Transcription
-    # @deprecated [OBSOLETE]: Local video download + audio transcription pipeline is obsolete
-    # compared to cloud API transcription (e.g. Glasser.ai / ScrapeCreators).
-    # Retained for offline fallback and backward-compatibility; do not delete.
-    transcriber = None
-    if media:
-        try:
-            transcriber = UnifiedTranscriber(
-                engine=config.transcription.engine,
-                model_name=config.transcription.model,
-                language=config.transcription.language,
+    # 3. Transcription ("local" vs "glasser")
+    if media or transcriber_engine is not None:
+        if resolved_transcriber == "local":
+            transcribe_reels_local(
+                extracted_reels,
+                config=config,
+                effective_max=effective_max,
+                now=now,
+                progress_cb=progress_cb,
             )
-        except Exception as exc:
-            report(f"[!] Transcription unavailable ({exc}); continuing without transcripts.")
-
-    for idx, reel in enumerate(extracted_reels if transcriber else [], 1):
-        vid = reel["video_id"]
-        v_cdn = reel.get("video_url")
-        v_url = v_cdn if v_cdn else reel["url"]
-        is_reel_page = not bool(v_cdn)
-
-        video_path = config.storage.video_dir / f"reel_{vid}.mp4"
-        temp_audio = Path(tempfile.gettempdir()) / f"audio_{vid}.wav"
-
-        print(f"\n[{idx}/{len(extracted_reels)}] Pool {reel['current_pool']} ({reel['views']:,} views) - {reel['author_handle']}: {reel['title'][:50]}...")
-        progress_cb and progress_cb(f"[{idx}/{len(extracted_reels)}] Đang xử lý {reel['author_handle']}: {reel['title'][:60]}")
-
-        # Check target quota
-        if effective_max:
-            total_cached = len(list(config.storage.video_dir.glob("*.mp4")))
-            if total_cached >= effective_max and not video_path.exists():
-                print(f"    [*] Target video quota reached ({total_cached}/{effective_max}); skipping additional downloads.")
-                break
-
-        # Download video to cache if not already present
-        if not video_path.exists():
-            print(f"    [*] Downloading to persistent video cache: {video_path.name}...")
-            dl_ok = download_video_stream(v_url, video_path, is_reel_page=is_reel_page)
-            if not dl_ok:
-                print(f"    [-] Download failed for {vid}")
-                continue
-            # Register in retention manifest (kept for 1 week)
-            register_video(config.storage.video_dir, vid, video_path, retention_days=config.retention_days, now=now)
-            print(f"    [+] Saved to cache (Expires in {config.retention_days} days).")
+        elif resolved_transcriber == "glasser":
+            transcribe_reels_glasser(
+                extracted_reels,
+                progress_cb=progress_cb,
+            )
         else:
-            print(f"    [*] Found in cache: {video_path.name}")
-
-        # Check existing transcript in centralized DB first
-        existing_tr = get_cached_transcript(vid)
-
-        if existing_tr:
-            print(f"    [*] Transcript already present in DB ({len(existing_tr)} chars).")
-            reel["transcript"] = existing_tr
-            reel["segments"] = []
-            reel["language"] = "vi"
-            continue
-
-        # Extract lightweight audio capped at max duration
-        try:
-            print("    [*] Extracting 16kHz mono audio via FFmpeg...")
-            audio_ok = extract_audio_ffmpeg(
-                video_path,
-                temp_audio,
-                max_duration_sec=config.transcription.max_audio_duration_sec,
+            raise ValueError(
+                f"Unsupported transcriber_engine: {resolved_transcriber!r}. Expected 'local' or 'glasser'."
             )
-            if audio_ok:
-                print(f"    [*] Transcribing with {config.transcription.engine.upper()}...")
-                tr_res = transcriber.transcribe_audio(temp_audio)
-                reel["transcript"] = tr_res["transcript"]
-                reel["segments"] = tr_res["segments"]
-                reel["language"] = tr_res["language"]
-                print(f"    [+] Transcribed ({len(tr_res['transcript'])} chars): {tr_res['transcript'][:70]}...")
-            else:
-                reel["transcript"] = ""
-                reel["segments"] = []
-        finally:
-            # Ephemeral audio cleanup (video remains in persistent cache for 1 week!)
-            if temp_audio.exists():
-                try:
-                    os.remove(temp_audio)
-                except Exception:
-                    pass
 
     # 4. Group by Pool & Save Outputs
     by_pools: Dict[str, List[Dict[str, Any]]] = {
@@ -403,10 +289,17 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Preview targets and retention without scraping/transcribing")
     parser.add_argument("--limit-targets", type=int, default=None, help="Limit number of target accounts to scan")
     parser.add_argument("--max-videos", type=int, default=None, help="Stop once target number of cached videos is reached")
+    parser.add_argument("--transcriber", choices=["local", "glasser"], default=None, help="Transcriber engine ('local' or 'glasser')")
 
     args = parser.parse_args()
     cfg = load_config(args.config)
-    run_analyzer_pipeline(cfg, dry_run=args.dry_run, limit_targets=args.limit_targets, max_videos=args.max_videos)
+    run_analyzer_pipeline(
+        cfg,
+        dry_run=args.dry_run,
+        limit_targets=args.limit_targets,
+        max_videos=args.max_videos,
+        transcriber_engine=args.transcriber,
+    )
 
 
 if __name__ == "__main__":

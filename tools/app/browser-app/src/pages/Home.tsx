@@ -1259,7 +1259,7 @@ const Home: React.FC = () => {
                                         <p className="transcript-text">
                                           {topic.transcript && topic.transcript.trim()
                                             ? topic.transcript
-                                            : 'Chưa có bản bóc băng thoại chi tiết.'}
+                                            : 'Không có lời thoại (video dạng nhạc nền / hình ảnh).'}
                                         </p>
                                       </div>
                                       {topic.why_viral && (

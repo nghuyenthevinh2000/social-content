@@ -34,7 +34,7 @@
     "output_file": "local/social-listening-test/viral_reels_48h.json"
   },
   "transcription": {
-    "engine": "qwen3",
+    "engine": "local",
     "model": "Qwen/Qwen3-ASR-0.6B",
     "language": null,
     "max_audio_duration_sec": 180

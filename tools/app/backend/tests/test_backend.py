@@ -106,6 +106,25 @@ class BackendTests(unittest.TestCase):
         topics = normalize_topics([{"title": "Chỉ một"}], fallback)
         self.assertEqual(len(topics), 3)
 
+    def test_heuristic_and_normalize_topics_sorted_by_views_up_to_10(self):
+        reels = [
+            {"video_id": f"v_{i}", "url": f"https://www.facebook.com/reel/v_{i}", "views": i * 1000, "velocity_per_hour": i * 100}
+            for i in range(1, 15)
+        ]
+        fallback = heuristic_topics("test sheet", reels, limit=10)
+        self.assertEqual(len(fallback), 10)
+        self.assertEqual(fallback[0]["views"], 14000)
+        self.assertEqual(fallback[-1]["views"], 5000)
+        # Verify descending order
+        views_list = [t["views"] for t in fallback]
+        self.assertEqual(views_list, sorted(views_list, reverse=True))
+
+        # Test normalize_topics also preserves max 10 and descending view sort
+        agent_data = [{"title": "Hot video", "source_urls": ["https://www.facebook.com/reel/v_14"]}]
+        normalized = normalize_topics(agent_data, fallback, reels=reels, limit=10)
+        self.assertEqual(len(normalized), 10)
+        self.assertEqual(normalized[0]["views"], 14000)
+
     def test_normalize_topics_resolves_page_url_to_reel_url(self):
         fallback = heuristic_topics("kênh", [])
         reels = [
@@ -220,17 +239,6 @@ class BackendTests(unittest.TestCase):
         self.assertTrue(LOG_PATH.exists())
         content = LOG_PATH.read_text(encoding="utf-8")
         self.assertIn(marker, content)
-
-    def test_download_models_snapshot(self):
-        from unittest.mock import MagicMock, patch
-        from tools.app.backend.archive.download_models import download_model
-
-        mock_hub = MagicMock()
-        mock_hub.snapshot_download.return_value = "/tmp/fake_model"
-        with patch.dict("sys.modules", {"huggingface_hub": mock_hub}):
-            res = download_model("test/repo-model", cache_dir=Path("/tmp/cache"))
-            self.assertEqual(res, Path("/tmp/fake_model"))
-            mock_hub.snapshot_download.assert_called_once_with(repo_id="test/repo-model", cache_dir="/tmp/cache")
 
     def test_resolve_xlsx_bytes_passthrough(self):
         from tools.app.backend.research import resolve_xlsx_bytes

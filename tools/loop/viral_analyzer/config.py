@@ -40,7 +40,7 @@ class StorageConfig:
 
 @dataclass
 class TranscriptionConfig:
-    engine: str = "qwen3"
+    engine: str = "local"
     model: str = "Qwen/Qwen3-ASR-0.6B"
     language: Optional[str] = None
     max_audio_duration_sec: int = 180
@@ -98,7 +98,7 @@ def load_config(config_path_or_dict: Any) -> ViralAnalyzerConfig:
     # Parse Transcription
     tr_raw = raw.get("transcription", {})
     transcription = TranscriptionConfig(
-        engine=tr_raw.get("engine", "qwen3"),
+        engine=tr_raw.get("engine", "local"),
         model=tr_raw.get("model", "Qwen/Qwen3-ASR-0.6B"),
         language=tr_raw.get("language"),
         max_audio_duration_sec=int(tr_raw.get("max_audio_duration_sec", 180)),

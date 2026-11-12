@@ -46,7 +46,7 @@ Config JSON -> Retention Sweep (Purge > 7d) -> Glasser v2 Ingestion (48h Window)
 | `pools` | `dict` | Pools 1–5 | View count thresholds defining each traffic pool. |
 | `storage.video_dir` | `string` | `local/.../cache/videos` | Directory for downloaded video MP4 files and manifest. |
 | `storage.output_file` | `string` | `local/.../viral_reels_48h.json` | Path to output JSON summary artifact. |
-| `transcription.engine` | `string` | `"qwen3"` | STT engine (`"qwen3"` or `"faster-whisper"`). |
+| `transcription.engine` | `string` | `"local"` | Transcriber engine (`"local"` or `"glasser"`). |
 | `transcription.model` | `string` | `"Qwen/Qwen3-ASR-0.6B"` | Model HuggingFace identifier. |
 | `transcription.language` | `string` | `null` | Speech language (`null` enables native auto-detection). |
 | `transcription.max_audio_duration_sec` | `int` | `180` | Maximum audio duration extracted to prevent memory spikes. |

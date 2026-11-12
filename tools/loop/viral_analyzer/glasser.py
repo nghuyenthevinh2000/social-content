@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -404,3 +405,15 @@ def fetch_target_reels(
             return reels
 
     return []
+
+
+# -- Transcript Fetching & Caching (delegated to transcriber.glasser) --------
+
+from tools.loop.viral_analyzer.transcriber.glasser import (
+    GlasserTranscriber,
+    fetch_reel_transcript,
+    fetch_top_reels_transcripts,
+    transcribe_reels_glasser,
+)
+
+

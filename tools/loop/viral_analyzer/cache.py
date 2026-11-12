@@ -202,6 +202,47 @@ def get_cached_transcript(video_id: str, **_kwargs: Any) -> Optional[str]:
     return None
 
 
+def save_cached_transcript(
+    video_id: str,
+    transcript: str,
+    url: Optional[str] = None,
+    author_handle: str = "",
+    title: str = "",
+    **_kwargs: Any,
+) -> None:
+    """Save or update video transcript in PostgreSQL `videos` table."""
+    if not video_id or not transcript:
+        return
+    primary_id = f"facebook:{video_id}"
+    now_ts = now_iso()
+    try:
+        with tx() as conn:
+            conn.execute(
+                """
+                INSERT INTO videos (
+                    id, platform, video_id, url, author_handle, title,
+                    transcript, transcribed_at, first_seen_at, last_scraped_at
+                ) VALUES (%s, 'facebook', %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT(id) DO UPDATE SET
+                    transcript = EXCLUDED.transcript,
+                    transcribed_at = EXCLUDED.transcribed_at
+                """,
+                (
+                    primary_id,
+                    video_id,
+                    url or f"https://www.facebook.com/reel/{video_id}",
+                    author_handle or "unknown",
+                    title or "",
+                    transcript,
+                    now_ts,
+                    now_ts,
+                    now_ts,
+                ),
+            )
+    except Exception:
+        pass
+
+
 def persist_to_database(reels: List[Dict[str, Any]], **_kwargs: Any) -> None:
     """Persist analyzed reels, transcripts, and time-series metric snapshots to PostgreSQL."""
     now_ts = now_iso()

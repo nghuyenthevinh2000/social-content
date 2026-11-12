@@ -5,14 +5,16 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from tools.loop.viral_analyzer.config import (
     DEFAULT_POOLS,
     PoolDefinition,
+    StorageConfig,
     ViralAnalyzerConfig,
     load_config,
 )
-from tools.loop.viral_analyzer.pipeline import classify_pool
+from tools.loop.viral_analyzer.pipeline import classify_pool, run_analyzer_pipeline
 from tools.loop.viral_analyzer.retention import (
     load_manifest,
     purge_expired_videos,
@@ -54,7 +56,7 @@ class TestViralAnalyzerPipeline(unittest.TestCase):
                 "2": {"name": "test_breakout", "min_views": 100, "max_views": None},
             },
             "transcription": {
-                "engine": "qwen3",
+                "engine": "local",
                 "model": "Qwen/Qwen3-ASR-0.6B",
             },
             "max_videos": 100,
@@ -65,7 +67,7 @@ class TestViralAnalyzerPipeline(unittest.TestCase):
         self.assertEqual(cfg.max_videos, 100)
         self.assertEqual(cfg.pools[1].name, "test_sandbox")
         self.assertEqual(cfg.pools[2].name, "test_breakout")
-        self.assertEqual(cfg.transcription.engine, "qwen3")
+        self.assertEqual(cfg.transcription.engine, "local")
 
     def test_one_week_retention_purge(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -98,6 +100,33 @@ class TestViralAnalyzerPipeline(unittest.TestCase):
             manifest = load_manifest(vdir)
             self.assertIn("fresh_001", manifest)
             self.assertNotIn("old_002", manifest)
+
+    def test_transcriber_engine_routing(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            cfg = ViralAnalyzerConfig(
+                storage=StorageConfig(
+                    video_dir=tmp_path / "videos",
+                    output_file=tmp_path / "out.json",
+                ),
+                targets=[],
+            )
+            with (
+                mock.patch("tools.loop.viral_analyzer.pipeline.persist_to_database"),
+                mock.patch("tools.loop.viral_analyzer.pipeline.transcribe_reels_local") as mock_local,
+                mock.patch("tools.loop.viral_analyzer.pipeline.transcribe_reels_glasser") as mock_glasser,
+            ):
+                run_analyzer_pipeline(cfg, transcriber_engine="local")
+                mock_local.assert_called_once()
+                mock_glasser.assert_not_called()
+
+                mock_local.reset_mock()
+                run_analyzer_pipeline(cfg, transcriber_engine="glasser")
+                mock_glasser.assert_called_once()
+                mock_local.assert_not_called()
+
+                with self.assertRaises(ValueError):
+                    run_analyzer_pipeline(cfg, transcriber_engine="qwen3")
 
 
 if __name__ == "__main__":

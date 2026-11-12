@@ -928,7 +928,7 @@ def main() -> None:
     if args.check_asr:
         import traceback
 
-        from tools.loop.viral_analyzer.transcription import UnifiedTranscriber
+        from tools.loop.viral_analyzer.transcriber import UnifiedTranscriber
 
         try:
             transcriber = UnifiedTranscriber()
