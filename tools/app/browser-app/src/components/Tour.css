@@ -3,43 +3,49 @@
   inset: 0;
   z-index: 100000;
 }
+
 .tour-blocker {
   position: absolute;
   inset: 0;
 }
+
 /* transparent box over the target; the huge shadow dims everything else */
 .tour-spot {
   position: absolute;
-  border: 2px solid var(--accent);
-  border-radius: 12px;
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-md);
   background: transparent;
-  box-shadow: 0 0 0 9999px rgba(20, 15, 10, 0.55);
+  box-shadow: var(--shadow-tour-spot);
   pointer-events: none;
   transition: all 0.2s ease;
 }
+
 .tour-tip {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: min(340px, calc(100vw - 24px));
+  width: min(340px, calc(100vw - var(--space-5)));
   box-sizing: border-box;
-  padding: 14px;
-  border-radius: 14px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-tour-tip);
 }
+
 .tour-tip p {
-  margin: 6px 0 12px;
-  font-size: 0.9rem;
-  color: var(--muted);
+  margin: var(--space-1) 0 var(--space-3);
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
 }
+
 .tour-actions {
   display: flex;
-  gap: 6px;
+  gap: var(--space-2);
   align-items: center;
 }
+
 .tour-actions small {
   margin-right: auto;
-  color: var(--muted);
+  color: var(--color-text-muted);
 }

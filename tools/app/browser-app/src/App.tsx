@@ -39,18 +39,12 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 32, textAlign: 'center', fontFamily: 'system-ui' }}>
+        <div className="app-error-boundary">
           <h2>Đã xảy ra lỗi hiển thị</h2>
-          <p style={{ color: '#666', margin: '12px 0 20px' }}>{this.state.error?.message}</p>
+          <p className="app-error-msg">{this.state.error?.message}</p>
           <button
-            style={{
-              padding: '10px 18px',
-              borderRadius: 12,
-              border: '1px solid #ddd',
-              background: '#fff',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
+            type="button"
+            className="app-error-retry-btn"
             onClick={() => {
               this.setState({ hasError: false, error: null });
               window.location.href = '/';

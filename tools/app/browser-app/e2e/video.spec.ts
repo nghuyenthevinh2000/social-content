@@ -147,7 +147,7 @@ test('authenticated user uploads images in Profile, selects them in Video tab, a
   await page.getByRole('tab', { name: 'Hồ sơ' }).click();
   await page.getByRole('tab', { name: 'Tạo Video' }).click();
 
-  await expect(page.getByText(/500,000 credits/)).toBeVisible();
+  await expect(page.getByText('$0.50')).toBeVisible();
   await page.locator('[data-testid^="context-select-"]').first().click();
   await page.getByPlaceholder(/Nhập lời thoại/).fill('Chia sẻ 3 bí quyết làm bánh mì giòn tan');
 
@@ -162,12 +162,12 @@ test('authenticated user uploads images in Profile, selects them in Video tab, a
 
   // Job appears in history as pending, balance updated to 270,000
   await expect(page.getByText('Đang chờ hàng đợi')).toBeVisible();
-  await expect(page.getByText(/270,000 credits/)).toBeVisible();
+  await expect(page.getByText('$0.27')).toBeVisible();
 
   // Cancel pending job -> refunds to 500,000
   await page.getByRole('button', { name: 'Huỷ & Hoàn tiền' }).click();
   await expect(page.getByText('Đã huỷ')).toBeVisible();
-  await expect(page.getByText(/500,000 credits/)).toBeVisible();
+  await expect(page.getByText('$0.50')).toBeVisible();
 
   // Verify collapsible history card: newly created job starts expanded, clicking header collapses it
   const videoCardHead = page.locator('.video-card-head').first();
@@ -239,9 +239,7 @@ test('clicking Copy cho AI in Analysis immediately switches to Video tab and pas
   };
 
   await page.route('**/api/sources/topics*', (route) => route.fulfill({ json: { ok: true, topics: [] } }));
-  await page.route('**/api/jobs', (route) =>
-    route.fulfill({ json: { ok: true, jobs: [completedAnalysisJob] } }),
-  );
+  await page.route('**/api/jobs', (route) => route.fulfill({ json: { ok: true, jobs: [completedAnalysisJob] } }));
   await page.route('**/api/jobs/job_analysis_1', (route) => route.fulfill({ json: completedAnalysisJob }));
   await page.route('**/api/media*', (route) => route.fulfill({ json: { ok: true, media: [] } }));
   await page.route('**/api/videos*', (route) => route.fulfill({ json: { ok: true, jobs: [], balance: 0 } }));

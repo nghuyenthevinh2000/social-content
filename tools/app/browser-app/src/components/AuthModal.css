@@ -1,82 +1,82 @@
 .auth-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--color-overlay);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .auth-modal {
-  background: var(--card, #ffffff);
-  border: 1px solid var(--line, #e5e7eb);
-  border-radius: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 400px;
-  padding: 24px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-modal);
 }
 
 .auth-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .auth-header h3 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text, #111827);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
 }
 
 .auth-close-btn {
   background: transparent;
   border: none;
-  font-size: 16px;
-  color: var(--muted, #6b7280);
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 8px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
 }
 
 .auth-close-btn:hover {
-  background: var(--line, #f3f4f6);
+  background: var(--color-border);
 }
 
 .auth-sub {
-  margin: 0 0 16px 0;
-  font-size: 12px;
-  color: var(--muted, #6b7280);
+  margin: 0 0 var(--space-4) 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .auth-alert {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .auth-facebook-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--space-3);
   width: 100%;
-  padding: 10px 16px;
-  background-color: #1877f2;
-  color: #ffffff;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-facebook);
+  color: var(--color-text-inverse);
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
 .auth-facebook-btn:hover:not(:disabled) {
-  background-color: #166fe5;
+  background-color: color-mix(in srgb, var(--color-facebook) 90%, black);
 }
 
 .auth-facebook-btn:disabled {
@@ -92,48 +92,48 @@
   display: flex;
   align-items: center;
   text-align: center;
-  margin: 16px 0 12px 0;
-  color: var(--muted, #9ca3af);
-  font-size: 12px;
+  margin: var(--space-4) 0 var(--space-3) 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 .auth-divider::before,
 .auth-divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid var(--line, #e5e7eb);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .auth-divider span {
-  padding: 0 10px;
+  padding: 0 var(--space-3);
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 .auth-label {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text, #374151);
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
 }
 
 .auth-submit-btn {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   width: 100%;
-  min-height: 42px;
+  min-height: var(--control-md);
 }
 
 .auth-footer {
-  margin-top: 20px;
+  margin-top: var(--space-4);
   text-align: center;
-  font-size: 13px;
-  color: var(--muted, #6b7280);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .auth-footer p {
@@ -143,8 +143,8 @@
 .link-btn {
   background: transparent;
   border: none;
-  color: var(--accent, #e11d48);
-  font-weight: 600;
+  color: var(--color-accent);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   padding: 0;
   text-decoration: underline;

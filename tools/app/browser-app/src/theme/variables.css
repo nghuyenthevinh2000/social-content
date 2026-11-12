@@ -1,2 +1,88 @@
-/* For information on how to create your own theme, please refer to:
-http://ionicframework.com/docs/theming/ */
+:root {
+  /* Font Stacks */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Font Weights */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+
+  /* Text Sizes */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-display: 32px;
+
+  /* Spacing Grid (4px based) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  /* Border Radii */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* Control Heights */
+  --control-sm: 32px;
+  --control-md: 44px;
+  --control-lg: 52px;
+
+  /* Colors - Surface */
+  --color-bg: #f4efe7;
+  --color-surface: #fffdf8;
+  --color-surface-alt: #ffffff;
+
+  /* Colors - Text */
+  --color-text: #14110f;
+  --color-text-muted: #6b625b;
+  --color-text-inverse: #ffffff;
+
+  /* Colors - Border */
+  --color-border: #ded5c8;
+
+  /* Colors - Brand */
+  --color-accent: #d9480f;
+  --color-accent-soft: #ffe8d9;
+
+  /* Colors - Status */
+  --color-success: #207a4b;
+  --color-success-soft: #e6f4ea;
+  --color-warning: #b45309;
+  --color-warning-soft: #fef3c7;
+  --color-danger: #c92a2a;
+  --color-danger-soft: #fee2e2;
+  --color-info: #1971c2;
+  --color-info-soft: #d0ebff;
+  --color-video-bg: #000000;
+
+  /* Colors - Platform */
+  --color-facebook: #1877f2;
+  --color-overlay: rgba(0, 0, 0, 0.45);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-panel: 0 18px 50px -34px rgba(38, 25, 12, 0.45);
+  --shadow-pack-active: 0 4px 14px -4px rgba(217, 72, 15, 0.2);
+  --shadow-sheet: 0 20px 40px -10px rgba(0, 0, 0, 0.25);
+  --shadow-tour-spot: 0 0 0 9999px rgba(20, 15, 10, 0.55);
+  --shadow-tour-tip: 0 8px 30px rgba(0, 0, 0, 0.25);
+
+  /* Gradients */
+  --color-gradient-glow-1: #ffe4cc;
+  --color-gradient-glow-2: #e3ecff;
+
+  /* Ionic Overrides */
+  --ion-font-family: var(--font-sans);
+  --ion-background-color: var(--color-bg);
+  --ion-text-color: var(--color-text);
+}

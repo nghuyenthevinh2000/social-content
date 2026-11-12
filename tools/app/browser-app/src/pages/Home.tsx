@@ -9,14 +9,7 @@ import { MediaPanel } from '../components/MediaPanel';
 import { Tour, type TourStep } from '../components/Tour';
 import { VideoTab } from '../components/VideoTab';
 import { CREATOR_PACKS, type CreatorPack } from '../data/creatorPacks';
-import {
-  auth,
-  FacebookAuthProvider,
-  linkWithPopup,
-  onAuthStateChanged,
-  signOut,
-  type User,
-} from '../firebase';
+import { auth, FacebookAuthProvider, linkWithPopup, onAuthStateChanged, signOut, type User } from '../firebase';
 import './Home.css';
 
 type Topic = {
@@ -98,14 +91,54 @@ const DEFAULT_TOPIC = 'sở thích cá nhân';
 const isDefaultTopic = (t: TopicItem) => t.name.toLowerCase() === DEFAULT_TOPIC;
 const TOUR_KEY = 'aibrand-tour-done';
 const TOUR_STEPS: TourStep[] = [
-  { tab: 'library', target: '.tabbar-btn:nth-child(1)', title: 'Thư viện', text: 'Nơi lưu các chủ đề và kênh creator bạn muốn theo dõi.' },
-  { tab: 'library', target: '#import', title: 'Nhập dữ liệu', text: 'Chọn file Excel hoặc dán link Google Sheet — mỗi sheet thành một chủ đề.' },
-  { tab: 'library', target: '.topic-accordion', title: 'Chủ đề mặc định', text: 'Mở chủ đề để thêm/xoá kênh, hoặc bấm ▶ Chạy để phân tích riêng chủ đề này.' },
-  { tab: 'library', target: '.new-topic', title: 'Tạo chủ đề mới', text: 'Nhập tên chủ đề và (tuỳ chọn) link kênh đầu tiên.' },
-  { tab: 'library', target: '.actionbar .primary', title: 'Chạy tất cả', text: 'Phân tích mọi chủ đề trong thư viện cùng lúc.' },
-  { tab: 'analyzer', target: '.tabbar-btn:nth-child(2)', title: 'Phân tích', text: 'Xem tiến độ, lịch sử và kết quả ý tưởng viral. Dùng "Copy cho AI" để lấy kịch bản.' },
-  { tab: 'video', target: '.tabbar-btn:nth-child(3)', title: 'Tạo Video AI', text: 'Tạo video ngắn 10 giây với khuôn mặt mẫu và giọng đọc tiếng Việt tự nhiên.' },
-  { tab: 'profile', target: '.tabbar-btn:nth-child(4)', title: 'Hồ sơ', text: 'Đăng nhập/đăng xuất, nạp gói creator và quản lý ảnh mẫu khuôn mặt.' },
+  {
+    tab: 'library',
+    target: '.tabbar-btn:nth-child(1)',
+    title: 'Thư viện',
+    text: 'Nơi lưu các chủ đề và kênh creator bạn muốn theo dõi.',
+  },
+  {
+    tab: 'library',
+    target: '#import',
+    title: 'Nhập dữ liệu',
+    text: 'Chọn file Excel hoặc dán link Google Sheet — mỗi sheet thành một chủ đề.',
+  },
+  {
+    tab: 'library',
+    target: '.topic-accordion',
+    title: 'Chủ đề mặc định',
+    text: 'Mở chủ đề để thêm/xoá kênh, hoặc bấm ▶ Chạy để phân tích riêng chủ đề này.',
+  },
+  {
+    tab: 'library',
+    target: '.new-topic',
+    title: 'Tạo chủ đề mới',
+    text: 'Nhập tên chủ đề và (tuỳ chọn) link kênh đầu tiên.',
+  },
+  {
+    tab: 'library',
+    target: '.actionbar .primary',
+    title: 'Chạy tất cả',
+    text: 'Phân tích mọi chủ đề trong thư viện cùng lúc.',
+  },
+  {
+    tab: 'analyzer',
+    target: '.tabbar-btn:nth-child(2)',
+    title: 'Phân tích',
+    text: 'Xem tiến độ, lịch sử và kết quả ý tưởng viral. Dùng "Copy cho AI" để lấy kịch bản.',
+  },
+  {
+    tab: 'video',
+    target: '.tabbar-btn:nth-child(3)',
+    title: 'Tạo Video AI',
+    text: 'Tạo video ngắn 10 giây với khuôn mặt mẫu và giọng đọc tiếng Việt tự nhiên.',
+  },
+  {
+    tab: 'profile',
+    target: '.tabbar-btn:nth-child(4)',
+    title: 'Hồ sơ',
+    text: 'Đăng nhập/đăng xuất, nạp gói creator và quản lý ảnh mẫu khuôn mặt.',
+  },
 ];
 
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
@@ -665,7 +698,9 @@ const Home: React.FC = () => {
                       {facebookId ? (
                         <>
                           <dt>Facebook ID</dt>
-                          <dd><code>{facebookId}</code></dd>
+                          <dd>
+                            <code>{facebookId}</code>
+                          </dd>
                         </>
                       ) : (
                         <>
@@ -716,7 +751,7 @@ const Home: React.FC = () => {
               {user && (
                 <section className="panel">
                   <h2>Ảnh mẫu khuôn mặt & Bối cảnh</h2>
-                  <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                  <p className="muted profile-media-desc">
                     Tải lên ảnh chân dung rõ mặt để AI giữ nhất quán khuôn mặt của bạn trong các video tạo ra.
                   </p>
                   <MediaPanel />
@@ -725,60 +760,58 @@ const Home: React.FC = () => {
 
               {user && (
                 <details className="panel creator-store">
-                <summary className="store-summary">
-                  <div className="store-header-wrap">
-                    <div>
-                      <h2>Gói Content Creator</h2>
-                      <p className="muted count">Nạp nhanh danh sách creator vào Thư viện để phân tích video</p>
-                    </div>
-                    <span className="store-toggle-icon" aria-hidden="true" />
-                  </div>
-                </summary>
-
-                <div className="pack-list">
-                  {CREATOR_PACKS.map((pack) => {
-                    const isOwned = topics.some(
-                      (t) => t.name.toLowerCase() === pack.name.toLowerCase(),
-                    );
-                    return (
-                      <div
-                        key={pack.id}
-                        className={`pack-card ${pack.disabled ? 'disabled' : 'active'}`}
-                        onClick={() => !pack.disabled && handleSelectPack(pack)}
-                        role={pack.disabled ? undefined : 'button'}
-                        tabIndex={pack.disabled ? undefined : 0}
-                      >
-                        <div className="pack-card-top">
-                          <span className="pack-card-title">{pack.name}</span>
-                        </div>
-
-                        <p className="pack-card-desc">{pack.description}</p>
-
-                        <div className="pack-card-bottom">
-                          <button
-                            type="button"
-                            className={`pack-action-btn ${
-                              pack.disabled ? 'disabled' : isOwned ? 'owned' : 'primary'
-                            }`}
-                            disabled={pack.disabled || busy || claimingPack === pack.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!pack.disabled) handleSelectPack(pack);
-                            }}
-                          >
-                            {pack.disabled
-                              ? `${pack.price} · Chưa mở bán`
-                              : claimingPack === pack.id
-                                ? 'Đang nạp…'
-                                : isOwned
-                                  ? '✓ Đã nhận (Nạp lại)'
-                                  : `Nhận gói (${pack.price})`}
-                          </button>
-                        </div>
+                  <summary className="store-summary">
+                    <div className="store-header-wrap">
+                      <div>
+                        <h2>Gói Content Creator</h2>
+                        <p className="muted count">Nạp nhanh danh sách creator vào Thư viện để phân tích video</p>
                       </div>
-                    );
-                  })}
-                </div>
+                      <span className="store-toggle-icon" aria-hidden="true" />
+                    </div>
+                  </summary>
+
+                  <div className="pack-list">
+                    {CREATOR_PACKS.map((pack) => {
+                      const isOwned = topics.some((t) => t.name.toLowerCase() === pack.name.toLowerCase());
+                      return (
+                        <div
+                          key={pack.id}
+                          className={`pack-card ${pack.disabled ? 'disabled' : 'active'}`}
+                          onClick={() => !pack.disabled && handleSelectPack(pack)}
+                          role={pack.disabled ? undefined : 'button'}
+                          tabIndex={pack.disabled ? undefined : 0}
+                        >
+                          <div className="pack-card-top">
+                            <span className="pack-card-title">{pack.name}</span>
+                          </div>
+
+                          <p className="pack-card-desc">{pack.description}</p>
+
+                          <div className="pack-card-bottom">
+                            <button
+                              type="button"
+                              className={`pack-action-btn ${
+                                pack.disabled ? 'disabled' : isOwned ? 'owned' : 'primary'
+                              }`}
+                              disabled={pack.disabled || busy || claimingPack === pack.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!pack.disabled) handleSelectPack(pack);
+                              }}
+                            >
+                              {pack.disabled
+                                ? `${pack.price} · Chưa mở bán`
+                                : claimingPack === pack.id
+                                  ? 'Đang nạp…'
+                                  : isOwned
+                                    ? '✓ Đã nhận (Nạp lại)'
+                                    : `Nhận gói (${pack.price})`}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </details>
               )}
             </>
@@ -845,9 +878,6 @@ const Home: React.FC = () => {
                       Nạp
                     </button>
                   </form>
-                  <small className="muted hint">
-                    Google Sheet: <strong>Chia sẻ</strong> → <strong>Bất kỳ ai có đường liên kết</strong> (Xem).
-                  </small>
                   {notice && <div className={`alert ${notice.type}`}>{notice.text}</div>}
                 </section>
 
@@ -1152,7 +1182,7 @@ const Home: React.FC = () => {
                       {sheet.source_breakdown &&
                         ((sheet.source_breakdown.glasser_api?.length ?? 0) > 0 ||
                           (sheet.source_breakdown.cache?.length ?? 0) > 0) && (
-                          <div className="source-breakdown muted" style={{ fontSize: '0.82rem', margin: '0.35rem 0' }}>
+                          <div className="source-breakdown muted">
                             {(sheet.source_breakdown.glasser_api?.length ?? 0) > 0 && (
                               <span title={sheet.source_breakdown.glasser_api?.join(', ')}>
                                 ⚡ Glasser API: {sheet.source_breakdown.glasser_api?.length} kênh
@@ -1178,168 +1208,172 @@ const Home: React.FC = () => {
                       {sheet.status === 'pending' && <p className="muted">Đang chờ tới lượt…</p>}
                       {sheet.status === 'running' && <p className="muted">Đang crawl, phân pool và hỏi agent…</p>}
 
-                      {sheet.topics.length > 0 && (() => {
-                        const sortedTopics = [...sheet.topics]
-                          .sort((a, b) => (b.views || 0) - (a.views || 0))
-                          .slice(0, 10);
-                        return (
-                          <div className="topics">
-                            {sortedTopics.map((topic, topicIndex) => {
-                              const reelUrl = getTopicReelUrl(topic);
-                              const itemKey = `${sheet.slug}-${topicIndex}`;
-                              const currentMode = playerMode[itemKey] || (topic.video_url ? 'video' : 'iframe');
-                              return (
-                                <article className="topic reel-card" key={topicIndex}>
-                                  <div className="topic-top">
-                                    <div className="reel-meta-left">
-                                      <span className="topic-num">#{topicIndex + 1}</span>
-                                      {topic.author_handle && (
-                                        <span className="reel-author">@{topic.author_handle}</span>
-                                      )}
-                                    </div>
-                                    <span className={`source-tag ${topic.generated_by}`}>
-                                      {topic.generated_by === 'agent' ? 'agent' : 'dự phòng'}
-                                    </span>
-                                  </div>
-
-                                  <h3 className="reel-title">{topic.title}</h3>
-
-                                  <div className="reel-badges">
-                                    {typeof topic.views === 'number' && topic.views > 0 && (
-                                      <span className="metric-badge views" title={`${formatNumber(topic.views)} lượt xem`}>
-                                        🔥 {formatCompact(topic.views)} views
-                                      </span>
-                                    )}
-                                    {typeof topic.velocity_per_hour === 'number' && topic.velocity_per_hour > 0 && (
-                                      <span className="metric-badge velocity" title={`${formatNumber(topic.velocity_per_hour)} lượt xem/giờ`}>
-                                        ⚡ {formatCompact(topic.velocity_per_hour)}/h
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <div className="reel-player-box">
-                                    {currentMode === 'video' && topic.video_url ? (
-                                      <video
-                                        src={topic.video_url}
-                                        controls
-                                        playsInline
-                                        preload="metadata"
-                                        className="reel-video-player"
-                                        onError={() => {
-                                          if (reelUrl) {
-                                            setPlayerMode((prev) => ({ ...prev, [itemKey]: 'iframe' }));
-                                          }
-                                        }}
-                                      />
-                                    ) : reelUrl ? (
-                                      <iframe
-                                        src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(reelUrl)}&show_text=0&width=280`}
-                                        title={topic.title || `Reel ${topicIndex + 1}`}
-                                        className="reel-iframe-player"
-                                        scrolling="no"
-                                        frameBorder="0"
-                                        allowFullScreen={true}
-                                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                                        loading="lazy"
-                                      />
-                                    ) : (
-                                      <div className="reel-player-placeholder">
-                                        <span>Không có link video</span>
+                      {sheet.topics.length > 0 &&
+                        (() => {
+                          const sortedTopics = [...sheet.topics]
+                            .sort((a, b) => (b.views || 0) - (a.views || 0))
+                            .slice(0, 10);
+                          return (
+                            <div className="topics">
+                              {sortedTopics.map((topic, topicIndex) => {
+                                const reelUrl = getTopicReelUrl(topic);
+                                const itemKey = `${sheet.slug}-${topicIndex}`;
+                                const currentMode = playerMode[itemKey] || (topic.video_url ? 'video' : 'iframe');
+                                return (
+                                  <article className="topic reel-card" key={topicIndex}>
+                                    <div className="topic-top">
+                                      <div className="reel-meta-left">
+                                        <span className="topic-num">#{topicIndex + 1}</span>
+                                        {topic.author_handle && (
+                                          <span className="reel-author">@{topic.author_handle}</span>
+                                        )}
                                       </div>
-                                    )}
-                                  </div>
-
-                                  <details className="reel-analysis-details">
-                                    <summary className="reel-analysis-summary">
-                                      <span>💡 Transcript nội dung & Phân tích viral</span>
-                                    </summary>
-                                    <div className="reel-analysis-content">
-                                      <div className="analysis-item">
-                                        <strong>🎙️ Transcript nội dung:</strong>
-                                        <p className="transcript-text">
-                                          {topic.transcript && topic.transcript.trim()
-                                            ? topic.transcript
-                                            : 'Không có lời thoại (video dạng nhạc nền / hình ảnh).'}
-                                        </p>
-                                      </div>
-                                      {topic.why_viral && (
-                                        <div className="analysis-item">
-                                          <strong>🔥 Vì sao viral:</strong>
-                                          <p>{topic.why_viral}</p>
-                                        </div>
-                                      )}
-                                      {topic.hook && (
-                                        <div className="analysis-item">
-                                          <strong>🎣 Hook mở đầu (3s):</strong>
-                                          <p className="hook-quote">“{topic.hook}”</p>
-                                        </div>
-                                      )}
-                                      {topic.angle && (
-                                        <div className="analysis-item">
-                                          <strong>📐 Góc tiếp cận:</strong>
-                                          <p>{topic.angle}</p>
-                                        </div>
-                                      )}
-                                      {topic.outline && topic.outline.length > 0 && (
-                                        <div className="analysis-item">
-                                          <strong>📋 Dàn ý triển khai:</strong>
-                                          <ol className="analysis-outline">
-                                            {topic.outline.map((step, i) => (
-                                              <li key={i}>{step}</li>
-                                            ))}
-                                          </ol>
-                                        </div>
-                                      )}
+                                      <span className={`source-tag ${topic.generated_by}`}>
+                                        {topic.generated_by === 'agent' ? 'agent' : 'dự phòng'}
+                                      </span>
                                     </div>
-                                  </details>
 
-                                  <div className="reel-card-foot">
-                                    <div className="reel-card-foot-left">
-                                      {reelUrl && (
-                                        <a
-                                          href={reelUrl}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="reel-ext-link"
+                                    <h3 className="reel-title">{topic.title}</h3>
+
+                                    <div className="reel-badges">
+                                      {typeof topic.views === 'number' && topic.views > 0 && (
+                                        <span
+                                          className="metric-badge views"
+                                          title={`${formatNumber(topic.views)} lượt xem`}
                                         >
-                                          Facebook ↗
-                                        </a>
+                                          🔥 {formatCompact(topic.views)} views
+                                        </span>
+                                      )}
+                                      {typeof topic.velocity_per_hour === 'number' && topic.velocity_per_hour > 0 && (
+                                        <span
+                                          className="metric-badge velocity"
+                                          title={`${formatNumber(topic.velocity_per_hour)} lượt xem/giờ`}
+                                        >
+                                          ⚡ {formatCompact(topic.velocity_per_hour)}/h
+                                        </span>
                                       )}
                                     </div>
-                                    <button
-                                      type="button"
-                                      className={`copy-topic-btn ${copiedKey === `${sheet.slug}-${topicIndex}` ? 'copied' : ''}`}
-                                      onClick={() => handleCopyTopic(topic, sheet.name, `${sheet.slug}-${topicIndex}`)}
-                                      title="Sao chép kịch bản và mở tab Tạo Video"
-                                    >
-                                      {copiedKey === `${sheet.slug}-${topicIndex}` ? (
-                                        <>✓ Đã chép</>
+
+                                    <div className="reel-player-box">
+                                      {currentMode === 'video' && topic.video_url ? (
+                                        <video
+                                          src={topic.video_url}
+                                          controls
+                                          playsInline
+                                          preload="metadata"
+                                          className="reel-video-player"
+                                          onError={() => {
+                                            if (reelUrl) {
+                                              setPlayerMode((prev) => ({ ...prev, [itemKey]: 'iframe' }));
+                                            }
+                                          }}
+                                        />
+                                      ) : reelUrl ? (
+                                        <iframe
+                                          src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(reelUrl)}&show_text=0&width=280`}
+                                          title={topic.title || `Reel ${topicIndex + 1}`}
+                                          className="reel-iframe-player"
+                                          scrolling="no"
+                                          frameBorder="0"
+                                          allowFullScreen={true}
+                                          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                                          loading="lazy"
+                                        />
                                       ) : (
-                                        <>
-                                          <svg
-                                            width="12"
-                                            height="12"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2.2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                          >
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                          </svg>
-                                          Copy cho AI
-                                        </>
+                                        <div className="reel-player-placeholder">
+                                          <span>Không có link video</span>
+                                        </div>
                                       )}
-                                    </button>
-                                  </div>
-                                </article>
-                              );
-                            })}
-                          </div>
-                        );
-                      })()}
+                                    </div>
+
+                                    <details className="reel-analysis-details">
+                                      <summary className="reel-analysis-summary">
+                                        <span>💡 Transcript nội dung & Phân tích viral</span>
+                                      </summary>
+                                      <div className="reel-analysis-content">
+                                        <div className="analysis-item">
+                                          <strong>🎙️ Transcript nội dung:</strong>
+                                          <p className="transcript-text">
+                                            {topic.transcript && topic.transcript.trim()
+                                              ? topic.transcript
+                                              : 'Không có lời thoại (video dạng nhạc nền / hình ảnh).'}
+                                          </p>
+                                        </div>
+                                        {topic.why_viral && (
+                                          <div className="analysis-item">
+                                            <strong>🔥 Vì sao viral:</strong>
+                                            <p>{topic.why_viral}</p>
+                                          </div>
+                                        )}
+                                        {topic.hook && (
+                                          <div className="analysis-item">
+                                            <strong>🎣 Hook mở đầu (3s):</strong>
+                                            <p className="hook-quote">“{topic.hook}”</p>
+                                          </div>
+                                        )}
+                                        {topic.angle && (
+                                          <div className="analysis-item">
+                                            <strong>📐 Góc tiếp cận:</strong>
+                                            <p>{topic.angle}</p>
+                                          </div>
+                                        )}
+                                        {topic.outline && topic.outline.length > 0 && (
+                                          <div className="analysis-item">
+                                            <strong>📋 Dàn ý triển khai:</strong>
+                                            <ol className="analysis-outline">
+                                              {topic.outline.map((step, i) => (
+                                                <li key={i}>{step}</li>
+                                              ))}
+                                            </ol>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </details>
+
+                                    <div className="reel-card-foot">
+                                      <div className="reel-card-foot-left">
+                                        {reelUrl && (
+                                          <a href={reelUrl} target="_blank" rel="noreferrer" className="reel-ext-link">
+                                            Facebook ↗
+                                          </a>
+                                        )}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className={`copy-topic-btn ${copiedKey === `${sheet.slug}-${topicIndex}` ? 'copied' : ''}`}
+                                        onClick={() =>
+                                          handleCopyTopic(topic, sheet.name, `${sheet.slug}-${topicIndex}`)
+                                        }
+                                        title="Sao chép kịch bản và mở tab Tạo Video"
+                                      >
+                                        {copiedKey === `${sheet.slug}-${topicIndex}` ? (
+                                          <>✓ Đã chép</>
+                                        ) : (
+                                          <>
+                                            <svg
+                                              width="12"
+                                              height="12"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2.2"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            >
+                                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                            </svg>
+                                            Copy cho AI
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </article>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                     </details>
                   ))}
 
@@ -1411,7 +1445,7 @@ const Home: React.FC = () => {
           <div className="payment-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="payment-sheet-head">
               <div className="payment-sheet-title">
-                <span style={{ fontSize: 20 }}>🛒</span>
+                <span className="payment-cart-icon">🛒</span>
                 <h3>Xác nhận giao dịch In-App (Mock)</h3>
               </div>
               <button
@@ -1424,7 +1458,7 @@ const Home: React.FC = () => {
               </button>
             </div>
 
-            <p className="muted" style={{ fontSize: 13, margin: '0 0 10px' }}>
+            <p className="muted payment-subtext">
               Mô phỏng thanh toán in-app để nạp gói creator vào Thư viện tài khoản.
             </p>
 
@@ -1441,7 +1475,9 @@ const Home: React.FC = () => {
                 <span className="muted">Số lượng kênh</span>
                 <strong>
                   {activePaymentPack.countLabel ||
-                    (activePaymentPack.count ? `${formatNumber(activePaymentPack.count)} creator Facebook` : 'Bảo trì hàng tháng')}
+                    (activePaymentPack.count
+                      ? `${formatNumber(activePaymentPack.count)} creator Facebook`
+                      : 'Bảo trì hàng tháng')}
                 </strong>
               </div>
               <div className="payment-receipt-row">
@@ -1450,7 +1486,7 @@ const Home: React.FC = () => {
               </div>
               <div className="payment-receipt-row total">
                 <span>Tổng thanh toán</span>
-                <span style={{ color: 'var(--green)', fontWeight: 800 }}>{activePaymentPack.price}</span>
+                <span className="payment-price-tag">{activePaymentPack.price}</span>
               </div>
             </div>
 

@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "color-no-hex": true,
+    "function-disallowed-list": ["rgb", "rgba"],
+    "declaration-property-value-disallowed-list": {
+      "/^(font-size|padding|margin|gap|border-radius)/": ["/\\d+px/"]
+    }
+  },
+  "overrides": [
+    {
+      "files": ["src/theme/variables.css"],
+      "rules": {
+        "color-no-hex": null,
+        "function-disallowed-list": null
+      }
+    }
+  ]
+}

@@ -266,10 +266,8 @@ export function VideoTab({
     return (
       <section className="panel">
         <h2>Tạo Video AI ({duration}s)</h2>
-        <div style={{ padding: '24px 0', textAlign: 'center' }}>
-          <p className="muted" style={{ marginBottom: 16 }}>
-            Vui lòng đăng nhập để tạo video ngắn bằng AI (Omni Flash).
-          </p>
+        <div className="video-empty-gate">
+          <p className="muted video-empty-desc">Vui lòng đăng nhập để tạo video ngắn bằng AI (Omni Flash).</p>
           <button type="button" className="primary" onClick={onOpenAuth}>
             Đăng nhập ngay
           </button>
@@ -280,27 +278,21 @@ export function VideoTab({
 
   return (
     <div className="video-tab">
-      {notice && (
-        <div className={`notice ${notice.type}`} style={{ padding: 12, borderRadius: 10, marginBottom: 8 }}>
-          {notice.text}
-        </div>
-      )}
+      {notice && <div className={`notice ${notice.type} video-notice-box`}>{notice.text}</div>}
 
       {/* Credit Status */}
       <div className="credits-badge-bar">
         <span>Số dư của bạn:</span>
         <div className="credits-badge">
           <span>💰</span>
-          <span>
-            ${(balance / 1000000).toFixed(2)}
-          </span>
+          <span>${(balance / 1000000).toFixed(2)}</span>
         </div>
       </div>
 
       {/* Main Creation Form */}
       <section className="panel">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h2 style={{ margin: 0 }}>Tạo video AI Cá Nhân</h2>
+        <div className="video-header-row">
+          <h2 className="video-section-heading">Tạo video AI Cá Nhân</h2>
           {onGoToProfile && (
             <button type="button" className="media-action-btn" onClick={onGoToProfile}>
               Đi tới Hồ sơ
@@ -309,12 +301,10 @@ export function VideoTab({
         </div>
 
         {/* 1. Profile Image Picker (Select from Profile tab uploads only) */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>
-            1. Ảnh chân dung (Bắt buộc — chọn từ Hồ sơ)
-          </div>
+        <div className="video-form-group">
+          <div className="video-group-label">1. Ảnh chân dung (Bắt buộc — chọn từ Hồ sơ)</div>
           {profileMediaList.length > 0 ? (
-            <div className="context-picker-grid" style={{ alignItems: 'center' }}>
+            <div className="context-picker-grid context-picker-aligned">
               {profileMediaList.map((m) => {
                 const isSelected = selectedProfileId === m.id;
                 return (
@@ -329,22 +319,20 @@ export function VideoTab({
                   </div>
                 );
               })}
-              <span style={{ fontSize: 13 }}>
+              <span className="video-step-desc">
                 {selectedProfile ? 'Đã chọn ảnh đại diện mẫu' : 'Nhấn vào ảnh để chọn'}
               </span>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 13, color: '#c92a2a' }}>
-                ⚠️ Chưa có ảnh chân dung mẫu. Vui lòng tải ảnh lên ở tab Hồ sơ.
-              </span>
+            <div className="video-alert-row">
+              <span className="video-alert-warn">⚠️ Chưa có ảnh chân dung mẫu. Vui lòng tải ảnh lên ở tab Hồ sơ.</span>
             </div>
           )}
         </div>
 
         {/* 2. Context Images Selector (Select from Profile tab uploads only) */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>
+        <div className="video-form-group">
+          <div className="video-group-label">
             2. Ảnh bối cảnh / Sản phẩm (Tuỳ chọn — đã chọn {selectedContextIds.length}/{contextMediaList.length})
           </div>
           {contextMediaList.length > 0 ? (
@@ -369,17 +357,13 @@ export function VideoTab({
               })}
             </div>
           ) : (
-            <small className="muted" style={{ display: 'block', fontSize: 12 }}>
-              Chưa có ảnh bối cảnh (có thể thêm tại tab Hồ sơ).
-            </small>
+            <small className="muted video-duration-hint">Chưa có ảnh bối cảnh (có thể thêm tại tab Hồ sơ).</small>
           )}
         </div>
 
         {/* 3. Prompt Input */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>
-            3. Lời thoại & Kịch bản tiếng Việt ({duration} giây)
-          </div>
+        <div className="video-form-group">
+          <div className="video-group-label">3. Lời thoại & Kịch bản tiếng Việt ({duration} giây)</div>
           <textarea
             className="prompt-textarea"
             placeholder="Nhập lời thoại hoặc nội dung bạn muốn nhân vật nói trong video (VD: Chia sẻ 3 bí quyết làm bánh mì giòn tan tại nhà...)"
@@ -389,7 +373,7 @@ export function VideoTab({
         </div>
 
         {/* Cost Estimation */}
-        <div className="cost-card" style={{ marginBottom: 16 }}>
+        <div className="cost-card cost-card-spaced">
           <div>
             <div>
               Thời lượng: <strong>{duration} giây</strong> (360p)
@@ -398,7 +382,7 @@ export function VideoTab({
         </div>
 
         {!canAfford && (
-          <div style={{ color: '#c92a2a', fontSize: 13, marginBottom: 12 }}>
+          <div className="video-error-box">
             ⚠️ Số dư không đủ (${costUsd.toFixed(2)}). Vui lòng nạp thêm để tạo video.
           </div>
         )}
@@ -418,8 +402,9 @@ export function VideoTab({
         <div className="modal-overlay">
           <div className="confirm-dialog">
             <h3>Xác nhận tạo video AI</h3>
-            <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-              Hệ thống sẽ giữ <strong>${costUsd.toFixed(2)}</strong> để tạo 1 video ngắn {duration} giây. Nếu thất bại, toàn bộ chi phí sẽ được hoàn lại tự động.
+            <p className="muted dialog-subtext">
+              Hệ thống sẽ giữ <strong>${costUsd.toFixed(2)}</strong> để tạo 1 video ngắn {duration} giây. Nếu thất bại,
+              toàn bộ chi phí sẽ được hoàn lại tự động.
             </p>
 
             <div className="confirm-details">
@@ -439,7 +424,7 @@ export function VideoTab({
                 <span>Số dư hiện tại:</span>
                 <span>${(balance / 1000000).toFixed(2)}</span>
               </div>
-              <div className="confirm-row" style={{ borderTop: '1px solid var(--line)', paddingTop: 4 }}>
+              <div className="confirm-row confirm-row-total">
                 <span>Số dư sau khi trừ:</span>
                 <strong>${((balance - costMicro) / 1000000).toFixed(2)}</strong>
               </div>
@@ -459,8 +444,8 @@ export function VideoTab({
 
       {/* Video Generation History */}
       <section className="panel">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ margin: 0 }}>Lịch sử tạo video ({jobs.length})</h2>
+        <div className="video-header-row">
+          <h2 className="video-section-heading">Lịch sử tạo video ({jobs.length})</h2>
           {jobs.length > 0 && (
             <button type="button" className="media-action-btn" onClick={toggleAllExpanded}>
               {hasAnyExpanded ? 'Thu gọn tất cả' : 'Mở rộng tất cả'}
@@ -469,9 +454,7 @@ export function VideoTab({
         </div>
 
         {jobs.length === 0 ? (
-          <p className="muted" style={{ textAlign: 'center', padding: '16px 0', fontSize: 13 }}>
-            Chưa có video nào. Nhập kịch bản ở trên để tạo video đầu tiên!
-          </p>
+          <p className="muted history-empty-text">Chưa có video nào. Nhập kịch bản ở trên để tạo video đầu tiên!</p>
         ) : (
           <div className="video-history-list">
             {jobs.map((j) => {
@@ -495,7 +478,9 @@ export function VideoTab({
                                 ? 'Thất bại'
                                 : 'Đã huỷ'}
                       </span>
-                      <span className="duration-tag">{ratePerSecMicro > 0 ? Math.round(j.cost / ratePerSecMicro) : duration}s</span>
+                      <span className="duration-tag">
+                        {ratePerSecMicro > 0 ? Math.round(j.cost / ratePerSecMicro) : duration}s
+                      </span>
                       {!expanded && <span className="video-card-preview-prompt">{j.prompt}</span>}
                     </div>
 
@@ -578,8 +563,9 @@ export function VideoTab({
                     {j.status === 'failed' && (
                       <div className="video-error-text">
                         Lỗi: {j.error || 'Có lỗi xảy ra khi tạo video.'}
-                        <div style={{ color: '#2b8a3e', marginTop: 4 }}>
-                          ✓ Đã hoàn lại ${j.cost_usd ? `${j.cost_usd}` : `${(j.cost / 1000000).toFixed(2)}`} vào số dư của bạn.
+                        <div className="video-success-msg">
+                          ✓ Đã hoàn lại ${j.cost_usd ? `${j.cost_usd}` : `${(j.cost / 1000000).toFixed(2)}`} vào số dư
+                          của bạn.
                         </div>
                       </div>
                     )}
