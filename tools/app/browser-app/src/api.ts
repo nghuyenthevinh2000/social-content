@@ -24,6 +24,10 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
       if (auth.currentUser.email) {
         headers.set('X-User-Email', auth.currentUser.email);
       }
+      const fbAccount = auth.currentUser.providerData?.find((p) => p.providerId === 'facebook.com');
+      if (fbAccount?.uid) {
+        headers.set('X-Facebook-Id', fbAccount.uid);
+      }
     } catch {
       // Proceed without token if refresh fails
     }

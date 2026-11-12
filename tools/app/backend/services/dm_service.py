@@ -41,8 +41,6 @@ from tools.app.backend.profiles import SocialProfileStore
 logger = logging.getLogger("dm_service")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-LINK_CODE_RE = re.compile(r'^(?:#?LINK[-_]?([a-zA-Z0-9]{4,8}))', re.I)
-
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -62,7 +60,7 @@ def get_credentials() -> tuple[str, str]:
                     os.environ[k] = v
 
     page_id = os.environ.get("PAGE_ID", "1216806404853891")
-    token = os.environ.get("PAGE_ACCESS_TOKEN", "")
+    token = os.environ.get("PAGE_ACCESS_TOKEN") or os.environ.get("FACEBOOK_ACCESS_TOKEN", "")
 
     # Resolve Page Access Token if it is a user token
     resolved = _resolve_page_token(page_id, token, "v27.0")
@@ -100,23 +98,8 @@ def send_messenger_reply(page_id: str, access_token: str, recipient_psid: str, t
         return False
 
 
-def create_link_code(user_id: str, valid_minutes: int = 60) -> str:
-    """Generate a unique 6-character link code for a web user to connect their Facebook Messenger."""
-    chars = string.ascii_uppercase + string.digits
-    code = f"LINK-{''.join(random.choices(chars, k=6))}"
-    expires = (datetime.now(timezone.utc) + timedelta(minutes=valid_minutes)).isoformat()
-
-    with tx() as conn:
-        conn.execute(
-            "INSERT INTO account_link_codes (code, user_id, expires_at) VALUES (%s, %s, %s) "
-            "ON CONFLICT (code) DO UPDATE SET user_id = EXCLUDED.user_id, expires_at = EXCLUDED.expires_at",
-            (code, user_id, expires),
-        )
-    return code
-
-
 def find_user_by_psid(psid: str) -> Optional[str]:
-    """Look up which app user_id is mapped to a Facebook Page-Scoped ID."""
+    """Look up which app user_id is mapped to a Facebook Page-Scoped ID or Facebook ID."""
     with ro() as conn:
         cur = conn.execute("SELECT user_id FROM facebook_user_mappings WHERE psid = %s", (psid,))
         row = cur.fetchone()
@@ -124,7 +107,7 @@ def find_user_by_psid(psid: str) -> Optional[str]:
 
 
 def link_psid_to_user(psid: str, user_id: str, fb_name: Optional[str] = None) -> None:
-    """Permanently bind a Facebook PSID to an app user_id."""
+    """Permanently bind a Facebook PSID or Facebook ID to an app user_id."""
     now = now_iso()
     with tx() as conn:
         conn.execute(
@@ -133,25 +116,6 @@ def link_psid_to_user(psid: str, user_id: str, fb_name: Optional[str] = None) ->
             "ON CONFLICT (psid) DO UPDATE SET user_id = EXCLUDED.user_id, fb_name = COALESCE(EXCLUDED.fb_name, facebook_user_mappings.fb_name), updated_at = EXCLUDED.updated_at",
             (psid, user_id, fb_name, now, now),
         )
-
-
-def check_and_apply_link_code(code: str, psid: str, fb_name: Optional[str] = None) -> Optional[str]:
-    """Validate a link code, map the user, and delete the one-time code."""
-    clean_code = code.strip().upper()
-    now = now_iso()
-    with tx() as conn:
-        cur = conn.execute(
-            "SELECT user_id FROM account_link_codes WHERE code = %s AND expires_at > %s",
-            (clean_code, now),
-        )
-        row = cur.fetchone()
-        if not row:
-            return None
-        user_id = row[0]
-        conn.execute("DELETE FROM account_link_codes WHERE code = %s", (clean_code,))
-
-    link_psid_to_user(psid, user_id, fb_name)
-    return user_id
 
 
 class DmPollerService:
@@ -163,10 +127,13 @@ class DmPollerService:
         access_token: Optional[str] = None,
         poll_interval_sec: int = 30,
         reply_user: bool = True,
+        renew_interval_sec: int = 50 * 86400,
     ):
         self.page_id, self.access_token = page_id or "", access_token or ""
         self.poll_interval_sec = poll_interval_sec
         self.reply_user = reply_user
+        self.renew_interval_sec = renew_interval_sec
+        self.last_renewed_at = time.time()
         self._profile_store: Optional[SocialProfileStore] = None
         self.seen_message_ids: set[str] = set()
         self._running = False
@@ -196,31 +163,7 @@ class DmPollerService:
         if not sender_id or sender_id == str(page_id):
             return
 
-        # 1. Check for Account Linking Command (e.g. LINK-ABC123)
-        code_match = LINK_CODE_RE.match(msg_text)
-        if code_match:
-            full_code = f"LINK-{code_match.group(1).upper()}"
-            matched_user = check_and_apply_link_code(full_code, sender_id, sender_name)
-            if matched_user:
-                logger.info("Successfully linked PSID %s to user_id %s", sender_id, matched_user)
-                if self.reply_user:
-                    send_messenger_reply(
-                        page_id,
-                        token,
-                        sender_id,
-                        f"✅ Đã liên kết tài khoản thành công! Bây giờ bạn chỉ cần gửi/chia sẻ bất kỳ Reel nào vào đây để lưu vào thư viện.",
-                    )
-            else:
-                if self.reply_user:
-                    send_messenger_reply(
-                        page_id,
-                        token,
-                        sender_id,
-                        f"⚠️ Mã liên kết không hợp lệ hoặc đã hết hạn. Vui lòng lấy mã mới từ trang web của bạn.",
-                    )
-            return
-
-        # 2. Extract Reel URLs (Native Shares + Text Links)
+        # 1. Extract Reel URLs (Native Shares + Text Links)
         reels_to_save: List[Dict[str, Any]] = []
 
         # Native share sheet
@@ -249,23 +192,14 @@ class DmPollerService:
         if not reels_to_save:
             return
 
-        # 3. Determine the target user
+        # 2. Determine the target user
         user_id = find_user_by_psid(sender_id)
-        if not user_id:
-            logger.info("Received Reel from unlinked PSID %s (%s)", sender_id, sender_name)
-            if self.reply_user:
-                send_messenger_reply(
-                    page_id,
-                    token,
-                    sender_id,
-                    "👋 Bạn chưa liên kết tài khoản! Để lưu Reel vào thư viện của mình, vui lòng đăng nhập trên website và gửi mã liên kết (VD: LINK-ABC123) vào đây.",
-                )
-            return
+        target_user = user_id or sender_id
 
-        # 4. Save into User Library
+        # 3. Always save into User Library and database
         for item in reels_to_save:
             self._save_to_user_library(
-                user_id=user_id,
+                user_id=target_user,
                 reel_url=item["reel_url"],
                 original_url=item["original_url"],
                 platform=item["platform"],
@@ -274,6 +208,10 @@ class DmPollerService:
                 sender_name=sender_name,
                 message_text=msg_text,
             )
+
+        if not user_id:
+            logger.info("Saved Reel from unlinked sender ID %s (%s) under sender PSID", sender_id, sender_name)
+            return
 
         if self.reply_user:
             count = len(reels_to_save)
@@ -311,20 +249,8 @@ class DmPollerService:
                 ),
             )
 
-        # Also register into ProfileStore under default topic "saved-reels" so it renders in the UI
-        try:
-            topic_slug = "saved-reels"
-            topic_name = "Thư viện Reel đã lưu"
-            self.profile_store.upsert_topic(topic_slug, topic_name, user_id=user_id)
-            self.profile_store.add_profile(
-                topic_slug=topic_slug,
-                name=sender_name or "Reel đã lưu từ Messenger",
-                url=reel_url,
-                user_id=user_id,
-            )
-            logger.info("Saved reel %s to user library for user_id %s", reel_url, user_id)
-        except Exception as exc:
-            logger.warning("Could not add reel to ProfileStore: %s", exc)
+        # Log success
+        logger.info("Saved reel %s to database for user_id %s", reel_url, user_id)
 
     def poll_once(self) -> int:
         """Perform a single poll against Graph API v27.0. Returns number of messages processed."""
@@ -351,17 +277,67 @@ class DmPollerService:
                 processed += 1
         return processed
 
+    def check_and_renew_token(self) -> bool:
+        """Renew Page Access Token every 50 days or when expiry is within 10 days."""
+        now = time.time()
+        time_since_renew = now - self.last_renewed_at
+        should_renew = time_since_renew >= self.renew_interval_sec
+
+        from tools.app.backend.services.get_page_token import (
+            debug_token_expiry,
+            get_page_access_token,
+            save_token_to_env,
+        )
+
+        app_id = os.environ.get("FACEBOOK_APP_ID")
+        app_secret = os.environ.get("FACEBOOK_APP_SECRET")
+
+        if not should_renew and self.access_token:
+            debug = debug_token_expiry(self.access_token, app_id=app_id, app_secret=app_secret)
+            expires_at = debug.get("expires_at", 0)
+            if expires_at and expires_at > 0 and (expires_at - now) <= (10 * 86400):
+                should_renew = True
+
+        if not should_renew:
+            return False
+
+        logger.info("Renewing Facebook Page Access Token (50-day timer triggered)...")
+        try:
+            backend_env = Path(__file__).resolve().parents[1] / ".env"
+            crawl_env = Path(__file__).resolve().parents[4] / "tools" / "facebook_agent" / "dm_crawl" / ".env"
+
+            target_save = backend_env if backend_env.exists() else crawl_env
+            res = get_page_access_token(
+                facebook_access_token=self.access_token,
+                page_id=self.page_id,
+                app_id=app_id,
+                app_secret=app_secret,
+                save=target_save,
+            )
+            new_token = res["page_access_token"]
+            if backend_env.exists() and crawl_env.exists():
+                save_token_to_env(new_token, self.page_id, env_path=crawl_env)
+
+            self.access_token = new_token
+            self.last_renewed_at = now
+            logger.info("Page Access Token renewed successfully. Next renewal in 50 days.")
+            return True
+        except Exception as exc:
+            logger.error("Failed to renew Facebook Page Access Token: %s", exc)
+            return False
+
     def run_forever(self) -> None:
         """Main service loop running 24/7."""
         self._running = True
         self.init_credentials()
         logger.info(
-            "Starting 24/7 DM Poller Service for Page ID: %s (Interval: %ds)",
-            self.page_id, self.poll_interval_sec,
+            "Starting 24/7 DM Poller Service for Page ID: %s (Interval: %ds, Renew: %ds)",
+            self.page_id, self.poll_interval_sec, self.renew_interval_sec,
         )
 
         while self._running:
             try:
+                self.check_and_renew_token()
                 self.poll_once()
             except Exception as exc:
                 logger.error("Unhandled exception in poll loop: %s", exc)
@@ -389,15 +365,9 @@ def main():
     parser = argparse.ArgumentParser(description="24/7 Facebook Page DM Ingestion Daemon")
     parser.add_argument("--interval", type=int, default=30, help="Polling interval in seconds (default: 30)")
     parser.add_argument("--once", action="store_true", help="Run once and exit (for cron/testing)")
-    parser.add_argument("--link", help="Generate a link code for a user_id: --link <USER_ID>")
-    parser.add_argument("--bind", nargs=2, metavar=("PSID", "USER_ID"), help="Directly bind a PSID to USER_ID")
+    parser.add_argument("--bind", nargs=2, metavar=("PSID", "USER_ID"), help="Directly bind a PSID/Facebook ID to USER_ID")
 
     args = parser.parse_args()
-
-    if args.link:
-        code = create_link_code(args.link)
-        print(f"Generated Link Code for user '{args.link}': {code}")
-        return 0
 
     if args.bind:
         psid, uid = args.bind

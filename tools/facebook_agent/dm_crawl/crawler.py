@@ -17,6 +17,7 @@ import re
 import sys
 from typing import Any, Dict, List, Optional
 import unicodedata
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -43,16 +44,47 @@ REEL_PATTERNS = [
 ]
 
 
-def canonicalize_reel_url(url: str) -> Optional[tuple[str, str]]:
+def resolve_short_url(url: str, timeout: float = 3.0) -> str:
+    """Resolve short share URLs (fb.watch, facebook.com/share/*, vm.tiktok.com) to target URL."""
+    if not url or not any(x in url for x in ('facebook.com/share/', 'fb.watch/', 'tiktok.com/')):
+        return url
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+        )
+
+        class _NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                return None
+
+        opener = urllib.request.build_opener(_NoRedirect)
+        try:
+            resp = opener.open(req, timeout=timeout)
+            loc = resp.headers.get("Location")
+        except urllib.error.HTTPError as exc:
+            loc = exc.headers.get("Location")
+        if loc:
+            return loc
+    except Exception:
+        pass
+    return url
+
+
+def canonicalize_reel_url(url: str, resolve_redirects: bool = True) -> Optional[tuple[str, str]]:
     """Clean tracking params from Reel URL and detect platform.
+
+    If resolve_redirects is True and the URL is a short share link (such as
+    facebook.com/share/v/*), resolves HTTP 301/302 redirects to find the canonical reel ID.
 
     Returns:
         tuple of (canonical_url, platform) or None if not recognized.
     """
     if not url:
         return None
+    target_url = resolve_short_url(url) if resolve_redirects else url
     for pattern in REEL_PATTERNS:
-        match = pattern.search(url)
+        match = pattern.search(target_url)
         if match:
             clean = match.group(0).rstrip('/')
             if 'facebook.com' in clean or 'fb.watch' in clean:
@@ -73,7 +105,7 @@ def extract_reels_from_text(text: str) -> List[Dict[str, str]]:
     for pattern in REEL_PATTERNS:
         for match in pattern.finditer(text):
             raw = match.group(0)
-            canonical = canonicalize_reel_url(raw)
+            canonical = canonicalize_reel_url(raw, resolve_redirects=True)
             if canonical and canonical[0] not in seen:
                 seen.add(canonical[0])
                 found.append({'url': canonical[0], 'platform': canonical[1]})

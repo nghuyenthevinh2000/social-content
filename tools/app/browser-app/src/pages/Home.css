@@ -1527,3 +1527,41 @@
   font-weight: var(--weight-bold);
 }
 
+/* Collapsible Header */
+.collapsible-head {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collapsible-head .store-toggle-icon.open {
+  transform: rotate(45deg);
+}
+
+/* Saved Reels Section (dm_service feature) */
+.saved-reels-panel {
+  margin-top: var(--space-3);
+}
+
+.reel-platform-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+  letter-spacing: 0.5px;
+}
+
+.saved-reel-text {
+  font-size: var(--text-xs);
+  margin: 2px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+

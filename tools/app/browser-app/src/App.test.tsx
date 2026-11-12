@@ -114,4 +114,57 @@ describe('App', () => {
     expect(packMaintenance?.price).toBe('50$/year');
     expect(packMaintenance?.disabled).toBe(true);
   });
+
+  test('apiJson fetches saved reels and handles delete action', async () => {
+    const fakeReels = [
+      {
+        id: 'reel_1',
+        reel_url: 'https://www.facebook.com/reel/123456789',
+        platform: 'facebook',
+        share_type: 'link_share',
+        sender_name: 'Test Sender',
+        message_text: 'Check this reel',
+        created_at: '2026-11-12T10:00:00Z',
+      },
+    ];
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, reels: fakeReels }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, message: 'Đã xoá Reel đã lưu.' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+    const getRes = await apiJson<{ ok: boolean; reels: typeof fakeReels }>('/api/saved-reels');
+    expect(getRes.ok).toBe(true);
+    expect(getRes.reels).toHaveLength(1);
+    expect(getRes.reels[0].sender_name).toBe('Test Sender');
+
+    const delRes = await apiJson<{ ok: boolean; message: string }>('/api/saved-reels/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'reel_1' }),
+    });
+    expect(delRes.ok).toBe(true);
+  });
+
+  test('apiJson fetches facebook status', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, linked: true, fb_name: 'Nguyen Van A' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const statusRes = await apiJson<{ ok: boolean; linked: boolean; fb_name: string }>('/api/facebook/status');
+    expect(statusRes.ok).toBe(true);
+    expect(statusRes.linked).toBe(true);
+    expect(statusRes.fb_name).toBe('Nguyen Van A');
+  });
 });

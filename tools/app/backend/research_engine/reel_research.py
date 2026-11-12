@@ -1,129 +1,108 @@
-"""Excel ingestion, per-sheet pipeline orchestration and ACP topic suggestions."""
+"""Reel Research Engine: Deep content, transcript, style, and viral analysis on individual reels.
+
+Focuses on:
+- Fast transcript retrieval (Glasser ScrapeCreators / local ASR engine).
+- Style, format, and pacing analysis (9:16 vertical, UGC framing, duration).
+- "Why Viral" catalyst interrogation (hook, psychological angle, retention triggers).
+- Topic suggestion and Director Prompt generation (ACP harness or heuristic engine).
+"""
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 import json
+import logging
 import os
 from pathlib import Path
 import re
 import shutil
-import sys
-import tempfile
-import unicodedata
-import urllib.error
-import urllib.request
-import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple
-from urllib.parse import parse_qs, urlparse
+import urllib.error
+import urllib.parse
+import urllib.request
 
-import openpyxl
-
-from tools.app.backend import blobs
 from tools.app.backend.acp import ACPClient, ACPError
-from tools.app.backend.errors import (
-    AppError,
-    ErrorAggregator,
-    ErrorCategory,
-    ErrorSeverity,
-    handle_acp_error,
-    handle_glasser_error,
-)
-from tools.app.backend.profiles import (
-    clean_name,
-    facebook_handle,
-    is_facebook_url,
-    parse_workbook,
-    resolve_xlsx_bytes,
-    slugify,
-    SocialProfileStore,
-    PROFILE_STORE,
-    RUNS_ROOT,
-)
-from tools.app.backend.store import JobStore, now_iso
 from tools.app.backend.video_engine import get_video_duration
-from tools.loop.viral_analyzer.config import load_config
-from tools.loop.viral_analyzer.glasser import ensure_glasser_env
-from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
-from tools.loop.viral_analyzer.transcriber import fetch_top_reels_transcripts
+from tools.loop.viral_analyzer.transcriber import fetch_reel_transcript, fetch_top_reels_transcripts
 
-ensure_glasser_env()
+logger = logging.getLogger("reel_research")
 
-_facebook_handle = facebook_handle
-_is_facebook_url = is_facebook_url
-_clean_name = clean_name
-
-WORKSPACE = Path(__file__).resolve().parents[3]
-
-AGENT_PRESETS: List[Dict[str, Any]] = [
-    {
-        "id": "agy",
-        "label": "Antigravity (agy)",
-        "command": ["agy", "acp"],
-        "detect": "agy",
-        "login_hint": "agy",
-        "note": "Gemini/Antigravity CLI ở chế độ ACP.",
-    },
-    {
-        "id": "opencode",
-        "label": "OpenCode",
-        "command": ["opencode", "acp"],
-        "detect": "opencode",
-        "login_hint": "opencode auth login",
-        "note": "Agent mặc định trong repo.",
-    },
-    {
-        "id": "claude",
-        "label": "Claude Code",
-        "command": ["npx", "-y", "@zed-industries/claude-code-acp"],
-        "detect": "npx",
-        "login_hint": "claude",
-        "note": "Lần đầu sẽ tải ACP adapter qua npx.",
-    },
-    {
-        "id": "codex",
-        "label": "Codex",
-        "command": ["npx", "-y", "@zed-industries/codex-acp"],
-        "detect": "npx",
-        "login_hint": "codex login",
-        "note": "Lần đầu sẽ tải ACP adapter qua npx.",
-    },
+# Supported Reel, Short-Form, and Video Share URL patterns
+REEL_PATTERNS = [
+    re.compile(r'https?://(?:www\.)?facebook\.com/reel/(\d+)', re.I),
+    re.compile(r'https?://(?:www\.)?facebook\.com/share/[rvp]/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?facebook\.com/watch/\?v=(\d+)', re.I),
+    re.compile(r'https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.-]+/videos/(\d+)', re.I),
+    re.compile(r'https?://fb\.watch/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?instagram\.com/reel/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?instagram\.com/p/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?tiktok\.com/@[\w.-]+/video/(\d+)', re.I),
+    re.compile(r'https?://(?:vm|vt)\.tiktok\.com/([a-zA-Z0-9_-]+)', re.I),
 ]
 
 
-def configured_agent() -> Dict[str, Any]:
-    """Harness from VIRAL_APP_AGENT, else the first installed preset."""
-    agent_id = os.environ.get("VIRAL_APP_AGENT")
-    if agent_id:
+def resolve_short_url(url: str, timeout: float = 3.0) -> str:
+    """Resolve short share URLs (fb.watch, facebook.com/share/*, vm.tiktok.com) to target URL."""
+    if not url or not any(x in url for x in ('facebook.com/share/', 'fb.watch/', 'tiktok.com/')):
+        return url
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+        )
+
+        class _NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                return None
+
+        opener = urllib.request.build_opener(_NoRedirect)
         try:
-            return resolve_agent(agent_id)
-        except ACPError:
-            pass
-    for preset in AGENT_PRESETS:
-        if shutil.which(preset["detect"]):
-            return resolve_agent(preset["id"])
-    raise ACPError("Không tìm thấy harness nào trên máy (agy, opencode, claude, codex).")
+            resp = opener.open(req, timeout=timeout)
+            loc = resp.headers.get("Location")
+        except urllib.error.HTTPError as exc:
+            loc = exc.headers.get("Location")
+        if loc:
+            return loc
+    except Exception:
+        pass
+    return url
 
 
-def resolve_agent(agent_id: str, model: Optional[str] = None) -> Dict[str, Any]:
-    for preset in AGENT_PRESETS:
-        if preset["id"] == agent_id:
-            if shutil.which(preset["detect"]) is None:
-                raise ACPError(
-                    f"Không tìm thấy harness '{preset['label']}' trên máy. "
-                    f"Cài đặt rồi thử lại (gợi ý đăng nhập: {preset['login_hint']})."
-                )
-            result = dict(preset)
-            if agent_id == "agy":
-                selected_model = (model or os.environ.get("VIRAL_APP_AGY_MODEL", "")).strip()
-                if selected_model:
-                    result["model"] = selected_model
-                    result["command"] = ["agy", "--model", selected_model, "acp"]
-            return result
-    raise ACPError(f"Harness không hợp lệ: {agent_id}")
+def canonicalize_reel_url(url: str, resolve_redirects: bool = True) -> Optional[Tuple[str, str]]:
+    """Clean tracking params from Reel URL and detect platform."""
+    if not url:
+        return None
+    target_url = resolve_short_url(url) if resolve_redirects else url
+    for pattern in REEL_PATTERNS:
+        match = pattern.search(target_url)
+        if match:
+            clean = match.group(0).rstrip('/')
+            if 'facebook.com' in clean or 'fb.watch' in clean:
+                return clean, 'facebook'
+            if 'instagram.com' in clean:
+                return clean, 'instagram'
+            if 'tiktok.com' in clean:
+                return clean, 'tiktok'
+    return None
 
 
-# -- Topic generation --------------------------------------------------------
+def is_reel_url(url: str) -> bool:
+    """Return True if the URL points directly to an individual Reel or video."""
+    if not url:
+        return False
+    return any(p.search(url) for p in REEL_PATTERNS)
+
+
+def extract_video_id(url: str) -> Optional[str]:
+    """Extract numeric or alphanumeric video ID from a reel/video URL."""
+    if not url:
+        return None
+    for pattern in REEL_PATTERNS:
+        m = pattern.search(url)
+        if m and m.groups():
+            return m.group(1)
+    return None
+
+
 def _reel_digest(reels: List[Dict[str, Any]], limit: int = 12) -> str:
     ranked = sorted(
         reels,
@@ -140,13 +119,13 @@ def _reel_digest(reels: List[Dict[str, Any]], limit: int = 12) -> str:
         transcript = str(reel.get("transcript") or "").strip().replace("\n", " ")
         if transcript:
             transcript = f" | transcript: {transcript[:400]}"
-        reel_url = str(reel.get("url") or "").strip()
+        reel_url = str(reel.get("url") or reel.get("reel_url") or "").strip()
         if not reel_url and reel.get("video_id"):
             reel_url = f"https://www.facebook.com/reel/{reel['video_id']}"
         url_part = f" | reel_url: {reel_url}" if reel_url else ""
         lines.append(
-            f"{index}. [P{reel.get('current_pool')} | {int(reel.get('views') or 0):,} views | "
-            f"{float(reel.get('velocity_per_hour') or 0):,.0f} views/h | @{reel.get('author_handle')}{url_part}] "
+            f"{index}. [P{reel.get('current_pool', 0)} | {int(reel.get('views') or 0):,} views | "
+            f"{float(reel.get('velocity_per_hour') or 0):,.0f} views/h | @{reel.get('author_handle', 'reel')}{url_part}] "
             f"{title}{transcript}"
         )
     return "\n".join(lines)
@@ -239,7 +218,7 @@ def build_topic_prompt(
     channels = ", ".join(target.get("name") or target.get("handle", "") for target in targets[:20]) or "(chưa có kênh)"
     pools: Dict[str, int] = {}
     for reel in reels:
-        key = f"P{reel.get('current_pool')}"
+        key = f"P{reel.get('current_pool', 0)}"
         pools[key] = pools.get(key, 0) + 1
     pool_text = ", ".join(f"{key}: {count}" for key, count in sorted(pools.items())) or "không có dữ liệu"
     digest = _reel_digest(reels) or "(không có reel nào trong 48 giờ)"
@@ -250,12 +229,12 @@ def build_topic_prompt(
     return f"""Bạn là chiến lược gia nội dung viral cho Facebook Reels & video ngắn tiếng Việt.
 
 NHÓM CHỦ ĐỀ: {sheet_name}
-KÊNH ĐỐI THỦ: {channels}
+KÊNH / NGUỒN REEL: {channels}
 PHÂN BỔ POOL: {pool_text}
-DỮ LIỆU REEL 48 GIỜ:
+DỮ LIỆU REEL:
 {digest}
 
-NHIỆM VỤ: Đề xuất ĐÚNG 3 chủ đề video có khả năng viral cao nhất cho nhóm chủ đề này.
+NHIỆM VỤ: Đề xuất ĐÚNG 3 chủ đề video có khả năng viral cao nhất cho nội dung này.
 Mỗi chủ đề phải đi kèm trường "prompt" chứa kịch bản đạo diễn (director prompt) hoàn chỉnh, chuẩn bị sẵn cho AI tạo video (tỷ lệ 9:16 dọc, thời lượng {dur} giây).
 
 CẤU TRÚC PROMPT ĐẠO DIỄN (bắt buộc đúng 5 phần theo chuẩn UGC):
@@ -290,10 +269,10 @@ Schema mỗi phần tử:
     "title": "tên chủ đề ngắn gọn, gây tò mò",
     "hook": "câu mở đầu 3 giây",
     "angle": "góc khai thác khác biệt so với đối thủ",
-    "why_viral": "vì sao chủ đề này có khả năng viral, dẫn số liệu",
+    "why_viral": "vì sao chủ đề này có khả năng viral, dẫn số liệu hoặc tâm lý người xem",
     "outline": ["ý 1", "ý 2", "ý 3"],
     "format": "Reels {dur}s UGC",
-    "source_urls": ["url reel bằng chứng (chính xác giá trị reel_url ở trên, bắt đầu bằng https://www.facebook.com/reel/...)"],
+    "source_urls": ["url reel bằng chứng (bắt đầu bằng https://www.facebook.com/reel/...)"],
     "prompt": "[CAMERA & COMPOSITION]\\n...\\n\\n[ENVIRONMENT & ATMOSPHERE]\\n...\\n\\n[SUBJECT & CONTINUITY]\\n...\\n\\n[ACTION & TIMECODE]\\n...\\n\\n[AUDIO & DIALOGUE]\\n..."
   }}
 ]"""
@@ -326,16 +305,14 @@ def _resolve_to_reel_url(url: str, reels: List[Dict[str, Any]]) -> str:
     clean = url.rstrip("/")
     target_handle = clean.split("/")[-1].replace("@", "").lower()
 
-    # Find the top matching reel by author handle
     for r in reels:
         r_handle = str(r.get("author_handle") or "").strip().lower()
         if r_handle and (r_handle == target_handle or target_handle in r_handle or r_handle in target_handle):
-            if r.get("url"):
-                return str(r["url"]).strip()
+            if r.get("url") or r.get("reel_url"):
+                return str(r.get("url") or r.get("reel_url")).strip()
             if r.get("video_id"):
                 return f"https://www.facebook.com/reel/{r['video_id']}"
 
-    # If it is a facebook page/profile URL, route to the /reels/ tab
     if "facebook.com" in clean and not clean.endswith("/reels"):
         return f"{clean}/reels/"
 
@@ -369,7 +346,9 @@ def normalize_topics(
         if not sources and index < len(fallback):
             sources = fallback[index].get("source_urls", [])
         if not sources and ranked_reels and index < len(ranked_reels):
-            top_url = ranked_reels[index].get("url") or (f"https://www.facebook.com/reel/{ranked_reels[index]['video_id']}" if ranked_reels[index].get("video_id") else None)
+            top_url = ranked_reels[index].get("url") or ranked_reels[index].get("reel_url") or (
+                f"https://www.facebook.com/reel/{ranked_reels[index]['video_id']}" if ranked_reels[index].get("video_id") else None
+            )
             if top_url:
                 sources = [top_url]
         prompt_val = str(item.get("prompt") or item.get("director_prompt") or "").strip()
@@ -382,7 +361,7 @@ def normalize_topics(
         matched_reel = None
         if ranked_reels:
             for r in ranked_reels:
-                r_url = r.get("url") or ""
+                r_url = r.get("url") or r.get("reel_url") or ""
                 r_id = str(r.get("video_id") or "")
                 if sources and any((r_url and r_url in s) or (r_id and r_id in s) for s in sources):
                     matched_reel = r
@@ -412,7 +391,7 @@ def normalize_topics(
                 "outline": _normalize_outline(item.get("outline")),
                 "format": str(item.get("format") or f"Reels {dur}s UGC").strip(),
                 "source_urls": sources,
-                "reel_url": sources[0] if sources else (matched_reel.get("url") if matched_reel else ""),
+                "reel_url": sources[0] if sources else (matched_reel.get("url") or matched_reel.get("reel_url") if matched_reel else ""),
                 "video_url": t_video_url,
                 "video_id": t_video_id,
                 "views": t_views,
@@ -433,7 +412,6 @@ def normalize_topics(
     while len(topics) < 3 and len(fallback) >= 3:
         topics.append(fallback[len(topics)])
 
-    # Sort from highest views to lowest views
     has_views = any((t.get("views") or 0) > 0 for t in topics)
     if has_views:
         topics.sort(
@@ -497,17 +475,17 @@ def heuristic_topics(
     )
     topics: List[Dict[str, Any]] = []
     for reel in ranked[:limit]:
-        title = str(reel.get("title") or "").strip() or f"Video từ @{reel.get('author_handle')}"
+        title = str(reel.get("title") or "").strip() or f"Video từ @{reel.get('author_handle', 'reel')}"
         views = int(reel.get("views") or 0)
         velocity = float(reel.get("velocity_per_hour") or 0)
-        reel_url = reel.get("url") or (f"https://www.facebook.com/reel/{reel['video_id']}" if reel.get("video_id") else "")
+        reel_url = reel.get("url") or reel.get("reel_url") or (f"https://www.facebook.com/reel/{reel['video_id']}" if reel.get("video_id") else "")
         t = {
             "title": f"Kể lại: {title[:90]}",
-            "hook": f"Vì sao chuyện này đạt {views:,} lượt xem trong 48 giờ?",
-            "angle": f"Phân tích góc P{reel.get('current_pool', 0)} - {reel.get('pool_name', '')}, tập trung vào cảm xúc và bình luận.",
-            "why_viral": f"{views:,} views, {velocity:,.0f} views/giờ, pool P{reel.get('current_pool', 0)}.",
+            "hook": f"Vì sao chuyện này đạt {views:,} lượt xem trong 48 giờ?" if views else "Đây là điều bất ngờ nhất bạn từng nghe?",
+            "angle": f"Phân tích góc P{reel.get('current_pool', 0)} - {reel.get('pool_name', '')}, tập trung vào cảm xúc và bình luận." if views else "Tập trung vào yếu tố cảm xúc và sự tò mò trong nội dung gốc.",
+            "why_viral": f"{views:,} views, {velocity:,.0f} views/giờ, pool P{reel.get('current_pool', 0)}." if views else "Video thu hút sự chú ý mạnh mẽ nhờ yếu tố bất ngờ.",
             "outline": [
-                f"Mở bằng chi tiết gây tò mò từ video gốc của @{reel.get('author_handle', '')}",
+                f"Mở bằng chi tiết gây tò mò từ video gốc của @{reel.get('author_handle', 'creator')}",
                 "Kể lại câu chuyện bằng hình ảnh/điện thoại, giữ nhịp nhanh",
                 "Kết bằng câu hỏi mở để kéo bình luận",
             ],
@@ -536,7 +514,7 @@ def heuristic_topics(
             "title": f"'{sheet_name}': điều 90% người xem hiểu sai",
             "hook": f"Bạn đang làm sai điều cơ bản nhất về {sheet_name}?",
             "angle": "Myth-busting: nêu hiểu lầm phổ biến rồi sửa bằng ví dụ đời thường.",
-            "why_viral": "Chủ đề dựa trên tên nhóm; chưa có reel 48 giờ để đối chiếu.",
+            "why_viral": "Chủ đề dựa trên tên nhóm; khai thác điểm nghẽn nhận thức của số đông.",
             "outline": ["Nêu hiểu lầm", "Đưa bằng chứng trực quan", "Chốt bằng mẹo làm ngay"],
             "format": f"Reels {dur}s UGC",
             "source_urls": [],
@@ -584,11 +562,14 @@ def suggest_topics(
     actor_profile: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     if not reels:
-        log(f"Không có reel nào trong 48 giờ cho '{sheet_name}'; bỏ qua gợi ý chủ đề.")
+        log(f"Không có reel nào cho '{sheet_name}'; bỏ qua gợi ý chủ đề.")
         return [], None
     fallback = heuristic_topics(sheet_name, reels, actor_profile=actor_profile)
     prompt = build_topic_prompt(sheet_name, targets, reels, actor_profile=actor_profile)
     client = None
+
+    from tools.app.backend.research_engine.research import _harness_lock, resolve_agent
+
     with _harness_lock(log):
         try:
             preset = resolve_agent(agent_id, model=model)
@@ -619,267 +600,114 @@ def suggest_topics(
                 client.close()
 
 
-@contextmanager
-def _harness_lock(log: Callable[[str], None]):
-    """One harness session across all workers: serialized via Postgres advisory lock."""
-    import psycopg
-    from tools.app.backend.db import get_dsn
-
-    with psycopg.connect(get_dsn(), autocommit=True) as conn:
-        cur = conn.execute("SELECT pg_try_advisory_lock(hashtext('harness_lock'))")
-        got_lock = cur.fetchone()[0]
-        if not got_lock:
-            log("Harness đang bận với job khác; chờ tới lượt...")
-            conn.execute("SELECT pg_advisory_lock(hashtext('harness_lock'))")
-        try:
-            yield
-        finally:
-            try:
-                conn.execute("SELECT pg_advisory_unlock(hashtext('harness_lock'))")
-            except Exception:
-                pass
-
-
-# -- Jobs --------------------------------------------------------------------
-STORE = JobStore()
-
-
-def create_job(
-    xlsx_bytes: bytes,
-    filename: str,
-    options: Dict[str, Any],
-    client_id: str,
-    user_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    xlsx_bytes, filename = resolve_xlsx_bytes(xlsx_bytes, filename)
-    job_id = uuid.uuid4().hex[:12]
-    blobs.put(
-        f"runs/{job_id}/input.xlsx",
-        xlsx_bytes,
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    sheets = parse_workbook(xlsx_bytes)
-    if len(sheets) == 1 and sheets[0].get("name"):
-        filename = sheets[0]["name"]
-    elif filename:
-        filename = filename.removesuffix(".json").removesuffix(".xlsx")
-    actor_prof = options.get("actor_profile")
-    if not actor_prof and user_id:
-        try:
-            from tools.app.backend.user_profile import USER_PROFILE_STORE
-            actor_prof = USER_PROFILE_STORE.get_profile(user_id)
-        except Exception:
-            actor_prof = None
-    job = {
-        "id": job_id,
-        "client_id": client_id,
-        "user_id": user_id,
-        "actor_profile": actor_prof,
-        "status": "queued",
-        "filename": filename,
-        "agent": options.get("agent"),
-        "options": options,
-        "created_at": now_iso(),
-        "finished_at": None,
-        "current_sheet": None,
-        "cancel_requested": False,
-        "sheets": [
-            {
-                "name": sheet["name"],
-                "slug": sheet["slug"],
-                "status": "pending",
-                "targets": len(sheet["targets"]),
-                "target_list": [
-                    {"name": t.get("name") or t.get("handle") or "", "url": t.get("url") or ""}
-                    for t in sheet["targets"]
-                ],
-                "reels": 0,
-                "pool_distribution": {},
-                "topics": [],
-                "error": None,
-                "notice": None,
-                "started_at": None,
-                "finished_at": None,
-            }
-            for sheet in sheets
-        ],
-        "logs": [],
-    }
-    STORE.put(job)
-    STORE.log(job_id, f"Đã đọc {len(sheets)} sheet từ {filename}.")
-    return STORE.snapshot(job_id) or job
-
-
-def run_job(job: Dict[str, Any]) -> None:
-    job_id, options = job["id"], job["options"]
-    actor_profile = job.get("actor_profile") or options.get("actor_profile")
-    if not actor_profile and job.get("user_id"):
-        try:
-            from tools.app.backend.user_profile import USER_PROFILE_STORE
-            actor_profile = USER_PROFILE_STORE.get_profile(job["user_id"])
-        except Exception:
-            actor_profile = None
-    with tempfile.TemporaryDirectory(prefix=f"job-{job_id}-") as tmpdir:
-        run_dir = Path(tmpdir)
-        try:
-            input_path = run_dir / "input.xlsx"
-            blobs.download(f"runs/{job_id}/input.xlsx", input_path)
-            sheets = parse_workbook(input_path)
-            for index, sheet in enumerate(sheets, 1):
-                cur_job = STORE.snapshot(job_id)
-                if not cur_job or cur_job.get("cancel_requested"):
-                    STORE.update(job_id, status="cancelled", finished_at=now_iso())
-                    STORE.log(job_id, "Đã dừng theo yêu cầu.")
-                    return
-                _process_sheet(job_id, index, len(sheets), sheet, run_dir, options, actor_profile=actor_profile)
-            STORE.update(job_id, status="completed", current_sheet=None, finished_at=now_iso())
-            STORE.log(job_id, "Hoàn tất toàn bộ sheet.")
-        except Exception as exc:  # keep the job inspectable on unexpected failure
-            STORE.update(job_id, status="failed", finished_at=now_iso(), current_sheet=None)
-            STORE.log(job_id, f"Lỗi job: {exc}")
-
-
-def _process_sheet(
-    job_id: str,
-    index: int,
-    total: int,
-    sheet: Dict[str, Any],
-    run_dir: Path,
-    options: Dict[str, Any],
+def research_single_reel(
+    reel_url: str,
+    sheet_name: str = "Reel đã lưu",
     actor_profile: Optional[Dict[str, Any]] = None,
-) -> None:
-    sheet_name = sheet["name"]
-    STORE.update(job_id, current_sheet=sheet_name)
-    STORE.patch_sheet(job_id, sheet["slug"], status="running", started_at=now_iso())
-    STORE.log(job_id, f"[{index}/{total}] Bắt đầu sheet '{sheet_name}' ({len(sheet['targets'])} kênh).", sheet_name)
+    agent_id: Optional[str] = None,
+    model: Optional[str] = None,
+    log: Optional[Callable[[str], None]] = None,
+    cwd: Optional[Path] = None,
+    timeout_sec: float = 120.0,
+) -> Dict[str, Any]:
+    """Execute direct deep research on an individual Reel URL (e.g. from Saved Reels).
 
-    def log(message: str) -> None:
-        STORE.log(job_id, message, sheet_name)
+    Steps:
+    1. Canonicalize the Reel URL (e.g. resolve /share/v/ redirects).
+    2. Retrieve transcript via Glasser or local ASR engine.
+    3. Analyze viral structure, hook, angle, outline, format, and generate Director Prompt.
+    """
+    _log = log or (lambda msg: logger.info(msg))
+    canon_res = canonicalize_reel_url(reel_url)
+    clean_url = canon_res[0] if canon_res else reel_url.strip()
+    platform = canon_res[1] if canon_res else "facebook"
+    vid = extract_video_id(clean_url)
 
-    reels: List[Dict[str, Any]] = []
+    _log(f"Bắt đầu phân tích Reel: {clean_url}")
+
+    # Fetch transcript
+    transcript = fetch_reel_transcript(clean_url, video_id=vid)
+    if transcript:
+        _log(f"Đã trích xuất transcript ({len(transcript)} ký tự).")
+    else:
+        _log("Không tìm thấy transcript; tiến hành phân tích qua cấu trúc video và hook.")
+
+    reel_obj: Dict[str, Any] = {
+        "url": clean_url,
+        "reel_url": clean_url,
+        "video_id": vid or "",
+        "platform": platform,
+        "title": sheet_name or f"Reel {vid or ''}",
+        "transcript": transcript or "",
+        "views": 0,
+        "velocity_per_hour": 0,
+        "current_pool": 0,
+        "pool_name": "Direct Saved Reel",
+        "author_handle": "saved_reel",
+    }
+
+    # Generate 3 topics and prompts focused on this reel
+    topics: List[Dict[str, Any]] = []
     error: Optional[str] = None
-    notice: Optional[str] = None
-    payload: Dict[str, Any] = {}
-    if sheet["targets"]:
-        sheet_dir = run_dir / "sheets" / sheet["slug"]
-        sheet_dir.mkdir(parents=True, exist_ok=True)
-        shared_cache = run_dir / "cache"
-        shared_cache.mkdir(parents=True, exist_ok=True)
-        aggregator = ErrorAggregator(job_id=job_id)
-        config = load_config(
-            {
-                "window_hours": options.get("window_hours", 48),
-                "retention_days": 7,
-                "max_videos": options.get("max_videos"),
-                "storage": {
-                    "video_dir": str(shared_cache / "videos"),
-                    "output_file": str(sheet_dir / "viral_reels_48h.json"),
-                },
-                "transcription": {"engine": "local", "model": "Qwen/Qwen3-ASR-0.6B", "language": None},
-                "targets": sheet["targets"],
-            }
-        )
-        try:
-            payload = run_analyzer_pipeline(
-                config,
-                max_videos=options.get("max_videos"),
-                cache_dir=shared_cache,
-                media=bool(options.get("media")),
-                legacy_cache=False,
-                progress_cb=log,
-            )
-            reels = payload.get("all_reels", [])
-            for err_item in payload.get("errors", []):
-                handle_name = err_item.get("handle") if isinstance(err_item, dict) else None
-                app_err = handle_glasser_error(err_item, handle=handle_name, log=log)
-                aggregator.add(app_err)
 
-            STORE.patch_sheet(
-                job_id,
-                sheet["slug"],
-                reels=len(reels),
-                pool_distribution=payload.get("metadata", {}).get("pool_distribution", {}),
-                source_breakdown=payload.get("source_breakdown") or payload.get("metadata", {}).get("source_breakdown", {}),
-            )
-        except Exception as exc:
-            app_err = handle_glasser_error(exc, log=log)
-            aggregator.add(app_err)
-            error = app_err.message
-    else:
-        aggregator = ErrorAggregator(job_id=job_id)
-        log("Sheet không có link Facebook.")
-
-    window_hours = options.get("window_hours", 48)
-    if not reels:
-        topics = []
-        if not error:
-            glasser_errs = aggregator.filter(category=ErrorCategory.GLASSER.value)
-            if glasser_errs:
-                critical = next(
-                    (e for e in glasser_errs if e.severity == ErrorSeverity.CRITICAL.value),
-                    glasser_errs[0],
-                )
-                notice = critical.format_notice()
-                error = critical.message
-                log(f"[Cảnh báo API] {notice}")
-            elif not sheet["targets"]:
-                notice = "Chưa có kênh đối thủ nào. Vui lòng cập nhật thêm danh sách kênh."
-                log(notice)
-            else:
-                notice = f"Không tìm thấy reel mới nào trong {window_hours} giờ qua. Vui lòng cập nhật thêm danh sách kênh."
-                log(notice)
-    else:
-        agent_choice = options.get("agent") or os.environ.get("VIRAL_APP_AGENT") or "agy"
-        try:
-            resolve_agent(agent_choice)
-        except ACPError:
-            for preset in AGENT_PRESETS:
-                if shutil.which(preset["detect"]):
-                    agent_choice = preset["id"]
-                    break
-        topics, topic_error = suggest_topics(
-            agent_choice,
-            sheet_name,
-            sheet["targets"],
-            reels,
-            cwd=run_dir,
-            timeout_sec=float(options.get("acp_timeout", 240)),
-            log=log,
-            model=options.get("agy_model") or options.get("model"),
+    if agent_id and cwd:
+        targets = [{"name": sheet_name, "url": clean_url}]
+        topics, error = suggest_topics(
+            agent_id=agent_id,
+            sheet_name=sheet_name,
+            targets=targets,
+            reels=[reel_obj],
+            cwd=cwd,
+            timeout_sec=timeout_sec,
+            log=_log,
+            model=model,
             actor_profile=actor_profile,
         )
-        if topic_error and not error:
-            acp_err = handle_acp_error(topic_error, agent_id=agent_choice, log=log)
-            aggregator.add(acp_err)
-            error = acp_err.message
 
-    result = {
-        "sheet": sheet_name,
-        "targets": sheet["targets"],
-        "reels": reels,
-        "source_breakdown": payload.get("source_breakdown", {}),
+    if not topics:
+        topics = heuristic_topics(sheet_name, [reel_obj], actor_profile=actor_profile, limit=3)
+        for t in topics:
+            t["source_urls"] = [clean_url]
+            t["reel_url"] = clean_url
+            t["transcript"] = transcript or ""
+
+    return {
+        "ok": True,
+        "reel_url": clean_url,
+        "video_id": vid,
+        "platform": platform,
+        "transcript": transcript,
         "topics": topics,
         "error": error,
-        "notice": notice,
-        "errors": [e.to_dict() for e in aggregator.all_errors()],
     }
-    result_path = run_dir / "sheets" / sheet["slug"] / "result.json"
-    result_path.parent.mkdir(parents=True, exist_ok=True)
-    res_bytes = json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
-    result_path.write_bytes(res_bytes)
-    blobs.put(f"runs/{job_id}/result.json", res_bytes, content_type="application/json")
 
-    STORE.patch_sheet(
-        job_id,
-        sheet["slug"],
-        status="failed" if error else "completed",
-        error=error,
-        notice=notice,
-        topics=topics,
-        source_breakdown=payload.get("source_breakdown", {}),
-        finished_at=now_iso(),
-    )
-    if topics:
-        STORE.log(job_id, f"Xong sheet '{sheet_name}': {len(reels)} reel, {len(topics)} chủ đề.", sheet_name)
-    else:
-        STORE.log(job_id, f"Xong sheet '{sheet_name}': 0 reel. {notice or error or ''}".strip(), sheet_name)
+
+def research_reels(
+    reels: List[Dict[str, Any]],
+    sheet_name: str,
+    actor_profile: Optional[Dict[str, Any]] = None,
+    agent_id: Optional[str] = None,
+    model: Optional[str] = None,
+    log: Optional[Callable[[str], None]] = None,
+    cwd: Optional[Path] = None,
+    timeout_sec: float = 180.0,
+) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """Generate viral topics and director prompts for a collection of reels."""
+    _log = log or (lambda msg: logger.info(msg))
+    if not reels:
+        return [], None
+    fetch_top_reels_transcripts(reels[:5])
+    targets = [{"name": r.get("author_name") or r.get("author_handle", "Reel"), "url": r.get("url") or r.get("reel_url", "")} for r in reels]
+    if agent_id and cwd:
+        return suggest_topics(
+            agent_id=agent_id,
+            sheet_name=sheet_name,
+            targets=targets,
+            reels=reels,
+            cwd=cwd,
+            timeout_sec=timeout_sec,
+            log=_log,
+            model=model,
+            actor_profile=actor_profile,
+        )
+    return heuristic_topics(sheet_name, reels, actor_profile=actor_profile, limit=3), None

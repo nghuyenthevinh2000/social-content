@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 
 from tools.app.backend import blobs
 from tools.app.backend.db import tx
-from tools.app.backend.research import STORE, run_job
+from tools.app.backend.research_engine.research import STORE, run_job
 from tools.app.backend.store import now_iso
 
 MAX_PROCESSES = int(os.environ.get("VIRAL_APP_MAX_PROCESSES", "2"))

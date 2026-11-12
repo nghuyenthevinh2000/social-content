@@ -78,6 +78,16 @@ type JobSummary = {
 
 export type TargetItem = { name: string; url: string };
 export type TopicItem = { name: string; slug: string; targets: TargetItem[] };
+export type SavedReel = {
+  id: string;
+  reel_url: string;
+  original_url?: string;
+  platform: string;
+  share_type: string;
+  sender_name?: string;
+  message_text?: string;
+  created_at: string;
+};
 type Tab = 'library' | 'analyzer' | 'video' | 'profile';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -117,7 +127,7 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     tab: 'library',
-    target: '.actionbar .primary',
+    target: '.topics-panel .primary',
     title: 'Chạy tất cả',
     text: 'Phân tích mọi chủ đề trong thư viện cùng lúc.',
   },
@@ -356,10 +366,20 @@ const Home: React.FC = () => {
   const [activePaymentPack, setActivePaymentPack] = useState<CreatorPack | null>(null);
   const [claimingPack, setClaimingPack] = useState<string | null>(null);
 
+  // Collapsible Topics & Saved Reels (dm_service feature)
+  const [topicsCollapsed, setTopicsCollapsed] = useState(false);
+  const [savedReels, setSavedReels] = useState<SavedReel[]>([]);
+  const [loadingReels, setLoadingReels] = useState(false);
+  const [savedReelsCollapsed, setSavedReelsCollapsed] = useState(false);
+
   function resetUserSessionState() {
     setTourDismissed(false);
     setTourReplay(false);
     setTopics([]);
+    setTopicsCollapsed(false);
+    setSavedReels([]);
+    setLoadingReels(false);
+    setSavedReelsCollapsed(false);
     setNotice(null);
     setError(null);
     setSearch('');
@@ -373,6 +393,55 @@ const Home: React.FC = () => {
     setVideoPrompt('');
     localStorage.removeItem('aibrand-active-job-id');
   }
+
+  const fetchSavedReels = async () => {
+    if (!user) return;
+    setLoadingReels(true);
+    try {
+      const res = await apiJson<{ ok: boolean; reels: SavedReel[] }>('/api/saved-reels');
+      setSavedReels(res.reels || []);
+    } catch (err) {
+      console.error('Failed to load saved reels:', err);
+    } finally {
+      setLoadingReels(false);
+    }
+  };
+
+  const handleDeleteSavedReel = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Xoá Reel này khỏi danh sách đã lưu?')) return;
+    try {
+      await apiJson('/api/saved-reels/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      setSavedReels((prev) => prev.filter((r) => r.id !== id));
+      setNotice({ type: 'success', text: 'Đã xoá Reel khỏi danh sách.' });
+    } catch (err) {
+      setNotice({ type: 'error', text: errorText(err) });
+    }
+  };
+
+  const handleRunSavedReel = (reel: SavedReel) => {
+    const topicTitle = reel.sender_name ? `Reel từ ${reel.sender_name}` : 'Reel đã lưu';
+    const item: TopicItem = {
+      name: topicTitle,
+      slug: `saved-reel-${reel.id}`,
+      targets: [{ name: reel.message_text ? reel.message_text.slice(0, 40) : reel.reel_url, url: reel.reel_url }],
+    };
+    run([item], topicTitle);
+  };
+
+  const handleRunAllSavedReels = () => {
+    if (!savedReels.length) return;
+    const items: TopicItem[] = savedReels.map((reel) => ({
+      name: reel.sender_name ? `Reel từ ${reel.sender_name}` : 'Reel đã lưu',
+      slug: `saved-reel-${reel.id}`,
+      targets: [{ name: reel.message_text ? reel.message_text.slice(0, 40) : reel.reel_url, url: reel.reel_url }],
+    }));
+    run(items, `Tất cả Reel đã lưu (${savedReels.length})`);
+  };
 
   useEffect(() => {
     let lastUid = auth.currentUser?.uid ?? null;
@@ -491,6 +560,12 @@ const Home: React.FC = () => {
         if (targetId) {
           selectJob(targetId);
         }
+      })
+      .catch(() => {});
+
+    apiJson<{ ok: boolean; reels: SavedReel[] }>('/api/saved-reels')
+      .then((data) => {
+        if (!ignore) setSavedReels(data.reels || []);
       })
       .catch(() => {});
 
@@ -881,134 +956,271 @@ const Home: React.FC = () => {
                   {notice && <div className={`alert ${notice.type}`}>{notice.text}</div>}
                 </section>
 
-                <section className="panel">
-                  <div className="panel-head">
-                    <h2>Chủ đề</h2>
-                    <span className="muted count">
-                      {topics.length} chủ đề · {totalChannels} kênh
-                    </span>
+                <section className="panel topics-panel">
+                  <button
+                    className="primary"
+                    type="button"
+                    onClick={() => run(runnable, 'Tất cả chủ đề')}
+                    disabled={blocked || runnable.length === 0}
+                    style={{ marginBottom: 'var(--space-3)' }}
+                  >
+                    {running ? 'Đang chạy…' : `▶ Chạy tất cả (${runnable.length} chủ đề)`}
+                  </button>
+
+                  <div
+                    className="panel-head collapsible-head"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setTopicsCollapsed((v) => !v)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setTopicsCollapsed((v) => !v);
+                      }
+                    }}
+                  >
+                    <div>
+                      <h2>Chủ đề</h2>
+                      <span className="muted count">
+                        {topics.length} chủ đề · {totalChannels} kênh
+                      </span>
+                    </div>
+                    <span className={`store-toggle-icon ${!topicsCollapsed ? 'open' : ''}`} aria-hidden="true" />
                   </div>
-                  <input
-                    type="search"
-                    className="text-input search-input"
-                    placeholder="Tìm chủ đề, kênh, link…"
-                    aria-label="Tìm trong thư viện"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
 
-                  {filteredTopics.length === 0 ? (
-                    <p className="muted empty">
-                      {topics.length ? 'Không có kết quả phù hợp.' : 'Thư viện trống. Nhập file hoặc tạo chủ đề.'}
-                    </p>
-                  ) : (
-                    filteredTopics.map((topic) => (
-                      <details key={topic.slug} className="topic-accordion">
-                        <summary>
-                          <span className="sheet-title">
-                            <strong>{topic.name}</strong>
-                            <small className="muted">{topic.targets.length} kênh</small>
-                          </span>
-                          <button
-                            type="button"
-                            className="topic-run-btn"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              run([topic], topic.name);
-                            }}
-                            disabled={blocked || topic.targets.length === 0}
-                          >
-                            ▶ Chạy
-                          </button>
-                        </summary>
+                  {!topicsCollapsed && (
+                    <>
+                      <input
+                        type="search"
+                        className="text-input search-input"
+                        placeholder="Tìm chủ đề, kênh, link…"
+                        aria-label="Tìm trong thư viện"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
 
-                        <div className="accordion-body">
-                          {topic.targets.map((target) => (
-                            <div key={target.url} className="channel-card">
-                              <div className="channel-info">
-                                <span className="channel-name">{target.name}</span>
-                                <a href={target.url} target="_blank" rel="noreferrer" className="channel-link">
-                                  {shortUrl(target.url)} ↗
-                                </a>
-                              </div>
+                      {filteredTopics.length === 0 ? (
+                        <p className="muted empty">
+                          {topics.length ? 'Không có kết quả phù hợp.' : 'Thư viện trống. Nhập file hoặc tạo chủ đề.'}
+                        </p>
+                      ) : (
+                        filteredTopics.map((topic) => (
+                          <details key={topic.slug} className="topic-accordion">
+                            <summary>
+                              <span className="sheet-title">
+                                <strong>{topic.name}</strong>
+                                <small className="muted">{topic.targets.length} kênh</small>
+                              </span>
                               <button
                                 type="button"
-                                className="channel-del-btn"
-                                aria-label={`Xoá kênh ${target.name}`}
-                                onClick={() =>
-                                  postJson('/api/sources/profiles/delete', { slug: topic.slug, url: target.url })
-                                }
+                                className="topic-run-btn"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  run([topic], topic.name);
+                                }}
+                                disabled={blocked || topic.targets.length === 0}
                               >
-                                ✕
+                                ▶ Chạy
                               </button>
+                            </summary>
+
+                            <div className="accordion-body">
+                              {topic.targets.map((target) => (
+                                <div key={target.url} className="channel-card">
+                                  <div className="channel-info">
+                                    <span className="channel-name">{target.name}</span>
+                                    <a href={target.url} target="_blank" rel="noreferrer" className="channel-link">
+                                      {shortUrl(target.url)} ↗
+                                    </a>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="channel-del-btn"
+                                    aria-label={`Xoá kênh ${target.name}`}
+                                    onClick={() =>
+                                      postJson('/api/sources/profiles/delete', { slug: topic.slug, url: target.url })
+                                    }
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+
+                              <form
+                                className="row"
+                                onSubmit={async (e) => {
+                                  e.preventDefault();
+                                  const url = (inlineUrls[topic.slug] || '').trim();
+                                  if (url && (await addChannel(topic.name, url)))
+                                    setInlineUrls((prev) => ({ ...prev, [topic.slug]: '' }));
+                                }}
+                              >
+                                <input
+                                  type="url"
+                                  className="text-input small"
+                                  placeholder="Dán link kênh…"
+                                  aria-label={`Thêm kênh vào ${topic.name}`}
+                                  value={inlineUrls[topic.slug] || ''}
+                                  onChange={(e) => setInlineUrls((prev) => ({ ...prev, [topic.slug]: e.target.value }))}
+                                />
+                                <button
+                                  type="submit"
+                                  className="ghost small"
+                                  disabled={busy || !(inlineUrls[topic.slug] || '').trim()}
+                                >
+                                  + Thêm
+                                </button>
+                              </form>
+
+                              {!isDefaultTopic(topic) && (
+                                <button
+                                  type="button"
+                                  className="btn-text-danger"
+                                  onClick={() =>
+                                    window.confirm(`Xoá chủ đề "${topic.name}" cùng toàn bộ kênh?`) &&
+                                    postJson('/api/sources/topics/delete', { slug: topic.slug })
+                                  }
+                                >
+                                  Xoá chủ đề
+                                </button>
+                              )}
+                            </div>
+                          </details>
+                        ))
+                      )}
+
+                      <form className="new-topic" onSubmit={createTopic}>
+                        <input
+                          type="text"
+                          className="text-input small"
+                          placeholder="Tên chủ đề mới"
+                          aria-label="Tên chủ đề mới"
+                          value={newTopic.name}
+                          onChange={(e) => setNewTopic((v) => ({ ...v, name: e.target.value }))}
+                        />
+                        <input
+                          type="url"
+                          className="text-input small"
+                          placeholder="Link kênh đầu tiên (tuỳ chọn)"
+                          aria-label="Link kênh đầu tiên"
+                          value={newTopic.url}
+                          onChange={(e) => setNewTopic((v) => ({ ...v, url: e.target.value }))}
+                        />
+                        <button type="submit" className="ghost small" disabled={busy || !newTopic.name.trim()}>
+                          + Tạo chủ đề
+                        </button>
+                      </form>
+                    </>
+                  )}
+                </section>
+
+                <div className="panel saved-reels-panel">
+                  <div
+                    className="panel-head collapsible-head"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSavedReelsCollapsed((v) => !v)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSavedReelsCollapsed((v) => !v);
+                      }
+                    }}
+                  >
+                    <div>
+                      <h2>Reel đã lưu</h2>
+                      <span className="muted count">
+                        {savedReels.length} reel
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fetchSavedReels();
+                        }}
+                        disabled={loadingReels}
+                        title="Làm mới danh sách Reel"
+                      >
+                        {loadingReels ? '…' : '↻'}
+                      </button>
+                      <span className={`store-toggle-icon ${!savedReelsCollapsed ? 'open' : ''}`} aria-hidden="true" />
+                    </div>
+                  </div>
+
+                  {!savedReelsCollapsed && (
+                    <div className="saved-reels-body" style={{ marginTop: 'var(--space-3)' }}>
+                      {savedReels.length > 0 && (
+                        <div style={{ marginBottom: 'var(--space-2)' }}>
+                          <button
+                            type="button"
+                            className="ghost small"
+                            style={{ width: '100%', justifyContent: 'center' }}
+                            onClick={handleRunAllSavedReels}
+                            disabled={blocked}
+                          >
+                            ▶ Chạy phân tích tất cả Reel ({savedReels.length})
+                          </button>
+                        </div>
+                      )}
+
+                      {savedReels.length === 0 ? (
+                        <div className="empty" style={{ padding: 'var(--space-3) 0 0' }}>
+                          <p className="muted" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
+                            Chưa có Reel nào được lưu.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="saved-reels-list" style={{ marginTop: 'var(--space-2)' }}>
+                          {savedReels.map((reel) => (
+                            <div key={reel.id} className="channel-card saved-reel-card">
+                              <div className="channel-info">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span className="reel-platform-tag">{reel.platform || 'reel'}</span>
+                                  <span className="muted" style={{ fontSize: '11px' }}>
+                                    {formatTime(reel.created_at)}
+                                  </span>
+                                </div>
+                                <a
+                                  href={reel.reel_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="channel-link"
+                                  title={reel.reel_url}
+                                >
+                                  {shortUrl(reel.reel_url)} ↗
+                                </a>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  className="ghost small"
+                                  style={{ padding: '4px 8px', fontSize: '12px' }}
+                                  onClick={() => handleRunSavedReel(reel)}
+                                  disabled={blocked}
+                                  title="Phân tích Reel này"
+                                >
+                                  ▶ Phân tích
+                                </button>
+                                <button
+                                  type="button"
+                                  className="channel-del-btn"
+                                  aria-label="Xoá Reel này"
+                                  onClick={(e) => handleDeleteSavedReel(reel.id, e)}
+                                  title="Xoá Reel"
+                                >
+                                  ✕
+                                </button>
+                              </div>
                             </div>
                           ))}
-
-                          <form
-                            className="row"
-                            onSubmit={async (e) => {
-                              e.preventDefault();
-                              const url = (inlineUrls[topic.slug] || '').trim();
-                              if (url && (await addChannel(topic.name, url)))
-                                setInlineUrls((prev) => ({ ...prev, [topic.slug]: '' }));
-                            }}
-                          >
-                            <input
-                              type="url"
-                              className="text-input small"
-                              placeholder="Dán link kênh…"
-                              aria-label={`Thêm kênh vào ${topic.name}`}
-                              value={inlineUrls[topic.slug] || ''}
-                              onChange={(e) => setInlineUrls((prev) => ({ ...prev, [topic.slug]: e.target.value }))}
-                            />
-                            <button
-                              type="submit"
-                              className="ghost small"
-                              disabled={busy || !(inlineUrls[topic.slug] || '').trim()}
-                            >
-                              + Thêm
-                            </button>
-                          </form>
-
-                          {!isDefaultTopic(topic) && (
-                            <button
-                              type="button"
-                              className="btn-text-danger"
-                              onClick={() =>
-                                window.confirm(`Xoá chủ đề "${topic.name}" cùng toàn bộ kênh?`) &&
-                                postJson('/api/sources/topics/delete', { slug: topic.slug })
-                              }
-                            >
-                              Xoá chủ đề
-                            </button>
-                          )}
                         </div>
-                      </details>
-                    ))
+                      )}
+                    </div>
                   )}
-
-                  <form className="new-topic" onSubmit={createTopic}>
-                    <input
-                      type="text"
-                      className="text-input small"
-                      placeholder="Tên chủ đề mới"
-                      aria-label="Tên chủ đề mới"
-                      value={newTopic.name}
-                      onChange={(e) => setNewTopic((v) => ({ ...v, name: e.target.value }))}
-                    />
-                    <input
-                      type="url"
-                      className="text-input small"
-                      placeholder="Link kênh đầu tiên (tuỳ chọn)"
-                      aria-label="Link kênh đầu tiên"
-                      value={newTopic.url}
-                      onChange={(e) => setNewTopic((v) => ({ ...v, url: e.target.value }))}
-                    />
-                    <button type="submit" className="ghost small" disabled={busy || !newTopic.name.trim()}>
-                      + Tạo chủ đề
-                    </button>
-                  </form>
-                </section>
+                </div>
               </>
             )
           ) : (
@@ -1396,23 +1608,11 @@ const Home: React.FC = () => {
       </IonContent>
 
       <IonFooter className="ion-no-border">
-        {((tab === 'library' && user) || (tab === 'analyzer' && running)) && (
+        {running && (
           <div className="actionbar">
-            {tab === 'library' && (
-              <button
-                className="primary"
-                type="button"
-                onClick={() => run(runnable, 'Tất cả chủ đề')}
-                disabled={blocked || runnable.length === 0}
-              >
-                {running ? 'Đang chạy…' : `▶ Chạy tất cả (${runnable.length} chủ đề)`}
-              </button>
-            )}
-            {running && (
-              <button className="ghost danger" type="button" onClick={cancel}>
-                Dừng
-              </button>
-            )}
+            <button className="ghost danger" type="button" onClick={cancel}>
+              Dừng
+            </button>
           </div>
         )}
         <nav className="tabbar" role="tablist">

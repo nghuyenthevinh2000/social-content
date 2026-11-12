@@ -78,3 +78,73 @@ test('library adds channels via the backend and runs from the library only', asy
   await expect.poll(() => jobPayload).not.toBeNull();
   expect(jobPayload!.sheets.map((s) => s.name)).toEqual(['Mẹ chồng - nàng dâu', 'Ẩm thực']);
 });
+
+test('topics section is collapsible and saved reels container renders', async ({ page }) => {
+  const uid = `e2e_reels_${Date.now()}`;
+  await page.addInitScript((testUid) => {
+    localStorage.setItem(`aibrand-tour-done-${testUid}`, '1');
+    (window as any).__E2E_TEST_USER__ = {
+      uid: testUid,
+      email: 'e2e@example.com',
+      displayName: 'E2E User',
+      metadata: { lastSignInTime: '2026-11-10T10:00:00Z' },
+      getIdToken: async () => 'e2e-fake-token',
+    };
+  }, uid);
+
+  const fakeReels = [
+    {
+      id: 'reel_abc',
+      reel_url: 'https://www.facebook.com/reel/999888777',
+      platform: 'facebook',
+      share_type: 'link_share',
+      sender_name: 'Minh Chau',
+      message_text: 'Reel viral hay',
+      created_at: '2026-11-12T12:00:00Z',
+    },
+  ];
+
+  await page.route('**/api/sources/topics', (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        topics: [
+          {
+            name: 'Thời trang',
+            slug: 'thoi-trang',
+            targets: [{ name: 'Kênh thời trang', url: 'https://facebook.com/fashion' }],
+          },
+        ],
+      },
+    }),
+  );
+  await page.route('**/api/saved-reels', (route) => route.fulfill({ json: { ok: true, reels: fakeReels } }));
+
+  await page.goto('/');
+
+  // Run all button is visible on top of topics section
+  const runAllBtn = page.getByRole('button', { name: /Chạy tất cả \(1 chủ đề\)/ });
+  await expect(runAllBtn).toBeVisible();
+
+  // Topics section collapsible toggle
+  const topicsHead = page.locator('.topics-panel .collapsible-head');
+  await expect(topicsHead).toBeVisible();
+  await expect(page.locator('.topic-accordion')).toBeVisible();
+
+  // Click to collapse
+  await topicsHead.click();
+  await expect(page.locator('.topic-accordion')).toHaveCount(0);
+
+  // Click to expand again
+  await topicsHead.click();
+  await expect(page.locator('.topic-accordion')).toBeVisible();
+
+  // Saved reels container
+  const savedReelsPanel = page.locator('.saved-reels-panel');
+  await expect(savedReelsPanel).toBeVisible();
+  await expect(savedReelsPanel).toContainText('Reel đã lưu');
+  await expect(savedReelsPanel).toContainText('1 reel');
+  await expect(page.locator('.saved-reel-card')).toHaveCount(1);
+  await expect(page.locator('.saved-reel-card')).toContainText('facebook');
+  await expect(page.locator('.saved-reel-card .channel-link')).toBeVisible();
+});

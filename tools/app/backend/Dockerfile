@@ -32,6 +32,8 @@ RUN useradd --create-home --uid 1000 app \
     && chown -R app /home/app
 
 WORKDIR /app
+COPY --chown=app tools/common tools/common
+COPY --chown=app tools/facebook_agent tools/facebook_agent
 COPY --chown=app tools/loop tools/loop
 COPY --chown=app tools/app/backend tools/app/backend
 COPY --chown=app tools/app/browser-app/dist tools/app/browser-app/dist

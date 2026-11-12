@@ -20,7 +20,7 @@ from tools.app.backend.profiles import (
     resolve_xlsx_bytes,
     slugify,
 )
-from tools.app.backend.research import (
+from tools.app.backend.research_engine.research import (
     create_job,
     heuristic_topics,
     normalize_topics,
@@ -39,8 +39,8 @@ class BackendTests(unittest.TestCase):
         self._env_patch.start()
         self._runs_root = Path(self._cache_tmp.name) / "runs"
         self._store = JobStore()
-        self._runs_patch = mock.patch("tools.app.backend.research.RUNS_ROOT", self._runs_root)
-        self._store_patch = mock.patch("tools.app.backend.research.STORE", self._store)
+        self._runs_patch = mock.patch("tools.app.backend.research_engine.research.RUNS_ROOT", self._runs_root)
+        self._store_patch = mock.patch("tools.app.backend.research_engine.research.STORE", self._store)
         self._runs_patch.start()
         self._store_patch.start()
 
@@ -241,7 +241,7 @@ class BackendTests(unittest.TestCase):
         self.assertIn(marker, content)
 
     def test_resolve_xlsx_bytes_passthrough(self):
-        from tools.app.backend.research import resolve_xlsx_bytes
+        from tools.app.backend.research_engine.research import resolve_xlsx_bytes
         raw = b"PK\x03\x04test"
         res, name = resolve_xlsx_bytes(raw, "file.xlsx")
         self.assertEqual(res, raw)
@@ -249,7 +249,7 @@ class BackendTests(unittest.TestCase):
 
     def test_resolve_xlsx_bytes_gsheet_json(self):
         from unittest.mock import MagicMock, patch
-        from tools.app.backend.research import resolve_xlsx_bytes
+        from tools.app.backend.research_engine.research import resolve_xlsx_bytes
 
         gsheet_json = json.dumps({
             "url": "https://docs.google.com/spreadsheets/d/test12345/edit",
@@ -267,7 +267,7 @@ class BackendTests(unittest.TestCase):
             self.assertIn("test12345/export?format=xlsx", mock_urlopen.call_args[0][0].full_url)
 
     def test_resolve_xlsx_bytes_json_sheets(self):
-        from tools.app.backend.research import resolve_xlsx_bytes, parse_workbook
+        from tools.app.backend.research_engine.research import resolve_xlsx_bytes, parse_workbook
         import tempfile
         payload = json.dumps({
             "sheets": [
@@ -525,7 +525,7 @@ class BackendTests(unittest.TestCase):
                 self.assertTrue(any("Thống kê nguồn cào:" in log for log in logs))
 
     def test_suggest_topics_empty_reels_returns_empty(self):
-        from tools.app.backend.research import suggest_topics
+        from tools.app.backend.research_engine.research import suggest_topics
         logs = []
         topics, err = suggest_topics(
             "agy",
@@ -541,7 +541,7 @@ class BackendTests(unittest.TestCase):
         self.assertTrue(any("Không có reel nào" in m for m in logs))
 
     def test_process_sheet_zero_reels_notifies_and_produces_no_topics(self):
-        from tools.app.backend.research import _process_sheet
+        from tools.app.backend.research_engine.research import _process_sheet
         import uuid
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
@@ -568,7 +568,7 @@ class BackendTests(unittest.TestCase):
                 "logs": [],
             }
             self._store.put(job)
-            with mock.patch("tools.app.backend.research.run_analyzer_pipeline", return_value={"all_reels": [], "metadata": {}}):
+            with mock.patch("tools.app.backend.research_engine.research.run_analyzer_pipeline", return_value={"all_reels": [], "metadata": {}}):
                 _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
             snap = self._store.snapshot(job_id)
             target_sheet = snap["sheets"][0]
@@ -579,7 +579,7 @@ class BackendTests(unittest.TestCase):
             self.assertIn("cập nhật thêm danh sách", target_sheet["notice"])
 
     def test_process_sheet_no_targets_notifies_and_produces_no_topics(self):
-        from tools.app.backend.research import _process_sheet
+        from tools.app.backend.research_engine.research import _process_sheet
         import uuid
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
@@ -624,7 +624,7 @@ class BackendTests(unittest.TestCase):
         self.assertIn("command -v agy", content)
 
     def test_agy_agent_model_resolution(self):
-        from tools.app.backend.research import resolve_agent
+        from tools.app.backend.research_engine.research import resolve_agent
         with mock.patch("shutil.which", return_value="/usr/local/bin/agy"):
             # Unset env: no hard-coded model, defaults to base agy command
             with mock.patch.dict(os.environ, {}, clear=False):
@@ -801,7 +801,7 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(len(agg.notices()), 2)
 
     def test_process_sheet_reports_glasser_error_when_no_reels(self):
-        from tools.app.backend.research import _process_sheet
+        from tools.app.backend.research_engine.research import _process_sheet
         import uuid
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
@@ -835,7 +835,7 @@ class BackendTests(unittest.TestCase):
                 "handle": "fail_chan",
                 "suggestion": "Thêm GLASSER_API_KEY vào .env",
             }
-            with mock.patch("tools.app.backend.research.run_analyzer_pipeline", return_value={"all_reels": [], "errors": [glasser_mock_error], "metadata": {}}):
+            with mock.patch("tools.app.backend.research_engine.research.run_analyzer_pipeline", return_value={"all_reels": [], "errors": [glasser_mock_error], "metadata": {}}):
                 _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
 
             snap = self._store.snapshot(job_id)
@@ -843,6 +843,53 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(target_sheet["status"], "failed")
             self.assertIn("Chưa cấu hình hoặc thiếu GLASSER_API_KEY", target_sheet["notice"])
             self.assertIn("GLASSER_API_KEY", target_sheet["error"])
+
+    def test_process_sheet_with_single_reel_url(self):
+        from tools.app.backend.research_engine.research import _process_sheet
+        import uuid
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            job_id = uuid.uuid4().hex[:12]
+            sheet = {
+                "name": "Reel Đã Lưu Test",
+                "slug": "reel-da-luu-test",
+                "targets": [{"name": "Reel 1963371435020478", "url": "https://www.facebook.com/reel/1963371435020478"}],
+            }
+            job = {
+                "id": job_id,
+                "status": "running",
+                "created_at": "2026-01-01",
+                "sheets": [{
+                    "name": sheet["name"],
+                    "slug": sheet["slug"],
+                    "status": "pending",
+                    "targets": 1,
+                    "reels": 0,
+                    "topics": [],
+                    "error": None,
+                    "notice": None,
+                }],
+                "logs": [],
+            }
+            self._store.put(job)
+            mock_topic = {
+                "title": "Chủ đề thử nghiệm từ Reel",
+                "hook": "Hook 3 giây mở đầu",
+                "prompt": "[CAMERA & COMPOSITION]\nKhung hình 9:16",
+                "source_urls": ["https://www.facebook.com/reel/1963371435020478"],
+            }
+            with mock.patch("tools.app.backend.research_engine.reel_research.fetch_reel_transcript", return_value="Nội dung transcript mẫu"):
+                with mock.patch("tools.app.backend.research_engine.reel_research.suggest_topics", return_value=([mock_topic], None)):
+                    _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
+
+            snap = self._store.snapshot(job_id)
+            target_sheet = snap["sheets"][0]
+            self.assertEqual(target_sheet["status"], "completed")
+            self.assertEqual(target_sheet["reels"], 1)
+            self.assertEqual(len(target_sheet["topics"]), 1)
+            self.assertIsNone(target_sheet["error"])
+            self.assertIn("https://www.facebook.com/reel/1963371435020478", target_sheet["topics"][0]["source_urls"])
+            self.assertTrue(bool(target_sheet["topics"][0].get("prompt")))
 
     def test_centralized_cache(self):
         from tools.loop.viral_analyzer.cache import (
@@ -914,7 +961,8 @@ class BackendTests(unittest.TestCase):
         import concurrent.futures
         import threading
         import urllib.request
-        from tools.app.backend import blobs, db, handler, research, server, video_jobs
+        from tools.app.backend import blobs, db, handler, server, video_jobs
+        from tools.app.backend.research_engine import research
 
         # Phase 5: schema applies twice cleanly
         db.init_schema()

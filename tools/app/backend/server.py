@@ -36,6 +36,7 @@ WORKSPACE = BACKEND_DIR.parents[2]
 sys.path.insert(0, str(WORKSPACE))
 
 from tools.app.backend import blobs  # noqa: E402
+from tools.app.backend.db import ro, tx  # noqa: E402
 from tools.app.backend.handler import run_worker  # noqa: E402
 from tools.app.backend.media import MEDIA_STORE  # noqa: E402
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate_per_sec_micro  # noqa: E402
@@ -43,7 +44,7 @@ from tools.app.backend.video_jobs import VIDEO_STORE, VIDEO_RUNNER  # noqa: E402
 from tools.app.backend.video_engine import get_video_duration  # noqa: E402
 from tools.app.backend.profiles import PROFILE_STORE  # noqa: E402
 from tools.app.backend.user_profile import USER_PROFILE_STORE  # noqa: E402
-from tools.app.backend.research import (  # noqa: E402
+from tools.app.backend.research_engine.research import (  # noqa: E402
     configured_agent,
     create_job,
     parse_workbook,
@@ -336,15 +337,6 @@ class Handler(BaseHTTPRequestHandler):
             prof = USER_PROFILE_STORE.get_profile(user_id)
             _json(self, 200, {"ok": True, "profile": prof})
             return
-        if parsed.path == "/api/facebook/link-code":
-            user_id = self._user_id()
-            if not user_id:
-                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
-                return
-            from tools.app.backend.services.dm_service import create_link_code
-            code = create_link_code(user_id)
-            _json(self, 200, {"ok": True, "code": code, "page_url": "https://m.me/1216806404853891"})
-            return
         if parsed.path == "/api/facebook/status":
             user_id = self._user_id()
             if not user_id:
@@ -363,11 +355,24 @@ class Handler(BaseHTTPRequestHandler):
             if not user_id:
                 _json(self, 401, {"error": "Yêu cầu đăng nhập."})
                 return
+            fb_id = self.headers.get("X-Facebook-Id")
             with ro() as conn:
+                target_ids = {user_id}
+                if fb_id:
+                    target_ids.add(fb_id)
+                cur = conn.execute(
+                    "SELECT psid, user_id FROM facebook_user_mappings WHERE user_id = ANY(%s) OR psid = ANY(%s)",
+                    (list(target_ids), list(target_ids)),
+                )
+                for r in cur.fetchall():
+                    if r[0]:
+                        target_ids.add(r[0])
+                    if r[1]:
+                        target_ids.add(r[1])
                 cur = conn.execute(
                     "SELECT id, reel_url, original_url, platform, share_type, sender_name, message_text, created_at "
-                    "FROM saved_reels WHERE user_id = %s ORDER BY created_at DESC LIMIT 100",
-                    (user_id,),
+                    "FROM saved_reels WHERE user_id = ANY(%s) OR sender_psid = ANY(%s) ORDER BY created_at DESC LIMIT 100",
+                    (list(target_ids), list(target_ids)),
                 )
                 reels = [
                     {
@@ -451,6 +456,36 @@ class Handler(BaseHTTPRequestHandler):
             with tx() as conn:
                 conn.execute("DELETE FROM facebook_user_mappings WHERE user_id = %s", (user_id,))
             _json(self, 200, {"ok": True, "message": "Đã hủy liên kết Facebook Messenger."})
+            return
+        if parsed.path == "/api/saved-reels/delete":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            body = _read_json(self)
+            reel_id = body.get("id")
+            if not reel_id:
+                _json(self, 400, {"error": "Thiếu id."})
+                return
+            fb_id = self.headers.get("X-Facebook-Id")
+            target_ids = {user_id}
+            if fb_id:
+                target_ids.add(fb_id)
+            with tx() as conn:
+                cur = conn.execute(
+                    "SELECT psid, user_id FROM facebook_user_mappings WHERE user_id = ANY(%s) OR psid = ANY(%s)",
+                    (list(target_ids), list(target_ids)),
+                )
+                for r in cur.fetchall():
+                    if r[0]:
+                        target_ids.add(r[0])
+                    if r[1]:
+                        target_ids.add(r[1])
+                conn.execute(
+                    "DELETE FROM saved_reels WHERE id = %s AND (user_id = ANY(%s) OR sender_psid = ANY(%s))",
+                    (reel_id, list(target_ids), list(target_ids)),
+                )
+            _json(self, 200, {"ok": True, "message": "Đã xoá Reel đã lưu."})
             return
         if parsed.path == "/api/sources/parse":
             user_id = self._user_id()
