@@ -1,4 +1,6 @@
 *
+!tools/common
+!tools/facebook_agent
 !tools/loop
 !tools/app/backend
 !tools/app/browser-app/dist
