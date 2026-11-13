@@ -69,7 +69,7 @@ def run_analyzer_pipeline(
     limit_targets: Optional[int] = None,
     max_videos: Optional[int] = None,
     cache_dir: Optional[Path] = None,
-    media: bool = True,
+    transcribe: bool = True,
     legacy_cache: bool = True,
     progress_cb: Optional[Callable[[str], None]] = None,
     transcriber_engine: Optional[str] = None,
@@ -202,7 +202,7 @@ def run_analyzer_pipeline(
     progress_cb and progress_cb(f"[*] {source_summary}")
 
     # 3. Transcription ("local" vs "glasser")
-    if media or transcriber_engine is not None:
+    if transcribe or transcriber_engine is not None:
         if resolved_transcriber == "local":
             transcribe_reels_local(
                 extracted_reels,

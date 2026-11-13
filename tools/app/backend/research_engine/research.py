@@ -160,6 +160,7 @@ def create_job(
     options: Dict[str, Any],
     client_id: str,
     user_id: Optional[str] = None,
+    job_kind: str = "profile",
 ) -> Dict[str, Any]:
     xlsx_bytes, filename = resolve_xlsx_bytes(xlsx_bytes, filename)
     job_id = uuid.uuid4().hex[:12]
@@ -182,6 +183,7 @@ def create_job(
             actor_prof = None
     job = {
         "id": job_id,
+        "job_kind": job_kind if job_kind in {"profile", "reel"} else "profile",
         "client_id": client_id,
         "user_id": user_id,
         "actor_profile": actor_prof,
@@ -241,7 +243,16 @@ def run_job(job: Dict[str, Any]) -> None:
                     STORE.update(job_id, status="cancelled", finished_at=now_iso())
                     STORE.log(job_id, "Đã dừng theo yêu cầu.")
                     return
-                _process_sheet(job_id, index, len(sheets), sheet, run_dir, options, actor_profile=actor_profile)
+                _process_sheet(
+                    job_id,
+                    index,
+                    len(sheets),
+                    sheet,
+                    run_dir,
+                    options,
+                    actor_profile=actor_profile,
+                    job_kind=job.get("job_kind") or "profile",
+                )
             STORE.update(job_id, status="completed", current_sheet=None, finished_at=now_iso())
             STORE.log(job_id, "Hoàn tất toàn bộ sheet.")
         except Exception as exc:  # keep the job inspectable on unexpected failure
@@ -257,6 +268,7 @@ def _process_sheet(
     run_dir: Path,
     options: Dict[str, Any],
     actor_profile: Optional[Dict[str, Any]] = None,
+    job_kind: str = "profile",
 ) -> None:
     sheet_name = sheet["name"]
     STORE.update(job_id, current_sheet=sheet_name)
@@ -275,8 +287,6 @@ def _process_sheet(
     aggregator = ErrorAggregator(job_id=job_id)
 
     targets = sheet.get("targets", [])
-    # Detect if this sheet contains direct Reel URLs (e.g. from Saved Reels) or Profile URLs
-    is_reel_batch = any(is_reel_url(t.get("url", "")) for t in targets)
 
     agent_choice = options.get("agent") or os.environ.get("VIRAL_APP_AGENT") or "agy"
     try:
@@ -287,7 +297,7 @@ def _process_sheet(
                 agent_choice = preset["id"]
                 break
 
-    if is_reel_batch:
+    if job_kind == "reel":
         log(f"Phát hiện {len(targets)} Reel đơn lẻ; chạy Reel Research trực tiếp (bỏ qua profile scraper).")
         for t_idx, target in enumerate(targets, 1):
             t_url = target.get("url", "")

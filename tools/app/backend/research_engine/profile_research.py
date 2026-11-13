@@ -92,7 +92,7 @@ def run_profile_research(
             config,
             max_videos=options.get("max_videos"),
             cache_dir=shared_cache,
-            media=bool(options.get("media")),
+            transcribe=bool(options.get("transcribe")),
             legacy_cache=False,
             progress_cb=_log,
         )

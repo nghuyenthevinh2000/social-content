@@ -2,10 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
+import { formatTopicForAI } from './analysis/format';
 import { MediaPanel } from './components/MediaPanel';
 import { VideoTab, videoDownloadUrl, videoFileUrl } from './components/VideoTab';
 import type { User } from './firebase';
-import { formatTopicForAI } from './pages/Home';
 
 const mockUser = {
   uid: 'test_uid_123',

@@ -259,6 +259,7 @@ class JobStore:
                     fn = "Phân tích"
                 jobs.append({
                     "id": j.get("id"),
+                    "job_kind": j.get("job_kind") or "profile",
                     "status": j.get("status"),
                     "filename": fn,
                     "created_at": j.get("created_at"),

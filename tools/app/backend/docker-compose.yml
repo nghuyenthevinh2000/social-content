@@ -77,6 +77,7 @@ services:
     environment:
       - PORT=8765
       - ROLE=${ROLE:-all}
+      - ENABLE_DM_POLLER=${ENABLE_DM_POLLER:-0}
       - VIRAL_APP_AGENT=${VIRAL_APP_AGENT:-opencode}
       - VIRAL_APP_AGY_MODEL=${VIRAL_APP_AGY_MODEL:-gemini-3.8-flash-low}
       - OPENCODE_CONFIG_CONTENT=${OPENCODE_CONFIG_CONTENT:-}
@@ -115,6 +116,25 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+  dm-service:
+    image: backend-backend:latest
+    container_name: aibrand-dm-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/aibrand
+      - DB_POOL_MAX=${DB_POOL_MAX:-10}
+    volumes:
+      - .:/app/tools/app/backend
+      - ../../facebook_agent:/app/tools/facebook_agent
+      - ../../common:/app/tools/common
+    command: ["python", "tools/app/backend/services/dm_service.py", "--interval", "5"]
 
   # download-models:
   #   build:

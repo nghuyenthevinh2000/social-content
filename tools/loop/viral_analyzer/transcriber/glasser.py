@@ -6,6 +6,7 @@ Fetches platform-level transcripts directly via Glasser ScrapeCreators
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -19,6 +20,8 @@ from tools.loop.viral_analyzer.cache import (
     get_cached_transcript,
     save_cached_transcript,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def fetch_reel_transcript(
@@ -71,8 +74,14 @@ def fetch_reel_transcript(
                     if vid:
                         save_cached_transcript(vid, clean_tr, url=reel_url)
                     return clean_tr
-    except Exception:
-        pass
+                if data.get("error") or data.get("message"):
+                    logger.warning(
+                        "Glasser transcript error for %s: %s",
+                        reel_url,
+                        data.get("message") or data.get("error"),
+                    )
+    except Exception as exc:
+        logger.warning("Glasser transcript failed for %s: %s", reel_url, exc)
     finally:
         if temp_out.exists():
             try:

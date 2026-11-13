@@ -206,7 +206,7 @@ class BackendTests(unittest.TestCase):
                     "targets": [{"handle": "testhandle", "url": "https://facebook.com/testhandle", "name": "Test"}],
                 }
             )
-            payload = run_analyzer_pipeline(config, cache_dir=cache, media=False, legacy_cache=False)
+            payload = run_analyzer_pipeline(config, cache_dir=cache, transcribe=False, legacy_cache=False)
             self.assertEqual(len(payload["all_reels"]), 2)
             self.assertEqual(payload["all_reels"][0]["current_pool"], 4)
             self.assertTrue((root / "out.json").exists())
@@ -313,7 +313,7 @@ class BackendTests(unittest.TestCase):
         job = create_job(
             json.dumps(payload).encode("utf-8"),
             "test.json",
-            {"agent": "test-agent", "max_videos": 1, "media": False},
+            {"agent": "test-agent", "max_videos": 1, "transcribe": False},
             "client-1",
         )
         self.assertEqual(len(job["sheets"]), 1)
@@ -529,7 +529,7 @@ class BackendTests(unittest.TestCase):
 
             logs = []
             with mock.patch("subprocess.run", side_effect=fake_run):
-                payload = run_analyzer_pipeline(config, cache_dir=cache, media=False, legacy_cache=False, progress_cb=logs.append)
+                payload = run_analyzer_pipeline(config, cache_dir=cache, transcribe=False, legacy_cache=False, progress_cb=logs.append)
                 # Across 2 duplicate targets in targets list, Glasser should only be queried ONCE
                 self.assertEqual(glasser_calls, 1, f"Expected 1 Glasser call for duplicate targets, got {glasser_calls}")
                 self.assertTrue(any("[cache]" in log for log in logs))
@@ -894,7 +894,7 @@ class BackendTests(unittest.TestCase):
             with mock.patch("tools.app.backend.research_engine.reel_research.fetch_reel_transcript", return_value="Nội dung transcript mẫu"):
                 with mock.patch("tools.app.backend.research_engine.reel_research._download_reel_video", return_value=None):
                     with mock.patch("tools.app.backend.research_engine.reel_research.suggest_topics", return_value=([mock_topic], None)):
-                        _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48})
+                        _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48}, job_kind="reel")
 
             snap = self._store.snapshot(job_id)
             target_sheet = snap["sheets"][0]
@@ -1102,6 +1102,111 @@ class BackendTests(unittest.TestCase):
             self.assertLessEqual(max_active, 16)
         finally:
             httpd.server_close()
+
+    def test_post_jobs_job_kind_validation_and_default(self):
+        import io
+        from tools.app.backend import server
+
+        class FakeHandler(server.Handler):
+            def __init__(self, path: str, body: bytes):
+                self.command = "POST"
+                self.path = path
+                self.headers = {
+                    "X-User-Id": "u_kind",
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(body)),
+                }
+                self.rfile = io.BytesIO(body)
+                self.wfile = io.BytesIO()
+                self.client_address = ("127.0.0.1", 12345)
+                self.response_status = None
+                self.response_headers = {}
+
+            def send_response(self, code, message=None):
+                self.response_status = code
+
+            def send_header(self, keyword, value):
+                self.response_headers[keyword.lower()] = value
+
+            def end_headers(self):
+                pass
+
+        body = json.dumps({
+            "sheets": [{"name": "Test", "targets": [{"name": "A", "url": "https://facebook.com/a"}]}]
+        }).encode("utf-8")
+
+        with mock.patch("tools.app.backend.server.configured_agent", return_value={"id": "agy"}):
+            # Invalid job_kind -> 400
+            h_bad = FakeHandler("/api/jobs?job_kind=bogus", body)
+            h_bad.do_POST()
+            self.assertEqual(h_bad.response_status, 400)
+
+            # Missing job_kind -> defaults to profile, transcribe=False
+            h_default = FakeHandler("/api/jobs", body)
+            h_default.do_POST()
+            self.assertEqual(h_default.response_status, 202)
+            job_default = json.loads(h_default.wfile.getvalue().decode())
+            self.assertEqual(job_default["job_kind"], "profile")
+            self.assertFalse(job_default["options"]["transcribe"])
+
+            # Explicit job_kind=reel&transcribe=1
+            h_reel = FakeHandler("/api/jobs?job_kind=reel&transcribe=1", body)
+            h_reel.do_POST()
+            self.assertEqual(h_reel.response_status, 202)
+            job_reel = json.loads(h_reel.wfile.getvalue().decode())
+            self.assertEqual(job_reel["job_kind"], "reel")
+            self.assertTrue(job_reel["options"]["transcribe"])
+
+    def test_reel_job_routes_to_research_single_reel(self):
+        from tools.app.backend.research_engine.research import _process_sheet
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            job_id = "job_route_reel"
+            sheet = {
+                "name": "Reel đã lưu",
+                "slug": "reel-da-luu",
+                "targets": [{"name": "R1", "url": "https://www.facebook.com/reel/123456"}],
+            }
+            self._store.put({
+                "id": job_id,
+                "job_kind": "reel",
+                "status": "running",
+                "created_at": "2026-01-01",
+                "sheets": [{
+                    "name": sheet["name"],
+                    "slug": sheet["slug"],
+                    "status": "pending",
+                    "targets": 1,
+                    "reels": 0,
+                    "topics": [],
+                    "error": None,
+                    "notice": None,
+                }],
+                "logs": [],
+            })
+            with mock.patch("tools.app.backend.research_engine.research.research_single_reel", return_value={"topics": [{"title": "T1", "source_urls": ["https://www.facebook.com/reel/123456"]}], "reel_url": "https://www.facebook.com/reel/123456", "video_id": "123456"}) as mock_reel, \
+                 mock.patch("tools.app.backend.research_engine.research.run_profile_research") as mock_profile:
+                _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy"}, job_kind="reel")
+            mock_reel.assert_called_once()
+            mock_profile.assert_not_called()
+
+    def test_research_single_reel_falls_back_to_local_asr_when_glasser_returns_none(self):
+        from tools.app.backend.research_engine import reel_research
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            video_path = Path(tmpdir) / "reel_999.mp4"
+            video_path.write_bytes(b"fake-mp4")
+            url = "https://www.facebook.com/reel/999"
+            with mock.patch.object(reel_research, "fetch_reel_transcript", return_value=None), \
+                 mock.patch.object(reel_research, "_download_reel_video", return_value=video_path), \
+                 mock.patch.object(reel_research, "_transcribe_local_fallback", return_value="Local ASR text") as mock_local, \
+                 mock.patch.object(reel_research, "analyze_video_visuals", return_value="Visuals"), \
+                 mock.patch.object(reel_research, "suggest_topics", return_value=([{"title": "T1", "source_urls": [url]}], None)) as mock_suggest:
+                res = reel_research.research_single_reel(url, agent_id="agy", cwd=Path(tmpdir))
+            mock_local.assert_called_once()
+            self.assertEqual(res["transcript"], "Local ASR text")
+            self.assertEqual(mock_suggest.call_args.kwargs["reels"][0]["transcript"], "Local ASR text")
 
 
 if __name__ == "__main__":

@@ -702,6 +702,66 @@ def analyze_video_visuals(
             pass
 
 
+def _transcribe_local_fallback(
+    video_path: Path,
+    vid: Optional[str],
+    clean_url: str,
+    log: Callable[[str], None],
+) -> Optional[str]:
+    """Run local ASR on an already-downloaded reel video when Glasser transcript is unavailable."""
+    audio_path = video_path.with_suffix(".wav")
+    chunk_paths: List[Path] = []
+    try:
+        import subprocess
+        from tools.loop.viral_analyzer.cache import save_cached_transcript
+        from tools.loop.viral_analyzer.transcriber.local import UnifiedTranscriber, extract_audio_ffmpeg, ffmpeg_bin
+
+        if not extract_audio_ffmpeg(video_path, audio_path, max_duration_sec=300):
+            return None
+        chunk_pattern = video_path.parent / f"{video_path.stem}_chunk_%03d.wav"
+        proc = subprocess.run(
+            [
+                ffmpeg_bin(),
+                "-y",
+                "-i", str(audio_path),
+                "-f", "segment",
+                "-segment_time", "45",
+                "-c", "copy",
+                str(chunk_pattern),
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        chunk_paths = sorted(video_path.parent.glob(f"{video_path.stem}_chunk_*.wav"))
+        targets = chunk_paths if (proc.returncode == 0 and chunk_paths) else [audio_path]
+
+        transcriber = UnifiedTranscriber()
+        parts: List[str] = []
+        for idx, part_path in enumerate(targets, 1):
+            log(f"Đang chạy transcript local đoạn {idx}/{len(targets)}...")
+            result = transcriber.transcribe_audio(part_path)
+            chunk_text = str(result.get("transcript") or result.get("text") or "").strip()
+            if chunk_text:
+                parts.append(chunk_text)
+
+        text = " ".join(parts).strip()
+        if text:
+            log(f"Đã trích xuất transcript local ({len(text)} ký tự).")
+            if vid:
+                save_cached_transcript(vid, text, url=clean_url)
+            return text
+    except Exception as exc:
+        log(f"Không thể chạy transcript local: {exc}")
+    finally:
+        for p in [audio_path, *chunk_paths]:
+            if p.exists():
+                try:
+                    p.unlink()
+                except OSError:
+                    pass
+    return None
+
+
 def research_single_reel(
     reel_url: str,
     sheet_name: str = "Reel đã lưu",
@@ -735,11 +795,13 @@ def research_single_reel(
     else:
         _log("Không tìm thấy transcript; tiến hành phân tích qua cấu trúc video và hook.")
 
-    # Download the video for visual analysis, then delete it once described.
+    # Download the video for visual analysis (and local ASR fallback if Glasser had no transcript).
     visual = ""
     if agent_id and cwd:
         video_path = _download_reel_video(clean_url, vid, _log)
         if video_path:
+            if not transcript:
+                transcript = _transcribe_local_fallback(video_path, vid, clean_url, _log)
             visual = analyze_video_visuals(
                 video_path, agent_id, cwd, timeout_sec, _log, model=model
             )

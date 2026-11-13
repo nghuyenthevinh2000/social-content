@@ -3,6 +3,17 @@ import { analyticsOutline, libraryOutline, personCircleOutline, videocamOutline 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
+import { JobResult } from '../analysis/JobResult';
+import {
+  cleanTopicTitle,
+  copyToClipboard,
+  formatNumber,
+  formatTime,
+  formatTopicForAI,
+  STATUS_LABEL,
+  TERMINAL,
+} from '../analysis/format';
+import type { Job, JobKind, JobSummary, Topic } from '../analysis/types';
 import { apiFetch, apiJson } from '../api';
 import { AuthModal } from '../components/AuthModal';
 import { MediaPanel } from '../components/MediaPanel';
@@ -11,70 +22,6 @@ import { VideoTab } from '../components/VideoTab';
 import { CREATOR_PACKS, type CreatorPack } from '../data/creatorPacks';
 import { auth, FacebookAuthProvider, linkWithPopup, onAuthStateChanged, signOut, type User } from '../firebase';
 import './Home.css';
-
-type Topic = {
-  title: string;
-  hook: string;
-  angle: string;
-  why_viral: string;
-  outline: string[];
-  format: string;
-  source_urls: string[];
-  generated_by: string;
-  prompt?: string;
-  reel_url?: string;
-  video_url?: string;
-  video_id?: string;
-  views?: number;
-  velocity_per_hour?: number;
-  current_pool?: number;
-  pool_name?: string;
-  likes?: number;
-  comments?: number;
-  shares?: number;
-  author_handle?: string;
-  author_name?: string;
-  transcript?: string;
-};
-
-type Sheet = {
-  name: string;
-  slug: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  targets: number;
-  reels: number;
-  pool_distribution: Record<string, number>;
-  source_breakdown?: {
-    glasser_api?: string[];
-    cache?: string[];
-    empty?: string[];
-  };
-  topics: Topic[];
-  error: string | null;
-  notice?: string | null;
-};
-
-type Job = {
-  id: string;
-  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
-  filename: string;
-  created_at?: string;
-  current_sheet: string | null;
-  sheets: Sheet[];
-  logs: { at: string; sheet: string | null; message: string }[];
-};
-
-type JobSummary = {
-  id: string;
-  status: Job['status'];
-  filename: string;
-  created_at: string;
-  finished_at: string | null;
-  current_sheet: string | null;
-  total_sheets: number;
-  completed_sheets: number;
-  total_topics: number;
-};
 
 export type TargetItem = { name: string; url: string };
 export type TopicItem = { name: string; slug: string; targets: TargetItem[] };
@@ -151,106 +98,11 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
-
-const STATUS_LABEL: Record<Job['status'], string> = {
-  queued: 'Đang chờ',
-  running: 'Đang chạy',
-  completed: 'Hoàn tất',
-  failed: 'Có lỗi',
-  cancelled: 'Đã dừng',
-};
-
 const EXCEL_ACCEPT =
   '.xlsx,.xlsm,.xls,.gsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.google-apps.spreadsheet';
 
-const formatNumber = (value: number) => new Intl.NumberFormat('vi-VN').format(value);
-const formatCompact = (val?: number | null) => {
-  if (!val && val !== 0) return '0';
-  if (val >= 1_000_000) return (val / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
-  if (val >= 1_000) return (val / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return String(val);
-};
 const shortUrl = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
-const reelLink = (url: string) => {
-  if (!url) return '';
-  const trimmed = url.trim();
-  if (trimmed.includes('/reel/') || trimmed.includes('/videos/') || trimmed.includes('/watch/')) {
-    return trimmed;
-  }
-  if (trimmed.includes('facebook.com') && !trimmed.includes('/reels')) {
-    return trimmed.replace(/\/+$/, '') + '/reels/';
-  }
-  return trimmed;
-};
-
-const getTopicReelUrl = (topic: Topic): string => {
-  if (topic.reel_url) return reelLink(topic.reel_url);
-  if (topic.source_urls && topic.source_urls.length > 0) return reelLink(topic.source_urls[0]);
-  if (topic.video_id) return `https://www.facebook.com/reel/${topic.video_id}`;
-  return '';
-};
-
-export function formatTopicForAI(topic: Topic, sheetName?: string): string {
-  // Use the AI-generated director prompt directly from backend
-  if (topic.prompt && topic.prompt.trim()) {
-    return topic.prompt.trim();
-  }
-  // Minimal fallback for legacy topics without generated prompt
-  const lines: string[] = [];
-  lines.push(`### Chủ đề: ${topic.title}`);
-  if (sheetName) lines.push(`- **Nhóm chủ đề**: ${sheetName}`);
-  if (topic.format) lines.push(`- **Định dạng**: ${topic.format}`);
-  if (topic.hook) lines.push(`- **Hook**: "${topic.hook}"`);
-  if (topic.angle) lines.push(`- **Góc tiếp cận**: ${topic.angle}`);
-  if (topic.outline && topic.outline.length > 0) {
-    lines.push(`- **Dàn ý triển khai**:`);
-    topic.outline.forEach((step, idx) => lines.push(`  ${idx + 1}. ${step}`));
-  }
-  return lines.join('\n');
-}
-
-function copyToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard && window.isSecureContext) {
-    return navigator.clipboard.writeText(text);
-  }
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.left = '-999999px';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-  try {
-    document.execCommand('copy');
-    textarea.remove();
-    return Promise.resolve();
-  } catch (err) {
-    textarea.remove();
-    return Promise.reject(err);
-  }
-}
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
-const cleanTopicTitle = (title?: string | null) => {
-  if (!title) return 'Phân tích';
-  const stripped = String(title).replace(/\.(xlsx|json)$/i, '');
-  if (stripped === 'all_topics' || stripped === 'tong-hop') return 'Tất cả chủ đề';
-  return stripped;
-};
-const formatTime = (iso?: string) => {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    return new Intl.DateTimeFormat('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: '2-digit',
-    }).format(d);
-  } catch {
-    return iso;
-  }
-};
 
 function reportClientLog(message: string, stack?: string, source = 'client') {
   apiFetch('/api/logs/client', {
@@ -285,17 +137,14 @@ const Home: React.FC = () => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Analyzer
-  // @deprecated [OBSOLETE]: Local video download + transcribe is obsolete. Retained for backward-compat; do not delete.
-  const [media] = useState(false);
+  const isTranscribe = false;
   const [job, setJob] = useState<Job | null>(null);
   const [jobId, setJobId] = useState<string | null>(initialJobId);
   const [history, setHistory] = useState<JobSummary[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
-  const [showLogs, setShowLogs] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [playerMode, setPlayerMode] = useState<Record<string, 'video' | 'iframe'>>({});
   const [videoPrompt, setVideoPrompt] = useState('');
   const [videoDuration, setVideoDuration] = useState<number>(
     Number(import.meta.env.VITE_VIDEO_GENERATION_DURATION) || 15,
@@ -368,6 +217,7 @@ const Home: React.FC = () => {
 
   // Collapsible Topics & Saved Reels (dm_service feature)
   const [topicsCollapsed, setTopicsCollapsed] = useState(false);
+  const [mediaCollapsed, setMediaCollapsed] = useState(false);
   const [savedReels, setSavedReels] = useState<SavedReel[]>([]);
   const [loadingReels, setLoadingReels] = useState(false);
   const [savedReelsCollapsed, setSavedReelsCollapsed] = useState(false);
@@ -425,21 +275,11 @@ const Home: React.FC = () => {
 
   const handleRunSavedReel = (reel: SavedReel) => {
     const item: TopicItem = {
-      name: 'Reel đã lưu',
+      name: reel.reel_url,
       slug: `saved-reel-${reel.id}`,
       targets: [{ name: reel.message_text ? reel.message_text.slice(0, 40) : reel.reel_url, url: reel.reel_url }],
     };
-    run([item], 'Reel đã lưu');
-  };
-
-  const handleRunAllSavedReels = () => {
-    if (!savedReels.length) return;
-    const items: TopicItem[] = savedReels.map((reel) => ({
-      name: 'Reel đã lưu',
-      slug: `saved-reel-${reel.id}`,
-      targets: [{ name: reel.message_text ? reel.message_text.slice(0, 40) : reel.reel_url, url: reel.reel_url }],
-    }));
-    run(items, `Tất cả Reel đã lưu (${savedReels.length})`);
+    run([item], reel.reel_url, 'reel');
   };
 
   useEffect(() => {
@@ -613,13 +453,6 @@ const Home: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, user?.uid]);
 
-  const progress = useMemo(() => {
-    if (!job) return { done: 0, total: 0, pct: 0 };
-    const done = job.sheets.filter((sheet) => TERMINAL.has(sheet.status)).length;
-    const total = job.sheets.length;
-    return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
-  }, [job]);
-
   const running = job ? !TERMINAL.has(job.status) : false;
   const hasActiveJob = useMemo(() => {
     return running || history.some((j) => !TERMINAL.has(j.status));
@@ -637,7 +470,7 @@ const Home: React.FC = () => {
     );
   }, [topics, search]);
 
-  async function run(selected: TopicItem[], filename: string) {
+  async function run(selected: TopicItem[], filename: string, kind: JobKind = 'profile') {
     if (!user) {
       setShowAuthModal(true);
       return;
@@ -647,9 +480,9 @@ const Home: React.FC = () => {
     setJob(null);
     switchTab('analyzer');
     try {
-      const params = new URLSearchParams(media ? { media: '1' } : {});
-      const qs = params.toString();
-      const endpoint = qs ? `/api/jobs?${qs}` : '/api/jobs';
+      const params = new URLSearchParams({ job_kind: kind });
+      if (isTranscribe) params.set('transcribe', '1');
+      const endpoint = `/api/jobs?${params.toString()}`;
       const payload = { sheets: selected.map((t) => ({ name: t.name, targets: t.targets })) };
       const data = await apiJson<Job>(endpoint, {
         method: 'POST',
@@ -824,11 +657,32 @@ const Home: React.FC = () => {
 
               {user && (
                 <section className="panel">
-                  <h2>Ảnh mẫu khuôn mặt & Bối cảnh</h2>
-                  <p className="muted profile-media-desc">
-                    Tải lên ảnh chân dung rõ mặt để AI giữ nhất quán khuôn mặt của bạn trong các video tạo ra.
-                  </p>
-                  <MediaPanel />
+                  <div
+                    className="panel-head collapsible-head"
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={!mediaCollapsed}
+                    onClick={() => setMediaCollapsed((v) => !v)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setMediaCollapsed((v) => !v);
+                      }
+                    }}
+                  >
+                    <div>
+                      <h2>Ảnh mẫu khuôn mặt & Bối cảnh</h2>
+                      <p className="muted profile-media-desc">
+                        Tải lên ảnh chân dung rõ mặt để AI giữ nhất quán khuôn mặt của bạn trong các video tạo ra.
+                      </p>
+                    </div>
+                    <span className={`store-toggle-icon ${!mediaCollapsed ? 'open' : ''}`} aria-hidden="true" />
+                  </div>
+                  {!mediaCollapsed && (
+                    <div style={{ marginTop: 'var(--space-3)' }}>
+                      <MediaPanel />
+                    </div>
+                  )}
                 </section>
               )}
 
@@ -1128,9 +982,7 @@ const Home: React.FC = () => {
                   >
                     <div>
                       <h2>Reel đã lưu</h2>
-                      <span className="muted count">
-                        {savedReels.length} reel
-                      </span>
+                      <span className="muted count">{savedReels.length} reel</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       <button
@@ -1151,20 +1003,6 @@ const Home: React.FC = () => {
 
                   {!savedReelsCollapsed && (
                     <div className="saved-reels-body" style={{ marginTop: 'var(--space-3)' }}>
-                      {savedReels.length > 0 && (
-                        <div style={{ marginBottom: 'var(--space-2)' }}>
-                          <button
-                            type="button"
-                            className="ghost small"
-                            style={{ width: '100%', justifyContent: 'center' }}
-                            onClick={handleRunAllSavedReels}
-                            disabled={blocked}
-                          >
-                            ▶ Chạy phân tích tất cả Reel ({savedReels.length})
-                          </button>
-                        </div>
-                      )}
-
                       {savedReels.length === 0 ? (
                         <div className="empty" style={{ padding: 'var(--space-3) 0 0' }}>
                           <p className="muted" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
@@ -1331,275 +1169,13 @@ const Home: React.FC = () => {
                   )}
                 </>
               ) : (
-                <>
-                  <div className="panel-head">
-                    <div>
-                      <button type="button" className="history-back-btn" onClick={() => selectJob(null)}>
-                        ← Lịch sử chạy ({history.length})
-                      </button>
-                      <h2>Kết quả</h2>
-                      <p className="muted count">
-                        {cleanTopicTitle(job.filename)} · {progress.done}/{progress.total} · {STATUS_LABEL[job.status]}
-                        {job.created_at && ` · ${formatTime(job.created_at)}`}
-                      </p>
-                    </div>
-                    <div className="panel-head-actions">
-                      <a
-                        href={`/api/jobs/${job.id}/export`}
-                        download={`viral-research-${job.id}.json`}
-                        className="ghost small"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Xuất JSON
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="bar">
-                    <span style={{ width: `${progress.pct}%` }} />
-                  </div>
-                  <div className="progress-meta muted">
-                    <span>{progress.pct}%</span>
-                    <span>{job.current_sheet ? `Đang xử lý: ${job.current_sheet}` : ''}</span>
-                  </div>
-
-                  {job.sheets.map((sheet, index) => (
-                    <details
-                      key={sheet.slug}
-                      className="sheet"
-                      open={sheet.status === 'running' || job.sheets.length === 1 ? true : undefined}
-                    >
-                      <summary>
-                        <span className="sheet-index">{String(index + 1).padStart(2, '0')}</span>
-                        <span className="sheet-title">
-                          <strong>{sheet.name}</strong>
-                          <small className="muted">
-                            {sheet.targets} kênh · {formatNumber(sheet.reels)} reel
-                          </small>
-                        </span>
-                        <span className={`badge ${sheet.status}`}>{sheet.status}</span>
-                      </summary>
-
-                      {Object.keys(sheet.pool_distribution || {}).length > 0 && (
-                        <div className="pools">
-                          {Object.entries(sheet.pool_distribution).map(([pool, count]) => (
-                            <span key={pool} className="pool">
-                              {pool.replace('pool_', 'P')} · {count}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {sheet.source_breakdown &&
-                        ((sheet.source_breakdown.glasser_api?.length ?? 0) > 0 ||
-                          (sheet.source_breakdown.cache?.length ?? 0) > 0) && (
-                          <div className="source-breakdown muted">
-                            {(sheet.source_breakdown.glasser_api?.length ?? 0) > 0 && (
-                              <span title={sheet.source_breakdown.glasser_api?.join(', ')}>
-                                ⚡ Glasser API: {sheet.source_breakdown.glasser_api?.length} kênh
-                              </span>
-                            )}
-                            {(sheet.source_breakdown.glasser_api?.length ?? 0) > 0 &&
-                              (sheet.source_breakdown.cache?.length ?? 0) > 0 &&
-                              ' · '}
-                            {(sheet.source_breakdown.cache?.length ?? 0) > 0 && (
-                              <span title={sheet.source_breakdown.cache?.join(', ')}>
-                                💾 Cache: {sheet.source_breakdown.cache?.length} kênh
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      {sheet.error && <div className="alert error">{sheet.error}</div>}
-                      {sheet.notice && <div className="alert warn">{sheet.notice}</div>}
-                      {sheet.status === 'completed' && sheet.reels === 0 && !sheet.error && !sheet.notice && (
-                        <div className="alert warn">
-                          Không tìm thấy reel mới nào trong 48 giờ qua. Vui lòng cập nhật thêm danh sách kênh.
-                        </div>
-                      )}
-                      {sheet.status === 'pending' && <p className="muted">Đang chờ tới lượt…</p>}
-                      {sheet.status === 'running' && <p className="muted">Đang crawl, phân pool và hỏi agent…</p>}
-
-                      {sheet.topics.length > 0 &&
-                        (() => {
-                          const sortedTopics = [...sheet.topics]
-                            .sort((a, b) => (b.views || 0) - (a.views || 0))
-                            .slice(0, 10);
-                          return (
-                            <div className="topics">
-                              {sortedTopics.map((topic, topicIndex) => {
-                                const reelUrl = getTopicReelUrl(topic);
-                                const itemKey = `${sheet.slug}-${topicIndex}`;
-                                const currentMode = playerMode[itemKey] || (topic.video_url ? 'video' : 'iframe');
-                                return (
-                                  <article className="topic reel-card" key={topicIndex}>
-                                    <div className="topic-top">
-                                      <div className="reel-meta-left">
-                                        <span className="topic-num">#{topicIndex + 1}</span>
-                                        {topic.author_handle && (
-                                          <span className="reel-author">@{topic.author_handle}</span>
-                                        )}
-                                      </div>
-                                      <span className={`source-tag ${topic.generated_by}`}>
-                                        {topic.generated_by === 'agent' ? 'agent' : 'dự phòng'}
-                                      </span>
-                                    </div>
-
-                                    <h3 className="reel-title">{topic.title}</h3>
-
-                                    <div className="reel-badges">
-                                      {typeof topic.views === 'number' && topic.views > 0 && (
-                                        <span
-                                          className="metric-badge views"
-                                          title={`${formatNumber(topic.views)} lượt xem`}
-                                        >
-                                          🔥 {formatCompact(topic.views)} views
-                                        </span>
-                                      )}
-                                      {typeof topic.velocity_per_hour === 'number' && topic.velocity_per_hour > 0 && (
-                                        <span
-                                          className="metric-badge velocity"
-                                          title={`${formatNumber(topic.velocity_per_hour)} lượt xem/giờ`}
-                                        >
-                                          ⚡ {formatCompact(topic.velocity_per_hour)}/h
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    <div className="reel-player-box">
-                                      {currentMode === 'video' && topic.video_url ? (
-                                        <video
-                                          src={topic.video_url}
-                                          controls
-                                          playsInline
-                                          preload="metadata"
-                                          className="reel-video-player"
-                                          onError={() => {
-                                            if (reelUrl) {
-                                              setPlayerMode((prev) => ({ ...prev, [itemKey]: 'iframe' }));
-                                            }
-                                          }}
-                                        />
-                                      ) : reelUrl ? (
-                                        <iframe
-                                          src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(reelUrl)}&show_text=0&width=280`}
-                                          title={topic.title || `Reel ${topicIndex + 1}`}
-                                          className="reel-iframe-player"
-                                          scrolling="no"
-                                          frameBorder="0"
-                                          allowFullScreen={true}
-                                          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                                          loading="lazy"
-                                        />
-                                      ) : (
-                                        <div className="reel-player-placeholder">
-                                          <span>Không có link video</span>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <details className="reel-analysis-details">
-                                      <summary className="reel-analysis-summary">
-                                        <span>💡 Transcript nội dung & Phân tích viral</span>
-                                      </summary>
-                                      <div className="reel-analysis-content">
-                                        <div className="analysis-item">
-                                          <strong>🎙️ Transcript nội dung:</strong>
-                                          <p className="transcript-text">
-                                            {topic.transcript && topic.transcript.trim()
-                                              ? topic.transcript
-                                              : 'Không có lời thoại (video dạng nhạc nền / hình ảnh).'}
-                                          </p>
-                                        </div>
-                                        {topic.why_viral && (
-                                          <div className="analysis-item">
-                                            <strong>🔥 Vì sao viral:</strong>
-                                            <p>{topic.why_viral}</p>
-                                          </div>
-                                        )}
-                                        {topic.hook && (
-                                          <div className="analysis-item">
-                                            <strong>🎣 Hook mở đầu (3s):</strong>
-                                            <p className="hook-quote">“{topic.hook}”</p>
-                                          </div>
-                                        )}
-                                        {topic.angle && (
-                                          <div className="analysis-item">
-                                            <strong>📐 Góc tiếp cận:</strong>
-                                            <p>{topic.angle}</p>
-                                          </div>
-                                        )}
-                                        {topic.outline && topic.outline.length > 0 && (
-                                          <div className="analysis-item">
-                                            <strong>📋 Dàn ý triển khai:</strong>
-                                            <ol className="analysis-outline">
-                                              {topic.outline.map((step, i) => (
-                                                <li key={i}>{step}</li>
-                                              ))}
-                                            </ol>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </details>
-
-                                    <div className="reel-card-foot">
-                                      <div className="reel-card-foot-left">
-                                        {reelUrl && (
-                                          <a href={reelUrl} target="_blank" rel="noreferrer" className="reel-ext-link">
-                                            Facebook ↗
-                                          </a>
-                                        )}
-                                      </div>
-                                      <button
-                                        type="button"
-                                        className={`copy-topic-btn ${copiedKey === `${sheet.slug}-${topicIndex}` ? 'copied' : ''}`}
-                                        onClick={() =>
-                                          handleCopyTopic(topic, sheet.name, `${sheet.slug}-${topicIndex}`)
-                                        }
-                                        title="Sao chép kịch bản và mở tab Tạo Video"
-                                      >
-                                        {copiedKey === `${sheet.slug}-${topicIndex}` ? (
-                                          <>✓ Đã chép</>
-                                        ) : (
-                                          <>
-                                            <svg
-                                              width="12"
-                                              height="12"
-                                              viewBox="0 0 24 24"
-                                              fill="none"
-                                              stroke="currentColor"
-                                              strokeWidth="2.2"
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                            >
-                                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                            </svg>
-                                            Copy cho AI
-                                          </>
-                                        )}
-                                      </button>
-                                    </div>
-                                  </article>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
-                    </details>
-                  ))}
-
-                  <button className="ghost logs-toggle" type="button" onClick={() => setShowLogs((v) => !v)}>
-                    {showLogs ? 'Ẩn log' : `Xem log (${job.logs.length})`}
-                  </button>
-                  {showLogs && (
-                    <pre className="logs">
-                      {job.logs
-                        .slice(-120)
-                        .map((e) => `${e.at.slice(11, 19)} ${e.sheet ? `[${e.sheet}] ` : ''}${e.message}`)
-                        .join('\n')}
-                    </pre>
-                  )}
-                </>
+                <JobResult
+                  job={job}
+                  historyCount={history.length}
+                  copiedKey={copiedKey}
+                  onBack={() => selectJob(null)}
+                  onCopyTopic={handleCopyTopic}
+                />
               )}
             </section>
           )}
