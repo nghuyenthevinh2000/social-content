@@ -448,6 +448,30 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/api/facebook/link-code":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            import secrets
+            from datetime import datetime, timedelta, timezone
+            alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+            code = "".join(secrets.choice(alphabet) for _ in range(6))
+            expires_at = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat(timespec="seconds")
+            with tx() as conn:
+                conn.execute("DELETE FROM account_link_codes WHERE user_id = %s", (user_id,))
+                conn.execute(
+                    "INSERT INTO account_link_codes (code, user_id, expires_at) VALUES (%s, %s, %s)",
+                    (code, user_id, expires_at),
+                )
+            _json(self, 200, {
+                "ok": True,
+                "code": code,
+                "command": f"LINK-{code}",
+                "expires_at": expires_at,
+                "page_id": os.environ.get("PAGE_ID", "1216806404853891"),
+            })
+            return
         if parsed.path == "/api/facebook/unlink":
             user_id = self._user_id()
             if not user_id:

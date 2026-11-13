@@ -221,6 +221,9 @@ const Home: React.FC = () => {
   const [savedReels, setSavedReels] = useState<SavedReel[]>([]);
   const [loadingReels, setLoadingReels] = useState(false);
   const [savedReelsCollapsed, setSavedReelsCollapsed] = useState(false);
+  const [fbLinked, setFbLinked] = useState<boolean | null>(null);
+  const [linkCode, setLinkCode] = useState<{ command: string; page_id: string } | null>(null);
+  const [generatingLinkCode, setGeneratingLinkCode] = useState(false);
 
   function resetUserSessionState() {
     setTourDismissed(false);
@@ -248,12 +251,33 @@ const Home: React.FC = () => {
     if (!user) return;
     setLoadingReels(true);
     try {
-      const res = await apiJson<{ ok: boolean; reels: SavedReel[] }>('/api/saved-reels');
-      setSavedReels(res.reels || []);
+      const [reelsRes, statusRes] = await Promise.all([
+        apiJson<{ ok: boolean; reels: SavedReel[] }>('/api/saved-reels'),
+        apiJson<{ ok: boolean; linked: boolean }>('/api/facebook/status').catch(() => null),
+      ]);
+      setSavedReels(reelsRes.reels || []);
+      if (statusRes) {
+        setFbLinked(Boolean(statusRes.linked));
+        if (statusRes.linked) setLinkCode(null);
+      }
     } catch (err) {
       console.error('Failed to load saved reels:', err);
     } finally {
       setLoadingReels(false);
+    }
+  };
+
+  const handleGenerateLinkCode = async () => {
+    setGeneratingLinkCode(true);
+    try {
+      const res = await apiJson<{ ok: boolean; command: string; page_id: string }>('/api/facebook/link-code', {
+        method: 'POST',
+      });
+      setLinkCode({ command: res.command, page_id: res.page_id });
+    } catch (err) {
+      setNotice({ type: 'error', text: errorText(err) });
+    } finally {
+      setGeneratingLinkCode(false);
     }
   };
 
@@ -405,6 +429,12 @@ const Home: React.FC = () => {
     apiJson<{ ok: boolean; reels: SavedReel[] }>('/api/saved-reels')
       .then((data) => {
         if (!ignore) setSavedReels(data.reels || []);
+      })
+      .catch(() => {});
+
+    apiJson<{ ok: boolean; linked: boolean }>('/api/facebook/status')
+      .then((data) => {
+        if (!ignore) setFbLinked(Boolean(data.linked));
       })
       .catch(() => {});
 
@@ -1003,6 +1033,47 @@ const Home: React.FC = () => {
 
                   {!savedReelsCollapsed && (
                     <div className="saved-reels-body" style={{ marginTop: 'var(--space-3)' }}>
+                      {fbLinked === false && (
+                        <div style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--text-xs)' }}>
+                          {!linkCode ? (
+                            <button
+                              type="button"
+                              className="ghost small"
+                              onClick={handleGenerateLinkCode}
+                              disabled={generatingLinkCode}
+                            >
+                              {generatingLinkCode ? 'Đang tạo mã…' : 'Liên kết Messenger để đồng bộ Reel'}
+                            </button>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <span className="muted">
+                                Gửi mã <strong>{linkCode.command}</strong> tới Page qua Messenger, rồi bấm ↻:
+                              </span>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  className="ghost small"
+                                  onClick={() => {
+                                    navigator.clipboard?.writeText(linkCode.command);
+                                    setNotice({ type: 'success', text: `Đã sao chép ${linkCode.command}` });
+                                  }}
+                                >
+                                  Sao chép {linkCode.command}
+                                </button>
+                                <a
+                                  href={`https://m.me/${linkCode.page_id}?text=${encodeURIComponent(linkCode.command)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="ghost small"
+                                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                                >
+                                  Mở Messenger ↗
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {savedReels.length === 0 ? (
                         <div className="empty" style={{ padding: 'var(--space-3) 0 0' }}>
                           <p className="muted" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>

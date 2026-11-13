@@ -107,7 +107,7 @@ def find_user_by_psid(psid: str) -> Optional[str]:
 
 
 def link_psid_to_user(psid: str, user_id: str, fb_name: Optional[str] = None) -> None:
-    """Permanently bind a Facebook PSID or Facebook ID to an app user_id."""
+    """Permanently bind a Facebook PSID or Facebook ID to an app user_id and migrate unlinked reels."""
     now = now_iso()
     with tx() as conn:
         conn.execute(
@@ -116,6 +116,32 @@ def link_psid_to_user(psid: str, user_id: str, fb_name: Optional[str] = None) ->
             "ON CONFLICT (psid) DO UPDATE SET user_id = EXCLUDED.user_id, fb_name = COALESCE(EXCLUDED.fb_name, facebook_user_mappings.fb_name), updated_at = EXCLUDED.updated_at",
             (psid, user_id, fb_name, now, now),
         )
+        if user_id != psid:
+            conn.execute(
+                "DELETE FROM saved_reels a USING saved_reels b "
+                "WHERE a.user_id = %s AND a.sender_psid = %s AND b.user_id = %s AND b.reel_url = a.reel_url",
+                (psid, psid, user_id),
+            )
+            conn.execute(
+                "UPDATE saved_reels SET user_id = %s WHERE user_id = %s AND sender_psid = %s",
+                (user_id, psid, psid),
+            )
+
+
+def consume_link_code(code: str, psid: str, fb_name: Optional[str] = None) -> Optional[str]:
+    """Consume a valid account_link_codes entry, bind PSID to its user_id, and return user_id."""
+    now = now_iso()
+    with tx() as conn:
+        cur = conn.execute("SELECT user_id, expires_at FROM account_link_codes WHERE code = %s", (code,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        user_id, expires_at = row
+        conn.execute("DELETE FROM account_link_codes WHERE code = %s", (code,))
+        if expires_at <= now:
+            return None
+    link_psid_to_user(psid, user_id, fb_name=fb_name)
+    return user_id
 
 
 class DmPollerService:
@@ -161,6 +187,24 @@ class DmPollerService:
         msg_text = msg.get("message", "").strip()
 
         if not sender_id or sender_id == str(page_id):
+            return
+
+        # 0. Handle Messenger account-linking command (e.g. LINK-ABC123)
+        link_match = re.search(r"\bLINK-([A-Z0-9]{6})\b", msg_text.upper())
+        if link_match:
+            linked_uid = consume_link_code(link_match.group(1), sender_id, fb_name=sender_name)
+            if linked_uid:
+                logger.info("Linked Messenger PSID %s (%s) -> user_id %s", sender_id, sender_name, linked_uid)
+                if self.reply_user:
+                    send_messenger_reply(
+                        page_id, token, sender_id,
+                        "✅ Đã liên kết tài khoản Messenger với ứng dụng! Các Reel bạn gửi sẽ tự động lưu vào Thư viện của bạn.",
+                    )
+            elif self.reply_user:
+                send_messenger_reply(
+                    page_id, token, sender_id,
+                    "⚠️ Mã liên kết không hợp lệ hoặc đã hết hạn. Vui lòng tạo mã mới trên website.",
+                )
             return
 
         # 1. Extract Reel URLs (Native Shares + Text Links)
