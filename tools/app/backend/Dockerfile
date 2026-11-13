@@ -32,6 +32,7 @@ RUN useradd --create-home --uid 1000 app \
     && chown -R app /home/app
 
 WORKDIR /app
+RUN mkdir -p /app/local/aibrand/temp /app/local/app-runs && chown -R app /app/local
 COPY --chown=app tools/common tools/common
 COPY --chown=app tools/facebook_agent tools/facebook_agent
 COPY --chown=app tools/loop tools/loop

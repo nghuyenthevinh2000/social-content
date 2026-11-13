@@ -48,7 +48,6 @@ from tools.app.backend.research_engine.research import (  # noqa: E402
     configured_agent,
     create_job,
     parse_workbook,
-    resolve_xlsx_bytes,
     RUNS_ROOT,
     STORE,
 )
@@ -797,7 +796,7 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             length = 0
         if length <= 0:
-            _json(self, 400, {"error": "Thiếu file Excel"})
+            _json(self, 400, {"error": "Thiếu dữ liệu đầu vào"})
             return
         if length > MAX_UPLOAD_BYTES:
             _json(self, 413, {"error": "File quá lớn (giới hạn 25MB)"})
@@ -830,7 +829,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             job = create_job(raw, filename, options, self._client_id(), user_id=user_id, job_kind=job_kind)
         except Exception as exc:
-            _json(self, 400, {"error": f"Không đọc được Excel: {exc}"})
+            _json(self, 400, {"error": f"Không đọc được danh sách nguồn: {exc}"})
             return
         _json(self, 202, job)
 

@@ -87,17 +87,6 @@ export const JobResult: React.FC<JobResultProps> = ({ job, historyCount, copiedK
             {job.created_at && ` · ${formatTime(job.created_at)}`}
           </p>
         </div>
-        <div className="panel-head-actions">
-          <a
-            href={`/api/jobs/${job.id}/export`}
-            download={`viral-research-${job.id}.json`}
-            className="ghost small"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Xuất JSON
-          </a>
-        </div>
       </div>
 
       <div className="bar">

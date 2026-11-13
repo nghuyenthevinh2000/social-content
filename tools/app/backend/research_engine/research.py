@@ -25,11 +25,12 @@ from tools.app.backend.errors import (
     handle_glasser_error,
 )
 from tools.app.backend.profiles import (
+    _normalize_target,
     clean_name,
     facebook_handle,
     is_facebook_url,
+    parse_sheets_input,
     parse_workbook,
-    resolve_xlsx_bytes,
     slugify,
     SocialProfileStore,
     PROFILE_STORE,
@@ -155,21 +156,15 @@ STORE = JobStore()
 
 
 def create_job(
-    xlsx_bytes: bytes,
+    source_bytes: bytes,
     filename: str,
     options: Dict[str, Any],
     client_id: str,
     user_id: Optional[str] = None,
     job_kind: str = "profile",
 ) -> Dict[str, Any]:
-    xlsx_bytes, filename = resolve_xlsx_bytes(xlsx_bytes, filename)
     job_id = uuid.uuid4().hex[:12]
-    blobs.put(
-        f"runs/{job_id}/input.xlsx",
-        xlsx_bytes,
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    sheets = parse_workbook(xlsx_bytes)
+    sheets = parse_sheets_input(source_bytes)
     if len(sheets) == 1 and sheets[0].get("name"):
         filename = sheets[0]["name"]
     elif filename:
@@ -234,9 +229,19 @@ def run_job(job: Dict[str, Any]) -> None:
     with tempfile.TemporaryDirectory(prefix=f"job-{job_id}-") as tmpdir:
         run_dir = Path(tmpdir)
         try:
-            input_path = run_dir / "input.xlsx"
-            blobs.download(f"runs/{job_id}/input.xlsx", input_path)
-            sheets = parse_workbook(input_path)
+            sheets = [
+                {
+                    "name": s["name"],
+                    "slug": s["slug"],
+                    "is_aggregate": s["slug"] == "tong-hop",
+                    "targets": [
+                        _normalize_target(t.get("url", ""), name=t.get("name", ""), category=s["name"])
+                        for t in s.get("target_list", [])
+                        if t.get("url")
+                    ],
+                }
+                for s in job.get("sheets", [])
+            ]
             for index, sheet in enumerate(sheets, 1):
                 cur_job = STORE.snapshot(job_id)
                 if not cur_job or cur_job.get("cancel_requested"):

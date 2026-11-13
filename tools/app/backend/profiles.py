@@ -76,6 +76,59 @@ def clean_name(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
+def _normalize_target(url: str, name: str = "", category: str = "") -> Dict[str, Any]:
+    # Keep direct Reel/video permalinks intact: profile canonicalization
+    # would strip the id and turn saved-reel analysis into profile crawling.
+    direct = canonicalize_reel_url(url, resolve_redirects=False)
+    if direct:
+        handle, canonical = direct[1], direct[0]
+    else:
+        handle, canonical = facebook_handle(url)
+    return {
+        "handle": handle,
+        "url": canonical,
+        "name": name or handle,
+        "category": category,
+    }
+
+
+def parse_sheets_input(raw: bytes) -> List[Dict[str, Any]]:
+    """Parse JSON {sheets: [...]} input into normalized topic sheets."""
+    try:
+        data = json.loads(raw.decode("utf-8", errors="ignore").strip())
+    except Exception as exc:
+        raise ValueError("Dữ liệu đầu vào phải là JSON hợp lệ") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("sheets"), list):
+        raise ValueError("Thiếu danh sách sheets trong JSON đầu vào")
+
+    sheets: List[Dict[str, Any]] = []
+    for idx, s in enumerate(data["sheets"]):
+        if not isinstance(s, dict):
+            continue
+        sheet_name = clean_name(str(s.get("name") or f"Sheet {idx + 1}"))
+        targets: List[Dict[str, Any]] = []
+        seen = set()
+        for t in s.get("targets", []):
+            url = clean_name(str(t.get("url") if isinstance(t, dict) else t or ""))
+            if not url:
+                continue
+            name = clean_name(str(t.get("name") or "")) if isinstance(t, dict) else ""
+            target = _normalize_target(url, name=name, category=sheet_name)
+            if target["url"] in seen:
+                continue
+            seen.add(target["url"])
+            targets.append(target)
+        sheets.append(
+            {
+                "name": sheet_name,
+                "slug": slugify(sheet_name),
+                "is_aggregate": slugify(sheet_name) == "tong-hop",
+                "targets": targets,
+            }
+        )
+    return sheets
+
+
 # -- Workbook and source file resolution -------------------------------------
 def parse_workbook(source: Union[Path, bytes, io.BytesIO, str]) -> List[Dict[str, Any]]:
     """Parse Excel sheets into topics with extracted social profile targets."""
@@ -101,16 +154,6 @@ def parse_workbook(source: Union[Path, bytes, io.BytesIO, str]) -> List[Dict[str
                 if url_index is None:
                     continue
                 url = raw_cells[url_index]
-                # Keep direct Reel/video permalinks intact: profile canonicalization
-                # would strip the id and turn saved-reel analysis into profile crawling.
-                direct = canonicalize_reel_url(url, resolve_redirects=False)
-                if direct:
-                    handle, canonical = direct[1], direct[0]
-                else:
-                    handle, canonical = facebook_handle(url)
-                if canonical in seen:
-                    continue
-                seen.add(canonical)
                 name = ""
                 if url_index + 1 < len(raw_cells):
                     candidate = raw_cells[url_index + 1]
@@ -119,14 +162,11 @@ def parse_workbook(source: Union[Path, bytes, io.BytesIO, str]) -> List[Dict[str
                         "link chatbot", "chatbot tạo ảnh", "link page đối chiếu", "tên page",
                     }:
                         name = candidate
-                targets.append(
-                    {
-                        "handle": handle,
-                        "url": canonical,
-                        "name": name or handle,
-                        "category": sheet_name,
-                    }
-                )
+                target = _normalize_target(url, name=name, category=sheet_name)
+                if target["url"] in seen:
+                    continue
+                seen.add(target["url"])
+                targets.append(target)
             sheets.append(
                 {
                     "name": sheet_name,
@@ -157,30 +197,33 @@ def resolve_xlsx_bytes(raw: bytes, filename: str) -> Tuple[bytes, str]:
     else:
         try:
             data = json.loads(text)
-            if isinstance(data, dict):
-                if "sheets" in data and isinstance(data["sheets"], list):
-                    wb = openpyxl.Workbook()
-                    for idx, s in enumerate(data["sheets"]):
-                        ws = wb.active if idx == 0 else wb.create_sheet(title=s.get("name", f"Sheet {idx+1}"))
-                        ws.title = s.get("name", f"Sheet {idx+1}")
-                        ws.append(["url", "name"])
-                        for t in s.get("targets", []):
-                            url = t.get("url") if isinstance(t, dict) else str(t)
-                            name = t.get("name", "") if isinstance(t, dict) else ""
-                            ws.append([url, name])
-                    buf = io.BytesIO()
-                    wb.save(buf)
-                    stem = Path(filename).stem or "custom_sources"
-                    clean_filename = f"{stem}.xlsx" if not stem.endswith(".xlsx") else stem
-                    return buf.getvalue(), clean_filename
-                if "doc_id" in data:
-                    sheet_id = str(data["doc_id"])
-                elif "url" in data and isinstance(data["url"], str):
-                    url_match = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", data["url"])
-                    if url_match:
-                        sheet_id = url_match.group(1)
         except Exception:
-            pass
+            data = None
+        if isinstance(data, dict):
+            if "sheets" in data and isinstance(data["sheets"], list):
+                wb = openpyxl.Workbook()
+                for idx, s in enumerate(data["sheets"]):
+                    raw_title = str(s.get("name") or f"Sheet {idx+1}")
+                    # Excel forbids \ / ? * : [ ] and caps worksheet titles at 31 chars.
+                    title = re.sub(r'[\\/*?:\[\]]', "_", raw_title).strip()[:31] or f"Sheet {idx+1}"
+                    ws = wb.active if idx == 0 else wb.create_sheet(title=title)
+                    ws.title = title
+                    ws.append(["url", "name"])
+                    for t in s.get("targets", []):
+                        url = t.get("url") if isinstance(t, dict) else str(t)
+                        name = t.get("name", "") if isinstance(t, dict) else ""
+                        ws.append([url, name])
+                buf = io.BytesIO()
+                wb.save(buf)
+                stem = Path(filename).stem or "custom_sources"
+                clean_filename = f"{stem}.xlsx" if not stem.endswith(".xlsx") else stem
+                return buf.getvalue(), clean_filename
+            if "doc_id" in data:
+                sheet_id = str(data["doc_id"])
+            elif "url" in data and isinstance(data["url"], str):
+                url_match = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", data["url"])
+                if url_match:
+                    sheet_id = url_match.group(1)
 
     if sheet_id:
         export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"

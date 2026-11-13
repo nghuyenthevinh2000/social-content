@@ -88,6 +88,22 @@ class BackendTests(unittest.TestCase):
         targets = parse_workbook(raw)[0]["targets"]
         self.assertEqual([t["url"] for t in targets], ["https://www.facebook.com/reel/1963371435020478"])
 
+    def test_resolve_xlsx_bytes_sanitizes_url_sheet_title(self):
+        reel_url = "https://www.facebook.com/reel/3002422696778809"
+        payload = {
+            "sheets": [
+                {
+                    "name": reel_url,
+                    "targets": [{"name": "Saved", "url": reel_url}],
+                }
+            ]
+        }
+        raw, fn = resolve_xlsx_bytes(json.dumps(payload).encode("utf-8"), reel_url)
+        self.assertTrue(raw.startswith(b"PK\x03\x04"))
+        self.assertTrue(fn.endswith(".xlsx"))
+        targets = parse_workbook(raw)[0]["targets"]
+        self.assertEqual([t["url"] for t in targets], [reel_url])
+
     def test_slugify(self):
         self.assertEqual(slugify("tổng hợp"), "tong-hop")
         self.assertEqual(slugify("mẹ chồng - nàng dâu"), "me-chong-nang-dau")
@@ -321,6 +337,28 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(job["sheets"][0]["targets"], 1)
         self.assertEqual(job["sheets"][0]["target_list"][0]["name"], "Test Page")
         self.assertEqual(job["sheets"][0]["target_list"][0]["url"], "https://www.facebook.com/testpage")
+
+    def test_create_job_json_skips_excel_roundtrip(self):
+        reel_url = "https://www.facebook.com/reel/3002422696778809"
+        payload = {
+            "sheets": [
+                {
+                    "name": reel_url,
+                    "targets": [{"url": reel_url, "name": "Saved Reel"}],
+                }
+            ]
+        }
+        with mock.patch("openpyxl.load_workbook", side_effect=AssertionError("should not parse Excel")):
+            job = create_job(
+                json.dumps(payload).encode("utf-8"),
+                reel_url,
+                {"agent": "test-agent", "max_videos": 1, "transcribe": False},
+                "client-1",
+                job_kind="reel",
+            )
+        self.assertEqual(job["filename"], reel_url)
+        self.assertEqual(job["sheets"][0]["name"], reel_url)
+        self.assertEqual(job["sheets"][0]["target_list"][0]["url"], reel_url)
 
     def test_social_profile_store_crud(self):
         store = SocialProfileStore()
