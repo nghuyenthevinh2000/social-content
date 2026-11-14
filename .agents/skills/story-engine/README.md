@@ -1,17 +1,13 @@
 ---
 name: story-engine
-summary: Storytelling workflow combining integrity with platform-specific craft, plus an independent world-interrogation method. The standalone world interview grounds emotional intent in a complete symbolic architecture using its own approval gate.
+summary: Multi-flow storytelling skill. SKILL.md routes each request to the matching workflow in story-flows/, enforces pre-draft confirmation gates, and pairs with story-formats/ for drafting.
 tags: [storytelling, reflection, writing, skills]
 submodules:
-  SKILL.md: Entry point for the integrity-and-craft workflow and routing to standalone world interrogation.
-  brainstorming: Integrity guidance, plus independent world interrogation with five world definitions and its own completeness and consistency checks.
-  hooks: Story-engine workflow hooks.
-  state: Story-engine workflow state.
-  story-formats: Platform-specific craft guides, including adaptable long-form structure, clarity, and pacing practices.
+  SKILL.md: Flow router and pre-draft gate controller.
+  story-flows: Concrete workflows for Personal & Reflective, World & Allegory, Thesis & Perspective, and Narrative & Character stories.
+  story-formats: Platform-specific craft guides (LinkedIn, longform, X, Instagram, other).
 ---
 
 # Story Engine
 
-Start with [SKILL.md](SKILL.md) and the integrity interrogation.
-
-Use [Story World Interrogation](brainstorming/world-interrogation.md) independently to explore a topic's emotional arc, select its governing world, and complete its symbol details. It produces a self-contained approved world brief without requiring another brainstorming method.
+Start with [SKILL.md](SKILL.md) to classify the story type and select the matching workflow in [story-flows/](story-flows/).

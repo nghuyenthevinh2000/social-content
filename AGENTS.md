@@ -4,6 +4,7 @@
 
 | Trigger | Required behavior |
 |---|---|
+| Writing any story, essay, post, caption, or narrative (including `topics/`) | Load `story-engine` before drafting, regardless of language or how detailed the prompt is. Select the matching flow in `story-flows/`, complete interrogation/research and get user confirmation of the root conflict/tension, confirm platform/format, and get Story Brief approval before writing any draft. |
 | Social project/brand content, posts, captions, drafting, posting, publishing, campaigns or distribution | Load `social-campaign` before authoring, including single-platform requests. Resolve the existing `local/<slug>/` project; explicitly read its root `AGENTS.md`, `loop/config.json`, loop safeguards, hypothesis and brand references. |
 | Viral/hashtag research only | Load `social-campaign` and resolve the existing project. Required factual context is only `product-marketing.json`: `marketing_goal` and `product.catalog`. Include available past `sources/viral/` analyses as optional historical feedback, not fresh verification. Do not require brand files, customer profile, hypotheses, loop configuration or scaffold creation. Research platforms come from the request; drafting/publication still require the full policy above. |
 | Channel selection | Use only explicitly configured `allowed_channels`; never default to cross-platform work or copy prior drafts. Ask if project identity or channel policy is ambiguous. |
