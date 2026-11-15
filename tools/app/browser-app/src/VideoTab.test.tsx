@@ -274,7 +274,6 @@ describe('VideoTab and MediaPanel', () => {
     const { container } = render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/\$0\.50/)).toBeDefined();
       expect(screen.getByText('Đã chọn ảnh đại diện mẫu')).toBeDefined();
       expect(screen.getAllByText(/Prompt test video/)[0]).toBeDefined();
       expect(screen.getByText('Hoàn tất')).toBeDefined();
@@ -337,17 +336,9 @@ describe('VideoTab and MediaPanel', () => {
     });
   });
 
-  test('MediaPanel renders authenticated image URLs with uid and displays credit balance', async () => {
+  test('MediaPanel renders authenticated image URLs with uid', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation((input: any) => {
       const url = String(input);
-      if (url.includes('/api/credits')) {
-        return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, balance: 230000 }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        );
-      }
       if (url.includes('/api/media')) {
         return Promise.resolve(
           new Response(
@@ -386,7 +377,6 @@ describe('VideoTab and MediaPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Ảnh chân dung mẫu (Profile)')).toBeDefined();
       expect(screen.getByText('Ảnh bối cảnh / Sản phẩm (Context)')).toBeDefined();
-      expect(screen.getByText(/\$0\.23/)).toBeDefined();
     });
 
     const imgs = Array.from(container.querySelectorAll('img')).map((img) => img.getAttribute('src'));

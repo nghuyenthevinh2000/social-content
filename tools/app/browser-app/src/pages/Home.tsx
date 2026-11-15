@@ -81,27 +81,51 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     tab: 'library',
-    target: '.topics-panel .primary',
+    target: '.topics-panel > button',
     title: 'Chạy tất cả',
     text: 'Phân tích mọi chủ đề trong thư viện cùng lúc.',
+  },
+  {
+    tab: 'library',
+    target: '.saved-reels-panel',
+    title: 'Reel đã lưu',
+    text: 'Liên kết Facebook Messenger để gửi link Reel từ chat và phân tích trực tiếp từng Reel.',
   },
   {
     tab: 'analyzer',
     target: '.tabbar-btn:nth-child(2)',
     title: 'Phân tích',
-    text: 'Xem tiến độ, lịch sử và kết quả ý tưởng viral. Dùng "Copy cho AI" để lấy kịch bản.',
+    text: 'Xem tiến độ, lịch sử và kết quả phân tích kênh hoặc Reel. Dùng "Tạo Video AI" hoặc "Copy cho AI" để lấy kịch bản.',
   },
   {
     tab: 'video',
     target: '.tabbar-btn:nth-child(3)',
     title: 'Tạo Video AI',
-    text: 'Tạo video ngắn 10 giây với khuôn mặt mẫu và giọng đọc tiếng Việt tự nhiên.',
+    text: 'Chọn ảnh khuôn mặt, bối cảnh và hồ sơ nhân vật để tạo video ngắn bằng AI với giọng đọc tiếng Việt.',
+  },
+  {
+    tab: 'video',
+    target: '.prompt-textarea',
+    title: 'Cấu hình lời thoại & kịch bản',
+    text: 'Nhập trực tiếp lời thoại tiếng Việt hoặc dán kịch bản từ tab Phân tích để AI đọc và tạo video.',
   },
   {
     tab: 'profile',
     target: '.tabbar-btn:nth-child(4)',
     title: 'Hồ sơ',
-    text: 'Đăng nhập/đăng xuất, nạp gói creator và quản lý ảnh mẫu khuôn mặt.',
+    text: 'Liên kết Facebook, nạp gói creator, quản lý ảnh khuôn mặt & bối cảnh và cấu hình hướng dẫn.',
+  },
+  {
+    tab: 'profile',
+    target: '.media-section .profile-card',
+    title: 'Ảnh chân dung mẫu',
+    text: 'Tải lên ảnh chân dung rõ mặt tại đây để AI khớp khuôn mặt của bạn trong các video tạo ra.',
+  },
+  {
+    tab: 'profile',
+    target: '.creator-store',
+    title: 'Gói Content Creator',
+    text: 'Mở để nạp nhanh danh sách kênh creator tuyển chọn sẵn vào Thư viện để phân tích.',
   },
 ];
 
@@ -176,11 +200,12 @@ const Home: React.FC = () => {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [authReady, setAuthReady] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  // Seen-flag is per account, so a freshly registered user gets the tour even on a browser that showed it before.
+  // Seen-flag is per account: tour always shows unless the user marks "Đã rõ hướng dẫn" in Profile.
   const [tourDismissed, setTourDismissed] = useState(false);
-  const [tourReplay, setTourReplay] = useState(false);
+  const [, setTourSync] = useState(0);
   const [linkingFb, setLinkingFb] = useState(false);
   const [linkFbError, setLinkFbError] = useState<string | null>(null);
+  const [videoBalance, setVideoBalance] = useState<number | null>(null);
 
   const fbAccount = user?.providerData?.find((p) => p.providerId === 'facebook.com');
   const facebookId = fbAccount?.uid;
@@ -211,12 +236,32 @@ const Home: React.FC = () => {
   };
 
   const tourKey = user ? `${TOUR_KEY}-${user.uid}` : '';
-  const showTour = !!user && (tourReplay || (!tourDismissed && !localStorage.getItem(tourKey)));
-  const closeTour = () => {
-    if (tourKey) localStorage.setItem(tourKey, '1');
-    setTourDismissed(true);
-    setTourReplay(false);
+  const tourDone = Boolean(tourKey && localStorage.getItem(tourKey));
+  const showTour = !!user && !tourDismissed && !tourDone;
+  const closeTour = () => setTourDismissed(true);
+  const toggleTourDone = () => {
+    if (!tourKey) return;
+    if (tourDone) {
+      localStorage.removeItem(tourKey);
+      setTourDismissed(false);
+    } else {
+      localStorage.setItem(tourKey, '1');
+    }
+    setTourSync((v) => v + 1);
   };
+
+  useEffect(() => {
+    if (!user || tab !== 'profile') return;
+    let cancelled = false;
+    apiJson<{ ok: boolean; balance: number }>('/api/credits')
+      .then((res) => {
+        if (!cancelled && res.ok && typeof res.balance === 'number') setVideoBalance(res.balance);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, tab]);
 
   // In-App Payment Mock
   const [activePaymentPack, setActivePaymentPack] = useState<CreatorPack | null>(null);
@@ -234,7 +279,7 @@ const Home: React.FC = () => {
 
   function resetUserSessionState() {
     setTourDismissed(false);
-    setTourReplay(false);
+    setVideoBalance(null);
     setTopics([]);
     setTopicsCollapsed(false);
     setSavedReels([]);
@@ -670,16 +715,22 @@ const Home: React.FC = () => {
                       </dd>
                     </>
                   )}
+                  {videoBalance !== null && (
+                    <>
+                      <dt>Số dư Video AI</dt>
+                      <dd>
+                        <code>${(videoBalance / 1000000).toFixed(2)}</code>
+                      </dd>
+                    </>
+                  )}
                 </dl>
                 <button
                   type="button"
-                  className="ghost profile-btn"
-                  onClick={() => {
-                    setTourDismissed(false);
-                    setTourReplay(true);
-                  }}
+                  className={`${tourDone ? 'primary' : 'ghost'} profile-btn`}
+                  aria-pressed={tourDone}
+                  onClick={toggleTourDone}
                 >
-                  ? Xem lại hướng dẫn
+                  {tourDone ? '✓ Đã rõ hướng dẫn' : 'Đã rõ hướng dẫn'}
                 </button>
                 <button
                   type="button"
@@ -834,11 +885,11 @@ const Home: React.FC = () => {
 
                 <section className="panel topics-panel">
                   <button
-                    className="primary"
+                    className="ghost"
                     type="button"
                     onClick={() => run(runnable, 'Tất cả chủ đề')}
                     disabled={blocked || runnable.length === 0}
-                    style={{ marginBottom: 'var(--space-3)' }}
+                    style={{ width: '100%', marginBottom: 'var(--space-3)' }}
                   >
                     {running ? 'Đang chạy…' : `▶ Chạy tất cả (${runnable.length} chủ đề)`}
                   </button>
@@ -991,6 +1042,18 @@ const Home: React.FC = () => {
                 </section>
 
                 <div className="panel saved-reels-panel">
+                  {fbLinked === false && (
+                    <button
+                      type="button"
+                      className="ghost"
+                      style={{ width: '100%', marginBottom: 'var(--space-3)' }}
+                      onClick={handleGenerateLinkCode}
+                      disabled={generatingLinkCode}
+                    >
+                      {generatingLinkCode ? 'Đang tạo mã…' : 'Liên kết Messenger để đồng bộ Reel'}
+                    </button>
+                  )}
+
                   <div
                     className="panel-head collapsible-head"
                     role="button"
@@ -1026,47 +1089,6 @@ const Home: React.FC = () => {
 
                   {!savedReelsCollapsed && (
                     <div className="saved-reels-body" style={{ marginTop: 'var(--space-3)' }}>
-                      {fbLinked === false && (
-                        <div style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--text-xs)' }}>
-                          {!linkCode ? (
-                            <button
-                              type="button"
-                              className="ghost small"
-                              onClick={handleGenerateLinkCode}
-                              disabled={generatingLinkCode}
-                            >
-                              {generatingLinkCode ? 'Đang tạo mã…' : 'Liên kết Messenger để đồng bộ Reel'}
-                            </button>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <span className="muted">
-                                Gửi mã <strong>{linkCode.command}</strong> tới Page qua Messenger, rồi bấm ↻:
-                              </span>
-                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                <button
-                                  type="button"
-                                  className="ghost small"
-                                  onClick={() => {
-                                    navigator.clipboard?.writeText(linkCode.command);
-                                    setNotice({ type: 'success', text: `Đã sao chép ${linkCode.command}` });
-                                  }}
-                                >
-                                  Sao chép {linkCode.command}
-                                </button>
-                                <a
-                                  href={`https://m.me/${linkCode.page_id}?text=${encodeURIComponent(linkCode.command)}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="ghost small"
-                                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-                                >
-                                  Mở Messenger ↗
-                                </a>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
                       {savedReels.length === 0 ? (
                         <div className="empty" style={{ padding: 'var(--space-3) 0 0' }}>
                           <p className="muted" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
@@ -1268,6 +1290,53 @@ const Home: React.FC = () => {
       {showTour && authReady && <Tour steps={TOUR_STEPS} onTab={(t) => switchTab(t as Tab)} onClose={closeTour} />}
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+
+      {linkCode && (
+        <div className="payment-backdrop" onClick={() => setLinkCode(null)}>
+          <div className="payment-sheet" role="dialog" aria-label="Liên kết Messenger" onClick={(e) => e.stopPropagation()}>
+            <div className="payment-sheet-head">
+              <div className="payment-sheet-title">
+                <span className="payment-cart-icon">💬</span>
+                <h3>Liên kết Messenger</h3>
+              </div>
+              <button
+                type="button"
+                className="payment-close-btn"
+                aria-label="Đóng"
+                onClick={() => setLinkCode(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="muted payment-subtext">
+              Gửi mã <strong>{linkCode.command}</strong> tới Page qua Messenger, rồi bấm ↻ để đồng bộ Reel.
+            </p>
+
+            <div className="payment-sheet-buttons">
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  navigator.clipboard?.writeText(linkCode.command);
+                  setNotice({ type: 'success', text: `Đã sao chép ${linkCode.command}` });
+                }}
+              >
+                Sao chép {linkCode.command}
+              </button>
+              <a
+                href={`https://m.me/${linkCode.page_id}?text=${encodeURIComponent(linkCode.command)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="primary"
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+              >
+                Mở Messenger ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activePaymentPack && (
         <div className="payment-backdrop" onClick={() => setActivePaymentPack(null)}>

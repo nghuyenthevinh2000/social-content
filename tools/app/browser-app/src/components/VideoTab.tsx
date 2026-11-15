@@ -281,15 +281,6 @@ export function VideoTab({
     <div className="video-tab">
       {notice && <div className={`notice ${notice.type} video-notice-box`}>{notice.text}</div>}
 
-      {/* Credit Status */}
-      <div className="credits-badge-bar">
-        <span>Số dư của bạn:</span>
-        <div className="credits-badge">
-          <span>💰</span>
-          <span>${(balance / 1000000).toFixed(2)}</span>
-        </div>
-      </div>
-
       {/* Main Creation Form */}
       <section className="panel">
         <div className="video-header-row">

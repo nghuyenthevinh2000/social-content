@@ -34,7 +34,6 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
   const cached = loadCachedProfile();
   const [profile, setProfile] = useState<MediaItem | null>(null);
   const [contextList, setContextList] = useState<MediaItem[]>([]);
-  const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actorGender, setActorGender] = useState<'male' | 'female'>(cached?.gender === 'female' ? 'female' : 'male');
@@ -65,17 +64,6 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
       setError(err?.message || 'Không thể tải ảnh');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchCredits = async () => {
-    try {
-      const res = await apiJson<{ ok: boolean; balance: number }>('/api/credits');
-      if (res.ok && typeof res.balance === 'number') {
-        setBalance(res.balance);
-      }
-    } catch {
-      // ignore if credits endpoint not mocked in unit test
     }
   };
 
@@ -160,7 +148,6 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
 
   useEffect(() => {
     fetchMedia();
-    fetchCredits();
     fetchActorProfile();
   }, []);
 
@@ -212,15 +199,6 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
   return (
     <div className="media-panel">
       {error && <div className="notice error">{error}</div>}
-
-      {balance !== null && (
-        <div className="profile-card profile-card-balance">
-          <div>
-            <strong>Số dư Video AI</strong>
-          </div>
-          <strong className="profile-balance-amount">${(balance / 1000000).toFixed(2)}</strong>
-        </div>
-      )}
 
       <div className="media-section">
         <div className="media-section-title">

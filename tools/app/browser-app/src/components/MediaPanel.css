@@ -266,15 +266,6 @@
   border-color: var(--color-accent);
 }
 
-.profile-card-balance {
-  justify-content: space-between;
-}
-
-.profile-balance-amount {
-  color: var(--color-accent);
-  font-size: var(--text-md);
-}
-
 .hidden-file-input {
   display: none;
 }
