@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import './Tour.css';
 
-export type TourStep = { target: string; tab: string; title: string; text: string };
+export type TourStep = { target: string; tab: string; title: string; text: string; onEnter?: () => void };
 
 const PAD = 6;
 
@@ -13,9 +13,26 @@ export function Tour({ steps, onTab, onClose }: { steps: TourStep[]; onTab: (tab
 
   useEffect(() => {
     onTab(step.tab);
+    step.onEnter?.();
+    let scrolled = false;
     // ponytail: polling (target mounts after tab switch / async load); swap for a MutationObserver if it matters
-    const measure = () => setRect(document.querySelector(step.target)?.getBoundingClientRect() ?? null);
-    document.querySelector(step.target)?.scrollIntoView({ block: 'center' });
+    const measure = () => {
+      const el = document.querySelector(step.target);
+      if (!el) {
+        setRect((prev) => (prev === null ? prev : null));
+        return;
+      }
+      if (!scrolled) {
+        scrolled = true;
+        el.scrollIntoView?.({ block: 'center' });
+      }
+      const r = el.getBoundingClientRect();
+      setRect((prev) =>
+        prev && prev.top === r.top && prev.left === r.left && prev.width === r.width && prev.height === r.height
+          ? prev
+          : r,
+      );
+    };
     measure();
     const t = setInterval(measure, 150);
     return () => clearInterval(t);

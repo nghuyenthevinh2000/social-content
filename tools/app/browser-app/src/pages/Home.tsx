@@ -54,80 +54,65 @@ const AUTH_GATE_SUBTITLES: Partial<Record<Tab, string>> = {
 const DEFAULT_TOPIC = 'sở thích cá nhân';
 const isDefaultTopic = (t: TopicItem) => t.name.toLowerCase() === DEFAULT_TOPIC;
 const TOUR_KEY = 'aibrand-tour-done';
-const TOUR_STEPS: TourStep[] = [
-  {
-    tab: 'library',
-    target: '.tabbar-btn:nth-child(1)',
-    title: 'Thư viện',
-    text: 'Nơi lưu các chủ đề và kênh creator bạn muốn theo dõi.',
-  },
-  {
-    tab: 'library',
-    target: '#import',
-    title: 'Nhập dữ liệu',
-    text: 'Chọn file Excel hoặc dán link Google Sheet — mỗi sheet thành một chủ đề.',
-  },
-  {
-    tab: 'library',
-    target: '.topic-accordion',
-    title: 'Chủ đề mặc định',
-    text: 'Mở chủ đề để thêm/xoá kênh, hoặc bấm ▶ Chạy để phân tích riêng chủ đề này.',
-  },
-  {
-    tab: 'library',
-    target: '.new-topic',
-    title: 'Tạo chủ đề mới',
-    text: 'Nhập tên chủ đề và (tuỳ chọn) link kênh đầu tiên.',
-  },
-  {
-    tab: 'library',
-    target: '.topics-panel > button',
-    title: 'Chạy tất cả',
-    text: 'Phân tích mọi chủ đề trong thư viện cùng lúc.',
-  },
-  {
-    tab: 'library',
-    target: '.saved-reels-panel',
-    title: 'Reel đã lưu',
-    text: 'Liên kết Facebook Messenger để gửi link Reel từ chat và phân tích trực tiếp từng Reel.',
-  },
-  {
-    tab: 'analyzer',
-    target: '.tabbar-btn:nth-child(2)',
-    title: 'Phân tích',
-    text: 'Xem tiến độ, lịch sử và kết quả phân tích kênh hoặc Reel. Dùng "Tạo Video AI" hoặc "Copy cho AI" để lấy kịch bản.',
-  },
-  {
-    tab: 'video',
-    target: '.tabbar-btn:nth-child(3)',
-    title: 'Tạo Video AI',
-    text: 'Chọn ảnh khuôn mặt, bối cảnh và hồ sơ nhân vật để tạo video ngắn bằng AI với giọng đọc tiếng Việt.',
-  },
-  {
-    tab: 'video',
-    target: '.prompt-textarea',
-    title: 'Cấu hình lời thoại & kịch bản',
-    text: 'Nhập trực tiếp lời thoại tiếng Việt hoặc dán kịch bản từ tab Phân tích để AI đọc và tạo video.',
-  },
-  {
-    tab: 'profile',
-    target: '.tabbar-btn:nth-child(4)',
-    title: 'Hồ sơ',
-    text: 'Liên kết Facebook, nạp gói creator, quản lý ảnh khuôn mặt & bối cảnh và cấu hình hướng dẫn.',
-  },
-  {
-    tab: 'profile',
-    target: '.media-section .profile-card',
-    title: 'Ảnh chân dung mẫu',
-    text: 'Tải lên ảnh chân dung rõ mặt tại đây để AI khớp khuôn mặt của bạn trong các video tạo ra.',
-  },
-  {
-    tab: 'profile',
-    target: '.creator-store',
-    title: 'Gói Content Creator',
-    text: 'Mở để nạp nhanh danh sách kênh creator tuyển chọn sẵn vào Thư viện để phân tích.',
-  },
-];
+const TOUR_DEMO_ID = '__tour_demo__';
+const TOUR_DEMO_TOPIC_SLUG = '__tour_demo_topic__';
+const TOUR_DEMO_TOPIC: TopicItem = {
+  name: 'Hướng dẫn',
+  slug: TOUR_DEMO_TOPIC_SLUG,
+  targets: [{ name: 'Kênh Facebook mẫu', url: 'https://www.facebook.com/example' }],
+};
+const TOUR_DEMO_JOB: Job = {
+  id: TOUR_DEMO_ID,
+  job_kind: 'profile',
+  status: 'completed',
+  filename: 'Hướng dẫn',
+  created_at: new Date().toISOString(),
+  current_sheet: null,
+  sheets: [
+    {
+      name: 'Hướng dẫn',
+      slug: 'huong-dan',
+      status: 'completed',
+      targets: 1,
+      reels: 12,
+      pool_distribution: { pool_3: 3, pool_2: 5, pool_1: 4 },
+      topics: [
+        {
+          title: '3 sai lầm khiến video ngắn không có lượt xem',
+          hook: 'Đừng đăng video nếu bạn chưa sửa 3 lỗi này trong 3 giây đầu!',
+          angle: 'Chỉ ra lỗi phổ biến của người mới và cách khắc phục ngay',
+          why_viral: 'Đánh trúng nỗi đau người làm nội dung, giữ chân người xem từ 3 giây đầu.',
+          outline: ['Hook 3s: nêu lỗi thường gặp', 'Giải thích nhanh 3 sai lầm', 'CTA: lưu lại để áp dụng'],
+          format: 'Short talking-head',
+          source_urls: [],
+          generated_by: 'sample',
+          views: 125000,
+          velocity_per_hour: 4200,
+          current_pool: 3,
+          author_handle: '@creator_mau',
+          transcript: 'Đừng đăng video nếu bạn chưa sửa 3 lỗi này trong 3 giây đầu...',
+          prompt:
+            'Đừng đăng video nếu bạn chưa sửa 3 lỗi này trong 3 giây đầu! Hãy kiểm tra ánh sáng, âm thanh và câu mở đầu trước khi bấm đăng.',
+        },
+      ],
+      error: null,
+    },
+  ],
+  logs: [],
+};
+
+const TOUR_DEMO_SUMMARY: JobSummary = {
+  id: TOUR_DEMO_ID,
+  job_kind: 'profile',
+  status: 'completed',
+  filename: 'Hướng dẫn',
+  created_at: TOUR_DEMO_JOB.created_at!,
+  finished_at: TOUR_DEMO_JOB.created_at!,
+  current_sheet: null,
+  total_sheets: 1,
+  completed_sheets: 1,
+  total_topics: 1,
+};
 
 const EXCEL_ACCEPT =
   '.xlsx,.xlsm,.xls,.gsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.google-apps.spreadsheet';
@@ -238,7 +223,112 @@ const Home: React.FC = () => {
   const tourKey = user ? `${TOUR_KEY}-${user.uid}` : '';
   const tourDone = Boolean(tourKey && localStorage.getItem(tourKey));
   const showTour = !!user && !tourDismissed && !tourDone;
-  const closeTour = () => setTourDismissed(true);
+  const visibleHistory = showTour ? [TOUR_DEMO_SUMMARY, ...history] : history;
+  const tourSteps = useMemo<TourStep[]>(() => {
+    const showDemoResult = () => {
+      setJobId(TOUR_DEMO_ID);
+      setJob(TOUR_DEMO_JOB);
+    };
+    const hideDemoResult = () => {
+      setJobId((prev) => (prev === TOUR_DEMO_ID ? null : prev));
+      setJob((prev) => (prev?.id === TOUR_DEMO_ID ? null : prev));
+    };
+    return [
+      {
+        tab: 'library',
+        target: '.tabbar-btn:nth-child(1)',
+        title: 'Thư viện',
+        text: 'Nhập Excel/Google Sheet, quản lý chủ đề, kênh Facebook và Reel đã lưu.',
+      },
+      {
+        tab: 'library',
+        target: '.new-topic',
+        title: 'Thêm chủ đề mới',
+        text: 'Nhập tên chủ đề mới và (tuỳ chọn) dán link kênh Facebook đầu tiên rồi bấm + Tạo chủ đề.',
+      },
+      {
+        tab: 'library',
+        target: '.topic-accordion:first-of-type',
+        title: 'Quản lý chủ đề & Kênh Facebook',
+        text: 'Mỗi chủ đề chứa danh sách kênh Facebook, ô dán link để thêm kênh mới và nút ▶ Chạy để phân tích riêng chủ đề này.',
+      },
+      {
+        tab: 'library',
+        target: '.saved-reels-panel',
+        title: 'Reel đã lưu',
+        text: 'Liên kết Facebook Messenger để gửi link Reel từ chat và phân tích trực tiếp từng Reel.',
+      },
+      {
+        tab: 'analyzer',
+        target: '.tabbar-btn:nth-child(2)',
+        title: 'Phân tích',
+        text: 'Theo dõi tiến độ, xem lại lịch sử và mở kết quả ý tưởng viral.',
+        onEnter: hideDemoResult,
+      },
+      {
+        tab: 'analyzer',
+        target: '.history-list .history-card:first-child',
+        title: 'Lần chạy mẫu "Hướng dẫn"',
+        text: 'Mỗi lần chạy hiển thị trạng thái, số chủ đề và ý tưởng viral tìm được.',
+        onEnter: hideDemoResult,
+      },
+      {
+        tab: 'analyzer',
+        target: '.reel-analysis-details',
+        title: 'Transcript & Phân tích viral',
+        text: 'Mở mục này để xem transcript lời thoại, hook 3 giây đầu, lý do viral và dàn ý triển khai.',
+        onEnter: showDemoResult,
+      },
+      {
+        tab: 'analyzer',
+        target: '.copy-topic-btn',
+        title: 'Copy prompt cho AI',
+        text: 'Sao chép nhanh prompt/kịch bản hoàn chỉnh để dán sang tab Tạo Video AI hoặc công cụ AI khác.',
+        onEnter: showDemoResult,
+      },
+      {
+        tab: 'video',
+        target: '.tabbar-btn:nth-child(3)',
+        title: 'Tạo Video AI',
+        text: 'Tạo video ngắn với khuôn mặt mẫu, bối cảnh và giọng đọc tiếng Việt tự nhiên.',
+        onEnter: hideDemoResult,
+      },
+      {
+        tab: 'video',
+        target: '.video-tab > section.panel',
+        title: 'Tạo video AI Cá Nhân',
+        text: 'Chọn ảnh khuôn mặt, ảnh bối cảnh và nhập lời thoại/kịch bản tiếng Việt rồi bấm Tạo video ngay.',
+      },
+      {
+        tab: 'profile',
+        target: '.tabbar-btn:nth-child(4)',
+        title: 'Hồ sơ',
+        text: 'Liên kết Facebook, xem số dư Video AI, nạp gói creator và cấu hình hướng dẫn.',
+      },
+      {
+        tab: 'profile',
+        target: 'section.panel.profile',
+        title: 'Thông tin tài khoản',
+        text: 'Xem email, liên kết Facebook, kiểm tra số dư Video AI, bật/tắt "Đã rõ hướng dẫn" hoặc đăng xuất.',
+      },
+      {
+        tab: 'profile',
+        target: '.media-section .profile-card',
+        title: 'Ảnh chân dung mẫu',
+        text: 'Tải lên ảnh chân dung rõ mặt tại đây để AI khớp khuôn mặt của bạn trong các video tạo ra.',
+      },
+      {
+        tab: 'profile',
+        target: '.creator-store',
+        title: 'Gói mở rộng',
+        text: 'Các gói tiện ích giúp tiết kiệm thời gian, mở rộng thư viện và hỗ trợ cao cấp.',
+      },
+    ];
+  }, []);
+  const closeTour = () => {
+    setTourDismissed(true);
+    if (jobId === TOUR_DEMO_ID) selectJob(null);
+  };
   const toggleTourDone = () => {
     if (!tourKey) return;
     if (tourDone) {
@@ -374,6 +464,11 @@ const Home: React.FC = () => {
 
   function selectJob(id: string | null) {
     setJobId(id);
+    if (id === TOUR_DEMO_ID) {
+      setJob(TOUR_DEMO_JOB);
+      window.history.replaceState(null, '', `?tab=${tab}`);
+      return;
+    }
     if (id) {
       localStorage.setItem('aibrand-active-job-id', id);
       window.history.replaceState(null, '', `?tab=${tab}&job_id=${id}`);
@@ -511,6 +606,10 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     if (!jobId || !user) return;
+    if (jobId === TOUR_DEMO_ID) {
+      setJob(TOUR_DEMO_JOB);
+      return;
+    }
     let stopped = false;
     const tick = async () => {
       try {
@@ -542,15 +641,16 @@ const Home: React.FC = () => {
   const runnable = topics.filter((t) => t.targets.length > 0);
   const totalChannels = topics.reduce((acc, t) => acc + t.targets.length, 0);
 
+  const visibleTopics = useMemo(() => (showTour ? [TOUR_DEMO_TOPIC, ...topics] : topics), [showTour, topics]);
   const filteredTopics = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return topics;
-    return topics.filter(
+    if (!q) return visibleTopics;
+    return visibleTopics.filter(
       (t) =>
         t.name.toLowerCase().includes(q) ||
         t.targets.some((tg) => tg.name.toLowerCase().includes(q) || tg.url.toLowerCase().includes(q)),
     );
-  }, [topics, search]);
+  }, [visibleTopics, search]);
 
   async function run(selected: TopicItem[], filename: string, kind: JobKind = 'profile') {
     if (!user) {
@@ -778,8 +878,8 @@ const Home: React.FC = () => {
                   <summary className="store-summary">
                     <div className="store-header-wrap">
                       <div>
-                        <h2>Gói Content Creator</h2>
-                        <p className="muted count">Nạp nhanh danh sách creator vào Thư viện để phân tích video</p>
+                        <h2>Gói mở rộng</h2>
+                        <p className="muted count">Các gói tiện ích giúp tiết kiệm thời gian, mở rộng thư viện và hỗ trợ cao cấp</p>
                       </div>
                       <span className="store-toggle-icon" aria-hidden="true" />
                     </div>
@@ -931,8 +1031,10 @@ const Home: React.FC = () => {
                           {topics.length ? 'Không có kết quả phù hợp.' : 'Thư viện trống. Nhập file hoặc tạo chủ đề.'}
                         </p>
                       ) : (
-                        filteredTopics.map((topic) => (
-                          <details key={topic.slug} className="topic-accordion">
+                        filteredTopics.map((topic) => {
+                          const isDemoTopic = topic.slug === TOUR_DEMO_TOPIC_SLUG;
+                          return (
+                          <details key={topic.slug} className="topic-accordion" open={isDemoTopic ? true : undefined}>
                             <summary>
                               <span className="sheet-title">
                                 <strong>{topic.name}</strong>
@@ -943,9 +1045,9 @@ const Home: React.FC = () => {
                                 className="topic-run-btn"
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  run([topic], topic.name);
+                                  if (!isDemoTopic) run([topic], topic.name);
                                 }}
-                                disabled={blocked || topic.targets.length === 0}
+                                disabled={blocked || topic.targets.length === 0 || isDemoTopic}
                               >
                                 ▶ Chạy
                               </button>
@@ -960,16 +1062,18 @@ const Home: React.FC = () => {
                                       {shortUrl(target.url)} ↗
                                     </a>
                                   </div>
-                                  <button
-                                    type="button"
-                                    className="channel-del-btn"
-                                    aria-label={`Xoá kênh ${target.name}`}
-                                    onClick={() =>
-                                      postJson('/api/sources/profiles/delete', { slug: topic.slug, url: target.url })
-                                    }
-                                  >
-                                    ✕
-                                  </button>
+                                  {!isDemoTopic && (
+                                    <button
+                                      type="button"
+                                      className="channel-del-btn"
+                                      aria-label={`Xoá kênh ${target.name}`}
+                                      onClick={() =>
+                                        postJson('/api/sources/profiles/delete', { slug: topic.slug, url: target.url })
+                                      }
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
                                 </div>
                               ))}
 
@@ -977,6 +1081,7 @@ const Home: React.FC = () => {
                                 className="row"
                                 onSubmit={async (e) => {
                                   e.preventDefault();
+                                  if (isDemoTopic) return;
                                   const url = (inlineUrls[topic.slug] || '').trim();
                                   if (url && (await addChannel(topic.name, url)))
                                     setInlineUrls((prev) => ({ ...prev, [topic.slug]: '' }));
@@ -993,13 +1098,13 @@ const Home: React.FC = () => {
                                 <button
                                   type="submit"
                                   className="ghost small"
-                                  disabled={busy || !(inlineUrls[topic.slug] || '').trim()}
+                                  disabled={busy || isDemoTopic || !(inlineUrls[topic.slug] || '').trim()}
                                 >
                                   + Thêm
                                 </button>
                               </form>
 
-                              {!isDefaultTopic(topic) && (
+                              {!isDemoTopic && !isDefaultTopic(topic) && (
                                 <button
                                   type="button"
                                   className="btn-text-danger"
@@ -1013,7 +1118,8 @@ const Home: React.FC = () => {
                               )}
                             </div>
                           </details>
-                        ))
+                          );
+                        })
                       )}
 
                       <form className="new-topic" onSubmit={createTopic}>
@@ -1162,7 +1268,7 @@ const Home: React.FC = () => {
                     <div>
                       <h2>Lịch sử phân tích</h2>
                       <p className="muted count">
-                        {history.length > 0 ? `${history.length} lần chạy` : 'Chưa có lần chạy nào'}
+                        {visibleHistory.length > 0 ? `${visibleHistory.length} lần chạy` : 'Chưa có lần chạy nào'}
                       </p>
                     </div>
                     <button type="button" className="ghost small" onClick={fetchHistory} disabled={loadingHistory}>
@@ -1170,7 +1276,7 @@ const Home: React.FC = () => {
                     </button>
                   </div>
 
-                  {history.length === 0 ? (
+                  {visibleHistory.length === 0 ? (
                     <div className="empty">
                       <p className="muted">Chưa có lần chạy nào trong lịch sử.</p>
                       <button type="button" className="ghost" onClick={() => switchTab('library')}>
@@ -1179,7 +1285,7 @@ const Home: React.FC = () => {
                     </div>
                   ) : (
                     <div className="history-list">
-                      {history.map((item) => {
+                      {visibleHistory.map((item) => {
                         const isRunning = !TERMINAL.has(item.status);
                         return (
                           <div
@@ -1228,15 +1334,17 @@ const Home: React.FC = () => {
                               >
                                 {isRunning ? '▶ Xem tiến độ' : 'Xem kết quả'}
                               </button>
-                              <button
-                                type="button"
-                                className="channel-del-btn"
-                                aria-label={`Xoá lần chạy ${cleanTopicTitle(item.filename)}`}
-                                title="Xoá lần chạy"
-                                onClick={(e) => deleteJob(item.id, e)}
-                              >
-                                ✕
-                              </button>
+                              {item.id !== TOUR_DEMO_ID && (
+                                <button
+                                  type="button"
+                                  className="channel-del-btn"
+                                  aria-label={`Xoá lần chạy ${cleanTopicTitle(item.filename)}`}
+                                  title="Xoá lần chạy"
+                                  onClick={(e) => deleteJob(item.id, e)}
+                                >
+                                  ✕
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -1247,7 +1355,7 @@ const Home: React.FC = () => {
               ) : (
                 <JobResult
                   job={job}
-                  historyCount={history.length}
+                  historyCount={visibleHistory.length}
                   copiedKey={copiedKey}
                   onBack={() => selectJob(null)}
                   onCopyTopic={handleCopyTopic}
@@ -1287,7 +1395,7 @@ const Home: React.FC = () => {
         </nav>
       </IonFooter>
 
-      {showTour && authReady && <Tour steps={TOUR_STEPS} onTab={(t) => switchTab(t as Tab)} onClose={closeTour} />}
+      {showTour && authReady && <Tour steps={tourSteps} onTab={(t) => switchTab(t as Tab)} onClose={closeTour} />}
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
