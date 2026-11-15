@@ -13,8 +13,8 @@ test('unauthenticated video tab shows login gate', async ({ page }) => {
   const videoTab = page.getByRole('tab', { name: 'Tạo Video' });
   await expect(videoTab).toBeVisible();
   await expect(videoTab).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('heading', { name: /Tạo Video AI/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Đăng nhập ngay' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Yêu cầu đăng nhập' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đăng nhập / Đăng ký' })).toBeVisible();
 });
 
 test('authenticated user uploads images in Profile, selects them in Video tab, and creates/cancels job', async ({

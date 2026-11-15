@@ -44,6 +44,13 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'profile', label: 'Hồ sơ', icon: personCircleOutline },
 ];
 
+const AUTH_GATE_SUBTITLES: Partial<Record<Tab, string>> = {
+  library: 'Vui lòng đăng nhập tài khoản để xem, quản lý Thư viện kênh.',
+  analyzer: 'Vui lòng đăng nhập tài khoản để bắt đầu chạy phân tích.',
+  video: 'Vui lòng đăng nhập tài khoản để tạo video ngắn bằng AI.',
+  profile: 'Vui lòng đăng nhập tài khoản để quản lý hồ sơ và gói creator.',
+};
+
 const DEFAULT_TOPIC = 'sở thích cá nhân';
 const isDefaultTopic = (t: TopicItem) => t.name.toLowerCase() === DEFAULT_TOPIC;
 const TOUR_KEY = 'aibrand-tour-done';
@@ -617,76 +624,77 @@ const Home: React.FC = () => {
             <div className="empty">
               <p className="muted">Đang kiểm tra đăng nhập…</p>
             </div>
+          ) : !user ? (
+            <section className="panel" id={tab === 'analyzer' ? 'results' : undefined}>
+              <div className="empty">
+                <span className="gate-icon">🔒</span>
+                <h2>Yêu cầu đăng nhập</h2>
+                <p className="muted">{AUTH_GATE_SUBTITLES[tab] ?? 'Vui lòng đăng nhập tài khoản để tiếp tục.'}</p>
+                <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
+                  Đăng nhập / Đăng ký
+                </button>
+              </div>
+            </section>
           ) : tab === 'profile' ? (
             <>
               <section className="panel profile">
                 <div className="profile-head">
-                  <span className="avatar">{user ? (user.email || user.uid)[0].toUpperCase() : '?'}</span>
+                  <span className="avatar">{(user.email || user.uid)[0].toUpperCase()}</span>
                   <div className="sheet-title">
-                    <strong>{user ? user.displayName || user.email || 'Người dùng' : 'Chưa đăng nhập'}</strong>
-                    {!user && <small className="muted">Đăng nhập để đồng bộ tài khoản của bạn.</small>}
+                    <strong>{user.displayName || user.email || 'Người dùng'}</strong>
                   </div>
                 </div>
-                {user ? (
-                  <>
-                    <dl className="details">
-                      <dt>Email</dt>
-                      <dd>{user.email ? <code>{user.email}</code> : '—'}</dd>
-                      {facebookId ? (
-                        <>
-                          <dt>Facebook ID</dt>
-                          <dd>
-                            <code>{facebookId}</code>
-                          </dd>
-                        </>
-                      ) : (
-                        <>
-                          <dt>Facebook</dt>
-                          <dd>
-                            <button
-                              type="button"
-                              className="link-fb-btn"
-                              onClick={handleLinkFacebook}
-                              disabled={linkingFb}
-                            >
-                              {linkingFb ? 'Đang liên kết…' : 'Liên kết tài khoản Facebook'}
-                            </button>
-                            {linkFbError && <div className="link-fb-error">{linkFbError}</div>}
-                          </dd>
-                        </>
-                      )}
-                    </dl>
-                    <button
-                      type="button"
-                      className="ghost profile-btn"
-                      onClick={() => {
-                        setTourDismissed(false);
-                        setTourReplay(true);
-                      }}
-                    >
-                      ? Xem lại hướng dẫn
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost danger profile-btn"
-                      onClick={() => {
-                        resetUserSessionState();
-                        window.history.replaceState(null, '', '?tab=profile');
-                        signOut(auth);
-                      }}
-                    >
-                      Đăng xuất
-                    </button>
-                  </>
-                ) : (
-                  <button type="button" className="primary profile-btn" onClick={() => setShowAuthModal(true)}>
-                    Đăng nhập / Đăng ký
-                  </button>
-                )}
+                <dl className="details">
+                  <dt>Email</dt>
+                  <dd>{user.email ? <code>{user.email}</code> : '—'}</dd>
+                  {facebookId ? (
+                    <>
+                      <dt>Facebook ID</dt>
+                      <dd>
+                        <code>{facebookId}</code>
+                      </dd>
+                    </>
+                  ) : (
+                    <>
+                      <dt>Facebook</dt>
+                      <dd>
+                        <button
+                          type="button"
+                          className="link-fb-btn"
+                          onClick={handleLinkFacebook}
+                          disabled={linkingFb}
+                        >
+                          {linkingFb ? 'Đang liên kết…' : 'Liên kết tài khoản Facebook'}
+                        </button>
+                        {linkFbError && <div className="link-fb-error">{linkFbError}</div>}
+                      </dd>
+                    </>
+                  )}
+                </dl>
+                <button
+                  type="button"
+                  className="ghost profile-btn"
+                  onClick={() => {
+                    setTourDismissed(false);
+                    setTourReplay(true);
+                  }}
+                >
+                  ? Xem lại hướng dẫn
+                </button>
+                <button
+                  type="button"
+                  className="ghost danger profile-btn"
+                  onClick={() => {
+                    resetUserSessionState();
+                    window.history.replaceState(null, '', '?tab=profile');
+                    signOut(auth);
+                  }}
+                >
+                  Đăng xuất
+                </button>
               </section>
 
-              {user && (
-                <section className="panel">
+              <section className="panel">
                   <div
                     className="panel-head collapsible-head"
                     role="button"
@@ -714,10 +722,8 @@ const Home: React.FC = () => {
                     </div>
                   )}
                 </section>
-              )}
 
-              {user && (
-                <details className="panel creator-store">
+              <details className="panel creator-store">
                   <summary className="store-summary">
                     <div className="store-header-wrap">
                       <div>
@@ -771,7 +777,6 @@ const Home: React.FC = () => {
                     })}
                   </div>
                 </details>
-              )}
             </>
           ) : tab === 'video' ? (
             <VideoTab
@@ -784,20 +789,8 @@ const Home: React.FC = () => {
               onDurationChange={setVideoDuration}
             />
           ) : tab === 'library' ? (
-            !user ? (
-              <section className="panel">
-                <div className="empty">
-                  <span className="gate-icon">🔒</span>
-                  <h2>Yêu cầu đăng nhập</h2>
-                  <p className="muted">Vui lòng đăng nhập tài khoản để xem, quản lý Thư viện kênh</p>
-                  <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
-                    Đăng nhập / Đăng ký
-                  </button>
-                </div>
-              </section>
-            ) : (
-              <>
-                <section className="panel" id="import">
+            <>
+              <section className="panel" id="import">
                   <h2>Nhập vào thư viện</h2>
                   <button className="picker" type="button" onClick={() => fileRef.current?.click()} disabled={busy}>
                     <input
@@ -1130,20 +1123,10 @@ const Home: React.FC = () => {
                   )}
                 </div>
               </>
-            )
           ) : (
             <section className="panel" id="results">
               {error && <div className="alert error">{error}</div>}
-              {!user ? (
-                <div className="empty">
-                  <span className="gate-icon">🔒</span>
-                  <h2>Yêu cầu đăng nhập</h2>
-                  <p className="muted">Vui lòng đăng nhập tài khoản để bắt đầu chạy phân tích.</p>
-                  <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
-                    Đăng nhập / Đăng ký
-                  </button>
-                </div>
-              ) : starting ? (
+              {starting ? (
                 <div className="empty">
                   <p className="muted">Đang tạo job…</p>
                 </div>

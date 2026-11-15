@@ -23,10 +23,10 @@ describe('VideoTab and MediaPanel', () => {
     const onOpenAuth = vi.fn();
     render(<VideoTab user={null} onOpenAuth={onOpenAuth} />);
 
-    expect(screen.getByText(/Tạo Video AI \(\d+s\)/)).toBeDefined();
-    expect(screen.getByText('Đăng nhập ngay')).toBeDefined();
+    expect(screen.getByText('Yêu cầu đăng nhập')).toBeDefined();
+    expect(screen.getByText('Đăng nhập / Đăng ký')).toBeDefined();
 
-    fireEvent.click(screen.getByText('Đăng nhập ngay'));
+    fireEvent.click(screen.getByText('Đăng nhập / Đăng ký'));
     expect(onOpenAuth).toHaveBeenCalled();
   });
 

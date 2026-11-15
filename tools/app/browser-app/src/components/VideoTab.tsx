@@ -265,11 +265,12 @@ export function VideoTab({
   if (!user) {
     return (
       <section className="panel">
-        <h2>Tạo Video AI ({duration}s)</h2>
-        <div className="video-empty-gate">
-          <p className="muted video-empty-desc">Vui lòng đăng nhập để tạo video ngắn bằng AI (Omni Flash).</p>
-          <button type="button" className="primary" onClick={onOpenAuth}>
-            Đăng nhập ngay
+        <div className="empty">
+          <span className="gate-icon">🔒</span>
+          <h2>Yêu cầu đăng nhập</h2>
+          <p className="muted">Vui lòng đăng nhập tài khoản để tạo video ngắn bằng AI.</p>
+          <button type="button" className="primary auth-gate-btn" onClick={onOpenAuth}>
+            Đăng nhập / Đăng ký
           </button>
         </div>
       </section>
