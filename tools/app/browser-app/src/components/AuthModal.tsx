@@ -3,18 +3,19 @@ import React, { useState } from 'react';
 import {
   auth,
   createUserWithEmailAndPassword,
+  formatFacebookAuthError,
   signInWithEmailAndPassword,
-  signInWithPopup,
-  FacebookAuthProvider,
+  signInWithFacebook,
 } from '../firebase';
 import './AuthModal.css';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialError?: string | null;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialError }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,22 +24,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  const displayError = error ?? initialError ?? null;
+
   const handleFacebookLogin = async () => {
     setError(null);
     setLoading(true);
     try {
-      const provider = new FacebookAuthProvider();
-      provider.addScope('public_profile');
-      provider.addScope('email');
-      await signInWithPopup(auth, provider);
-      onClose();
+      const res = await signInWithFacebook();
+      if (res) onClose();
     } catch (err: any) {
-      let msg = err.message || 'Đã xảy ra lỗi khi đăng nhập bằng Facebook.';
-      if (err.code === 'auth/popup-closed-by-user') msg = 'Bạn đã đóng cửa sổ đăng nhập.';
-      if (err.code === 'auth/cancelled-popup-request') msg = 'Yêu cầu đăng nhập đã bị hủy.';
-      if (err.code === 'auth/account-exists-with-different-credential')
-        msg = 'Email của tài khoản Facebook này đã tồn tại với một phương thức đăng nhập khác.';
-      setError(msg);
+      setError(formatFacebookAuthError(err, 'Đã xảy ra lỗi khi đăng nhập bằng Facebook.'));
     } finally {
       setLoading(false);
     }
@@ -83,14 +78,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {error && <div className="alert error auth-alert">{error}</div>}
+        {displayError && <div className="alert error auth-alert">{displayError}</div>}
 
-        <button
-          type="button"
-          className="auth-facebook-btn"
-          onClick={handleFacebookLogin}
-          disabled={loading}
-        >
+        <button type="button" className="auth-facebook-btn" onClick={handleFacebookLogin} disabled={loading}>
           <svg className="fb-svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
           </svg>

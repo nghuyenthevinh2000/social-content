@@ -20,7 +20,15 @@ import { MediaPanel } from '../components/MediaPanel';
 import { Tour, type TourStep } from '../components/Tour';
 import { VideoTab } from '../components/VideoTab';
 import { CREATOR_PACKS, type CreatorPack } from '../data/creatorPacks';
-import { auth, FacebookAuthProvider, linkWithPopup, onAuthStateChanged, signOut, type User } from '../firebase';
+import {
+  auth,
+  formatFacebookAuthError,
+  linkWithFacebook,
+  onAuthStateChanged,
+  resolveAuthRedirect,
+  signOut,
+  type User,
+} from '../firebase';
 import './Home.css';
 
 export type TargetItem = { name: string; url: string };
@@ -185,6 +193,7 @@ const Home: React.FC = () => {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [authReady, setAuthReady] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authRedirectError, setAuthRedirectError] = useState<string | null>(null);
   // Seen-flag is per account: tour always shows unless the user marks "Đã rõ hướng dẫn" in Profile.
   const [tourDismissed, setTourDismissed] = useState(false);
   const [, setTourSync] = useState(0);
@@ -200,21 +209,10 @@ const Home: React.FC = () => {
     setLinkingFb(true);
     setLinkFbError(null);
     try {
-      const provider = new FacebookAuthProvider();
-      provider.addScope('public_profile');
-      provider.addScope('email');
-      const res = await linkWithPopup(auth.currentUser, provider);
-      setUser(res.user);
+      const res = await linkWithFacebook(auth.currentUser);
+      if (res) setUser(res.user);
     } catch (err: any) {
-      let msg = err.message || 'Lỗi khi liên kết tài khoản Facebook.';
-      if (err.code === 'auth/credential-already-in-use') {
-        msg = 'Tài khoản Facebook này đã được liên kết với một tài khoản khác.';
-      } else if (err.code === 'auth/popup-closed-by-user') {
-        msg = 'Bạn đã đóng cửa sổ liên kết.';
-      } else if (err.code === 'auth/cancelled-popup-request') {
-        msg = 'Yêu cầu liên kết bị hủy.';
-      }
-      setLinkFbError(msg);
+      setLinkFbError(formatFacebookAuthError(err, 'Lỗi khi liên kết tài khoản Facebook.'));
     } finally {
       setLinkingFb(false);
     }
@@ -447,6 +445,29 @@ const Home: React.FC = () => {
     };
     run([item], reel.reel_url, 'reel');
   };
+
+  useEffect(() => {
+    let active = true;
+    resolveAuthRedirect()
+      .then((res) => {
+        if (active && res?.user) {
+          setUser(res.user);
+        }
+      })
+      .catch((err) => {
+        if (!active) return;
+        const msg = formatFacebookAuthError(err, 'Lỗi khi xác thực Facebook.');
+        if (auth.currentUser) {
+          setLinkFbError(msg);
+        } else {
+          setAuthRedirectError(msg);
+          setShowAuthModal(true);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let lastUid = auth.currentUser?.uid ?? null;
@@ -1397,7 +1418,14 @@ const Home: React.FC = () => {
 
       {showTour && authReady && <Tour steps={tourSteps} onTab={(t) => switchTab(t as Tab)} onClose={closeTour} />}
 
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <AuthModal
+        isOpen={showAuthModal}
+        initialError={authRedirectError}
+        onClose={() => {
+          setShowAuthModal(false);
+          setAuthRedirectError(null);
+        }}
+      />
 
       {linkCode && (
         <div className="payment-backdrop" onClick={() => setLinkCode(null)}>
