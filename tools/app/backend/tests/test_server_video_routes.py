@@ -180,3 +180,25 @@ def test_server_video_and_media_routes():
         h.do_POST()
         assert h.response_status == 200
     assert len(v_store.list_jobs("u_test_1")) == 0
+
+
+def test_firebase_auth_proxy(monkeypatch):
+    import http.client
+    import unittest.mock as mock
+
+    monkeypatch.setenv("VITE_FIREBASE_AUTH_DOMAIN", "example.firebaseapp.com")
+    fake_resp = mock.MagicMock(status=302)
+    fake_resp.read.return_value = b"redirecting"
+    fake_resp.getheaders.return_value = [("Location", "https://facebook.com/oauth"), ("Transfer-Encoding", "chunked")]
+    fake_conn = mock.MagicMock()
+    fake_conn.getresponse.return_value = fake_resp
+
+    with mock.patch.object(http.client, "HTTPSConnection", return_value=fake_conn) as conn_cls:
+        h = DummyHandler("GET", "/__/auth/handler?apiKey=123", {"Host": "app.example.com"})
+        h.do_GET()
+
+    conn_cls.assert_called_once_with("example.firebaseapp.com", timeout=15)
+    assert h.response_status == 302
+    assert h.response_headers["location"] == "https://facebook.com/oauth"
+    assert "transfer-encoding" not in h.response_headers
+    assert h.wfile.getvalue() == b"redirecting"

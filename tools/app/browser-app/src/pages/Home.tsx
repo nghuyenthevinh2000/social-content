@@ -311,9 +311,10 @@ const Home: React.FC = () => {
       },
       {
         tab: 'profile',
-        target: '.media-section .profile-card',
+        target: '.media-section .profile-card .profile-info',
         title: 'Ảnh chân dung mẫu',
         text: 'Tải lên ảnh chân dung rõ mặt tại đây để AI khớp khuôn mặt của bạn trong các video tạo ra.',
+        onEnter: () => setMediaCollapsed(false),
       },
       {
         tab: 'profile',

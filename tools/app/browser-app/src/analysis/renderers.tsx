@@ -100,13 +100,7 @@ export const RENDERERS: Record<JobKind, JobRenderer> = {
     summaryMeta: (sheet) => `${sheet.targets} reel`,
     runningText: 'Đang tải transcript và phân tích Reel…',
     emptyText: 'Không có kết quả phân tích cho Reel này.',
-    sections: (topic) => {
-      const base = commonSections(topic);
-      if (topic.visual && topic.visual.trim()) {
-        return [{ label: '🎬 Hình ảnh / Bối cảnh:', body: <p>{topic.visual}</p> }, ...base];
-      }
-      return base;
-    },
+    sections: commonSections,
     order: (topics) => topics,
   },
 };

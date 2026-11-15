@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+import http.client
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import json
@@ -191,6 +192,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path.startswith(("/__/auth", "/__/firebase")):
+            self._proxy_firebase_auth(self.command)
+            return
         if parsed.path == "/api/health":
             glasser_info = _glasser_status()
             _json(self, 200, {
@@ -447,6 +451,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path.startswith(("/__/auth", "/__/firebase")):
+            self._proxy_firebase_auth("POST")
+            return
         if parsed.path == "/api/facebook/link-code":
             user_id = self._user_id()
             if not user_id:
@@ -866,6 +873,35 @@ class Handler(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
         self.wfile.write(data)
+
+    def _proxy_firebase_auth(self, method: str) -> None:
+        """Proxy /__/auth/* and /__/firebase/* to Firebase Hosting for same-origin OAuth."""
+        domain = os.environ.get("VITE_FIREBASE_AUTH_DOMAIN", "").strip()
+        if not domain:
+            _json(self, 404, {"error": "VITE_FIREBASE_AUTH_DOMAIN not configured"})
+            return
+        length = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(length) if length > 0 else None
+        skip_req = {"host", "connection", "accept-encoding", "content-length"}
+        fwd_headers = {k: v for k, v in self.headers.items() if k.lower() not in skip_req}
+        conn = http.client.HTTPSConnection(domain, timeout=15)
+        try:
+            conn.request(method, self.path, body=body, headers=fwd_headers)
+            resp = conn.getresponse()
+            data = resp.read()
+            self.send_response(resp.status)
+            skip_resp = {"transfer-encoding", "connection", "content-length", "content-encoding"}
+            for k, v in resp.getheaders():
+                if k.lower() not in skip_resp:
+                    self.send_header(k, v)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            if method != "HEAD":
+                self.wfile.write(data)
+        except Exception as exc:
+            _json(self, 502, {"error": f"Firebase auth proxy error: {exc}"})
+        finally:
+            conn.close()
 
 
 def _transcription_status() -> Dict[str, bool]:
