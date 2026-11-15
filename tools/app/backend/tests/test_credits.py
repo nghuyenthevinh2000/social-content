@@ -102,4 +102,21 @@ def test_claim_email_credits():
     assert store.get_balance("uid_12345") == 1000000
 
 
+def test_cli_grant_requires_email(monkeypatch, capsys):
+    import sys
+    import pytest
+    from tools.app.backend.credits import main
+
+    monkeypatch.setattr(sys, "argv", ["credits", "grant", "3002422696778809", "1000000"])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 2
+
+    monkeypatch.setattr(sys, "argv", ["credits", "grant", "cli_user@example.com", "1000000"])
+    main()
+    assert "Granted 1000000 micro-USD to cli_user@example.com" in capsys.readouterr().out
+    assert CreditStore().get_balance("cli_user@example.com") == 1000000
+
+
+
 

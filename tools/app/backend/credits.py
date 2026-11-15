@@ -153,12 +153,21 @@ class CreditStore:
 CREDIT_STORE = CreditStore()
 
 
+def _email_arg(value: str) -> str:
+    """Validate that a CLI grant target is an email address."""
+    email = value.strip()
+    local, sep, domain = email.partition("@")
+    if not sep or not local or "." not in domain or any(ch.isspace() for ch in email):
+        raise argparse.ArgumentTypeError(f"Expected an email address, got: {value!r}")
+    return email
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Credit ledger CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    grant_p = subparsers.add_parser("grant", help="Grant credits to a user")
-    grant_p.add_argument("user_id", help="Target user ID")
+    grant_p = subparsers.add_parser("grant", help="Grant credits to a user email")
+    grant_p.add_argument("email", type=_email_arg, help="Target user email")
     grant_p.add_argument("amount", type=int, help="Amount in micro-USD (e.g. 1000000 = $1.00)")
     grant_p.add_argument("--reason", default="cli_grant", help="Ledger reason")
 
@@ -167,8 +176,8 @@ def main() -> None:
 
     args = parser.parse_args()
     if args.command == "grant":
-        bal = CREDIT_STORE.grant(args.user_id, args.amount, reason=args.reason)
-        print(f"Granted {args.amount} micro-USD to {args.user_id}. New balance: {bal} ({bal / 1_000_000:.2f} USD)")
+        bal = CREDIT_STORE.grant(args.email, args.amount, reason=args.reason)
+        print(f"Granted {args.amount} micro-USD to {args.email}. New balance: {bal} ({bal / 1_000_000:.2f} USD)")
     elif args.command == "balance":
         bal = CREDIT_STORE.get_balance(args.user_id)
         print(f"User {args.user_id} balance: {bal} micro-USD ({bal / 1_000_000:.2f} USD)")
