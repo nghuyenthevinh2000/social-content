@@ -29,6 +29,10 @@ from tools.app.backend.research_engine.research import (
     resolve_agent,
     run_job,
 )
+from tools.app.backend.research_engine.video_search import (
+    expand_keyword,
+    run_viral_video_search,
+)
 
 __all__ = [
     "AGENT_PRESETS",
@@ -36,6 +40,7 @@ __all__ = [
     "build_topic_prompt",
     "configured_agent",
     "create_job",
+    "expand_keyword",
     "extract_video_id",
     "format_director_prompt",
     "heuristic_topics",
@@ -47,5 +52,6 @@ __all__ = [
     "resolve_agent",
     "run_job",
     "run_profile_research",
+    "run_viral_video_search",
     "suggest_topics",
 ]

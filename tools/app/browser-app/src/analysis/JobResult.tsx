@@ -12,6 +12,8 @@ type JobResultProps = {
   copiedKey: string | null;
   onBack: () => void;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
+  onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
+  onSaveVideo?: (topic: Topic) => void;
 };
 
 const SheetSection: React.FC<{
@@ -20,8 +22,11 @@ const SheetSection: React.FC<{
   totalSheets: number;
   renderer: JobRenderer;
   copiedKey: string | null;
+  showCopy: boolean;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
-}> = ({ sheet, index, totalSheets, renderer, copiedKey, onCopyTopic }) => {
+  onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
+  onSaveVideo?: (topic: Topic) => void;
+}> = ({ sheet, index, totalSheets, renderer, copiedKey, showCopy, onCopyTopic, onAddCreator, onSaveVideo }) => {
   const orderedTopics = useMemo(() => renderer.order(sheet.topics), [renderer, sheet.topics]);
 
   return (
@@ -35,7 +40,7 @@ const SheetSection: React.FC<{
         <span className={`badge ${sheet.status}`}>{sheet.status}</span>
       </summary>
 
-      {renderer.meta(sheet)}
+      {renderer.meta(sheet, { onAddCreator })}
       {sheet.error && <div className="alert error">{sheet.error}</div>}
       {sheet.notice && <div className="alert warn">{sheet.notice}</div>}
       {sheet.status === 'completed' && sheet.reels === 0 && !sheet.error && !sheet.notice && (
@@ -56,6 +61,9 @@ const SheetSection: React.FC<{
                 copied={copiedKey === key}
                 sections={renderer.sections(topic)}
                 onCopy={() => onCopyTopic(topic, sheet.name, key)}
+                showCopy={showCopy}
+                onAddCreator={onAddCreator}
+                onSaveVideo={onSaveVideo}
               />
             );
           })}
@@ -65,7 +73,15 @@ const SheetSection: React.FC<{
   );
 };
 
-export const JobResult: React.FC<JobResultProps> = ({ job, historyCount, copiedKey, onBack, onCopyTopic }) => {
+export const JobResult: React.FC<JobResultProps> = ({
+  job,
+  historyCount,
+  copiedKey,
+  onBack,
+  onCopyTopic,
+  onAddCreator,
+  onSaveVideo,
+}) => {
   const [showLogs, setShowLogs] = useState(false);
   const renderer = RENDERERS[job.job_kind ?? 'profile'] ?? RENDERERS.profile;
   const progress = useMemo(() => {
@@ -105,7 +121,10 @@ export const JobResult: React.FC<JobResultProps> = ({ job, historyCount, copiedK
           totalSheets={job.sheets.length}
           renderer={renderer}
           copiedKey={copiedKey}
+          showCopy={job.job_kind !== 'keyword'}
           onCopyTopic={onCopyTopic}
+          onAddCreator={onAddCreator}
+          onSaveVideo={onSaveVideo}
         />
       ))}
 

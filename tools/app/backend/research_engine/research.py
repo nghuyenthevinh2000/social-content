@@ -48,6 +48,7 @@ from tools.app.backend.research_engine.reel_research import (
     research_single_reel,
     suggest_topics,
 )
+from tools.app.backend.research_engine.video_search import run_viral_video_search
 from tools.app.backend.store import JobStore, now_iso
 from tools.app.backend.video_engine import get_video_duration
 from tools.loop.viral_analyzer.glasser import ensure_glasser_env
@@ -178,7 +179,7 @@ def create_job(
             actor_prof = None
     job = {
         "id": job_id,
-        "job_kind": job_kind if job_kind in {"profile", "reel"} else "profile",
+        "job_kind": job_kind if job_kind in {"profile", "reel", "keyword"} else "profile",
         "client_id": client_id,
         "user_id": user_id,
         "actor_profile": actor_prof,
@@ -285,6 +286,8 @@ def _process_sheet(
 
     reels: List[Dict[str, Any]] = []
     topics: List[Dict[str, Any]] = []
+    queries: List[Dict[str, str]] = []
+    creators: List[Dict[str, Any]] = []
     error: Optional[str] = None
     notice: Optional[str] = None
     source_breakdown: Dict[str, Any] = {}
@@ -302,7 +305,48 @@ def _process_sheet(
                 agent_choice = preset["id"]
                 break
 
-    if job_kind == "reel":
+    if job_kind == "keyword":
+        log(f"Tìm kiếm video viral đa nền tảng cho từ khoá: '{sheet_name}'")
+        kw_res = run_viral_video_search(
+            keyword=sheet_name,
+            run_dir=run_dir,
+            options={**options, "agent": agent_choice},
+            log=log,
+            job_id=job_id,
+            aggregator=aggregator,
+        )
+        queries = kw_res.get("queries", [])
+        reels = kw_res.get("reels", [])
+        creators = kw_res.get("creators", [])
+        source_breakdown = kw_res.get("source_breakdown", {})
+        error = kw_res.get("error")
+        notice = kw_res.get("notice")
+        topics = [
+            {
+                "title": r.get("title") or r.get("reel_url") or "Video",
+                "hook": "",
+                "angle": "",
+                "why_viral": "",
+                "outline": [],
+                "format": r.get("platform") or "video",
+                "source_urls": [r["reel_url"]] if r.get("reel_url") else [],
+                "generated_by": "glasser",
+                "platform": r.get("platform") or "facebook",
+                "matched_query": r.get("matched_query") or "",
+                "author_name": r.get("author_name") or "",
+                "author_handle": r.get("author_handle") or "",
+                "author_url": r.get("author_url") or "",
+                "reel_url": r.get("reel_url") or r.get("url") or "",
+                "video_url": r.get("video_url") or "",
+                "video_id": r.get("video_id") or "",
+                "views": int(r.get("views") or 0),
+                "likes": int(r.get("likes") or 0),
+                "comments": int(r.get("comments") or 0),
+                "shares": int(r.get("shares") or 0),
+            }
+            for r in reels
+        ]
+    elif job_kind == "reel":
         log(f"Phát hiện {len(targets)} Reel đơn lẻ; chạy Reel Research trực tiếp (bỏ qua profile scraper).")
         for t_idx, target in enumerate(targets, 1):
             t_url = target.get("url", "")
@@ -385,6 +429,8 @@ def _process_sheet(
         "sheet": sheet_name,
         "targets": targets,
         "reels": reels,
+        "queries": queries,
+        "creators": creators,
         "source_breakdown": source_breakdown,
         "topics": topics,
         "error": error,
@@ -404,6 +450,8 @@ def _process_sheet(
         error=error,
         notice=notice,
         topics=topics,
+        queries=queries,
+        creators=creators,
         source_breakdown=source_breakdown,
         finished_at=now_iso(),
     )

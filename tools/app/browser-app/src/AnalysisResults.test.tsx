@@ -110,7 +110,7 @@ const savedReelJobFixture = {
 };
 
 function setupMockFetch(jobsById: Record<string, unknown>) {
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
     const path = new URL(url, 'http://localhost').pathname;
     if (path.startsWith('/api/jobs/')) {
@@ -209,5 +209,94 @@ describe('Analysis results rendering', () => {
     expect(screen.getByText('Reel transcript 1')).toBeInTheDocument();
     expect(screen.queryByText(/P1 ·/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Glasser API:/)).not.toBeInTheDocument();
+  });
+
+  test('renders keyword search job with 3 expanded queries, creators, and save actions', async () => {
+    const keywordJobFixture = {
+      id: 'job_kw_1',
+      job_kind: 'keyword',
+      status: 'completed',
+      filename: 'gyno conditions',
+      created_at: '2026-11-16T10:00:00Z',
+      current_sheet: null,
+      sheets: [
+        {
+          name: 'gyno conditions',
+          slug: 'gyno-conditions',
+          status: 'completed',
+          targets: 1,
+          reels: 1,
+          pool_distribution: {},
+          queries: [
+            { kind: 'original', text: 'gyno conditions' },
+            { kind: 'abbreviation', text: 'gynecomastia' },
+            { kind: 'vi', text: 'nữ hóa tuyến vú' },
+          ],
+          creators: [
+            {
+              name: 'Dr YT',
+              handle: 'dryt',
+              url: 'https://www.youtube.com/@dryt',
+              platform: 'youtube',
+              video_count: 1,
+              top_views: 50000,
+            },
+          ],
+          error: null,
+          notice: null,
+          topics: [
+            {
+              title: 'Gynecomastia Explained',
+              hook: '',
+              angle: '',
+              why_viral: '',
+              outline: [],
+              format: 'youtube',
+              source_urls: ['https://www.youtube.com/watch?v=yt1'],
+              reel_url: 'https://www.youtube.com/watch?v=yt1',
+              platform: 'youtube',
+              matched_query: 'gynecomastia',
+              author_name: 'Dr YT',
+              author_handle: 'dryt',
+              author_url: 'https://www.youtube.com/@dryt',
+              generated_by: 'glasser',
+              views: 50000,
+            },
+          ],
+        },
+      ],
+      logs: [],
+    };
+
+    const fetchSpy = setupMockFetch({ job_kw_1: keywordJobFixture });
+
+    render(
+      <MemoryRouter initialEntries={['/?tab=analyzer&job_id=job_kw_1']}>
+        <Home />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Gynecomastia Explained')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Original: gyno conditions')).toBeInTheDocument();
+    expect(screen.getByText('Abbr: gynecomastia')).toBeInTheDocument();
+    expect(screen.getByText('VI: nữ hóa tuyến vú')).toBeInTheDocument();
+    expect(screen.getByText('@dryt (youtube)')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Copy cho AI/i })).not.toBeInTheDocument();
+
+    const addCreatorBtns = screen.getAllByRole('button', { name: '+ Thêm Kênh' });
+    addCreatorBtns[0].click();
+    const saveVideoBtn = screen.getByRole('button', { name: '+ Lưu Video' });
+    saveVideoBtn.click();
+
+    await waitFor(() => {
+      const postUrls = fetchSpy.mock.calls
+        .filter(([, init]) => init?.method === 'POST')
+        .map(([input]) => (typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)));
+      expect(postUrls.some((u) => u.includes('/api/sources/topics'))).toBe(true);
+      expect(postUrls.some((u) => u.includes('/api/saved-reels'))).toBe(true);
+    });
   });
 });

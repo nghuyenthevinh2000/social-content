@@ -153,6 +153,7 @@ const Home: React.FC = () => {
   // Library (backend is the source of truth)
   const [topics, setTopics] = useState<TopicItem[]>([]);
   const [search, setSearch] = useState('');
+  const [keyword, setKeyword] = useState('');
   const [sheetUrl, setSheetUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -740,6 +741,40 @@ const Home: React.FC = () => {
     return postJson('/api/sources/topics', { topic, url }, `Đã thêm kênh vào "${topic}".`);
   }
 
+  async function handleAddCreator(creator: { name: string; url: string; platform?: string }) {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    const topicName = job?.filename || 'Kênh đã lưu';
+    await postJson(
+      '/api/sources/topics',
+      { topic: topicName, url: creator.url, channel_name: creator.name },
+      `Đã thêm kênh "${creator.name}" vào "${topicName}".`,
+    );
+  }
+
+  async function handleSaveVideo(topic: Topic) {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    const reelUrl = topic.reel_url || topic.source_urls?.[0] || '';
+    if (!reelUrl) return;
+    await apiJson('/api/saved-reels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reel_url: reelUrl,
+        platform: topic.platform || 'facebook',
+        title: topic.title,
+        sender_name: topic.author_name || topic.author_handle || topic.title,
+      }),
+    });
+    setNotice({ type: 'success', text: 'Đã lưu video vào Thư viện.' });
+    fetchSavedReels();
+  }
+
   async function createTopic(e: React.FormEvent) {
     e.preventDefault();
     if (!user) {
@@ -1274,8 +1309,39 @@ const Home: React.FC = () => {
                 </div>
               </>
           ) : (
-            <section className="panel" id="results">
-              {error && <div className="alert error">{error}</div>}
+            <>
+              <section className="panel keyword-search-panel">
+                <h2>Tìm video viral</h2>
+                <form
+                  className="row"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const kw = keyword.trim();
+                    if (!kw) return;
+                    run([{ name: kw, slug: kw, targets: [{ name: kw, url: kw }] }], kw, 'keyword');
+                  }}
+                >
+                  <input
+                    type="text"
+                    className="text-input"
+                    placeholder="Tìm video viral theo từ khoá (vd: gyno conditions)"
+                    aria-label="Tìm video viral theo từ khoá"
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    className="primary"
+                    style={{ flex: 'none', width: 'auto', padding: '0 var(--space-4)' }}
+                    disabled={blocked || !keyword.trim()}
+                  >
+                    Tìm Video Viral
+                  </button>
+                </form>
+              </section>
+
+              <section className="panel" id="results">
+                {error && <div className="alert error">{error}</div>}
               {starting ? (
                 <div className="empty">
                   <p className="muted">Đang tạo job…</p>
@@ -1381,9 +1447,12 @@ const Home: React.FC = () => {
                   copiedKey={copiedKey}
                   onBack={() => selectJob(null)}
                   onCopyTopic={handleCopyTopic}
+                  onAddCreator={handleAddCreator}
+                  onSaveVideo={handleSaveVideo}
                 />
               )}
-            </section>
+              </section>
+            </>
           )}
         </div>
       </IonContent>

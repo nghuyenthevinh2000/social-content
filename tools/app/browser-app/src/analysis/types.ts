@@ -1,4 +1,18 @@
-export type JobKind = 'profile' | 'reel';
+export type JobKind = 'profile' | 'reel' | 'keyword';
+
+export type KeywordQuery = {
+  kind: 'original' | 'abbreviation' | 'vi' | string;
+  text: string;
+};
+
+export type DiscoveredCreator = {
+  name: string;
+  handle: string;
+  url: string;
+  platform: string;
+  video_count: number;
+  top_views: number;
+};
 
 export type Topic = {
   title: string;
@@ -13,6 +27,9 @@ export type Topic = {
   reel_url?: string;
   video_url?: string;
   video_id?: string;
+  platform?: string;
+  author_url?: string;
+  matched_query?: string;
   views?: number;
   velocity_per_hour?: number;
   current_pool?: number;
@@ -39,6 +56,8 @@ export type Sheet = {
     cache?: string[];
     empty?: string[];
   };
+  queries?: KeywordQuery[];
+  creators?: DiscoveredCreator[];
   topics: Topic[];
   error: string | null;
   notice?: string | null;

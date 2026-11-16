@@ -1246,6 +1246,95 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(res["transcript"], "Local ASR text")
             self.assertEqual(mock_suggest.call_args.kwargs["reels"][0]["transcript"], "Local ASR text")
 
+    def test_expand_keyword_and_viral_video_search(self):
+        from tools.app.backend.research_engine import expand_keyword, run_viral_video_search, video_search
+
+        queries = expand_keyword("gyno conditions")
+        self.assertEqual([q["text"] for q in queries], ["gyno conditions", "gynecomastia", "nữ hóa tuyến vú"])
+        self.assertEqual([q["kind"] for q in queries], ["original", "abbreviation", "vi"])
+
+        calls = []
+
+        def fake_glasser(provider, endpoint, version, payload, cache_dir, task_id=None, timeout=45.0):
+            calls.append((provider, endpoint, payload))
+            if provider == "scrapecreators" and endpoint == "/v1/youtube/search":
+                return {"videos": [{"id": "yt1", "title": "YT Gyno", "url": "https://www.youtube.com/watch?v=yt1", "viewCountInt": 12000, "channel": {"title": "Dr YT", "url": "https://www.youtube.com/@dryt"}}]}, "glasser_api", None
+            if provider == "serper" and endpoint == "/videos" and "site:facebook.com" in str(payload.get("q", "")):
+                return {"videos": [{"title": "FB Gyno", "link": "https://www.facebook.com/reel/999", "channel": "FB Page"}]}, "glasser_api", None
+            if provider == "serper" and endpoint == "/videos":
+                return {"videos": [{"title": "Google Gyno", "link": "https://www.youtube.com/watch?v=yt1", "channel": "Dr YT"}]}, "glasser_api", None
+            if provider == "scrapecreators" and endpoint == "/v1/tiktok/search/keyword":
+                return {"search_item_list": [{"aweme_info": {"aweme_id": "tt1", "desc": "TT Gyno", "statistics": {"play_count": 50000, "digg_count": 1200}, "author": {"unique_id": "ttdoc", "nickname": "TT Doc"}}}]}, "glasser_api", None
+            if provider == "scrapecreators" and endpoint == "/v2/instagram/reels/search":
+                return {"reels": [{"code": "ig1", "caption": {"text": "IG Gyno"}, "play_count": 30000, "user": {"username": "igdoc", "full_name": "IG Doc"}}]}, "glasser_api", None
+            return {}, "glasser_api", None
+
+        with tempfile.TemporaryDirectory() as tmpdir, \
+             mock.patch.object(video_search, "_glasser_run_json", side_effect=fake_glasser):
+            res = run_viral_video_search("gyno conditions", Path(tmpdir))
+
+        self.assertLessEqual(len(calls), 15)
+        self.assertEqual(len(res["queries"]), 3)
+        # yt1 appears in both YouTube and Google results -> deduplicated
+        urls = [r["url"] for r in res["reels"]]
+        self.assertEqual(len(urls), len(set(urls)))
+        self.assertEqual(res["reels"][0]["platform"], "tiktok")
+        self.assertEqual(res["reels"][0]["views"], 50000)
+        creator_platforms = {c["platform"] for c in res["creators"]}
+        self.assertTrue({"youtube", "tiktok", "instagram"}.issubset(creator_platforms))
+
+    def test_social_handle_and_saved_reels_post(self):
+        import io
+        from contextlib import contextmanager
+        from tools.app.backend import server
+        from tools.app.backend.profiles import detect_platform, social_handle
+
+        self.assertEqual(detect_platform("https://www.youtube.com/@drericberg"), "youtube")
+        self.assertEqual(social_handle("https://www.youtube.com/@drericberg"), ("drericberg", "https://www.youtube.com/@drericberg"))
+        self.assertEqual(social_handle("https://www.tiktok.com/@ttdoc"), ("ttdoc", "https://www.tiktok.com/@ttdoc"))
+        self.assertEqual(social_handle("https://www.instagram.com/igdoc/"), ("igdoc", "https://www.instagram.com/igdoc/"))
+        self.assertEqual(social_handle("https://www.facebook.com/bepongbay"), ("bepongbay", "https://www.facebook.com/bepongbay"))
+
+        executed = []
+
+        class FakeConn:
+            def execute(self, sql, params=None):
+                executed.append((sql, params))
+                return mock.MagicMock()
+
+        @contextmanager
+        def fake_tx():
+            yield FakeConn()
+
+        class FakePostHandler(server.Handler):
+            def __init__(self, path: str, body: bytes):
+                self.command = "POST"
+                self.path = path
+                self.headers = {"X-User-Id": "u_kw", "Content-Type": "application/json", "Content-Length": str(len(body))}
+                self.rfile = io.BytesIO(body)
+                self.wfile = io.BytesIO()
+                self.client_address = ("127.0.0.1", 12345)
+                self.response_status = None
+
+            def send_response(self, code, message=None):
+                self.response_status = code
+
+            def send_header(self, keyword, value):
+                pass
+
+            def end_headers(self):
+                pass
+
+        save_body = json.dumps({"reel_url": "https://www.tiktok.com/@ttdoc/video/123", "title": "TT Gyno", "sender_name": "ttdoc"}).encode("utf-8")
+        with mock.patch("tools.app.backend.db.tx", fake_tx), \
+             mock.patch.object(server, "tx", fake_tx, create=True):
+            h = FakePostHandler("/api/saved-reels", save_body)
+            h.do_POST()
+        self.assertEqual(h.response_status, 200)
+        resp = json.loads(h.wfile.getvalue().decode())
+        self.assertEqual(resp["reel"]["platform"], "tiktok")
+        self.assertTrue(any("INSERT INTO saved_reels" in sql for sql, _ in executed))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -43,7 +43,8 @@ from tools.app.backend.media import MEDIA_STORE  # noqa: E402
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate_per_sec_micro  # noqa: E402
 from tools.app.backend.video_jobs import VIDEO_STORE, VIDEO_RUNNER  # noqa: E402
 from tools.app.backend.video_engine import get_video_duration  # noqa: E402
-from tools.app.backend.profiles import PROFILE_STORE  # noqa: E402
+import uuid
+from tools.app.backend.profiles import PROFILE_STORE, detect_platform, now_iso  # noqa: E402
 from tools.app.backend.user_profile import USER_PROFILE_STORE  # noqa: E402
 from tools.app.backend.research_engine.research import (  # noqa: E402
     configured_agent,
@@ -487,12 +488,52 @@ class Handler(BaseHTTPRequestHandler):
                 conn.execute("DELETE FROM facebook_user_mappings WHERE user_id = %s", (user_id,))
             _json(self, 200, {"ok": True, "message": "Đã hủy liên kết Facebook Messenger."})
             return
+        if parsed.path == "/api/saved-reels":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            reel_url = (body.get("reel_url") or body.get("url") or "").strip()
+            if not reel_url:
+                _json(self, 400, {"error": "Thiếu reel_url."})
+                return
+            platform = (body.get("platform") or detect_platform(reel_url)).strip() or "facebook"
+            sender_name = (body.get("sender_name") or body.get("author_name") or body.get("title") or "").strip() or None
+            message_text = (body.get("message_text") or body.get("title") or "").strip() or None
+            share_type = (body.get("share_type") or "web_search").strip()
+            original_url = (body.get("original_url") or reel_url).strip()
+            reel_id = f"sr_{uuid.uuid4().hex[:10]}"
+            created_at = now_iso()
+            with tx() as conn:
+                conn.execute(
+                    "INSERT INTO saved_reels (id, user_id, reel_url, original_url, platform, share_type, sender_psid, sender_name, message_text, created_at) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (user_id, reel_url) DO UPDATE SET sender_name = EXCLUDED.sender_name, message_text = EXCLUDED.message_text",
+                    (reel_id, user_id, reel_url, original_url, platform, share_type, user_id, sender_name, message_text, created_at),
+                )
+            _json(self, 200, {
+                "ok": True,
+                "reel": {
+                    "id": reel_id,
+                    "reel_url": reel_url,
+                    "original_url": original_url,
+                    "platform": platform,
+                    "share_type": share_type,
+                    "sender_name": sender_name,
+                    "message_text": message_text,
+                    "created_at": created_at,
+                },
+            })
+            return
         if parsed.path == "/api/saved-reels/delete":
             user_id = self._user_id()
             if not user_id:
                 _json(self, 401, {"error": "Yêu cầu đăng nhập."})
                 return
-            body = _read_json(self)
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
             reel_id = body.get("id")
             if not reel_id:
                 _json(self, 400, {"error": "Thiếu id."})
@@ -816,7 +857,7 @@ class Handler(BaseHTTPRequestHandler):
             _json(self, 400, {"error": str(exc)})
             return
         job_kind = (query.get("job_kind") or ["profile"])[0].strip() or "profile"
-        if job_kind not in {"profile", "reel"}:
+        if job_kind not in {"profile", "reel", "keyword"}:
             _json(self, 400, {"error": f"job_kind không hợp lệ: {job_kind}"})
             return
         try:

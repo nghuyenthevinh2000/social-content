@@ -53,6 +53,22 @@ def slugify(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]+", "-", ascii_text).strip("-").lower() or "sheet"
 
 
+def detect_platform(url: str) -> str:
+    """Identify social platform from a URL."""
+    lowered = (url or "").lower()
+    if "youtube.com" in lowered or "youtu.be" in lowered:
+        return "youtube"
+    if "tiktok.com" in lowered:
+        return "tiktok"
+    if "instagram.com" in lowered:
+        return "instagram"
+    if "facebook.com" in lowered or "fb.com" in lowered or "fb.watch" in lowered:
+        return "facebook"
+    if "google.com" in lowered:
+        return "google"
+    return "web"
+
+
 def facebook_handle(url: str) -> Tuple[str, str]:
     """Return (handle, canonical_url) from a Facebook profile/reel/page URL."""
     parsed = urlparse(url)
@@ -65,6 +81,36 @@ def facebook_handle(url: str) -> Tuple[str, str]:
         handle = parts[0]
         return handle, f"https://www.facebook.com/{handle}"
     return parsed.netloc or "unknown", url
+
+
+def social_handle(url: str) -> Tuple[str, str]:
+    """Return (handle, canonical_url) preserving non-Facebook platform URLs."""
+    cleaned = (url or "").strip()
+    if not cleaned.lower().startswith(("http://", "https://")):
+        return cleaned or "unknown", cleaned
+    platform = detect_platform(cleaned)
+    if platform == "facebook":
+        return facebook_handle(cleaned)
+    parsed = urlparse(cleaned)
+    parts = [part for part in parsed.path.split("/") if part]
+    if platform == "youtube":
+        if parts and parts[0].startswith("@"):
+            handle = parts[0].lstrip("@")
+            return handle, f"https://www.youtube.com/@{handle}"
+        if len(parts) >= 2 and parts[0] in {"channel", "c", "user"}:
+            return parts[1], f"https://www.youtube.com/{parts[0]}/{parts[1]}"
+        return (parts[0] if parts else parsed.netloc or "youtube"), cleaned
+    if platform == "tiktok":
+        if parts and parts[0].startswith("@"):
+            handle = parts[0].lstrip("@")
+            return handle, f"https://www.tiktok.com/@{handle}"
+        return (parts[0] if parts else parsed.netloc or "tiktok"), cleaned
+    if platform == "instagram":
+        if parts and parts[0] not in {"reel", "reels", "p", "tv", "stories"}:
+            handle = parts[0].lstrip("@")
+            return handle, f"https://www.instagram.com/{handle}/"
+        return (parts[0] if parts else parsed.netloc or "instagram"), cleaned
+    return (parts[0] if parts else parsed.netloc or platform), cleaned
 
 
 def is_facebook_url(value: str) -> bool:
@@ -83,7 +129,7 @@ def _normalize_target(url: str, name: str = "", category: str = "") -> Dict[str,
     if direct:
         handle, canonical = direct[1], direct[0]
     else:
-        handle, canonical = facebook_handle(url)
+        handle, canonical = social_handle(url)
     return {
         "handle": handle,
         "url": canonical,
@@ -388,7 +434,7 @@ class SocialProfileStore:
                     url = target.get("url") or ""
                     if not url:
                         continue
-                    handle, canonical = facebook_handle(url)
+                    handle, canonical = social_handle(url)
                     t_name = clean_name(target.get("name") or handle)
                     conn.execute(
                         "INSERT INTO profiles (user_id, topic_slug, name, url, handle, created_at) VALUES (%s, %s, %s, %s, %s, %s) "
@@ -401,7 +447,7 @@ class SocialProfileStore:
         self, topic_name_or_slug: str, url: str, name: Optional[str] = None, user_id: str = "default"
     ) -> Dict[str, Any]:
         slug = slugify(topic_name_or_slug)
-        handle, canonical = facebook_handle(url)
+        handle, canonical = social_handle(url)
         channel_name = clean_name(name or handle)
         now = now_iso()
         from tools.app.backend.db import tx
@@ -420,7 +466,7 @@ class SocialProfileStore:
         return self.get_topic(slug, user_id=user_id) or {"name": topic_name_or_slug, "slug": slug, "targets": []}
 
     def delete_profile(self, topic_slug: str, url: str, user_id: str = "default") -> bool:
-        _, canonical = facebook_handle(url)
+        _, canonical = social_handle(url)
         from tools.app.backend.db import tx
         with tx() as conn:
             res = conn.execute(
