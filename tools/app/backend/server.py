@@ -409,7 +409,8 @@ class Handler(BaseHTTPRequestHandler):
                     if r[1]:
                         target_ids.add(r[1])
                 cur = conn.execute(
-                    "SELECT id, reel_url, original_url, platform, share_type, sender_name, message_text, created_at "
+                    "SELECT id, reel_url, original_url, platform, share_type, sender_name, message_text, created_at, "
+                    "COALESCE(NULLIF(topic, ''), 'reels từ facebook') "
                     "FROM saved_reels WHERE user_id = ANY(%s) OR sender_psid = ANY(%s) ORDER BY created_at DESC LIMIT 100",
                     (list(target_ids), list(target_ids)),
                 )
@@ -423,6 +424,7 @@ class Handler(BaseHTTPRequestHandler):
                         "sender_name": r[5],
                         "message_text": r[6],
                         "created_at": r[7],
+                        "topic": r[8],
                     }
                     for r in cur.fetchall()
                 ]
@@ -566,14 +568,15 @@ class Handler(BaseHTTPRequestHandler):
             message_text = (body.get("message_text") or body.get("title") or "").strip() or None
             share_type = (body.get("share_type") or "web_search").strip()
             original_url = (body.get("original_url") or reel_url).strip()
+            topic = (body.get("topic") or "").strip() or "reels từ facebook"
             reel_id = f"sr_{uuid.uuid4().hex[:10]}"
             created_at = now_iso()
             with tx() as conn:
                 conn.execute(
-                    "INSERT INTO saved_reels (id, user_id, reel_url, original_url, platform, share_type, sender_psid, sender_name, message_text, created_at) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
-                    "ON CONFLICT (user_id, reel_url) DO UPDATE SET sender_name = EXCLUDED.sender_name, message_text = EXCLUDED.message_text",
-                    (reel_id, user_id, reel_url, original_url, platform, share_type, user_id, sender_name, message_text, created_at),
+                    "INSERT INTO saved_reels (id, user_id, reel_url, original_url, platform, share_type, sender_psid, sender_name, message_text, topic, created_at) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (user_id, reel_url) DO UPDATE SET sender_name = EXCLUDED.sender_name, message_text = EXCLUDED.message_text, topic = EXCLUDED.topic",
+                    (reel_id, user_id, reel_url, original_url, platform, share_type, user_id, sender_name, message_text, topic, created_at),
                 )
             _json(self, 200, {
                 "ok": True,
@@ -585,6 +588,7 @@ class Handler(BaseHTTPRequestHandler):
                     "share_type": share_type,
                     "sender_name": sender_name,
                     "message_text": message_text,
+                    "topic": topic,
                     "created_at": created_at,
                 },
             })
@@ -597,8 +601,9 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
             reel_id = body.get("id")
-            if not reel_id:
-                _json(self, 400, {"error": "Thiếu id."})
+            topic_name = (body.get("topic") or "").strip()
+            if not reel_id and not topic_name:
+                _json(self, 400, {"error": "Thiếu id hoặc topic."})
                 return
             fb_id = self.headers.get("X-Facebook-Id")
             target_ids = {user_id}
@@ -614,10 +619,17 @@ class Handler(BaseHTTPRequestHandler):
                         target_ids.add(r[0])
                     if r[1]:
                         target_ids.add(r[1])
-                conn.execute(
-                    "DELETE FROM saved_reels WHERE id = %s AND (user_id = ANY(%s) OR sender_psid = ANY(%s))",
-                    (reel_id, list(target_ids), list(target_ids)),
-                )
+                if reel_id:
+                    conn.execute(
+                        "DELETE FROM saved_reels WHERE id = %s AND (user_id = ANY(%s) OR sender_psid = ANY(%s))",
+                        (reel_id, list(target_ids), list(target_ids)),
+                    )
+                else:
+                    conn.execute(
+                        "DELETE FROM saved_reels WHERE COALESCE(NULLIF(topic, ''), 'reels từ facebook') = %s "
+                        "AND (user_id = ANY(%s) OR sender_psid = ANY(%s))",
+                        (topic_name, list(target_ids), list(target_ids)),
+                    )
             _json(self, 200, {"ok": True, "message": "Đã xoá Reel đã lưu."})
             return
         if parsed.path == "/api/sources/parse":

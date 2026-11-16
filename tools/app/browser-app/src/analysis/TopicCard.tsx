@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { formatCompact, formatNumber, getTopicReelUrl } from './format';
+import { formatCompact, formatNumber, getEmbedUrl, getTopicReelUrl, inferPlatform, PLATFORM_LABELS } from './format';
 import type { Topic } from './types';
 
 export type AnalysisSection = {
@@ -8,50 +8,20 @@ export type AnalysisSection = {
   body: React.ReactNode;
 };
 
-const PLATFORM_LABELS: Record<string, string> = {
-  youtube: 'YouTube',
-  tiktok: 'TikTok',
-  instagram: 'Instagram',
-  google: 'Google',
-  facebook: 'Facebook',
-};
-
-function inferPlatform(topic: Topic, url: string): string {
-  if (topic.platform && PLATFORM_LABELS[topic.platform]) return topic.platform;
-  const lower = url.toLowerCase();
-  if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
-  if (lower.includes('tiktok.com')) return 'tiktok';
-  if (lower.includes('instagram.com')) return 'instagram';
-  if (lower.includes('google.com')) return 'google';
-  return 'facebook';
-}
-
 type TopicCardProps = {
   topic: Topic;
   index: number;
   copied: boolean;
   sections: AnalysisSection[];
   onCopy: () => void;
-  showCopy?: boolean;
-  onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
-  onSaveVideo?: (topic: Topic) => void;
 };
 
-export const TopicCard: React.FC<TopicCardProps> = ({
-  topic,
-  index,
-  copied,
-  sections,
-  onCopy,
-  showCopy = true,
-  onAddCreator,
-  onSaveVideo,
-}) => {
+export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sections, onCopy }) => {
   const reelUrl = getTopicReelUrl(topic);
   const platform = inferPlatform(topic, reelUrl);
   const platformLabel = PLATFORM_LABELS[platform] || 'Facebook';
+  const embedUrl = getEmbedUrl(reelUrl, platform);
   const [mode, setMode] = useState<'video' | 'iframe'>(topic.video_url ? 'video' : 'iframe');
-  const creatorUrl = topic.author_url || '';
 
   return (
     <article className="topic reel-card">
@@ -87,41 +57,33 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         )}
       </div>
 
-      <div className="reel-player-box">
-        {mode === 'video' && topic.video_url ? (
-          <video
-            src={topic.video_url}
-            controls
-            playsInline
-            preload="metadata"
-            className="reel-video-player"
-            onError={() => {
-              if (reelUrl) setMode('iframe');
-            }}
-          />
-        ) : reelUrl && platform === 'facebook' ? (
-          <iframe
-            src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(reelUrl)}&show_text=0&width=280`}
-            title={topic.title || `Reel ${index + 1}`}
-            className="reel-iframe-player"
-            scrolling="no"
-            frameBorder="0"
-            allowFullScreen={true}
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-            loading="lazy"
-          />
-        ) : reelUrl ? (
-          <div className="reel-player-placeholder">
-            <a href={reelUrl} target="_blank" rel="noreferrer" className="reel-ext-link">
-              Mở trên {platformLabel} ↗
-            </a>
-          </div>
-        ) : (
-          <div className="reel-player-placeholder">
-            <span>Không có link video</span>
-          </div>
-        )}
-      </div>
+      {(topic.video_url || embedUrl) && (
+        <div className="reel-player-box">
+          {mode === 'video' && topic.video_url ? (
+            <video
+              src={topic.video_url}
+              controls
+              playsInline
+              preload="metadata"
+              className="reel-video-player"
+              onError={() => {
+                if (embedUrl) setMode('iframe');
+              }}
+            />
+          ) : embedUrl ? (
+            <iframe
+              src={embedUrl}
+              title={topic.title || `Reel ${index + 1}`}
+              className="reel-iframe-player"
+              scrolling="no"
+              frameBorder="0"
+              allowFullScreen={true}
+              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+              loading="lazy"
+            />
+          ) : null}
+        </div>
+      )}
 
       {sections.length > 0 && (
         <details className="reel-analysis-details">
@@ -146,56 +108,34 @@ export const TopicCard: React.FC<TopicCardProps> = ({
               {platformLabel} ↗
             </a>
           )}
-          {onAddCreator && creatorUrl && (
-            <button
-              type="button"
-              className="ghost small"
-              onClick={() =>
-                onAddCreator({
-                  name: topic.author_name || topic.author_handle || creatorUrl,
-                  url: creatorUrl,
-                  platform,
-                })
-              }
-            >
-              + Thêm Kênh
-            </button>
-          )}
-          {onSaveVideo && reelUrl && (
-            <button type="button" className="ghost small" onClick={() => onSaveVideo(topic)}>
-              + Lưu Video
-            </button>
-          )}
         </div>
-        {showCopy && (
-          <button
-            type="button"
-            className={`copy-topic-btn ${copied ? 'copied' : ''}`}
-            onClick={onCopy}
-            title="Sao chép kịch bản và mở tab Tạo Video"
-          >
-            {copied ? (
-              <>✓ Đã chép</>
-            ) : (
-              <>
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-                Copy cho AI
-              </>
-            )}
-          </button>
-        )}
+        <button
+          type="button"
+          className={`copy-topic-btn ${copied ? 'copied' : ''}`}
+          onClick={onCopy}
+          title="Sao chép kịch bản và mở tab Tạo Video"
+        >
+          {copied ? (
+            <>✓ Đã chép</>
+          ) : (
+            <>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              Copy cho AI
+            </>
+          )}
+        </button>
       </div>
     </article>
   );

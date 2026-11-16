@@ -85,6 +85,44 @@ export const cleanTopicTitle = (title?: string | null): string => {
   return stripped;
 };
 
+export const PLATFORM_LABELS: Record<string, string> = {
+  youtube: 'YouTube',
+  tiktok: 'TikTok',
+  instagram: 'Instagram',
+  google: 'Google',
+  facebook: 'Facebook',
+};
+
+export function inferPlatform(topic: Topic, url: string): string {
+  if (topic.platform && PLATFORM_LABELS[topic.platform]) return topic.platform;
+  const lower = url.toLowerCase();
+  if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
+  if (lower.includes('tiktok.com')) return 'tiktok';
+  if (lower.includes('instagram.com')) return 'instagram';
+  if (lower.includes('google.com')) return 'google';
+  return 'facebook';
+}
+
+export function getEmbedUrl(url: string, platform: string): string | null {
+  if (!url) return null;
+  if (platform === 'facebook') {
+    return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&width=280`;
+  }
+  if (platform === 'youtube') {
+    const m = url.match(/(?:v=|youtu\.be\/|\/shorts\/)([A-Za-z0-9_-]{6,})/);
+    if (m) return `https://www.youtube.com/embed/${m[1]}`;
+  }
+  if (platform === 'tiktok') {
+    const m = url.match(/\/video\/(\d+)/);
+    if (m) return `https://www.tiktok.com/embed/v2/${m[1]}`;
+  }
+  if (platform === 'instagram') {
+    const m = url.match(/\/reel\/([A-Za-z0-9_-]+)/);
+    if (m) return `https://www.instagram.com/reel/${m[1]}/embed`;
+  }
+  return null;
+}
+
 export const formatTime = (iso?: string): string => {
   if (!iso) return '';
   try {

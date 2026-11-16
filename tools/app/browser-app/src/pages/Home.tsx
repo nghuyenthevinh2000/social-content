@@ -1,9 +1,9 @@
-import { IonContent, IonFooter, IonHeader, IonIcon, IonPage } from '@ionic/react';
+import { IonContent, IonFooter, IonHeader, IonIcon, IonPage, IonToast } from '@ionic/react';
 import { analyticsOutline, libraryOutline, personCircleOutline, videocamOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { JobResult } from '../analysis/JobResult';
+import { AnalyzerTab } from '../components/AnalyzerTab';
 import {
   cleanTopicTitle,
   copyToClipboard,
@@ -41,6 +41,7 @@ export type SavedReel = {
   share_type: string;
   sender_name?: string;
   message_text?: string;
+  topic?: string;
   created_at: string;
 };
 type Tab = 'library' | 'analyzer' | 'video' | 'profile';
@@ -159,6 +160,9 @@ const Home: React.FC = () => {
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [inlineUrls, setInlineUrls] = useState<Record<string, string>>({});
   const [newTopic, setNewTopic] = useState({ name: '', url: '' });
+  const [newReelTopic, setNewReelTopic] = useState('reels từ facebook');
+  const [newReelUrl, setNewReelUrl] = useState('');
+  const [inlineReelUrls, setInlineReelUrls] = useState<Record<string, string>>({});
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Analyzer
@@ -434,6 +438,23 @@ const Home: React.FC = () => {
       });
       setSavedReels((prev) => prev.filter((r) => r.id !== id));
       setNotice({ type: 'success', text: 'Đã xoá Reel khỏi danh sách.' });
+    } catch (err) {
+      setNotice({ type: 'error', text: errorText(err) });
+    }
+  };
+
+  const handleDeleteSavedReelTopic = async (topicName: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Xoá toàn bộ reel trong chủ đề "${topicName}"?`)) return;
+    try {
+      await apiJson('/api/saved-reels/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: topicName }),
+      });
+      setSavedReels((prev) => prev.filter((r) => ((r.topic || '').trim() || 'reels từ facebook') !== topicName));
+      setNotice({ type: 'success', text: `Đã xoá chủ đề "${topicName}".` });
     } catch (err) {
       setNotice({ type: 'error', text: errorText(err) });
     }
@@ -754,25 +775,39 @@ const Home: React.FC = () => {
     );
   }
 
-  async function handleSaveVideo(topic: Topic) {
+  async function saveReelToTopic(
+    reelUrl: string,
+    topicName: string,
+    extra?: { platform?: string; title?: string; sender_name?: string },
+  ) {
     if (!user) {
       setShowAuthModal(true);
-      return;
+      return false;
     }
-    const reelUrl = topic.reel_url || topic.source_urls?.[0] || '';
-    if (!reelUrl) return;
+    const url = reelUrl.trim();
+    if (!url) return false;
     await apiJson('/api/saved-reels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        reel_url: reelUrl,
-        platform: topic.platform || 'facebook',
-        title: topic.title,
-        sender_name: topic.author_name || topic.author_handle || topic.title,
+        reel_url: url,
+        topic: topicName.trim() || 'reels từ facebook',
+        ...(extra || {}),
       }),
     });
-    setNotice({ type: 'success', text: 'Đã lưu video vào Thư viện.' });
+    setNotice({ type: 'success', text: `Đã lưu reel vào "${topicName.trim() || 'reels từ facebook'}".` });
     fetchSavedReels();
+    return true;
+  }
+
+  async function handleSaveVideo(topic: Topic) {
+    const reelUrl = topic.reel_url || topic.source_urls?.[0] || '';
+    if (!reelUrl) return;
+    await saveReelToTopic(reelUrl, job?.filename || 'reels từ facebook', {
+      platform: topic.platform || 'facebook',
+      title: topic.title,
+      sender_name: topic.author_name || topic.author_handle || topic.title,
+    });
   }
 
   async function createTopic(e: React.FormEvent) {
@@ -1037,7 +1072,6 @@ const Home: React.FC = () => {
                       Nạp
                     </button>
                   </form>
-                  {notice && <div className={`alert ${notice.type}`}>{notice.text}</div>}
                 </section>
 
                 <section className="panel topics-panel">
@@ -1100,14 +1134,32 @@ const Home: React.FC = () => {
                               <button
                                 type="button"
                                 className="topic-run-btn"
+                                aria-label={`Chạy chủ đề ${topic.name}`}
+                                title="Chạy phân tích"
                                 onClick={(e) => {
                                   e.preventDefault();
+                                  e.stopPropagation();
                                   if (!isDemoTopic) run([topic], topic.name);
                                 }}
                                 disabled={blocked || topic.targets.length === 0 || isDemoTopic}
                               >
-                                ▶ Chạy
+                                ▶
                               </button>
+                              {!isDemoTopic && (
+                                <button
+                                  type="button"
+                                  className="channel-del-btn"
+                                  aria-label={`Xoá chủ đề ${topic.name}`}
+                                  title="Xoá chủ đề"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    postJson('/api/sources/topics/delete', { slug: topic.slug });
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              )}
                             </summary>
 
                             <div className="accordion-body">
@@ -1252,210 +1304,186 @@ const Home: React.FC = () => {
 
                   {!savedReelsCollapsed && (
                     <div className="saved-reels-body" style={{ marginTop: 'var(--space-3)' }}>
-                      {savedReels.length === 0 ? (
-                        <div className="empty" style={{ padding: 'var(--space-3) 0 0' }}>
-                          <p className="muted" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
-                            Chưa có Reel nào được lưu.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="saved-reels-list" style={{ marginTop: 'var(--space-2)' }}>
-                          {savedReels.map((reel) => (
-                            <div key={reel.id} className="channel-card saved-reel-card">
-                              <div className="channel-info">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span className="reel-platform-tag">{reel.platform || 'reel'}</span>
-                                  <span className="muted" style={{ fontSize: '11px' }}>
-                                    {formatTime(reel.created_at)}
-                                  </span>
-                                </div>
-                                <a
-                                  href={reel.reel_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="channel-link"
-                                  title={reel.reel_url}
-                                >
-                                  {shortUrl(reel.reel_url)} ↗
-                                </a>
+                      {(() => {
+                        const grouped = savedReels.reduce<Record<string, SavedReel[]>>((acc, r) => {
+                          const key = (r.topic || '').trim() || 'reels từ facebook';
+                          (acc[key] = acc[key] || []).push(r);
+                          return acc;
+                        }, {});
+                        const topicEntries = Object.entries(grouped);
+                        return (
+                          <>
+                            {topicEntries.length === 0 ? (
+                              <div className="empty" style={{ padding: 'var(--space-3) 0 0' }}>
+                                <p className="muted" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
+                                  Chưa có Reel nào được lưu.
+                                </p>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <button
-                                  type="button"
-                                  className="ghost small"
-                                  style={{ padding: '4px 8px', fontSize: '12px' }}
-                                  onClick={() => handleRunSavedReel(reel)}
-                                  disabled={blocked}
-                                  title="Phân tích Reel này"
-                                >
-                                  ▶ Phân tích
-                                </button>
-                                <button
-                                  type="button"
-                                  className="channel-del-btn"
-                                  aria-label="Xoá Reel này"
-                                  onClick={(e) => handleDeleteSavedReel(reel.id, e)}
-                                  title="Xoá Reel"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                            ) : (
+                              topicEntries.map(([topicName, reels]) => (
+                                <details key={topicName} className="sheet" style={{ marginBottom: 'var(--space-2)' }}>
+                                  <summary>
+                                    <span className="sheet-title">
+                                      <strong>{topicName}</strong>
+                                      <small className="muted">{reels.length} reel</small>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className="channel-del-btn"
+                                      aria-label={`Xoá chủ đề ${topicName}`}
+                                      title="Xoá chủ đề reel"
+                                      onClick={(e) => handleDeleteSavedReelTopic(topicName, e)}
+                                    >
+                                      ✕
+                                    </button>
+                                  </summary>
+                                  <div className="saved-reels-list" style={{ marginTop: 'var(--space-2)' }}>
+                                    {reels.map((reel) => (
+                                      <div key={reel.id} className="channel-card saved-reel-card">
+                                        <div className="channel-info">
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span className="reel-platform-tag">{reel.platform || 'reel'}</span>
+                                            <span className="muted" style={{ fontSize: '11px' }}>
+                                              {formatTime(reel.created_at)}
+                                            </span>
+                                          </div>
+                                          <a
+                                            href={reel.reel_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="channel-link"
+                                            title={reel.reel_url}
+                                          >
+                                            {shortUrl(reel.reel_url)} ↗
+                                          </a>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                          <button
+                                            type="button"
+                                            className="ghost small"
+                                            style={{ padding: '4px 8px', fontSize: '12px' }}
+                                            onClick={() => handleRunSavedReel(reel)}
+                                            disabled={blocked}
+                                            aria-label="Phân tích Reel này"
+                                            title="Phân tích Reel này"
+                                          >
+                                            ▶
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="channel-del-btn"
+                                            aria-label="Xoá Reel này"
+                                            onClick={(e) => handleDeleteSavedReel(reel.id, e)}
+                                            title="Xoá Reel"
+                                          >
+                                            ✕
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <form
+                                    className="inline-add"
+                                    style={{ marginTop: 'var(--space-2)' }}
+                                    onSubmit={async (e) => {
+                                      e.preventDefault();
+                                      const val = (inlineReelUrls[topicName] || '').trim();
+                                      if (!val) return;
+                                      const ok = await saveReelToTopic(val, topicName);
+                                      if (ok) setInlineReelUrls((prev) => ({ ...prev, [topicName]: '' }));
+                                    }}
+                                  >
+                                    <input
+                                      type="url"
+                                      className="text-input small"
+                                      placeholder={`Thêm link reel vào "${topicName}"`}
+                                      aria-label={`Thêm link reel vào ${topicName}`}
+                                      value={inlineReelUrls[topicName] || ''}
+                                      onChange={(e) =>
+                                        setInlineReelUrls((prev) => ({ ...prev, [topicName]: e.target.value }))
+                                      }
+                                    />
+                                    <button
+                                      type="submit"
+                                      className="ghost small"
+                                      disabled={busy || !(inlineReelUrls[topicName] || '').trim()}
+                                    >
+                                      + Thêm
+                                    </button>
+                                  </form>
+                                </details>
+                              ))
+                            )}
+                            <form
+                              className="new-topic"
+                              style={{ marginTop: 'var(--space-2)' }}
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                const ok = await saveReelToTopic(newReelUrl, newReelTopic);
+                                if (ok) setNewReelUrl('');
+                              }}
+                            >
+                              <input
+                                type="text"
+                                className="text-input small"
+                                placeholder="Chủ đề (mặc định: reels từ facebook)"
+                                aria-label="Chủ đề reel"
+                                value={newReelTopic}
+                                onChange={(e) => setNewReelTopic(e.target.value)}
+                              />
+                              <input
+                                type="url"
+                                className="text-input small"
+                                placeholder="Dán link Reel để lưu"
+                                aria-label="Link Reel để lưu"
+                                value={newReelUrl}
+                                onChange={(e) => setNewReelUrl(e.target.value)}
+                              />
+                              <button type="submit" className="ghost small" disabled={busy || !newReelUrl.trim()}>
+                                + Lưu Reel
+                              </button>
+                            </form>
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
               </>
           ) : (
-            <>
-              <section className="panel keyword-search-panel">
-                <h2>Tìm video viral</h2>
-                <form
-                  className="row"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const kw = keyword.trim();
-                    if (!kw) return;
-                    run([{ name: kw, slug: kw, targets: [{ name: kw, url: kw }] }], kw, 'keyword');
-                  }}
-                >
-                  <input
-                    type="text"
-                    className="text-input"
-                    placeholder="Tìm video viral theo từ khoá (vd: gyno conditions)"
-                    aria-label="Tìm video viral theo từ khoá"
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                  />
-                  <button
-                    type="submit"
-                    className="primary"
-                    style={{ flex: 'none', width: 'auto', padding: '0 var(--space-4)' }}
-                    disabled={blocked || !keyword.trim()}
-                  >
-                    Tìm Video Viral
-                  </button>
-                </form>
-              </section>
-
-              <section className="panel" id="results">
-                {error && <div className="alert error">{error}</div>}
-              {starting ? (
-                <div className="empty">
-                  <p className="muted">Đang tạo job…</p>
-                </div>
-              ) : jobId && !job ? (
-                <div className="empty">
-                  <p className="muted">Đang tải kết quả phân tích…</p>
-                </div>
-              ) : !job ? (
-                <>
-                  <div className="panel-head">
-                    <div>
-                      <h2>Lịch sử phân tích</h2>
-                      <p className="muted count">
-                        {visibleHistory.length > 0 ? `${visibleHistory.length} lần chạy` : 'Chưa có lần chạy nào'}
-                      </p>
-                    </div>
-                    <button type="button" className="ghost small" onClick={fetchHistory} disabled={loadingHistory}>
-                      {loadingHistory ? 'Đang tải…' : '↻ Làm mới'}
-                    </button>
-                  </div>
-
-                  {visibleHistory.length === 0 ? (
-                    <div className="empty">
-                      <p className="muted">Chưa có lần chạy nào trong lịch sử.</p>
-                      <button type="button" className="ghost" onClick={() => switchTab('library')}>
-                        Chọn chủ đề trong Thư viện để chạy
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="history-list">
-                      {visibleHistory.map((item) => {
-                        const isRunning = !TERMINAL.has(item.status);
-                        return (
-                          <div
-                            key={item.id}
-                            className={`history-card ${isRunning ? 'running-card' : ''}`}
-                            onClick={() => selectJob(item.id)}
-                            role="button"
-                            tabIndex={0}
-                          >
-                            <div className="history-head">
-                              <span className="history-filename" title={cleanTopicTitle(item.filename)}>
-                                {cleanTopicTitle(item.filename)}
-                              </span>
-                              <span className={`badge ${item.status}`}>
-                                {isRunning && <span className="live-dot" />}
-                                {STATUS_LABEL[item.status] || item.status}
-                              </span>
-                            </div>
-                            <div className="history-meta muted">
-                              <span>{formatTime(item.created_at)}</span>
-                              <span>·</span>
-                              <span>{item.total_sheets} chủ đề</span>
-                              {item.total_topics > 0 && (
-                                <>
-                                  <span>·</span>
-                                  <span className="history-topics">{item.total_topics} ý tưởng</span>
-                                </>
-                              )}
-                              {isRunning && item.total_sheets > 0 && (
-                                <>
-                                  <span>·</span>
-                                  <span>
-                                    {item.completed_sheets}/{item.total_sheets} xong
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                            <div className="history-actions">
-                              <button
-                                type="button"
-                                className="ghost small history-view-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  selectJob(item.id);
-                                }}
-                              >
-                                {isRunning ? '▶ Xem tiến độ' : 'Xem kết quả'}
-                              </button>
-                              {item.id !== TOUR_DEMO_ID && (
-                                <button
-                                  type="button"
-                                  className="channel-del-btn"
-                                  aria-label={`Xoá lần chạy ${cleanTopicTitle(item.filename)}`}
-                                  title="Xoá lần chạy"
-                                  onClick={(e) => deleteJob(item.id, e)}
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <JobResult
-                  job={job}
-                  historyCount={visibleHistory.length}
-                  copiedKey={copiedKey}
-                  onBack={() => selectJob(null)}
-                  onCopyTopic={handleCopyTopic}
-                  onAddCreator={handleAddCreator}
-                  onSaveVideo={handleSaveVideo}
-                />
-              )}
-              </section>
-            </>
+            <AnalyzerTab
+              keyword={keyword}
+              onKeywordChange={setKeyword}
+              onSearchKeyword={(kw) => run([{ name: kw, slug: kw, targets: [{ name: kw, url: kw }] }], kw, 'keyword')}
+              blocked={blocked}
+              error={error}
+              starting={starting}
+              jobId={jobId}
+              job={job}
+              visibleHistory={visibleHistory}
+              loadingHistory={loadingHistory}
+              onFetchHistory={fetchHistory}
+              onSelectJob={selectJob}
+              onDeleteJob={deleteJob}
+              tourDemoId={TOUR_DEMO_ID}
+              copiedKey={copiedKey}
+              onCopyTopic={handleCopyTopic}
+              onAddCreator={handleAddCreator}
+              onSaveVideo={handleSaveVideo}
+              onGoToLibrary={() => switchTab('library')}
+            />
           )}
         </div>
       </IonContent>
+
+      <IonToast
+        isOpen={!!notice}
+        message={notice?.text}
+        color={notice?.type === 'error' ? 'danger' : 'success'}
+        duration={2500}
+        position="top"
+        onDidDismiss={() => setNotice(null)}
+      />
 
       <IonFooter className="ion-no-border">
         {running && (

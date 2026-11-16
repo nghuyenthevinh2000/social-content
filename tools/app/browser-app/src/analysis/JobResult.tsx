@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 
+import { KeywordResult } from './KeywordResult';
 import { TopicCard } from './TopicCard';
 import './analysis.css';
 import { cleanTopicTitle, formatTime, STATUS_LABEL, TERMINAL } from './format';
@@ -22,11 +23,25 @@ const SheetSection: React.FC<{
   totalSheets: number;
   renderer: JobRenderer;
   copiedKey: string | null;
-  showCopy: boolean;
+  isKeyword: boolean;
+  savedUrls: Set<string>;
+  addedCreatorUrls: Set<string>;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
   onSaveVideo?: (topic: Topic) => void;
-}> = ({ sheet, index, totalSheets, renderer, copiedKey, showCopy, onCopyTopic, onAddCreator, onSaveVideo }) => {
+}> = ({
+  sheet,
+  index,
+  totalSheets,
+  renderer,
+  copiedKey,
+  isKeyword,
+  savedUrls,
+  addedCreatorUrls,
+  onCopyTopic,
+  onAddCreator,
+  onSaveVideo,
+}) => {
   const orderedTopics = useMemo(() => renderer.order(sheet.topics), [renderer, sheet.topics]);
 
   return (
@@ -40,7 +55,7 @@ const SheetSection: React.FC<{
         <span className={`badge ${sheet.status}`}>{sheet.status}</span>
       </summary>
 
-      {renderer.meta(sheet, { onAddCreator })}
+      {!isKeyword && renderer.meta(sheet)}
       {sheet.error && <div className="alert error">{sheet.error}</div>}
       {sheet.notice && <div className="alert warn">{sheet.notice}</div>}
       {sheet.status === 'completed' && sheet.reels === 0 && !sheet.error && !sheet.notice && (
@@ -49,25 +64,33 @@ const SheetSection: React.FC<{
       {sheet.status === 'pending' && <p className="muted">Đang chờ tới lượt…</p>}
       {sheet.status === 'running' && <p className="muted">{renderer.runningText}</p>}
 
-      {orderedTopics.length > 0 && (
-        <div className="topics">
-          {orderedTopics.map((topic, topicIndex) => {
-            const key = `${sheet.slug}-${topicIndex}`;
-            return (
-              <TopicCard
-                key={topicIndex}
-                topic={topic}
-                index={topicIndex}
-                copied={copiedKey === key}
-                sections={renderer.sections(topic)}
-                onCopy={() => onCopyTopic(topic, sheet.name, key)}
-                showCopy={showCopy}
-                onAddCreator={onAddCreator}
-                onSaveVideo={onSaveVideo}
-              />
-            );
-          })}
-        </div>
+      {isKeyword ? (
+        <KeywordResult
+          sheet={sheet}
+          orderedTopics={orderedTopics}
+          savedUrls={savedUrls}
+          addedCreatorUrls={addedCreatorUrls}
+          onAddCreator={onAddCreator}
+          onSaveVideo={onSaveVideo}
+        />
+      ) : (
+        orderedTopics.length > 0 && (
+          <div className="topics topics-carousel">
+            {orderedTopics.map((topic, topicIndex) => {
+              const key = `${sheet.slug}-${topicIndex}`;
+              return (
+                <TopicCard
+                  key={topicIndex}
+                  topic={topic}
+                  index={topicIndex}
+                  copied={copiedKey === key}
+                  sections={renderer.sections(topic)}
+                  onCopy={() => onCopyTopic(topic, sheet.name, key)}
+                />
+              );
+            })}
+          </div>
+        )
       )}
     </details>
   );
@@ -83,7 +106,29 @@ export const JobResult: React.FC<JobResultProps> = ({
   onSaveVideo,
 }) => {
   const [showLogs, setShowLogs] = useState(false);
+  const [savedUrls, setSavedUrls] = useState<Set<string>>(() => new Set());
+  const [addedCreatorUrls, setAddedCreatorUrls] = useState<Set<string>>(() => new Set());
   const renderer = RENDERERS[job.job_kind ?? 'profile'] ?? RENDERERS.profile;
+  const isKeyword = job.job_kind === 'keyword';
+
+  const handleSave = onSaveVideo
+    ? (topic: Topic) => {
+        const url = topic.reel_url || topic.source_urls?.[0] || '';
+        if (url) {
+          setSavedUrls((prev) => new Set(prev).add(url));
+        }
+        onSaveVideo(topic);
+      }
+    : undefined;
+
+  const handleAddCreator = onAddCreator
+    ? (creator: { name: string; url: string; platform?: string }) => {
+        if (creator.url) {
+          setAddedCreatorUrls((prev) => new Set(prev).add(creator.url));
+        }
+        onAddCreator(creator);
+      }
+    : undefined;
   const progress = useMemo(() => {
     const done = job.sheets.filter((sheet) => TERMINAL.has(sheet.status)).length;
     const total = job.sheets.length;
@@ -121,10 +166,12 @@ export const JobResult: React.FC<JobResultProps> = ({
           totalSheets={job.sheets.length}
           renderer={renderer}
           copiedKey={copiedKey}
-          showCopy={job.job_kind !== 'keyword'}
+          isKeyword={isKeyword}
+          savedUrls={savedUrls}
+          addedCreatorUrls={addedCreatorUrls}
           onCopyTopic={onCopyTopic}
-          onAddCreator={onAddCreator}
-          onSaveVideo={onSaveVideo}
+          onAddCreator={handleAddCreator}
+          onSaveVideo={handleSave}
         />
       ))}
 

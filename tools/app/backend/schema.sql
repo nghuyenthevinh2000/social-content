@@ -157,9 +157,11 @@ CREATE TABLE IF NOT EXISTS saved_reels (
     sender_psid TEXT NOT NULL,
     sender_name TEXT,
     message_text TEXT,
+    topic TEXT,
     created_at TEXT NOT NULL,
     UNIQUE (user_id, reel_url)
 );
+ALTER TABLE saved_reels ADD COLUMN IF NOT EXISTS topic TEXT;
 CREATE INDEX IF NOT EXISTS idx_saved_reels_user_created ON saved_reels (user_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS account_link_codes (

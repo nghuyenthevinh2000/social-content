@@ -238,6 +238,7 @@ describe('Analysis results rendering', () => {
               handle: 'dryt',
               url: 'https://www.youtube.com/@dryt',
               platform: 'youtube',
+              followers: 120000,
               video_count: 1,
               top_views: 50000,
             },
@@ -283,10 +284,19 @@ describe('Analysis results rendering', () => {
     expect(screen.getByText('Original: gyno conditions')).toBeInTheDocument();
     expect(screen.getByText('Abbr: gynecomastia')).toBeInTheDocument();
     expect(screen.getByText('VI: nữ hóa tuyến vú')).toBeInTheDocument();
-    expect(screen.getByText('@dryt (youtube)')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Dr YT/i })).toHaveAttribute('href', 'https://www.youtube.com/@dryt');
+    expect(screen.getByText('120K followers')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Copy cho AI/i })).not.toBeInTheDocument();
 
-    const addCreatorBtns = screen.getAllByRole('button', { name: '+ Thêm Kênh' });
+    const subpanels = document.querySelectorAll('details.keyword-subpanel');
+    expect(subpanels).toHaveLength(2);
+    subpanels.forEach((el) => expect((el as HTMLDetailsElement).open).toBe(false));
+    expect(document.querySelector('.topics-carousel')).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: 'Thêm tất cả kênh' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lưu tất cả video' })).toBeInTheDocument();
+
+    const addCreatorBtns = screen.getAllByRole('button', { name: 'Thêm kênh' });
     addCreatorBtns[0].click();
     const saveVideoBtn = screen.getByRole('button', { name: '+ Lưu Video' });
     saveVideoBtn.click();
@@ -297,6 +307,10 @@ describe('Analysis results rendering', () => {
         .map(([input]) => (typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)));
       expect(postUrls.some((u) => u.includes('/api/sources/topics'))).toBe(true);
       expect(postUrls.some((u) => u.includes('/api/saved-reels'))).toBe(true);
+      expect(screen.getByRole('button', { name: 'Đã thêm kênh' })).toHaveTextContent('✓');
+      expect(screen.getByRole('button', { name: 'Đã thêm tất cả kênh' })).toHaveTextContent('✓');
+      expect(screen.getByRole('button', { name: '✓ Đã lưu' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Đã lưu tất cả video' })).toHaveTextContent('✓');
     });
   });
 });

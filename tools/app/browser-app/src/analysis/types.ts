@@ -10,6 +10,7 @@ export type DiscoveredCreator = {
   handle: string;
   url: string;
   platform: string;
+  followers?: number;
   video_count: number;
   top_views: number;
 };

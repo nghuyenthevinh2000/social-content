@@ -4,12 +4,8 @@ import type { AnalysisSection } from './TopicCard';
 import { formatNumber, getTopicReelUrl } from './format';
 import type { JobKind, Sheet, Topic } from './types';
 
-export type MetaActions = {
-  onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
-};
-
 export type JobRenderer = {
-  meta: (sheet: Sheet, actions?: MetaActions) => React.ReactNode;
+  meta: (sheet: Sheet) => React.ReactNode;
   sheetTitle: (sheet: Sheet) => string;
   summaryMeta: (sheet: Sheet) => string;
   runningText: string;
@@ -108,60 +104,7 @@ export const RENDERERS: Record<JobKind, JobRenderer> = {
     order: (topics) => topics,
   },
   keyword: {
-    meta: (sheet, actions) => {
-      const queries = sheet.queries ?? [];
-      const creators = sheet.creators ?? [];
-      const counts: Record<string, number> = {};
-      sheet.topics.forEach((t) => {
-        const p = t.platform || 'facebook';
-        counts[p] = (counts[p] || 0) + 1;
-      });
-      const kindLabel: Record<string, string> = {
-        original: 'Original',
-        abbreviation: 'Abbr',
-        vi: 'VI',
-      };
-
-      return (
-        <div className="keyword-meta">
-          {queries.length > 0 && (
-            <div className="pools">
-              {queries.map((q) => (
-                <span key={`${q.kind}:${q.text}`} className="pool">
-                  {kindLabel[q.kind] || q.kind}: {q.text}
-                </span>
-              ))}
-            </div>
-          )}
-          {Object.keys(counts).length > 0 && (
-            <div className="source-breakdown muted">
-              {Object.entries(counts)
-                .map(([p, c]) => `${p}: ${c}`)
-                .join(' · ')}
-            </div>
-          )}
-          {creators.length > 0 && (
-            <div className="pools" style={{ marginTop: 'var(--space-2)' }}>
-              {creators.slice(0, 8).map((c) => (
-                <span key={c.url || `${c.platform}:${c.handle}`} className="pool">
-                  @{c.handle || c.name} ({c.platform})
-                  {actions?.onAddCreator && c.url && (
-                    <button
-                      type="button"
-                      className="ghost small"
-                      style={{ marginLeft: 6 }}
-                      onClick={() => actions.onAddCreator?.({ name: c.name || c.handle, url: c.url, platform: c.platform })}
-                    >
-                      + Thêm Kênh
-                    </button>
-                  )}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    },
+    meta: () => null,
     sheetTitle: (sheet) => sheet.name,
     summaryMeta: (sheet) => `${sheet.queries?.length || 0} từ khoá · ${formatNumber(sheet.reels)} video`,
     runningText: 'Đang mở rộng từ khoá và tìm video viral trên 5 nền tảng…',
