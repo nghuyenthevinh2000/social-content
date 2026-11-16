@@ -14,6 +14,7 @@ from pathlib import Path
 import queue
 import subprocess
 import threading
+import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
@@ -180,6 +181,8 @@ class ACPClient:
                 })
 
         self._notification_hook = collect
+        t0 = time.perf_counter()
+        http_status = 200
         try:
             self.request(
                 "session/prompt",
@@ -189,8 +192,26 @@ class ACPClient:
                 },
                 timeout=self.timeout_sec,
             )
+        except Exception:
+            http_status = 500
+            raise
         finally:
             self._notification_hook = None
+            try:
+                from tools.app.backend import cost_control
+
+                agent_name = Path(self.command[0]).name if self.command else "agent"
+                cost_control.record_cost_event(
+                    provider="acp",
+                    endpoint=f"session/prompt:{agent_name}",
+                    cost_micro=0,
+                    http_status=http_status,
+                    wasted=http_status >= 400,
+                    sub_action="acp_prompt",
+                    duration_ms=(time.perf_counter() - t0) * 1000.0,
+                )
+            except Exception:
+                pass
         with chunks_lock:
             return "".join(chunks)
 

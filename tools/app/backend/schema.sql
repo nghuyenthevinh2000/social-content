@@ -170,3 +170,27 @@ CREATE TABLE IF NOT EXISTS account_link_codes (
     expires_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_link_codes_user ON account_link_codes (user_id);
+
+CREATE TABLE IF NOT EXISTS cost_events (
+    id BIGSERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    sub_action TEXT,
+    job_id TEXT,
+    sheet_slug TEXT,
+    provider TEXT NOT NULL,
+    endpoint TEXT NOT NULL,
+    run_id TEXT,
+    run_url TEXT,
+    http_status INTEGER,
+    cache_hit BOOLEAN NOT NULL DEFAULT FALSE,
+    wasted BOOLEAN NOT NULL DEFAULT FALSE,
+    cost_micro BIGINT NOT NULL DEFAULT 0,
+    charge_usd TEXT NOT NULL DEFAULT '0.000000',
+    charge_clause TEXT,
+    duration_ms DOUBLE PRECISION DEFAULT 0.0,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cost_events_user_created ON cost_events (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cost_events_action_created ON cost_events (action, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cost_events_job_id ON cost_events (job_id);

@@ -176,36 +176,34 @@ def execute_glasser_query(
     timeout: float = 45.0,
 ) -> Tuple[bool, Optional[str], Optional[GlasserError]]:
     """Execute glasser run command and classify any failure."""
-    glasser_bin = shutil.which("glasser")
-    if not glasser_bin:
-        err = GlasserNotFoundError(handle=handle)
-        return False, err.message, err
+    from tools.app.backend import cost_control
 
     has_key, _ = check_glasser_key()
 
-    cmd = [
-        glasser_bin,
-        "run",
-        "-p", provider,
-        "-e", endpoint,
-        "-i", json.dumps({"url": profile_url}),
-        "--endpoint-version", str(endpoint_version),
-        "--idempotency-key", idempotency_key,
-        "-o", str(temp_out),
-    ]
-
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-        if proc.returncode == 0 and temp_out.exists() and temp_out.stat().st_size > 0:
+        res = cost_control.run_glasser_tracked(
+            provider=provider,
+            endpoint=endpoint,
+            version=endpoint_version,
+            payload={"url": profile_url},
+            idempotency_key=idempotency_key,
+            out_file=temp_out,
+            timeout=timeout,
+            sub_action="profile_scrape",
+        )
+        if res.get("not_found"):
+            err = GlasserNotFoundError(handle=handle)
+            return False, err.message, err
+        if res["ok"] and temp_out.exists() and temp_out.stat().st_size > 0:
             return True, None, None
 
         # Analyze failure or 404 output across both stdout and stderr
-        stdout_text = (proc.stdout or "").strip()
-        stderr_text = (proc.stderr or "").strip()
+        stdout_text = res["stdout"].strip()
+        stderr_text = res["stderr"].strip()
         output_text = f"{stdout_text}\n{stderr_text}".strip()
 
         # Handle Facebook 404 / no reels tab (COMPLETED run with HTTP 404 or empty output)
-        is_not_found = proc.returncode == 0 and (
+        is_not_found = res["returncode"] == 0 and (
             "HTTP 404" in output_text
             or '"errorStatus": 404' in output_text
             or '"error": "not_found"' in output_text
@@ -241,21 +239,24 @@ def execute_glasser_query(
         ]
         err_first_line = err_lines[0] if err_lines else "Lỗi không xác định"
 
-        if proc.returncode == 2 or ("No Key configured" in output_text) or (not has_key and "key" in output_text.lower()):
+        if res["returncode"] == 2 or ("No Key configured" in output_text) or (not has_key and "key" in output_text.lower()):
             err = GlasserMissingKeyError(
                 message=f"Glasser thiếu API Key: {err_first_line}",
                 handle=handle,
-                returncode=proc.returncode,
+                returncode=res["returncode"],
                 raw_output=output_text,
                 suggestion="Thêm 'GLASSER_API_KEY=gl_...' vào file local/deployment-service/.env rồi khởi động lại backend.",
             )
         else:
             err = GlasserExecutionError(
-                message=f"Glasser query thất bại (code {proc.returncode}): {err_first_line}",
+                message=f"Glasser query thất bại (code {res['returncode']}): {err_first_line}",
                 handle=handle,
-                returncode=proc.returncode,
+                returncode=res["returncode"],
                 raw_output=output_text,
             )
+        return False, err.message, err
+    except cost_control.CostPolicyError as exc:
+        err = GlasserExecutionError(message=str(exc), handle=handle)
         return False, err.message, err
     except subprocess.TimeoutExpired:
         err = GlasserExecutionError(
@@ -310,7 +311,16 @@ def fetch_target_reels(
         allow_expired=False,
     )
     if cached is not None:
+        from tools.app.backend import cost_control
+
         reels, _status, src_label = cached
+        cost_control.record_cost_event(
+            provider=getattr(config, "glasser_provider", "scrapecreators"),
+            endpoint=getattr(config, "glasser_endpoint", "/v1/facebook/profile/reels"),
+            cost_micro=0,
+            cache_hit=True,
+            sub_action="profile_cache",
+        )
         msg = f"    [cache] Dùng cache ({len(reels)} reel) cho {handle} ({src_label})."
         print(msg)
         if progress_cb:

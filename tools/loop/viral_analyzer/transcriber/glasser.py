@@ -5,18 +5,19 @@ Fetches platform-level transcripts directly via Glasser ScrapeCreators
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
 import json
 import logging
 import os
 from pathlib import Path
 import re
-import shutil
-import subprocess
 import tempfile
 import time
 from typing import Any, Callable, Dict, List, Optional
 
+from tools.app.backend import cost_control
 from tools.loop.viral_analyzer.cache import (
+    NO_TRANSCRIPT_SENTINEL,
     get_cached_transcript,
     save_cached_transcript,
 )
@@ -31,7 +32,7 @@ def fetch_reel_transcript(
 ) -> Optional[str]:
     """Fetch transcript for a Facebook Reel via Glasser ScrapeCreators /v1/facebook/post/transcript.
 
-    Checks centralized DB cache first. If missing, runs Glasser endpoint and saves to DB.
+    Checks centralized DB cache first. If missing, runs Glasser endpoint via cost_control and saves to DB.
     """
     if not reel_url:
         return None
@@ -41,30 +42,37 @@ def fetch_reel_transcript(
         if m:
             vid = m.group(1)
     if vid:
-        cached = get_cached_transcript(vid)
+        cached = get_cached_transcript(vid, include_negative=True)
         if cached:
-            return cached
+            cost_control.record_cost_event(
+                provider="scrapecreators",
+                endpoint="/v1/facebook/post/transcript",
+                cost_micro=0,
+                cache_hit=True,
+                sub_action="transcript_cache",
+            )
+            return None if cached == NO_TRANSCRIPT_SENTINEL else cached
 
-    glasser_bin = shutil.which("glasser")
-    if not glasser_bin:
-        return None
-
-    temp_out = Path(tempfile.gettempdir()) / f"glasser_tr_{vid or int(time.time() * 1000)}.json"
-    idempotency_key = f"tr-{vid or int(time.time() * 1000)}-{int(time.time() // 86400)}"
-
-    cmd = [
-        glasser_bin,
-        "run",
-        "-p", "scrapecreators",
-        "-e", "/v1/facebook/post/transcript",
-        "-i", json.dumps({"url": reel_url}),
-        "--endpoint-version", "4",
-        "--idempotency-key", idempotency_key,
-        "-o", str(temp_out),
-    ]
+    url_hash = hashlib.sha256(reel_url.encode("utf-8")).hexdigest()[:16]
+    key_id = vid or url_hash
+    temp_out = Path(tempfile.gettempdir()) / f"glasser_tr_{key_id}.json"
+    idempotency_key = f"tr-{key_id}-{int(time.time() // 86400)}"
 
     try:
-        subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        res = cost_control.run_glasser_tracked(
+            provider="scrapecreators",
+            endpoint="/v1/facebook/post/transcript",
+            version=4,
+            payload={"url": reel_url},
+            idempotency_key=idempotency_key,
+            out_file=temp_out,
+            timeout=timeout,
+            sub_action="transcript",
+        )
+        if res.get("not_found"):
+            return None
+
+        http_status = res.get("http_status")
         if temp_out.exists() and temp_out.stat().st_size > 0:
             with open(temp_out, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -80,6 +88,11 @@ def fetch_reel_transcript(
                         reel_url,
                         data.get("message") or data.get("error"),
                     )
+
+        if vid and http_status in (400, 404):
+            save_cached_transcript(vid, NO_TRANSCRIPT_SENTINEL, url=reel_url)
+    except cost_control.CostPolicyError as exc:
+        logger.warning("Glasser transcript blocked for %s: %s", reel_url, exc)
     except Exception as exc:
         logger.warning("Glasser transcript failed for %s: %s", reel_url, exc)
     finally:
@@ -140,7 +153,7 @@ def fetch_top_reels_transcripts(
         progress_cb(f"[*] Đang tải transcript từ Glasser cho {len(needed)} video...")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_fetch_one, it): it for it in needed}
+        futures = {cost_control.submit_with_context(executor, _fetch_one, it): it for it in needed}
         for future in as_completed(futures):
             try:
                 future.result()

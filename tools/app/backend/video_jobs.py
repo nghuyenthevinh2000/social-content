@@ -298,32 +298,48 @@ class VideoRunner:
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
                 temp_mp4 = Path(f.name)
 
-            with profiling.span("video", "generator"):
-                try:
-                    self.generator(
-                        prompt=prompt,
-                        profile_image_bytes=profile_bytes,
-                        context_images_bytes=context_bytes_list,
-                        output_path=temp_mp4,
-                        duration_sec=duration_sec,
-                        actor_profile=actor_profile,
-                    )
-                except TypeError:
+            from tools.app.backend import cost_control
+
+            with cost_control.cost_scope(user_id=user_id, action="video_generation", job_id=job_id):
+                cost_control.check_call_allowed(
+                    "google_genai",
+                    "veo-video-generation",
+                    sub_action="video_generation",
+                )
+                t_gen = time.perf_counter()
+                with profiling.span("video", "generator"):
                     try:
                         self.generator(
                             prompt=prompt,
                             profile_image_bytes=profile_bytes,
                             context_images_bytes=context_bytes_list,
                             output_path=temp_mp4,
+                            duration_sec=duration_sec,
                             actor_profile=actor_profile,
                         )
                     except TypeError:
-                        self.generator(
-                            prompt=prompt,
-                            profile_image_bytes=profile_bytes,
-                            context_images_bytes=context_bytes_list,
-                            output_path=temp_mp4,
-                        )
+                        try:
+                            self.generator(
+                                prompt=prompt,
+                                profile_image_bytes=profile_bytes,
+                                context_images_bytes=context_bytes_list,
+                                output_path=temp_mp4,
+                                actor_profile=actor_profile,
+                            )
+                        except TypeError:
+                            self.generator(
+                                prompt=prompt,
+                                profile_image_bytes=profile_bytes,
+                                context_images_bytes=context_bytes_list,
+                                output_path=temp_mp4,
+                            )
+                cost_control.record_cost_event(
+                    provider="google_genai",
+                    endpoint="veo-video-generation",
+                    cost_micro=cost,
+                    sub_action="video_generation",
+                    duration_ms=(time.perf_counter() - t_gen) * 1000.0,
+                )
 
             blob_key = f"videos/{user_id}/{job_id}/output.mp4"
             blobs.upload_file(blob_key, temp_mp4, content_type="video/mp4")

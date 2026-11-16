@@ -123,52 +123,58 @@ def _glasser_run_json(
     timeout: float = 45.0,
 ) -> Tuple[Optional[Any], Optional[str], Optional[Exception]]:
     """Run a single Glasser endpoint with disk cache."""
+    from tools.app.backend import cost_control
+
     cache_key = hashlib.sha256(
         json.dumps({"p": provider, "e": endpoint, "v": version, "i": payload}, sort_keys=True).encode("utf-8")
     ).hexdigest()[:20]
     cache_file = (cache_dir / f"{cache_key}.json") if cache_dir else None
     if cache_file and cache_file.exists():
         try:
-            return json.loads(cache_file.read_text(encoding="utf-8")), "cache", None
+            cached_data = json.loads(cache_file.read_text(encoding="utf-8"))
+            cost_control.record_cost_event(
+                provider=provider,
+                endpoint=endpoint,
+                cost_micro=0,
+                cache_hit=True,
+                sub_action="keyword_cache",
+            )
+            return cached_data, "cache", None
         except Exception:
             pass
 
     ensure_glasser_env()
-    glasser_bin = shutil.which("glasser")
-    if not glasser_bin:
-        return None, None, GlasserNotFoundError(handle=f"{provider}:{endpoint}")
-
     has_key, _ = check_glasser_key()
     out_file = cache_file or Path(f"/tmp/glasser-{cache_key}.json")
-    out_file.parent.mkdir(parents=True, exist_ok=True)
     idem = f"vvs-{cache_key}"
 
-    cmd = [
-        glasser_bin,
-        "run",
-        "-p", provider,
-        "-e", endpoint,
-        "-i", json.dumps(payload, ensure_ascii=False),
-        "--endpoint-version", str(version),
-        "--idempotency-key", idem,
-        "-o", str(out_file),
-    ]
-    if task_id:
-        cmd.extend(["--task", task_id])
-
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-        if proc.returncode == 0 and out_file.exists() and out_file.stat().st_size > 0:
+        res = cost_control.run_glasser_tracked(
+            provider=provider,
+            endpoint=endpoint,
+            version=version,
+            payload=payload,
+            idempotency_key=idem,
+            out_file=out_file,
+            task_id=task_id,
+            timeout=timeout,
+            sub_action="keyword_search",
+        )
+        if res.get("not_found"):
+            return None, None, GlasserNotFoundError(handle=f"{provider}:{endpoint}")
+        if res["ok"] and out_file.exists() and out_file.stat().st_size > 0:
             return json.loads(out_file.read_text(encoding="utf-8")), "glasser_api", None
-        output = f"{proc.stdout or ''}\n{proc.stderr or ''}".strip()
-        if proc.returncode == 2 or "No Key configured" in output or (not has_key and "key" in output.lower()):
+        output = f"{res['stdout']}\n{res['stderr']}".strip()
+        if res["returncode"] == 2 or "No Key configured" in output or (not has_key and "key" in output.lower()):
             return None, None, GlasserMissingKeyError(handle=f"{provider}:{endpoint}", raw_output=output)
         return None, None, GlasserExecutionError(
-            message=f"Glasser {provider}{endpoint} thất bại (code {proc.returncode})",
+            message=f"Glasser {provider}{endpoint} thất bại (code {res['returncode']})",
             handle=f"{provider}:{endpoint}",
-            returncode=proc.returncode,
+            returncode=res["returncode"],
             raw_output=output,
         )
+    except cost_control.CostPolicyError as exc:
+        return None, None, GlasserExecutionError(message=str(exc), handle=f"{provider}:{endpoint}")
     except subprocess.TimeoutExpired:
         return None, None, GlasserExecutionError(
             message=f"Glasser {provider}{endpoint} timeout sau {timeout:.0f}s",
@@ -466,13 +472,16 @@ def run_viral_video_search(
     seen_urls = set()
     source_breakdown: Dict[str, List[str]] = {"glasser_api": [], "cache": [], "empty": []}
 
+    from tools.app.backend import cost_control
+
     tasks = [(q_obj["text"], platform) for q_obj in queries for platform in PLATFORMS]
     with ThreadPoolExecutor(max_workers=min(5, len(tasks) or 1)) as pool:
         futures = [
             (
                 q_text,
                 platform,
-                pool.submit(
+                cost_control.submit_with_context(
+                    pool,
                     search_platform,
                     platform,
                     q_text,

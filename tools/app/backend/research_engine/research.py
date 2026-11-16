@@ -259,12 +259,20 @@ def run_job(job: Dict[str, Any]) -> None:
                     options,
                     actor_profile=actor_profile,
                     job_kind=job.get("job_kind") or "profile",
+                    user_id=job.get("user_id") or "default",
                 )
             STORE.update(job_id, status="completed", current_sheet=None, finished_at=now_iso())
             STORE.log(job_id, "Hoàn tất toàn bộ sheet.")
         except Exception as exc:  # keep the job inspectable on unexpected failure
             STORE.update(job_id, status="failed", finished_at=now_iso(), current_sheet=None)
             STORE.log(job_id, f"Lỗi job: {exc}")
+
+
+_ACTION_BY_JOB_KIND = {
+    "keyword": "keyword_search",
+    "reel": "reel_research",
+    "profile": "profile_research",
+}
 
 
 def _process_sheet(
@@ -276,6 +284,35 @@ def _process_sheet(
     options: Dict[str, Any],
     actor_profile: Optional[Dict[str, Any]] = None,
     job_kind: str = "profile",
+    user_id: str = "default",
+) -> None:
+    from tools.app.backend import cost_control
+
+    action = _ACTION_BY_JOB_KIND.get(job_kind, "profile_research")
+    with cost_control.cost_scope(user_id=user_id, action=action, job_id=job_id, sheet_slug=sheet["slug"]) as cscope:
+        _process_sheet_inner(
+            job_id=job_id,
+            index=index,
+            total=total,
+            sheet=sheet,
+            run_dir=run_dir,
+            options=options,
+            actor_profile=actor_profile,
+            job_kind=job_kind,
+            cscope=cscope,
+        )
+
+
+def _process_sheet_inner(
+    job_id: str,
+    index: int,
+    total: int,
+    sheet: Dict[str, Any],
+    run_dir: Path,
+    options: Dict[str, Any],
+    actor_profile: Optional[Dict[str, Any]] = None,
+    job_kind: str = "profile",
+    cscope: Optional[Any] = None,
 ) -> None:
     sheet_name = sheet["name"]
     STORE.update(job_id, current_sheet=sheet_name)
@@ -426,6 +463,7 @@ def _process_sheet(
         source_breakdown=source_breakdown,
     )
 
+    cost_summary = cscope.to_dict() if cscope is not None else {}
     result = {
         "sheet": sheet_name,
         "targets": targets,
@@ -434,6 +472,7 @@ def _process_sheet(
         "creators": creators,
         "source_breakdown": source_breakdown,
         "topics": topics,
+        "cost_summary": cost_summary,
         "error": error,
         "notice": notice,
         "errors": [e.to_dict() for e in aggregator.all_errors()],
@@ -454,6 +493,7 @@ def _process_sheet(
         queries=queries,
         creators=creators,
         source_breakdown=source_breakdown,
+        cost_summary=cost_summary,
         finished_at=now_iso(),
     )
     if topics:

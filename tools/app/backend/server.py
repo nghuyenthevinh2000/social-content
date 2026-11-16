@@ -368,6 +368,21 @@ class Handler(BaseHTTPRequestHandler):
                 "ledger": CREDIT_STORE.get_ledger(user_id=user_id),
             })
             return
+        if parsed.path == "/api/costs/summary":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xem thống kê chi phí."})
+                return
+            from tools.app.backend.cost_control import COST_STORE
+
+            qs = parse_qs(parsed.query)
+            try:
+                days = max(1, min(365, int(qs.get("days", ["30"])[0])))
+            except (TypeError, ValueError):
+                days = 30
+            summary = COST_STORE.get_user_summary(user_id=user_id, days=days)
+            _json(self, 200, {"ok": True, **summary})
+            return
         if parsed.path in ("/api/user/profile", "/api/profile"):
             user_id = self._user_id()
             if not user_id:

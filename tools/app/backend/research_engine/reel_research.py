@@ -443,7 +443,6 @@ def normalize_topics(
             reverse=True,
         )
     selected = topics[:limit]
-    fetch_top_reels_transcripts(selected)
     return selected
 
 
@@ -568,7 +567,6 @@ def heuristic_topics(
     while len(topics) < 3:
         topics.append(generic[len(topics)])
     selected = topics[:limit]
-    fetch_top_reels_transcripts(selected)
     return selected
 
 
@@ -608,6 +606,7 @@ def suggest_topics(
                 log("Agent đã trả về 3 chủ đề.")
             else:
                 log("Không parse được JSON từ agent; dùng gợi ý dự phòng.")
+            fetch_top_reels_transcripts(topics[:3])
             return topics, None
         except Exception as exc:
             detail = str(exc)
@@ -616,6 +615,7 @@ def suggest_topics(
             if "auth" in detail.lower():
                 detail = f"{detail} | Gợi ý đăng nhập harness rồi thử lại."
             log(f"ACP thất bại: {detail}")
+            fetch_top_reels_transcripts(fallback[:3])
             return fallback, detail
         finally:
             if client is not None:
@@ -799,8 +799,8 @@ def research_single_reel(
 
     _log(f"Bắt đầu phân tích Reel: {clean_url}")
 
-    # Fetch transcript
-    transcript = fetch_reel_transcript(clean_url, video_id=vid)
+    # Fetch transcript only for Facebook reels; non-FB URLs cannot use /v1/facebook/post/transcript
+    transcript = fetch_reel_transcript(clean_url, video_id=vid) if platform == "facebook" else None
     if transcript:
         _log(f"Đã trích xuất transcript ({len(transcript)} ký tự).")
     else:
@@ -896,7 +896,6 @@ def research_reels(
     _log = log or (lambda msg: logger.info(msg))
     if not reels:
         return [], None
-    fetch_top_reels_transcripts(reels[:5])
     targets = [{"name": r.get("author_name") or r.get("author_handle", "Reel"), "url": r.get("url") or r.get("reel_url", "")} for r in reels]
     if agent_id and cwd:
         return suggest_topics(
@@ -910,4 +909,6 @@ def research_reels(
             model=model,
             actor_profile=actor_profile,
         )
-    return heuristic_topics(sheet_name, reels, actor_profile=actor_profile, limit=3), None
+    topics = heuristic_topics(sheet_name, reels, actor_profile=actor_profile, limit=3)
+    fetch_top_reels_transcripts(topics[:3])
+    return topics, None

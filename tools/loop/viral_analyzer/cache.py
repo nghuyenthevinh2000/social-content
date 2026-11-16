@@ -187,7 +187,14 @@ def write_cached_reels(
 
 # -- Video & Snapshot Persistence --------------------------------------------
 
-def get_cached_transcript(video_id: str, **_kwargs: Any) -> Optional[str]:
+NO_TRANSCRIPT_SENTINEL = "__NO_TRANSCRIPT__"
+
+
+def get_cached_transcript(
+    video_id: str,
+    include_negative: bool = False,
+    **_kwargs: Any,
+) -> Optional[str]:
     """Retrieve previously transcribed text for a video from PostgreSQL `videos` table."""
     try:
         with ro() as conn:
@@ -196,7 +203,10 @@ def get_cached_transcript(video_id: str, **_kwargs: Any) -> Optional[str]:
                 (f"facebook:{video_id}",),
             ).fetchone()
             if row and row[0]:
-                return str(row[0])
+                val = str(row[0])
+                if val == NO_TRANSCRIPT_SENTINEL and not include_negative:
+                    return None
+                return val
     except Exception:
         pass
     return None
