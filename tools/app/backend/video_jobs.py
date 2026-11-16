@@ -12,7 +12,7 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 import uuid
 
-from tools.app.backend import blobs
+from tools.app.backend import blobs, profiling
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate_per_sec_micro
 from tools.app.backend.db import ro, tx
 from tools.app.backend.media import MEDIA_STORE
@@ -298,31 +298,32 @@ class VideoRunner:
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
                 temp_mp4 = Path(f.name)
 
-            try:
-                self.generator(
-                    prompt=prompt,
-                    profile_image_bytes=profile_bytes,
-                    context_images_bytes=context_bytes_list,
-                    output_path=temp_mp4,
-                    duration_sec=duration_sec,
-                    actor_profile=actor_profile,
-                )
-            except TypeError:
+            with profiling.span("video", "generator"):
                 try:
                     self.generator(
                         prompt=prompt,
                         profile_image_bytes=profile_bytes,
                         context_images_bytes=context_bytes_list,
                         output_path=temp_mp4,
+                        duration_sec=duration_sec,
                         actor_profile=actor_profile,
                     )
                 except TypeError:
-                    self.generator(
-                        prompt=prompt,
-                        profile_image_bytes=profile_bytes,
-                        context_images_bytes=context_bytes_list,
-                        output_path=temp_mp4,
-                    )
+                    try:
+                        self.generator(
+                            prompt=prompt,
+                            profile_image_bytes=profile_bytes,
+                            context_images_bytes=context_bytes_list,
+                            output_path=temp_mp4,
+                            actor_profile=actor_profile,
+                        )
+                    except TypeError:
+                        self.generator(
+                            prompt=prompt,
+                            profile_image_bytes=profile_bytes,
+                            context_images_bytes=context_bytes_list,
+                            output_path=temp_mp4,
+                        )
 
             blob_key = f"videos/{user_id}/{job_id}/output.mp4"
             blobs.upload_file(blob_key, temp_mp4, content_type="video/mp4")

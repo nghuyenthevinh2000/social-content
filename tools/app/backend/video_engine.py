@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import datetime
+import functools
 import json
 import os
 from pathlib import Path
@@ -26,6 +27,7 @@ def get_video_duration(*_args: Any) -> int:
         return 15
 
 
+@functools.lru_cache(maxsize=1)
 def _load_env() -> None:
     env_file = Path(__file__).resolve().parent / ".env"
     if not env_file.is_file():

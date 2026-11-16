@@ -36,7 +36,7 @@ APP_DIR = BACKEND_DIR.parent
 WORKSPACE = BACKEND_DIR.parents[2]
 sys.path.insert(0, str(WORKSPACE))
 
-from tools.app.backend import blobs  # noqa: E402
+from tools.app.backend import blobs, profiling  # noqa: E402
 from tools.app.backend.db import ro, tx  # noqa: E402
 from tools.app.backend.handler import run_worker  # noqa: E402
 from tools.app.backend.media import MEDIA_STORE  # noqa: E402
@@ -74,6 +74,11 @@ elif sys.platform == "darwin":
 else:
     LOG_PATH = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "aibrand" / "aibrand.log"
 _LOG_LOCK = threading.Lock()
+_CLAIM_LOCK = threading.Lock()
+_CLAIMED_EMAIL_TS: Dict[tuple[str, str], float] = {}
+_CLAIMED_LEGACY: set[str] = set()
+_HEALTH_LOCK = threading.Lock()
+_HEALTH_CACHE: tuple[float, Optional[Dict[str, Any]]] = (0.0, None)
 
 
 def _log_line(line: str) -> None:
@@ -183,39 +188,69 @@ class Handler(BaseHTTPRequestHandler):
                 uid = query_uid
 
         if uid and email and uid != email:
-            CREDIT_STORE.claim_email_credits(email, uid)
+            now_mono = time.monotonic()
+            key = (uid, email)
+            with _CLAIM_LOCK:
+                last_check = _CLAIMED_EMAIL_TS.get(key, 0.0)
+                should_claim_email = (now_mono - last_check) >= 60.0
+                if should_claim_email:
+                    if len(_CLAIMED_EMAIL_TS) > 4096:
+                        _CLAIMED_EMAIL_TS.clear()
+                    _CLAIMED_EMAIL_TS[key] = now_mono
+            if should_claim_email:
+                CREDIT_STORE.claim_email_credits(email, uid)
 
         if uid and (email and ("hieu" in str(email).lower()) or ("hieu" in (self.headers.get("X-User-Email") or "").lower())):
-            PROFILE_STORE.claim_legacy_topics(uid)
-            STORE.claim_legacy_jobs(uid)
+            with _CLAIM_LOCK:
+                should_claim_legacy = uid not in _CLAIMED_LEGACY
+                if should_claim_legacy:
+                    _CLAIMED_LEGACY.add(uid)
+            if should_claim_legacy:
+                PROFILE_STORE.claim_legacy_topics(uid)
+                STORE.claim_legacy_jobs(uid)
 
         return uid
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        with profiling.request_scope("GET", parsed.path):
+            self._do_GET(parsed)
+
+    def _do_GET(self, parsed: Any) -> None:
         if parsed.path.startswith(("/__/auth", "/__/firebase")):
             self._proxy_firebase_auth(self.command)
             return
         if parsed.path == "/api/health":
-            glasser_info = _glasser_status()
-            _json(self, 200, {
-                "ok": True,
-                "app": "aibrand",
-                "desktop": bool(getattr(sys, "frozen", False)),
-                "transcription": _transcription_status(),
-                "ffmpeg": _ffmpeg_status(),
-                "glasser": glasser_info["ok"],
-                "glasser_details": glasser_info,
-                "agent": _agent_status(),
-            })
+            global _HEALTH_CACHE
+            now_mono = time.monotonic()
+            with _HEALTH_LOCK:
+                cached_ts, cached_payload = _HEALTH_CACHE
+                if cached_payload is not None and (now_mono - cached_ts) < 30.0:
+                    payload = cached_payload
+                else:
+                    glasser_info = _glasser_status()
+                    payload = {
+                        "ok": True,
+                        "app": "aibrand",
+                        "desktop": bool(getattr(sys, "frozen", False)),
+                        "transcription": _transcription_status(),
+                        "ffmpeg": _ffmpeg_status(),
+                        "glasser": glasser_info["ok"],
+                        "glasser_details": glasser_info,
+                        "agent": _agent_status(),
+                    }
+                    _HEALTH_CACHE = (now_mono, payload)
+            _json(self, 200, payload)
             return
         if parsed.path == "/api/logs":
             logs = ""
             if LOG_PATH.exists():
                 try:
-                    with _LOG_LOCK, open(LOG_PATH, "r", encoding="utf-8", errors="replace") as handle:
-                        content = handle.read()
-                    logs = content[-65536:] if len(content) > 65536 else content
+                    with _LOG_LOCK, open(LOG_PATH, "rb") as handle:
+                        handle.seek(0, os.SEEK_END)
+                        size = handle.tell()
+                        handle.seek(max(0, size - 65536))
+                        logs = handle.read().decode("utf-8", errors="replace")
                 except Exception as exc:
                     logs = f"Error reading log file: {exc}"
             _json(self, 200, {
@@ -438,9 +473,32 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 _json(self, 404, {"error": "Video file không tồn tại trên kho lưu trữ."})
                 return
+            total_len = len(data)
+            range_hdr = self.headers.get("Range") or ""
+            m_range = re.match(r"bytes=(\d+)-(\d*)", range_hdr.strip())
+            if m_range and total_len > 0:
+                start = int(m_range.group(1))
+                end = int(m_range.group(2)) if m_range.group(2) else total_len - 1
+                end = min(end, total_len - 1)
+                if start >= total_len or start > end:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{total_len}")
+                    self._cors()
+                    self.end_headers()
+                    return
+                chunk = data[start : end + 1]
+                self.send_response(206)
+                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Content-Range", f"bytes {start}-{end}/{total_len}")
+                self.send_header("Content-Length", str(len(chunk)))
+                self.send_header("Accept-Ranges", "bytes")
+                self._cors()
+                self.end_headers()
+                self.wfile.write(chunk)
+                return
             self.send_response(200)
             self.send_header("Content-Type", "video/mp4")
-            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Content-Length", str(total_len))
             if is_download:
                 self.send_header("Content-Disposition", f'attachment; filename="video-{match.group(1)}.mp4"')
             self.send_header("Accept-Ranges", "bytes")
@@ -452,6 +510,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        with profiling.request_scope("POST", parsed.path):
+            self._do_POST(parsed)
+
+    def _do_POST(self, parsed: Any) -> None:
         if parsed.path.startswith(("/__/auth", "/__/firebase")):
             self._proxy_firebase_auth("POST")
             return

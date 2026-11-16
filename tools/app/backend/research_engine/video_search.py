@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -189,8 +190,15 @@ def _normalize_youtube(data: Any, query: str) -> List[Dict[str, Any]]:
             continue
         ch = v.get("channel") if isinstance(v.get("channel"), dict) else {}
         author_name = str(ch.get("title") or ch.get("name") or v.get("channelName") or v.get("author") or "")
-        author_url = str(ch.get("url") or ch.get("link") or v.get("channelUrl") or "")
         author_handle = str(ch.get("handle") or ch.get("id") or author_name).lstrip("@")
+        raw_ch_url = str(ch.get("url") or ch.get("link") or v.get("channelUrl") or "")
+        if not raw_ch_url:
+            if ch.get("handle"):
+                raw_ch_url = f"https://www.youtube.com/{ch['handle'] if str(ch['handle']).startswith('@') else '@' + str(ch['handle'])}"
+            elif ch.get("id"):
+                raw_ch_url = f"https://www.youtube.com/channel/{ch['id']}"
+        author_url = raw_ch_url
+        author_followers = _safe_int(ch.get("subscriberCount") or ch.get("followers") or v.get("channelFollowers"))
         out.append({
             "video_id": vid,
             "title": str(v.get("title") or ""),
@@ -205,6 +213,7 @@ def _normalize_youtube(data: Any, query: str) -> List[Dict[str, Any]]:
             "author_name": author_name,
             "author_handle": author_handle,
             "author_url": author_url,
+            "author_followers": author_followers,
             "platform": "youtube",
             "matched_query": query,
         })
@@ -312,6 +321,7 @@ def _normalize_tiktok(data: Any, query: str) -> List[Dict[str, Any]]:
             "author_name": str(author.get("nickname") or handle),
             "author_handle": handle,
             "author_url": f"https://www.tiktok.com/@{handle}" if handle else "",
+            "author_followers": _safe_int(author.get("follower_count") or author.get("followerCount")),
             "platform": "tiktok",
             "matched_query": query,
         })
@@ -349,6 +359,7 @@ def _normalize_instagram(data: Any, query: str) -> List[Dict[str, Any]]:
             "author_name": str(user.get("full_name") or handle),
             "author_handle": handle,
             "author_url": f"https://www.instagram.com/{handle}/" if handle else "",
+            "author_followers": _safe_int(user.get("follower_count") or user.get("followers")),
             "platform": "instagram",
             "matched_query": query,
         })
@@ -455,17 +466,26 @@ def run_viral_video_search(
     seen_urls = set()
     source_breakdown: Dict[str, List[str]] = {"glasser_api": [], "cache": [], "empty": []}
 
-    for q_obj in queries:
-        q_text = q_obj["text"]
-        for platform in PLATFORMS:
-            vids, src = search_platform(
-                platform,
+    tasks = [(q_obj["text"], platform) for q_obj in queries for platform in PLATFORMS]
+    with ThreadPoolExecutor(max_workers=min(5, len(tasks) or 1)) as pool:
+        futures = [
+            (
                 q_text,
-                cache_dir=cache_dir,
-                log=_log,
-                task_id=task_id,
-                aggregator=agg,
+                platform,
+                pool.submit(
+                    search_platform,
+                    platform,
+                    q_text,
+                    cache_dir=cache_dir,
+                    log=_log,
+                    task_id=task_id,
+                    aggregator=agg,
+                ),
             )
+            for q_text, platform in tasks
+        ]
+        for q_text, platform, fut in futures:
+            vids, src = fut.result()
             tag = f"{platform}:{q_text}"
             if src == "cache":
                 source_breakdown["cache"].append(tag)
@@ -497,11 +517,13 @@ def run_viral_video_search(
                 "handle": c_handle,
                 "url": c_url,
                 "platform": v.get("platform") or "web",
+                "followers": _safe_int(v.get("author_followers")),
                 "video_count": 1,
                 "top_views": v.get("views", 0),
             }
         else:
             existing["video_count"] += 1
+            existing["followers"] = max(existing["followers"], _safe_int(v.get("author_followers")))
             existing["top_views"] = max(existing["top_views"], v.get("views", 0))
 
     creators = sorted(creators_map.values(), key=lambda c: c["top_views"], reverse=True)

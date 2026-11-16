@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import time
 from typing import Optional, Union
 
 import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
+
+from tools.app.backend import profiling
 
 _CLIENT: Optional[boto3.client] = None
 _URL_CLIENT: Optional[boto3.client] = None
@@ -68,20 +71,31 @@ def put(key: str, data: bytes, content_type: Optional[str] = None) -> None:
     extra = {}
     if content_type:
         extra["ContentType"] = content_type
-    client.put_object(Bucket=bucket, Key=key, Body=data, **extra)
+    t0 = time.perf_counter()
+    try:
+        client.put_object(Bucket=bucket, Key=key, Body=data, **extra)
+    finally:
+        if profiling.is_enabled():
+            profiling.record_blob("put", key, len(data), (time.perf_counter() - t0) * 1000.0)
 
 
 def get(key: str) -> bytes:
     client = get_client()
     bucket = get_bucket()
+    t0 = time.perf_counter()
+    data = b""
     try:
         resp = client.get_object(Bucket=bucket, Key=key)
-        return resp["Body"].read()
+        data = resp["Body"].read()
+        return data
     except ClientError as exc:
         code = exc.response.get("Error", {}).get("Code")
         if code in ("NoSuchKey", "404", "NotFound"):
             raise FileNotFoundError(f"Blob key not found: {key}") from exc
         raise
+    finally:
+        if profiling.is_enabled():
+            profiling.record_blob("get", key, len(data), (time.perf_counter() - t0) * 1000.0)
 
 
 def download(key: str, path: Union[str, Path]) -> Path:
@@ -89,6 +103,7 @@ def download(key: str, path: Union[str, Path]) -> Path:
     bucket = get_bucket()
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
+    t0 = time.perf_counter()
     try:
         client.download_file(Bucket=bucket, Key=key, Filename=str(p))
     except ClientError as exc:
@@ -96,6 +111,10 @@ def download(key: str, path: Union[str, Path]) -> Path:
         if code in ("NoSuchKey", "404", "NotFound"):
             raise FileNotFoundError(f"Blob key not found: {key}") from exc
         raise
+    finally:
+        if profiling.is_enabled():
+            size = p.stat().st_size if p.exists() else 0
+            profiling.record_blob("download", key, size, (time.perf_counter() - t0) * 1000.0)
     return p
 
 
@@ -105,12 +124,19 @@ def upload_file(key: str, path: Union[str, Path], content_type: Optional[str] = 
     extra = {}
     if content_type:
         extra["ContentType"] = content_type
-    client.upload_file(
-        Filename=str(path),
-        Bucket=bucket,
-        Key=key,
-        ExtraArgs=extra or None,
-    )
+    p = Path(path)
+    t0 = time.perf_counter()
+    try:
+        client.upload_file(
+            Filename=str(p),
+            Bucket=bucket,
+            Key=key,
+            ExtraArgs=extra or None,
+        )
+    finally:
+        if profiling.is_enabled():
+            size = p.stat().st_size if p.exists() else 0
+            profiling.record_blob("upload_file", key, size, (time.perf_counter() - t0) * 1000.0)
 
 
 def delete(key: str) -> None:

@@ -13,7 +13,7 @@ import threading
 import time
 from typing import Any, Dict, Optional
 
-from tools.app.backend import blobs
+from tools.app.backend import blobs, profiling
 from tools.app.backend.db import tx
 from tools.app.backend.research_engine.research import STORE, run_job
 from tools.app.backend.store import now_iso
@@ -84,24 +84,25 @@ def run_worker(poll_sec: float = 1.0) -> None:
                 purge_expired()
             except Exception:
                 pass
-        STORE.heartbeat(list(running))
-        for job_id in STORE.stale_running(STALE_AFTER_SEC):
-            _finish_stopped_job(job_id, None)
-        for job_id, proc in list(running.items()):
-            state = STORE.snapshot(job_id) or {}
-            if proc.is_alive() and state.get("cancel_requested") and state.get("pid"):
-                _kill_job(proc, state["pid"])
-            if not proc.is_alive():
-                proc.join()
-                _finish_stopped_job(job_id, proc.exitcode)
-                del running[job_id]
-        while len(running) < MAX_PROCESSES:
-            job = STORE.claim(MAX_PER_CLIENT)
-            if not job:
-                break
-            proc = multiprocessing.Process(target=_job_process, args=(job, os.getpid()), daemon=True)
-            proc.start()
-            running[job["id"]] = proc
+        with profiling.span("supervisor", "tick"):
+            STORE.heartbeat(list(running))
+            for job_id in STORE.stale_running(STALE_AFTER_SEC):
+                _finish_stopped_job(job_id, None)
+            for job_id, proc in list(running.items()):
+                state = STORE.control_state(job_id) or {}
+                if proc.is_alive() and state.get("cancel_requested") and state.get("pid"):
+                    _kill_job(proc, state["pid"])
+                if not proc.is_alive():
+                    proc.join()
+                    _finish_stopped_job(job_id, proc.exitcode)
+                    del running[job_id]
+            while len(running) < MAX_PROCESSES:
+                job = STORE.claim(MAX_PER_CLIENT)
+                if not job:
+                    break
+                proc = multiprocessing.Process(target=_job_process, args=(job, os.getpid()), daemon=True)
+                proc.start()
+                running[job["id"]] = proc
         time.sleep(poll_sec)
 
 

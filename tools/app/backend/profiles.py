@@ -377,28 +377,38 @@ class SocialProfileStore:
         self._ensure_seeds(user_id)
         from tools.app.backend.db import ro
         with ro() as conn:
-            rows = conn.execute("SELECT slug, name FROM topics WHERE user_id = %s ORDER BY created_at ASC", (user_id,)).fetchall()
-            results: List[Dict[str, Any]] = []
-            q = (query or "").strip().lower()
-            for slug, name in rows:
-                p_rows = conn.execute(
-                    "SELECT name, url, handle FROM profiles WHERE user_id = %s AND topic_slug = %s ORDER BY id ASC",
-                    (user_id, slug),
-                ).fetchall()
-                targets = [{"name": r[0], "url": r[1], "handle": r[2]} for r in p_rows]
-                if q:
-                    topic_matches = q in name.lower() or q in slug
-                    matched_targets = [
-                        t for t in targets
-                        if q in t["name"].lower() or q in t["url"].lower() or q in t["handle"].lower()
-                    ]
-                    if topic_matches:
-                        results.append({"name": name, "slug": slug, "targets": targets})
-                    elif matched_targets:
-                        results.append({"name": name, "slug": slug, "targets": matched_targets})
-                else:
-                    results.append({"name": name, "slug": slug, "targets": targets})
-            return results
+            rows = conn.execute(
+                "SELECT t.slug, t.name, p.name, p.url, p.handle "
+                "FROM topics t "
+                "LEFT JOIN profiles p ON p.user_id = t.user_id AND p.topic_slug = t.slug "
+                "WHERE t.user_id = %s "
+                "ORDER BY t.created_at ASC, p.id ASC",
+                (user_id,),
+            ).fetchall()
+        grouped: Dict[str, Dict[str, Any]] = {}
+        for slug, t_name, p_name, p_url, p_handle in rows:
+            entry = grouped.get(slug)
+            if entry is None:
+                entry = {"name": t_name, "slug": slug, "targets": []}
+                grouped[slug] = entry
+            if p_url is not None:
+                entry["targets"].append({"name": p_name, "url": p_url, "handle": p_handle})
+        q = (query or "").strip().lower()
+        if not q:
+            return list(grouped.values())
+        results: List[Dict[str, Any]] = []
+        for entry in grouped.values():
+            topic_matches = q in entry["name"].lower() or q in entry["slug"]
+            if topic_matches:
+                results.append(entry)
+            else:
+                matched_targets = [
+                    t for t in entry["targets"]
+                    if q in t["name"].lower() or q in t["url"].lower() or q in t["handle"].lower()
+                ]
+                if matched_targets:
+                    results.append({"name": entry["name"], "slug": entry["slug"], "targets": matched_targets})
+        return results
 
     def get_topic(self, slug: str, user_id: str = "default") -> Optional[Dict[str, Any]]:
         from tools.app.backend.db import ro

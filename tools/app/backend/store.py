@@ -119,9 +119,22 @@ class JobStore:
         if not job_ids:
             return
         with tx() as conn:
-            now_ts = time.time()
-            for jid in job_ids:
-                conn.execute("UPDATE jobs SET heartbeat = %s WHERE id = %s", (now_ts, jid))
+            conn.execute("UPDATE jobs SET heartbeat = %s WHERE id = ANY(%s)", (time.time(), job_ids))
+
+    def control_state(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Lightweight status/cancel/pid check for the supervisor loop without loading full JSONB or logs."""
+        with ro() as conn:
+            row = conn.execute(
+                "SELECT status, data->>'cancel_requested', data->>'pid' FROM jobs WHERE id = %s",
+                (job_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return {
+            "status": row[0],
+            "cancel_requested": str(row[1]).lower() == "true",
+            "pid": int(row[2]) if row[2] and str(row[2]).isdigit() else None,
+        }
 
     def stale_running(self, max_age_sec: float) -> List[str]:
         """Running jobs no worker has touched recently, i.e. their worker died."""
@@ -152,65 +165,6 @@ class JobStore:
             logs = cur_logs.fetchall()
         job = data_val if isinstance(data_val, dict) else json.loads(data_val)
         sheets = job.get("sheets") or []
-        needs_enrich = any(t and (not t.get("video_url") or not t.get("transcript")) for s in sheets for t in s.get("topics", []))
-        if needs_enrich:
-            try:
-                from tools.app.backend import blobs
-                res_bytes = blobs.get(f"runs/{job_id}/result.json")
-                if res_bytes:
-                    res = json.loads(res_bytes.decode("utf-8"))
-                    reels = res.get("reels", [])
-                    reels_by_id = {str(r.get("video_id")): r for r in reels if r.get("video_id")}
-                    reels_by_url = {str(r.get("url")): r for r in reels if r.get("url")}
-                    for s in sheets:
-                        for t in s.get("topics", []):
-                            matched = None
-                            for src in t.get("source_urls") or []:
-                                for vid, r in reels_by_id.items():
-                                    if vid in src:
-                                        matched = r
-                                        break
-                                if not matched and src in reels_by_url:
-                                    matched = reels_by_url[src]
-                                if matched:
-                                    break
-                            if matched:
-                                if not t.get("video_url"):
-                                    t["video_url"] = matched.get("video_url")
-                                    t["video_id"] = str(matched.get("video_id") or "")
-                                    t["reel_url"] = matched.get("url") or (t.get("source_urls", [""])[0] if t.get("source_urls") else "")
-                                    t["views"] = int(matched.get("views") or 0)
-                                    t["velocity_per_hour"] = float(matched.get("velocity_per_hour") or 0)
-                                    t["current_pool"] = matched.get("current_pool", 0)
-                                    t["pool_name"] = str(matched.get("pool_name") or "")
-                                    t["author_handle"] = str(matched.get("author_handle") or "")
-                                if not t.get("transcript") and matched.get("transcript"):
-                                    t["transcript"] = str(matched.get("transcript") or "")
-
-                from tools.loop.viral_analyzer.cache import get_cached_transcript
-                from tools.loop.viral_analyzer.transcriber import fetch_top_reels_transcripts
-                all_topics = [t for s in sheets for t in s.get("topics", []) if isinstance(t, dict)]
-                for t in all_topics:
-                    vid = t.get("video_id")
-                    if not vid and t.get("source_urls"):
-                        import re
-                        m = re.search(r"/(?:reel|videos)/(\d+)", t["source_urls"][0])
-                        if m:
-                            vid = m.group(1)
-                            t["video_id"] = vid
-                    if vid and not t.get("transcript"):
-                        cached_tr = get_cached_transcript(vid)
-                        if cached_tr:
-                            t["transcript"] = cached_tr
-
-                missing_tr = [t for t in all_topics if not t.get("transcript")]
-                if missing_tr:
-                    fetch_top_reels_transcripts(missing_tr)
-
-                with tx() as conn:
-                    conn.execute("UPDATE jobs SET data = %s WHERE id = %s", (json.dumps(job), job_id))
-            except Exception:
-                pass
 
         if len(sheets) == 1 and sheets[0].get("name"):
             job["filename"] = sheets[0]["name"]
@@ -226,27 +180,34 @@ class JobStore:
         return job
 
     def list_jobs(self, user_id: Optional[str] = None, limit: int = 500) -> List[Dict[str, Any]]:
+        summary_cols = (
+            "id, status, created_at, data->>'job_kind', data->>'filename', "
+            "data->>'finished_at', data->>'current_sheet', "
+            "(SELECT COALESCE(jsonb_agg(jsonb_build_object("
+            "'name', s->>'name', 'status', s->>'status', "
+            "'topic_count', jsonb_array_length(COALESCE(s->'topics', '[]'::jsonb))"
+            ")), '[]'::jsonb) FROM jsonb_array_elements(COALESCE(data->'sheets', '[]'::jsonb)) AS s)"
+        )
         with ro() as conn:
             if user_id and user_id != "default":
                 cur = conn.execute(
-                    "SELECT data FROM jobs WHERE user_id = %s ORDER BY created_at DESC LIMIT %s",
+                    f"SELECT {summary_cols} FROM jobs WHERE user_id = %s ORDER BY created_at DESC LIMIT %s",
                     (user_id, limit),
                 )
             else:
                 cur = conn.execute(
-                    "SELECT data FROM jobs WHERE user_id = 'default' OR user_id IS NULL ORDER BY created_at DESC LIMIT %s",
+                    f"SELECT {summary_cols} FROM jobs WHERE user_id = 'default' OR user_id IS NULL ORDER BY created_at DESC LIMIT %s",
                     (limit,),
                 )
             rows = cur.fetchall()
         jobs = []
-        for (data_val,) in rows:
+        for jid, status, created_at, job_kind, fn_raw, finished_at, current_sheet, sheets_raw in rows:
             try:
-                j = data_val if isinstance(data_val, dict) else json.loads(data_val)
-                sheets = j.get("sheets") or []
+                sheets = sheets_raw if isinstance(sheets_raw, list) else json.loads(sheets_raw or "[]")
                 total_sheets = len(sheets)
                 completed_sheets = sum(1 for s in sheets if s.get("status") in ("completed", "failed"))
-                total_topics = sum(len(s.get("topics") or []) for s in sheets)
-                fn = j.get("filename") or ""
+                total_topics = sum(int(s.get("topic_count") or 0) for s in sheets)
+                fn = fn_raw or ""
                 if len(sheets) == 1 and sheets[0].get("name"):
                     fn = sheets[0]["name"]
                 elif fn:
@@ -258,13 +219,13 @@ class JobStore:
                 else:
                     fn = "Phân tích"
                 jobs.append({
-                    "id": j.get("id"),
-                    "job_kind": j.get("job_kind") or "profile",
-                    "status": j.get("status"),
+                    "id": jid,
+                    "job_kind": job_kind or "profile",
+                    "status": status,
                     "filename": fn,
-                    "created_at": j.get("created_at"),
-                    "finished_at": j.get("finished_at"),
-                    "current_sheet": j.get("current_sheet"),
+                    "created_at": created_at,
+                    "finished_at": finished_at,
+                    "current_sheet": current_sheet,
                     "total_sheets": total_sheets,
                     "completed_sheets": completed_sheets,
                     "total_topics": total_topics,

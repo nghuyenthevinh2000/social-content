@@ -14,7 +14,7 @@ import tempfile
 import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from tools.app.backend import blobs
+from tools.app.backend import blobs, profiling
 from tools.app.backend.acp import ACPClient, ACPError
 from tools.app.backend.errors import (
     AppError,
@@ -138,11 +138,12 @@ def _harness_lock(log: Callable[[str], None]):
     from tools.app.backend.db import get_dsn
 
     with psycopg.connect(get_dsn(), autocommit=True) as conn:
-        cur = conn.execute("SELECT pg_try_advisory_lock(hashtext('harness_lock'))")
-        got_lock = cur.fetchone()[0]
-        if not got_lock:
-            log("Harness đang bận với job khác; chờ tới lượt...")
-            conn.execute("SELECT pg_advisory_lock(hashtext('harness_lock'))")
+        with profiling.span("worker", "acp_lock_wait"):
+            cur = conn.execute("SELECT pg_try_advisory_lock(hashtext('harness_lock'))")
+            got_lock = cur.fetchone()[0]
+            if not got_lock:
+                log("Harness đang bận với job khác; chờ tới lượt...")
+                conn.execute("SELECT pg_advisory_lock(hashtext('harness_lock'))")
         try:
             yield
         finally:

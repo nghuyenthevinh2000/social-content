@@ -702,6 +702,17 @@ def analyze_video_visuals(
             pass
 
 
+_LOCAL_TRANSCRIBER: Any = None
+
+
+def _get_local_transcriber() -> Any:
+    global _LOCAL_TRANSCRIBER
+    if _LOCAL_TRANSCRIBER is None:
+        from tools.loop.viral_analyzer.transcriber.local import UnifiedTranscriber
+        _LOCAL_TRANSCRIBER = UnifiedTranscriber()
+    return _LOCAL_TRANSCRIBER
+
+
 def _transcribe_local_fallback(
     video_path: Path,
     vid: Optional[str],
@@ -714,7 +725,7 @@ def _transcribe_local_fallback(
     try:
         import subprocess
         from tools.loop.viral_analyzer.cache import save_cached_transcript
-        from tools.loop.viral_analyzer.transcriber.local import UnifiedTranscriber, extract_audio_ffmpeg, ffmpeg_bin
+        from tools.loop.viral_analyzer.transcriber.local import extract_audio_ffmpeg, ffmpeg_bin
 
         if not extract_audio_ffmpeg(video_path, audio_path, max_duration_sec=300):
             return None
@@ -735,7 +746,7 @@ def _transcribe_local_fallback(
         chunk_paths = sorted(video_path.parent.glob(f"{video_path.stem}_chunk_*.wav"))
         targets = chunk_paths if (proc.returncode == 0 and chunk_paths) else [audio_path]
 
-        transcriber = UnifiedTranscriber()
+        transcriber = _get_local_transcriber()
         parts: List[str] = []
         for idx, part_path in enumerate(targets, 1):
             log(f"Đang chạy transcript local đoạn {idx}/{len(targets)}...")
