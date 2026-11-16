@@ -89,7 +89,6 @@ export const PLATFORM_LABELS: Record<string, string> = {
   youtube: 'YouTube',
   tiktok: 'TikTok',
   instagram: 'Instagram',
-  google: 'Google',
   facebook: 'Facebook',
 };
 
@@ -99,7 +98,6 @@ export function inferPlatform(topic: Topic, url: string): string {
   if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
   if (lower.includes('tiktok.com')) return 'tiktok';
   if (lower.includes('instagram.com')) return 'instagram';
-  if (lower.includes('google.com')) return 'google';
   return 'facebook';
 }
 

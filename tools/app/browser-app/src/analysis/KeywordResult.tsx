@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { ReelPlayerBox } from './TopicCard';
 import { formatCompact, formatNumber, getEmbedUrl, getTopicReelUrl, inferPlatform, PLATFORM_LABELS } from './format';
 import type { Sheet, Topic } from './types';
 
@@ -193,30 +194,11 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                     )}
                   </div>
 
-                  {(topic.video_url || embedUrl) && (
-                    <div className="reel-player-box">
-                      {topic.video_url ? (
-                        <video
-                          src={topic.video_url}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          className="reel-video-player"
-                        />
-                      ) : embedUrl ? (
-                        <iframe
-                          src={embedUrl}
-                          title={topic.title || `Video ${idx + 1}`}
-                          className="reel-iframe-player"
-                          scrolling="no"
-                          frameBorder="0"
-                          allowFullScreen={true}
-                          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                          loading="lazy"
-                        />
-                      ) : null}
-                    </div>
-                  )}
+                  <ReelPlayerBox
+                    videoUrl={topic.video_url}
+                    embedUrl={embedUrl}
+                    title={topic.title || `Video ${idx + 1}`}
+                  />
 
                   <div className="reel-card-foot">
                     <div className="reel-card-foot-left">

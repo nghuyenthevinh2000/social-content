@@ -64,8 +64,6 @@ def detect_platform(url: str) -> str:
         return "instagram"
     if "facebook.com" in lowered or "fb.com" in lowered or "fb.watch" in lowered:
         return "facebook"
-    if "google.com" in lowered:
-        return "google"
     return "web"
 
 

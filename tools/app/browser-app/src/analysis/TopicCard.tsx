@@ -16,12 +16,49 @@ type TopicCardProps = {
   onCopy: () => void;
 };
 
+export const ReelPlayerBox: React.FC<{
+  videoUrl?: string;
+  embedUrl: string | null;
+  title: string;
+}> = ({ videoUrl, embedUrl, title }) => {
+  const [mode, setMode] = useState<'video' | 'iframe'>(videoUrl ? 'video' : 'iframe');
+
+  if (!videoUrl && !embedUrl) return null;
+
+  return (
+    <div className="reel-player-box">
+      {mode === 'video' && videoUrl ? (
+        <video
+          src={videoUrl}
+          controls
+          playsInline
+          preload="metadata"
+          className="reel-video-player"
+          onError={() => {
+            if (embedUrl) setMode('iframe');
+          }}
+        />
+      ) : embedUrl ? (
+        <iframe
+          src={embedUrl}
+          title={title}
+          className="reel-iframe-player"
+          scrolling="no"
+          frameBorder="0"
+          allowFullScreen={true}
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          loading="lazy"
+        />
+      ) : null}
+    </div>
+  );
+};
+
 export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sections, onCopy }) => {
   const reelUrl = getTopicReelUrl(topic);
   const platform = inferPlatform(topic, reelUrl);
   const platformLabel = PLATFORM_LABELS[platform] || 'Facebook';
   const embedUrl = getEmbedUrl(reelUrl, platform);
-  const [mode, setMode] = useState<'video' | 'iframe'>(topic.video_url ? 'video' : 'iframe');
 
   return (
     <article className="topic reel-card">
@@ -57,33 +94,11 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sect
         )}
       </div>
 
-      {(topic.video_url || embedUrl) && (
-        <div className="reel-player-box">
-          {mode === 'video' && topic.video_url ? (
-            <video
-              src={topic.video_url}
-              controls
-              playsInline
-              preload="metadata"
-              className="reel-video-player"
-              onError={() => {
-                if (embedUrl) setMode('iframe');
-              }}
-            />
-          ) : embedUrl ? (
-            <iframe
-              src={embedUrl}
-              title={topic.title || `Reel ${index + 1}`}
-              className="reel-iframe-player"
-              scrolling="no"
-              frameBorder="0"
-              allowFullScreen={true}
-              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-              loading="lazy"
-            />
-          ) : null}
-        </div>
-      )}
+      <ReelPlayerBox
+        videoUrl={topic.video_url}
+        embedUrl={embedUrl}
+        title={topic.title || `Reel ${index + 1}`}
+      />
 
       {sections.length > 0 && (
         <details className="reel-analysis-details">

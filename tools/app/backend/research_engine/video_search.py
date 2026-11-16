@@ -12,8 +12,12 @@ import shutil
 import subprocess
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from urllib.parse import quote, urlparse
+import urllib.request
+
 from tools.app.backend.acp import ACPClient, ACPError
 from tools.app.backend.errors import ErrorAggregator, handle_glasser_error
+from tools.app.backend.profiles import detect_platform, social_handle
 from tools.loop.viral_analyzer.glasser import (
     GlasserExecutionError,
     GlasserMissingKeyError,
@@ -40,6 +44,153 @@ def _safe_int(val: Any) -> int:
         digits = re.sub(r"[^\d]", "", val)
         return int(digits) if digits else 0
     return 0
+
+
+def _parse_compact_count(raw: str) -> int:
+    s = (raw or "").strip().upper().replace(" ", "")
+    if not s:
+        return 0
+    mult = 1
+    if s.endswith("TR"):
+        mult, s = 1_000_000, s[:-2].replace(",", ".")
+    elif s.endswith("K") or s.endswith("N"):
+        mult, s = 1_000, s[:-1].replace(",", ".")
+    elif s.endswith("M"):
+        mult, s = 1_000_000, s[:-1].replace(",", ".")
+    elif s.endswith("B"):
+        mult, s = 1_000_000_000, s[:-1].replace(",", ".")
+    else:
+        s = s.replace(",", "").replace(".", "")
+    try:
+        return int(float(s) * mult)
+    except ValueError:
+        return 0
+
+
+def _fetch_public_followers(url: str, timeout: float = 4.0, use_db_cache: bool = True) -> int:
+    """Fetch public follower/subscriber count from channel HTML (<head> 32KB for FB/IG/TT)."""
+    if not url or not url.startswith("http"):
+        return 0
+    cache_key = f"followers:{url}"
+    if use_db_cache:
+        try:
+            from tools.app.backend.db import ro
+            with ro() as conn:
+                row = conn.execute("SELECT reel_count FROM profile_cache WHERE handle = %s", (cache_key,)).fetchone()
+                if row and int(row[0] or 0) > 0:
+                    return int(row[0])
+        except Exception:
+            pass
+
+    is_yt = "youtube.com" in url
+    if is_yt:
+        ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+    elif "tiktok.com" in url:
+        ua = "facebookexternalhit/1.1"
+    else:
+        ua = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+
+    count = 0
+    for attempt in range(2):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": ua, "Accept-Language": "en-US,en;q=0.9"})
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                raw = resp.read() if is_yt else resp.read(32_768)
+                html = raw.decode("utf-8", errors="ignore")
+            if is_yt:
+                m_yt = re.search(
+                    r'"metadataParts":\[\{"text":\{"content":"([0-9]+(?:[.,][0-9]+)*\s*[KMB]?)\s+subscribers"',
+                    html,
+                    re.IGNORECASE,
+                )
+                if m_yt:
+                    count = _parse_compact_count(m_yt.group(1))
+            if not count:
+                m_json = re.search(r'"followerCount"\s*:\s*(\d+)', html)
+                if m_json:
+                    count = int(m_json.group(1))
+            if not count:
+                m = re.search(
+                    r'([0-9]+(?:[.,][0-9]+)*\s*(?:TR|[KMBN])?)\s+(?:subscribers|Followers|followers|người theo dõi|lượt thích|members|thành viên)',
+                    html,
+                    re.IGNORECASE,
+                )
+                if m:
+                    count = _parse_compact_count(m.group(1))
+            if count > 0:
+                break
+        except Exception:
+            pass
+        if attempt == 0:
+            import time
+            time.sleep(0.3)
+
+    if use_db_cache and count > 0:
+        try:
+            import time
+            from tools.app.backend.db import tx
+            from tools.app.backend.profiles import now_iso
+            with tx() as conn:
+                conn.execute(
+                    "INSERT INTO profile_cache (handle, profile_url, reels_json, status, reel_count, fetched_at, updated_at) "
+                    "VALUES (%s, %s, '[]', 'followers', %s, %s, %s) "
+                    "ON CONFLICT (handle) DO UPDATE SET reel_count = EXCLUDED.reel_count, fetched_at = EXCLUDED.fetched_at, updated_at = EXCLUDED.updated_at",
+                    (cache_key, url, count, time.time(), now_iso()),
+                )
+        except Exception:
+            pass
+    return count
+
+
+def _enrich_creator_followers(creators: List[Dict[str, Any]]) -> None:
+    """Batch-read cached follower counts from profile_cache, fetch missing ones, and batch-upsert."""
+    missing = [c for c in creators if not c.get("followers") and c.get("url")]
+    if not missing:
+        return
+    keys = [f"followers:{c['url']}" for c in missing]
+    try:
+        from tools.app.backend.db import ro
+        with ro() as conn:
+            rows = conn.execute(
+                "SELECT handle, reel_count FROM profile_cache WHERE handle = ANY(%s)",
+                (keys,),
+            ).fetchall()
+        cached_map = {r[0]: int(r[1] or 0) for r in rows if int(r[1] or 0) > 0}
+        for c in missing:
+            hit = cached_map.get(f"followers:{c['url']}")
+            if hit:
+                c["followers"] = hit
+    except Exception:
+        pass
+
+    still_missing = [c for c in missing if not c.get("followers")]
+    if not still_missing:
+        return
+
+    new_rows = []
+    with ThreadPoolExecutor(max_workers=min(6, len(still_missing))) as fpool:
+        results = fpool.map(lambda item: _fetch_public_followers(item["url"], use_db_cache=False), still_missing)
+        for c, cnt in zip(still_missing, results):
+            if cnt > 0:
+                c["followers"] = cnt
+                new_rows.append((f"followers:{c['url']}", c["url"], cnt))
+
+    if new_rows:
+        try:
+            import time
+            from tools.app.backend.db import tx
+            from tools.app.backend.profiles import now_iso
+            ts, iso = time.time(), now_iso()
+            with tx() as conn:
+                with conn.cursor() as cur:
+                    cur.executemany(
+                        "INSERT INTO profile_cache (handle, profile_url, reels_json, status, reel_count, fetched_at, updated_at) "
+                        "VALUES (%s, %s, '[]', 'followers', %s, %s, %s) "
+                        "ON CONFLICT (handle) DO UPDATE SET reel_count = EXCLUDED.reel_count, fetched_at = EXCLUDED.fetched_at, updated_at = EXCLUDED.updated_at",
+                        [(h, u, cnt, ts, iso) for h, u, cnt in new_rows],
+                    )
+        except Exception:
+            pass
 
 
 def _dedup_queries(items: List[Dict[str, str]], limit: int = 3) -> List[Dict[str, str]]:
@@ -226,6 +377,34 @@ def _normalize_youtube(data: Any, query: str) -> List[Dict[str, Any]]:
     return out
 
 
+def _infer_serper_author(url: str, real_platform: str, fallback_name: str) -> Tuple[str, str]:
+    parsed = urlparse(url)
+    parts = [p for p in parsed.path.split("/") if p]
+    if real_platform == "tiktok" and parts and parts[0].startswith("@"):
+        return social_handle(url)
+    if real_platform == "facebook" and parts:
+        if parts[0] == "groups" and len(parts) >= 2:
+            return fallback_name or f"group_{parts[1]}", f"https://www.facebook.com/groups/{parts[1]}"
+        if parts[0] not in {
+            "reel", "reels", "watch", "share", "groups", "ads", "events", "permalink.php", "story.php", "video.php",
+        }:
+            return social_handle(url)
+    if real_platform == "instagram" and parts and parts[0] not in {"reel", "reels", "p", "tv", "stories"}:
+        return social_handle(url)
+    if real_platform == "youtube":
+        if parts and (parts[0].startswith("@") or parts[0] in {"channel", "c", "user"}):
+            return social_handle(url)
+        try:
+            oembed_url = f"https://www.youtube.com/oembed?url={quote(url, safe=':/?=&')}&format=json"
+            with urllib.request.urlopen(oembed_url, timeout=3.0) as resp:
+                au = str(json.loads(resp.read().decode("utf-8")).get("author_url") or "")
+                if au:
+                    return social_handle(au)
+        except Exception:
+            pass
+    return fallback_name, ""
+
+
 def _normalize_serper_videos(data: Any, query: str, platform: str) -> List[Dict[str, Any]]:
     items = data.get("videos") or data.get("organic") or (data if isinstance(data, list) else [])
     out: List[Dict[str, Any]] = []
@@ -235,7 +414,14 @@ def _normalize_serper_videos(data: Any, query: str, platform: str) -> List[Dict[
         url = str(v.get("link") or v.get("url") or "")
         if not url:
             continue
+        real_platform = detect_platform(url)
+        if real_platform not in {"youtube", "tiktok", "instagram", "facebook"}:
+            if platform in {"youtube", "tiktok", "instagram", "facebook"}:
+                real_platform = platform
+            else:
+                continue
         author_name = str(v.get("channel") or v.get("source") or "")
+        author_handle, author_url = _infer_serper_author(url, real_platform, author_name)
         out.append({
             "video_id": str(v.get("videoId") or ""),
             "title": str(v.get("title") or ""),
@@ -247,10 +433,10 @@ def _normalize_serper_videos(data: Any, query: str, platform: str) -> List[Dict[
             "comments": 0,
             "shares": 0,
             "duration": str(v.get("duration") or ""),
-            "author_name": author_name,
-            "author_handle": author_name,
-            "author_url": "",
-            "platform": platform,
+            "author_name": author_name or author_handle,
+            "author_handle": author_handle or author_name,
+            "author_url": author_url,
+            "platform": real_platform,
             "matched_query": query,
         })
     return out
@@ -536,6 +722,7 @@ def run_viral_video_search(
             existing["top_views"] = max(existing["top_views"], v.get("views", 0))
 
     creators = sorted(creators_map.values(), key=lambda c: c["top_views"], reverse=True)
+    _enrich_creator_followers(creators)
     errors = [e.to_dict() for e in agg.all_errors()]
     notice = None if all_videos else f"Không tìm thấy video nào cho từ khoá '{keyword}'."
 
