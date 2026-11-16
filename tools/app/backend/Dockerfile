@@ -26,6 +26,9 @@ RUN if [ "$WITH_ASR" = "1" ]; then \
       && pip install --no-cache-dir "transformers>=5.13" accelerate soundfile librosa; \
     fi
 
+# Pin minimum @glasser-ai/cli version with response_file download support (after torch layer to keep cache).
+RUN npm install -g @glasser-ai/cli@0.1.135 && npm cache clean --force
+
 # Dirs exist up front (app-owned) so credential files and the HF model cache volume can be mounted into them.
 RUN useradd --create-home --uid 1000 app \
     && mkdir -p /home/app/.config/glasser /home/app/.local/share/opencode /home/app/.cache/huggingface \

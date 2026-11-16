@@ -392,11 +392,13 @@ def normalize_search_youtube(
             continue
         ch = v.get("channel") if isinstance(v.get("channel"), dict) else {}
         author_name = str(ch.get("title") or ch.get("name") or v.get("channelName") or v.get("author") or "")
-        author_handle = str(ch.get("handle") or ch.get("id") or author_name).lstrip("@")
+        raw_handle = str(ch.get("handle") or "").strip().lstrip("/")
+        author_handle = (raw_handle or str(ch.get("id") or author_name)).lstrip("@")
         raw_ch_url = str(ch.get("url") or ch.get("link") or v.get("channelUrl") or "")
         if not raw_ch_url:
-            if ch.get("handle"):
-                raw_ch_url = f"https://www.youtube.com/{ch['handle'] if str(ch['handle']).startswith('@') else '@' + str(ch['handle'])}"
+            if raw_handle:
+                path = raw_handle if raw_handle.startswith(("@", "channel/", "c/", "user/")) else f"@{raw_handle}"
+                raw_ch_url = f"https://www.youtube.com/{path}"
             elif ch.get("id"):
                 raw_ch_url = f"https://www.youtube.com/channel/{ch['id']}"
         author_followers = parse_int(ch.get("subscriberCount") or ch.get("followers") or v.get("channelFollowers"))
