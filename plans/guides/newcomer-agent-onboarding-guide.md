@@ -19,9 +19,9 @@ Explorer (150 pts)   ──>  Creator (400 pts) ──> Publisher (750 pts) ─�
 
 | Starter Flow | Prompt to Agent | Active Skills | Expected Output |
 |---|---|---|---|
-| 1. Authentic Storytelling | `Share a lesson about [topic]. Use story-engine (Jasmin Alić framework) and humanizer to remove fluff.` | [`story-engine`](../.agents/skills/story-engine/SKILL.md), [`humanizer`](../.agents/skills/humanizer/SKILL.md) | High-retention post with hook, narrative tension, conversational cadence, and zero AI filler. |
-| 2. Visual Infographic | `Create a 16:9 visual infographic summarizing [key findings] using infographic skill with modern style.` | [`infographic`](../.agents/skills/infographic/SKILL.md), [`beautiful-html-templates`](../.agents/skills/beautiful-html-templates/SKILL.md) | Responsive HTML/CSS layout with embedded charts and a 2x Retina PNG screenshot. |
-| 3. Style DNA Analysis | `Analyze the writing style of [Creator Handle] for campaign local/<slug> and save the report in its viral run folder.` | [`social-campaign`](../.agents/skills/social-campaign/SKILL.md) → [viral research](../.agents/skills/social-campaign/references/viral-analyzer.md) | Campaign-bound dossier dissecting hook formulas, rhythm, vocabulary, and platform-specific habits. |
+| 1. Authentic Storytelling | `Share a lesson about [topic]. Use story-engine (Jasmin Alić framework) and humanizer to remove fluff.` | [`story-engine`](../../.agents/skills/story-engine/SKILL.md), [`humanizer`](../../.agents/skills/humanizer/SKILL.md) | High-retention post with hook, narrative tension, conversational cadence, and zero AI filler. |
+| 2. Visual Infographic | `Create a 16:9 visual infographic summarizing [key findings] using infographic skill with modern style.` | [`infographic`](../../.agents/skills/infographic/SKILL.md), [`beautiful-html-templates`](../../.agents/skills/beautiful-html-templates/SKILL.md) | Responsive HTML/CSS layout with embedded charts and a 2x Retina PNG screenshot. |
+| 3. Style DNA Analysis | `Analyze the writing style of [Creator Handle] for campaign local/<slug> and save the report in its viral run folder.` | [`social-campaign`](../../.agents/skills/social-campaign/SKILL.md) → [viral research](../../.agents/skills/social-campaign/references/viral-analyzer.md) | Campaign-bound dossier dissecting hook formulas, rhythm, vocabulary, and platform-specific habits. |
 
 | Quest: Research & Story (250 pts) | Points | Action / Prompt | Verification Check |
 |---|---:|---|---|

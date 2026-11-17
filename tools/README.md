@@ -2,29 +2,18 @@
 
 | Tool | Purpose |
 | --- | --- |
-| [`loop/`](./loop/) | Project-agnostic metrics/review engine. Run `python -m tools.loop --project PATH --help`; each project owns its config, publications, evidence and worked comparisons. |
-| [`loop/viral_analyzer/`](./loop/viral_analyzer/) | Campaign-scoped hashtag vocabulary tools: prompt/context builder, response importer, bounded platform probes, evidence review, hashtag/keyword history and tested-target viral expansion. Tests live in [`loop/tests/`](./loop/tests/). |
-
-- [`video_edit/`](./video_edit/): Texture compositing and static-video watermark
-  removal. Run `uv run python -m tools.video_edit --help` from the repository root.
-
-- [`common/`](./common/): Shared platform-independent browser CDP diagnostics,
-  browser startup foundation, and the canonical unified post format
-  ([`samples/post.json`](./common/samples/post.json)) one platform-agnostic post
-  is resolved from for every publishing agent.
-- [`facebook_agent/`](./facebook_agent/): Direct personal-profile publishing of
-  approved text and images, optional sharing to up to 9 named groups through the
-  composer, and JSON-planned direct messaging with humanized typing and pacing,
-  using the existing `chrome-twitter-profile`.
-- [`twitter_agent/`](./twitter_agent/): Terminal-operated X DOM CLI with visible
-  browser operations, draft persistence, direct submission, attempt quotas, and
-  approved image posting.
-- [`linkedin_agent/`](./linkedin_agent/): Direct `doctor` and `post` CLI for
-  already-approved personal LinkedIn text and repeatable ordered images using
-  the shared Chrome profile. Local validation precedes browser connection;
-  JSON exits distinguish invalid input, preparation failure, and uncertain
-  submission, which preserves the tool tab for manual inspection. No supervisor
-  or automatic retry. A single-image post was verified on the live modern layout.
+| [`app/`](./app/) | Full-stack Viral Reel Analyzer & AI Video Creator ([`app/README.md`](./app/README.md)): Python [`app/backend/`](./app/backend/) (`python3 tools/app/backend/server.py --port 8765`, P1–P5 profile traffic-pool scoring, Glasser/ACP transcript & prompt generation, 15s reference-to-video engine, Meta Graph API Page DM Reel sync, micro-USD cost/credit controls, opt-in profiling) and Ionic React [`app/browser-app/`](./app/browser-app/) (`Library`, `Analyzer`, `Video`, `Profile`). |
+| [`common/`](./common/) | Shared platform-independent browser CDP diagnostics, browser startup foundation, and the canonical unified post format ([`common/samples/post.json`](./common/samples/post.json)) resolved across every publishing agent ([`common/README.md`](./common/README.md)). |
+| [`facebook_agent/`](./facebook_agent/) | Direct personal-profile and named Fanpage publishing of approved text, images, and Reels, optional sharing to up to 9 named groups through the composer, Content Library/Insights collection, following, and JSON-planned direct messaging/DM crawling with humanized pacing using `chrome-twitter-profile` ([`facebook_agent/README.md`](./facebook_agent/README.md)). |
+| [`linkedin_agent/`](./linkedin_agent/) | Direct `doctor` and `post` CLI for already-approved personal LinkedIn text and repeatable ordered images using the shared Chrome profile. Local validation precedes browser connection; JSON exits distinguish invalid input, preparation failure, and uncertain submission, preserving the tool tab for manual inspection with no automatic retry ([`linkedin_agent/README.md`](./linkedin_agent/README.md)). |
+| [`loop/`](./loop/) | Project-agnostic metrics, preflight gate, and review engine (`python3 -m tools.loop --project PATH --help`). Each project owns its config, hash-bound approvals, publications, evidence, and worked comparisons ([`loop/README.md`](./loop/README.md)). |
+| [`loop/viral_analyzer/`](./loop/viral_analyzer/) | Campaign-scoped hashtag vocabulary tools: prompt/context builder, response importer, bounded platform probes, evidence review, hashtag/keyword history, and tested-target viral expansion. Tests live in [`loop/tests/`](./loop/tests/). |
+| [`reddit-research-mcp/`](./reddit-research-mcp/) | Dialog FastMCP server for zero-credential semantic search across 20,000+ indexed subreddits, post/comment deep-dives with citations, and persistent research feeds ([`reddit-research-mcp/README.md`](./reddit-research-mcp/README.md)). |
+| [`reddit_agent/`](./reddit_agent/) | Lightweight, zero-credential Reddit Atom/RSS scraper ([`reddit_agent/research.py`](./reddit_agent/research.py)) that fetches subreddit posts and nested replies with automatic HTTP 429 rate-limit handling and JSON export. |
+| [`taktik-bot/`](./taktik-bot/) | Python, ADB, and `uiautomator2` mobile automation engine for TikTok, Instagram, YouTube, Threads, and Gmail on real Android devices ([`taktik-bot/README.md`](./taktik-bot/README.md)). |
+| [`tribeV2_ViralAnalyser/`](./tribeV2_ViralAnalyser/) | Local web app (`python3 tools/tribeV2_ViralAnalyser/app.py`) wrapping Meta TRIBE v2 (`CC BY-NC 4.0`) to review 1–4 short video ad cuts via predicted brain-response curves, 3D heatmaps, Whisper timing hints, landing-page attention maps, and visual-grid salience checks ([`tribeV2_ViralAnalyser/README.md`](./tribeV2_ViralAnalyser/README.md)). |
+| [`twitter_agent/`](./twitter_agent/) | Terminal-operated X DOM CLI with visible browser operations, draft persistence, direct reply/post submission, attempt quotas, and approved image posting ([`twitter_agent/README.md`](./twitter_agent/README.md)). |
+| [`video_edit/`](./video_edit/) | Texture compositing, corner detection, circular face overlays, and static-video watermark removal (`uv run python -m tools.video_edit --help` from the repository root; [`video_edit/README.md`](./video_edit/README.md)). |
 
 ## Hashtag generation and verification
 

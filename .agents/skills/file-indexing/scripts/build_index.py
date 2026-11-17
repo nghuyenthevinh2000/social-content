@@ -315,6 +315,8 @@ def write_outputs(
     packs = out_dir / "packs"
     filelists.mkdir(exist_ok=True)
     packs.mkdir(exist_ok=True)
+    for stale in filelists.glob("*.txt"):
+        stale.unlink()
 
     for group in groups:
         filelist = filelists / f"{group['id']}.txt"

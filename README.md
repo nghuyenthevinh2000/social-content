@@ -17,15 +17,12 @@ A modular agent toolkit and operating system for end-to-end social content creat
 ## 🚀 Quickstart & Onboarding
 
 > **Newcomer Agent Onboarding Guide:**
-> Read **[`plans/newcomer-agent-onboarding-guide.md`](./plans/newcomer-agent-onboarding-guide.md)** for the complete walkthrough:
+> Read **[`plans/guides/newcomer-agent-onboarding-guide.md`](./plans/guides/newcomer-agent-onboarding-guide.md)** for the complete feature walkthrough.
 >
-> - **4-Stage Content Engine**: The conceptual mental model connecting research, storytelling, rich visuals, and guarded publishing.
-> - **Starter Flows to Try**:
->   1. *Authentic Storytelling & Copywriting* ([`story-engine`](./.agents/skills/story-engine/SKILL.md) ➔ [`humanizer`](./.agents/skills/humanizer/SKILL.md))
->   2. *Executive Visual Infographic / Slides* ([`infographic`](./.agents/skills/infographic/SKILL.md) / [`beautiful-html-templates`](./.agents/skills/beautiful-html-templates/SKILL.md))
->   3. *Campaign-Bound Viral & Creator Research* ([`social-campaign`](./.agents/skills/social-campaign/SKILL.md) → [viral research](./.agents/skills/social-campaign/references/viral-analyzer.md))
-> - **1,000-Point Exploration Quest**: A gamified challenge rewarding agents/users for trying all 15 skills, video tools, brand OS, and guarded publishing CLIs.
-> - **Advanced Capabilities**: End-to-end Brand OS, supervised social publishing, Reddit pain-point research, and video compositing.
+
+>
+> **Contributor Agent Guide (Zero Technical Setup):**
+> Read **[`plans/guides/contributor-agent-guide.md`](./plans/guides/contributor-agent-guide.md)** for a single copy-paste prompt that lets your agent interview you in plain English, compare your daily workflow against [`.agents/skills/`](./.agents/skills/) and [`tools/`](./tools/), write a report to [`plans/comparison/`](./plans/comparison/), and automatically commit + open a Pull Request.
 
 ## 🛠 Available Skills Catalog
 
@@ -55,13 +52,18 @@ All skills live in [`.agents/skills/`](./.agents/skills/) and can be loaded dyna
 
 Deterministic local tools for supervised, human-in-the-loop social actions. Read more in [`tools/README.md`](./tools/README.md).
 
-- [`tools/loop/`](./tools/loop/): Project-agnostic metrics, review and guarded publication-state engine.
-- [`tools/linkedin_agent/`](./tools/linkedin_agent/): Direct CLI for approved personal LinkedIn text and ordered image posts.
-- [`tools/twitter_agent/`](./tools/twitter_agent/): Terminal-operated X DOM CLI for reply submission and approved image posting.
-- [`tools/facebook_agent/`](./tools/facebook_agent/): Direct publishing to personal profile or named Fanpage with optional group sharing.
-- [`tools/reddit-research-mcp/`](./tools/reddit-research-mcp/): Semantic community discovery and audience pain-point mining.
-- [`tools/video_edit/`](./tools/video_edit/): Video watermark removal and OpenCV texture compositing.
+- [`tools/app/`](./tools/app/): Full-stack Viral Reel Analyzer & AI Video Creator (Python backend + Ionic React app).
 - [`tools/common/`](./tools/common/): Shared browser startup, CDP diagnostics, and canonical unified post format ([`samples/post.json`](./tools/common/samples/post.json)).
+- [`tools/facebook_agent/`](./tools/facebook_agent/): Direct publishing to personal profile or named Fanpage, Reels, Insights, DMs, and optional group sharing.
+- [`tools/linkedin_agent/`](./tools/linkedin_agent/): Direct CLI for approved personal LinkedIn text and ordered image posts.
+- [`tools/loop/`](./tools/loop/): Project-agnostic metrics, preflight gate, review, and guarded publication-state engine.
+- [`tools/loop/viral_analyzer/`](./tools/loop/viral_analyzer/): Campaign-scoped hashtag vocabulary generation, bounded platform probes, and viral expansion.
+- [`tools/reddit-research-mcp/`](./tools/reddit-research-mcp/): Dialog FastMCP server for semantic community discovery and audience pain-point mining.
+- [`tools/reddit_agent/`](./tools/reddit_agent/): Zero-credential Reddit Atom/RSS scraper with rate-limit handling and JSON export.
+- [`tools/taktik-bot/`](./tools/taktik-bot/): Python, ADB, and `uiautomator2` mobile automation for TikTok, Instagram, YouTube, Threads, and Gmail.
+- [`tools/tribeV2_ViralAnalyser/`](./tools/tribeV2_ViralAnalyser/): Local web app wrapping Meta TRIBE v2 for video ad brain-response, landing-page, and visual-grid attention reviews.
+- [`tools/twitter_agent/`](./tools/twitter_agent/): Terminal-operated X DOM CLI for reply submission and approved image posting.
+- [`tools/video_edit/`](./tools/video_edit/): Video watermark removal, circular face overlays, and OpenCV texture compositing.
 
 ---
 
