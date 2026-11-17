@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unified Multi-Scene UGC Video Engine (Gemini Omni 1.1 Flash I2V Chaining + ElevenLabs eleven_v3 Auto-Sync + Seamless Seam Editor)."""
+"""Unified Multi-Scene UGC Video Engine (Gemini Omni I2V Chaining + ElevenLabs eleven_v3 Auto-Sync + Seamless Seam Editor)."""
 
 import argparse
 import base64
@@ -10,12 +10,14 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from match_lighting import compute_ml_scene_luts
+from match_lighting import DEFAULT_MODEL, compute_ml_scene_luts
 from normalize_video import normalize_video
 from synthesize_eleven_v3 import load_env, synthesize_eleven_v3
+from track_lip_movement import compute_ml_lip_synced_bounds
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-PROJECT_DIR = Path(__file__).resolve().parents[2]
+_HERE = Path(__file__).resolve()
+REPO_ROOT = next((p for p in _HERE.parents if (p / "projects/ugc-video").is_dir()), _HERE.parents[4])
+PROJECT_DIR = REPO_ROOT / "projects/ugc-video"
 SEAM_OVERLAP_SEC = 1.0 / 24.0  # 1-frame (0.0417s) blend merges duplicate anchor [s1_end, s2_frame0] without ghosting
 
 
@@ -79,7 +81,13 @@ def resolve_creator_defaults(cfg: dict, config_path: Path | None = None) -> dict
     return cfg
 
 
-def build_prompt(cfg: dict, scene: dict, is_first_scene: bool, safe_fallback: bool = False) -> str:
+def build_prompt(
+    cfg: dict,
+    scene: dict,
+    is_first_scene: bool,
+    safe_fallback: bool = False,
+    ref_roles: list[str] | None = None,
+) -> str:
     cam = scene.get("camera") or cfg["camera"]
     env = scene.get("environment") or cfg["environment"]
     subj = (
@@ -96,13 +104,25 @@ def build_prompt(cfg: dict, scene: dict, is_first_scene: bool, safe_fallback: bo
         dialogue = scene.get("visual_dialogue") or " ".join(c["text"] if isinstance(c, dict) else c for c in scene["clauses"])
     tmpl = cfg.get("audio_description_template", "{dialogue}")
     audio_desc = scene.get("audio_description") or cfg.get("audio_description") or tmpl.format(dialogue=dialogue)
-    return (
-        f"[CAMERA & COMPOSITION]\n{cam}\n\n"
-        f"[ENVIRONMENT & ATMOSPHERE]\n{env}\n\n"
-        f"[SUBJECT & CONTINUITY]\n{subj}\n\n"
-        f"[ACTION & TIMECODE]\n{actions}\n\n"
-        f"[AUDIO & DIALOGUE]\n{audio_desc}"
-    )
+
+    realism_keys = ("skin_texture", "lighting_prompt", "scale", "physics", "imperfection", "camera_look")
+    realism_lines = [val for k in realism_keys if (val := scene.get(k) or cfg.get(k))]
+
+    sections = []
+    if ref_roles:
+        sections.append("[REFERENCE MAPPING]\n" + "\n".join(ref_roles))
+    sections.extend([
+        f"[CAMERA & COMPOSITION]\n{cam}",
+        f"[ENVIRONMENT & ATMOSPHERE]\n{env}",
+        f"[SUBJECT & CONTINUITY]\n{subj}",
+    ])
+    if realism_lines:
+        sections.append("[REALISM & PHYSICS]\n" + "\n".join(realism_lines))
+    sections.extend([
+        f"[ACTION & TIMECODE]\n{actions}",
+        f"[AUDIO & DIALOGUE]\n{audio_desc}",
+    ])
+    return "\n\n".join(sections)
 
 
 def resolve_resolution(val: str | int | None = None) -> str:
@@ -110,6 +130,29 @@ def resolve_resolution(val: str | int | None = None) -> str:
     if s not in ("360", "720"):
         raise ValueError(f"Unsupported quality/resolution '{val}'. Allowed: 360p, 720p.")
     return f"{s}p"
+
+
+FIRST_SCENE_REF_SPECS = (
+    ("face_image", "character face (identity only)"),
+    ("clothes_image", "character clothing/outfit"),
+    ("background_image", "empty location/background (keep scene layout and anchors)"),
+    ("product_image", "product prop"),
+    ("storyboard_frame", "approved storyboard frame (copy composition and subject scale in frame)"),
+)
+
+
+def resolve_scene_refs(cfg: dict, scene: dict, is_first_scene: bool, persona_dir: Path) -> tuple[list[Path], list[str]]:
+    if not is_first_scene:
+        return [], ["<IMAGE_REF_0> = exact ending frame of previous scene"]
+    ref_paths, ref_roles = [], []
+    for key, desc in FIRST_SCENE_REF_SPECS:
+        val = scene.get(key) or cfg.get(key)
+        if not val:
+            continue
+        ref_path = resolve_path(val, persona_dir)
+        ref_roles.append(f"<IMAGE_REF_{len(ref_paths)}> = {desc} ({ref_path.name})")
+        ref_paths.append(ref_path)
+    return ref_paths, ref_roles
 
 
 def render_scene(
@@ -131,28 +174,25 @@ def render_scene(
     load_env()
     gcp_project = cfg.get("gcp_project") or os.environ.get("GOOGLE_CLOUD_PROJECT")
     gcp_location = cfg.get("gcp_location", "global")
-    client = genai.Client(vertexai=True, project=gcp_project, location=gcp_location)
-    model = cfg["video_model"]
+    client = genai.Client(enterprise=True, project=gcp_project, location=gcp_location)
+    model = scene.get("video_model") or cfg["video_model"]
     aspect_ratio = scene.get("aspect_ratio") or cfg.get("aspect_ratio", "9:16")
     scene_duration = scene.get("duration") or cfg.get("scene_duration", "10s")
     resolution = resolve_resolution(
         quality or scene.get("quality") or scene.get("resolution") or cfg.get("quality") or cfg.get("resolution") or "360p"
     )
-    prompt = build_prompt(cfg, scene, is_first_scene=(idx == 1))
-
     persona_dir = Path(cfg.get("_persona_dir", PROJECT_DIR))
+    ref_paths, ref_roles = resolve_scene_refs(cfg, scene, is_first_scene=(idx == 1), persona_dir=persona_dir)
     if idx == 1:
-        face_b64 = base64.b64encode(resolve_path(cfg["face_image"], persona_dir).read_bytes()).decode("utf-8")
-        clothes_b64 = base64.b64encode(resolve_path(cfg["clothes_image"], persona_dir).read_bytes()).decode("utf-8")
         inputs = [
-            {"type": "image", "data": face_b64, "mime_type": "image/jpeg"},
-            {"type": "image", "data": clothes_b64, "mime_type": "image/jpeg"},
+            {
+                "type": "image",
+                "data": base64.b64encode(p.read_bytes()).decode("utf-8"),
+                "mime_type": "image/png" if p.suffix.lower() == ".png" else "image/jpeg",
+            }
+            for p in ref_paths
         ]
-        if cfg.get("product_image"):
-            prod_path = resolve_path(cfg["product_image"], persona_dir)
-            prod_b64 = base64.b64encode(prod_path.read_bytes()).decode("utf-8")
-            inputs.append({"type": "image", "data": prod_b64, "mime_type": "image/jpeg"})
-            print(f"  [Scene 1] Anchoring face + clothes + product image ({prod_path.name} as <IMAGE_REF_2>)...")
+        prompt = build_prompt(cfg, scene, is_first_scene=True, ref_roles=ref_roles)
         inputs.append({"type": "text", "text": prompt})
         gen_cfg = None
     else:
@@ -163,6 +203,7 @@ def render_scene(
             check=True,
         )
         frame_b64 = base64.b64encode(last_frame_jpg.read_bytes()).decode("utf-8")
+        prompt = build_prompt(cfg, scene, is_first_scene=False, ref_roles=ref_roles)
         inputs = [
             {"type": "image", "data": frame_b64, "mime_type": "image/jpeg"},
             {"type": "text", "text": prompt},
@@ -184,7 +225,10 @@ def render_scene(
     except Exception as e:
         if "safety" in str(e).lower() or "harmful" in str(e).lower():
             print(f"  [Scene {idx}] Safety filter triggered on raw prompt; retrying automatically with neutral visual dialogue...")
-            inputs[-1] = {"type": "text", "text": build_prompt(cfg, scene, is_first_scene=(idx == 1), safe_fallback=True)}
+            inputs[-1] = {
+                "type": "text",
+                "text": build_prompt(cfg, scene, is_first_scene=(idx == 1), safe_fallback=True, ref_roles=ref_roles),
+            }
             interaction = client.interactions.create(**kwargs)
         else:
             raise
@@ -212,152 +256,22 @@ def get_video_duration(video_path: Path) -> float:
     return float(res.stdout.strip() or 10.0)
 
 
-def merge_closest_windows(windows: list[tuple[float, float]], target_count: int) -> list[tuple[float, float]]:
-    """Greedily merge adjacent speech windows with the smallest silence gap until count == target_count."""
-    w = list(windows)
-    while len(w) > target_count and len(w) > 1:
-        gaps = [(w[i + 1][0] - w[i][1], i) for i in range(len(w) - 1)]
-        _, idx = min(gaps)
-        w[idx : idx + 2] = [(w[idx][0], w[idx + 1][1])]
-    return w
-
-
-def detect_scene_speech_windows(video_path: Path, is_last_scene: bool) -> list[tuple[float, float]]:
-    dur = get_video_duration(video_path)
-    max_end = round(dur - 0.08, 2)
-    res = subprocess.run(
-        ["ffmpeg", "-i", str(video_path), "-af", "silencedetect=noise=-30dB:d=0.18", "-f", "null", "-"],
-        stderr=subprocess.PIPE,
-        text=True,
-        check=True,
-    )
-    starts = [float(x) for x in re.findall(r"silence_start:\s*([0-9.]+)", res.stderr)]
-    ends = [float(x) for x in re.findall(r"silence_end:\s*([0-9.]+)", res.stderr)]
-    speech = []
-    cur = 0.0
-    for s_start, s_end in zip(starts, ends + [dur]):
-        # Drop only spurious false-start syllables that begin in the last 0.65s of non-final scenes
-        if s_start - cur >= 0.30 and (is_last_scene or cur < dur - 0.65):
-            speech.append((round(max(cur, 0.15), 2), round(min(s_start, max_end), 2)))
-        cur = s_end
-    if dur - cur >= 0.30 and (is_last_scene or cur < dur - 0.65):
-        speech.append((round(max(cur, 0.15), 2), max_end))
-    return speech or [(0.18, max_end)]
-
-
-def extract_scene_words(align: dict, start_char: int, end_char: int) -> list[tuple[str, float, float]]:
-    chars = align["characters"]
-    starts = align["characterStartTimesSeconds"]
-    ends = align["characterEndTimesSeconds"]
-    words, cur_w, w_s, w_e = [], [], None, None
-    for idx in range(start_char, end_char):
-        ch = chars[idx]
-        if not ch.isspace():
-            if w_s is None:
-                w_s = starts[idx]
-            w_e = ends[idx]
-            cur_w.append(ch)
-        elif cur_w and w_s is not None and w_e is not None:
-            words.append(("".join(cur_w), float(w_s), float(w_e)))
-            cur_w, w_s = [], None
-    if cur_w and w_s is not None and w_e is not None:
-        words.append(("".join(cur_w), float(w_s), float(w_e)))
-    return words
-
-
-def partition_words_to_windows_dp(
-    words: list[tuple[str, float, float]], windows: list[tuple[float, float]]
-) -> list[tuple[float, float, float, float]]:
-    """Map TTS words strictly into detected mouth-open windows via DP so zero audio plays while lips are closed."""
-    n_w = len(words)
-    wins = merge_closest_windows(windows, min(len(windows), n_w))
-    m_win = len(wins)
-    if m_win == 1:
-        return [(words[0][1], words[-1][2], wins[0][0], wins[0][1])]
-
-    win_durs = [max(0.15, e - s) for s, e in wins]
-    win_gaps = [wins[j + 1][0] - wins[j][1] for j in range(m_win - 1)] + [0.0]
-    total_tts = sum(e - s for _, s, e in words)
-    avg_tempo = total_tts / max(0.2, sum(win_durs))
-    dp = [[(1e9, -1)] * n_w for _ in range(m_win)]
-
-    def seg_cost(i: int, k: int, j: int) -> float:
-        tts_dur = max(0.08, words[k][2] - words[i][1])
-        tempo = tts_dur / win_durs[j]
-        cost = ((tempo - avg_tempo) / max(0.5, avg_tempo)) ** 2 * 4.0
-        if tempo > 1.45:
-            cost += (tempo - 1.45) ** 2 * 25.0
-        elif tempo < 0.72:
-            cost += (0.72 - tempo) ** 2 * 20.0
-        if j < m_win - 1:
-            last_ch = words[k][0][-1]
-            tts_gap = max(0.0, words[k + 1][1] - words[k][2])
-            gap_weight = 1.5 if win_gaps[j] >= 0.5 else 1.0
-            if last_ch in ".?!":
-                cost -= 1.4 * gap_weight
-            elif last_ch in ",;:":
-                cost -= 0.95 * gap_weight
-            else:
-                cost += 0.85 * gap_weight
-            cost -= min(0.6, tts_gap * 2.5) * gap_weight
-        return cost
-
-    for k in range(0, n_w - (m_win - 1)):
-        dp[0][k] = (seg_cost(0, k, 0), -1)
-    for j in range(1, m_win):
-        for k in range(j, n_w - (m_win - 1 - j)):
-            best = (1e9, -1)
-            for prev_k in range(j - 1, k):
-                cand = dp[j - 1][prev_k][0] + seg_cost(prev_k + 1, k, j)
-                if cand < best[0]:
-                    best = (cand, prev_k)
-            dp[j][k] = best
-
-    res = []
-    cur_k = n_w - 1
-    for j in range(m_win - 1, -1, -1):
-        prev_k = dp[j][cur_k][1]
-        start_i = prev_k + 1
-        res.append((words[start_i][1], words[cur_k][2], wins[j][0], wins[j][1]))
-        cur_k = prev_k
-    res.reverse()
-    return res
-
-
 def resolve_clause_windows(
     scenes: list[dict], scene_videos: list[Path], align_path: Path
 ) -> list[tuple[float, float, float, float]]:
     resolved = []
-    num_scenes = len(scenes)
     scene_offset = 0.0
-    align = json.loads(align_path.read_text(encoding="utf-8"))
-    full_str = "".join(align["characters"])
-    search_from = 0
-
-    for s_idx, (scene, video_path) in enumerate(zip(scenes, scene_videos)):
+    for scene, video_path in zip(scenes, scene_videos):
         raw_clauses = scene["clauses"]
         clause_texts = [c["text"] if isinstance(c, dict) else c for c in raw_clauses]
-        scene_text = " ".join(clause_texts)
-        idx = full_str.find(scene_text, search_from)
-        assert idx != -1, f"Scene text not found in alignment JSON: {scene_text}"
-        end_idx = idx + len(scene_text)
-        search_from = end_idx
-
-        if all(isinstance(c, dict) and "window" in c for c in raw_clauses):
-            src_bounds = parse_tts_clause_bounds(align_path, clause_texts)
-            local_windows = [(float(c["window"][0]), float(c["window"][1])) for c in raw_clauses]
-            scene_pairs = [
-                (s_s, s_e, loc_s, loc_e) for (s_s, s_e), (loc_s, loc_e) in zip(src_bounds, local_windows)
-            ]
-        else:
-            detected = detect_scene_speech_windows(video_path, is_last_scene=(s_idx == num_scenes - 1))
-            words = extract_scene_words(align, idx, end_idx)
-            scene_pairs = partition_words_to_windows_dp(words, detected)
-
-        for s_s, s_e, loc_s, loc_e in scene_pairs:
+        assert all(isinstance(c, dict) and "window" in c for c in raw_clauses), (
+            "resolve_clause_windows requires explicit 'window' on all clauses; use compute_ml_lip_synced_bounds()."
+        )
+        src_bounds = parse_tts_clause_bounds(align_path, clause_texts)
+        local_windows = [(float(c["window"][0]), float(c["window"][1])) for c in raw_clauses]
+        for (s_s, s_e), (loc_s, loc_e) in zip(src_bounds, local_windows):
             resolved.append((round(s_s, 3), round(s_e, 3), round(scene_offset + loc_s, 2), round(scene_offset + loc_e, 2)))
         scene_offset += get_video_duration(video_path) - SEAM_OVERLAP_SEC
-
     return resolved
 
 
@@ -409,7 +323,11 @@ def run_pipeline(config_path: Path, quality: str | None = None) -> Path:
     voice_id = cfg["voice_id"]
     raw_mp3, align_json = synthesize_eleven_v3(voice_id, all_clause_texts, work_dir, cfg=cfg)
 
-    mapped_bounds = resolve_clause_windows(scenes, scene_videos, align_json)
+    if any(isinstance(c, dict) and "window" in c for s in scenes for c in s["clauses"]):
+        mapped_bounds = resolve_clause_windows(scenes, scene_videos, align_json)
+    else:
+        assert DEFAULT_MODEL.exists(), f"Missing MediaPipe face landmarker model: {DEFAULT_MODEL}"
+        mapped_bounds, _ = compute_ml_lip_synced_bounds(cfg, scene_videos, raw_mp3, align_json, DEFAULT_MODEL)
     (work_dir / "clause_bounds.json").write_text(
         json.dumps([list(b) for b in mapped_bounds], indent=2), encoding="utf-8"
     )
@@ -524,8 +442,13 @@ def analyze_reference_reel(url_or_path: str, config_path: Path | None = None) ->
     prompt = (
         "Phân tích video/audio này để clone sang kịch bản UGC ngắn:\n"
         "1. Chép lại transcript chính xác.\n"
-        "2. Tóm tắt chủ đề, nỗi đau (pain point), cấu trúc Hook - Body - Kết.\n"
-        "3. Đề xuất các phân cảnh 10s (mỗi cảnh tổng 18-24 chữ tiếng Việt để tốc độ đọc 1.0x-1.15x)."
+        "2. Trả lời 4 câu hỏi cốt lõi của câu chuyện:\n"
+        "   - Nhân vật muốn gì?\n"
+        "   - Vì sao phải làm điều đó ngay bây giờ?\n"
+        "   - Điều gì cản đường họ?\n"
+        "   - Cái kết có trả lời được câu 'để làm gì?' không?\n"
+        "3. Tóm tắt chủ đề, nỗi đau (pain point), cấu trúc Hook - Body - Kết.\n"
+        "4. Đề xuất các phân cảnh 10s (mỗi cảnh tổng 18-24 chữ tiếng Việt để tốc độ đọc 1.0x-1.15x)."
     )
     res = client.models.generate_content(model=analysis_model, contents=[part, prompt])
     print(res.text)
@@ -538,16 +461,34 @@ def run_self_check() -> None:
     assert cfg["voice_id"] == "a95xm5oG7Gvnxoyv5jeJ", cfg
     assert resolve_config_path("ngat") == (PROJECT_DIR / "ngat/config.json").resolve()
     assert resolve_config_path("diep") == (PROJECT_DIR / "diep/config.json").resolve()
-    sc = {"actions": ["act"], "clauses": ["sensitive text"]}
-    p_safe = build_prompt(cfg, sc, is_first_scene=True, safe_fallback=True)
+    sc = {"actions": ["act"], "clauses": ["sensitive text"], "scale": "one quarter of frame height", "skin_texture": "visible pores"}
+    p_safe = build_prompt(cfg, sc, is_first_scene=True, safe_fallback=True, ref_roles=["<IMAGE_REF_0> = character face"])
     assert "sensitive text" not in p_safe and "sự bình yên" in p_safe
-    words = [("Câu", 0.0, 0.5), ("một.", 0.6, 1.2), ("Câu", 1.5, 2.0), ("hai.", 2.1, 2.8)]
-    wins = partition_words_to_windows_dp(words, [(0.5, 1.8), (2.5, 4.0)])
-    assert wins == [(0.0, 1.2, 0.5, 1.8), (1.5, 2.8, 2.5, 4.0)], wins
+    assert "[REFERENCE MAPPING]" in p_safe and "<IMAGE_REF_0> = character face" in p_safe
+    assert "[REALISM & PHYSICS]" in p_safe and "visible pores" in p_safe
+    assert "one quarter of frame height" in p_safe
+    p_plain = build_prompt(cfg, {"actions": ["act"], "clauses": ["hi"]}, is_first_scene=True)
+    assert "[REALISM & PHYSICS]" not in p_plain
+    assert DEFAULT_MODEL.exists(), f"Missing MediaPipe model: {DEFAULT_MODEL}"
+    assert callable(compute_ml_lip_synced_bounds)
     assert resolve_resolution() == "360p"
     assert resolve_resolution("360") == "360p" and resolve_resolution("360p") == "360p"
     assert resolve_resolution("720") == "720p" and resolve_resolution("720p") == "720p"
     print("engine.py self_check passed.")
+
+
+def print_prompts(config_path: Path, quality: str | None = None) -> None:
+    config_path = resolve_config_path(config_path)
+    cfg = resolve_creator_defaults(json.loads(config_path.read_text(encoding="utf-8")), config_path)
+    persona_dir = Path(cfg["_persona_dir"])
+    for idx, scene in enumerate(cfg["scenes"], start=1):
+        model = scene.get("video_model") or cfg["video_model"]
+        dur = scene.get("duration") or cfg.get("scene_duration", "10s")
+        res = resolve_resolution(quality or scene.get("quality") or cfg.get("quality") or "360p")
+        _, ref_roles = resolve_scene_refs(cfg, scene, is_first_scene=(idx == 1), persona_dir=persona_dir)
+        print(f"=== Scene {idx} ({model}, {dur}, {res}) ===")
+        print(build_prompt(cfg, scene, is_first_scene=(idx == 1), ref_roles=ref_roles))
+        print()
 
 
 def main() -> None:
@@ -559,9 +500,10 @@ def main() -> None:
         dest="quality",
         choices=["360", "360p", "720", "720p"],
         default=None,
-        help="Video generation quality for gemini-omni-1.1-flash-preview: 360p (default) or 720p",
+        help="Video generation quality/resolution: 360p (default) or 720p",
     )
     parser.add_argument("--analyze-reel", type=str, help="Download and analyze reference reel URL or local MP4")
+    parser.add_argument("--print-prompt", "--dry-run", action="store_true", help="Print resolved scene prompts without generating video")
     parser.add_argument("--check", action="store_true", help="Run fast self-check")
     args = parser.parse_args()
     if args.check:
@@ -572,6 +514,9 @@ def main() -> None:
         return
     if not args.config:
         parser.error("Provide a config JSON path, --analyze-reel <URL>, or --check")
+    if args.print_prompt:
+        print_prompts(args.config, quality=args.quality)
+        return
     out = run_pipeline(args.config, quality=args.quality)
     assert out.exists() and out.stat().st_size > 100_000, f"Output check failed: {out}"
 

@@ -1,0 +1,37 @@
+{
+  "slug": "ngat_hill_counting_15s",
+  "creator": "ngat",
+  "video_model": "gemini-omni-1.2-flash",
+  "voice_id": "a95xm5oG7Gvnxoyv5jeJ",
+  "quality": "360p",
+  "work_dir": "renders/ngat_hill_counting_15s",
+  "output_path": "renders/ngat_hill_counting_15s/ngat_hill_counting_15s_web_optimized.mp4",
+  "camera": "Vertical 9:16 handheld mobile camera moving slightly ahead of her on a grassy hillside trail, natural footsteps bounce, slight tilt, and focus breathing. Frame keeps her upper body and raised counting hand clearly inside the safe center zone. Pristine clean camera footage, absolutely no watermarks, no logos, no text overlays, no usernames.",
+  "environment": "Open grassy hillside trail in late afternoon, wind-bent tall wild grass, scattered gravel and dirt path, distant rolling hills under soft haze.",
+  "subject_first_scene": "Adult 30-year-old East Asian female speaker matching <IMAGE_REF_0> wearing the white casual crewneck t-shirt and soft pink headband in <IMAGE_REF_1>. Walking uphill naturally while counting sequentially from 1 to 5 on her right hand at chest height.",
+  "skin_texture": "Real skin: visible pores, fine sweat at the temple, sun-flushed cheeks, natural dry lips, realistic hand knuckles and skin creases.",
+  "lighting_prompt": "Hard late-afternoon sun from the upper left, one side of her face, shoulder, and counting fingers warmly lit, the other side in natural shadow.",
+  "scale": "Her upper-to-mid body fills about half of the frame height so both her raised counting hand and the wide grassy hill keep their real scale.",
+  "physics": "Footsteps press into loose dirt and grass with natural stride bob; realistic right-hand biomechanics with five anatomically accurate fingers—each finger uncurls sequentially one by one (index, middle, ring, pinky, thumb) with natural knuckle flexion, tendon tension, and slight wrist inertia matching her walking rhythm, never morphing or adding extra fingers; breeze whips stray hair strands and t-shirt hem.",
+  "imperfection": "Slightly off-centre framing, wind-tangled hair strands, uneven wild grass and gravel on the trail.",
+  "audio_description_template": "Clear spoken Vietnamese dialogue with natural northern cadence: \"{dialogue}\". Natural outdoor wind, footsteps on gravel, and cloth rustle only. No background music, no soundtrack.",
+  "scenes": [
+    {
+      "duration": "15s",
+      "actions": [
+        "00:00 - 00:01.5: Walking uphill on the dirt and grass path, she raises her right hand at chest level in a relaxed closed fist (palm 3/4 toward camera) and uncurls ONLY her index finger at the exact moment her lips say \"Một\" (1 finger up).",
+        "00:01.5 - 00:03.0: Continuing her uphill stride, she uncurls her middle finger beside the index finger at the exact moment her lips say \"hai\" (2 fingers up; ring, pinky, and thumb stay curled).",
+        "00:03.0 - 00:04.5: She uncurls her ring finger at the exact moment her lips say \"ba\" (3 fingers up; pinky and thumb stay curled).",
+        "00:04.5 - 00:06.0: She uncurls her pinky finger at the exact moment her lips say \"bốn\" (4 fingers up; thumb stays folded).",
+        "00:06.0 - 00:07.5: She opens her thumb wide at the exact moment her lips say \"năm\" so all 5 fingers are clearly spread.",
+        "00:07.5 - 00:11.5: Keeping her stride steady uphill, she relaxes her open hand gently as she speaks \"mỗi bước đi lên ngọn đồi này đều cần một nhịp thở thật chậm,\".",
+        "00:11.5 - 00:15.0: She lowers her hand naturally beside her as she finishes speaking \"đủ năm nhịp rồi mình thấy lòng nhẹ hẳn.\" with a calm grounded smile."
+      ],
+      "clauses": [
+        "Một, hai, ba, bốn, năm,",
+        "mỗi bước đi lên ngọn đồi này đều cần một nhịp thở thật chậm,",
+        "đủ năm nhịp rồi mình thấy lòng nhẹ hẳn."
+      ]
+    }
+  ]
+}

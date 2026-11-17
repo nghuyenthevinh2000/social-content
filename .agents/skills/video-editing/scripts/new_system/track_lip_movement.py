@@ -31,10 +31,9 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
-from match_lighting import compute_ml_scene_luts, resolve_persona_config
+from match_lighting import PROJECT_DIR, compute_ml_scene_luts, resolve_persona_config
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = SCRIPT_DIR.parent.parent
 
 
 def extract_scene_lip_signal(
@@ -222,7 +221,7 @@ def compute_ml_lip_synced_bounds(
                 t_e = round(t_s + eff_dur, 2)
             else:
                 t_s = round(cum_offset + v_s, 2)
-                t_e = round(t_s + eff_dur, 2)
+                t_e = min(round(t_s + eff_dur, 2), round(cum_offset + scene_dur, 2))
 
             print(
                 f"  {phrase:36s} | TTS [{r_s:6.3f}-{r_e:6.3f}] ({src_dur:4.2f}s) -> "

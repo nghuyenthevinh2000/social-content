@@ -20,7 +20,8 @@ import mediapipe as mp
 import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = SCRIPT_DIR.parent.parent
+REPO_ROOT = next((p for p in SCRIPT_DIR.parents if (p / "projects/ugc-video").is_dir()), SCRIPT_DIR.parents[3])
+PROJECT_DIR = REPO_ROOT / "projects/ugc-video"
 DEFAULT_MODEL = PROJECT_DIR / "models/face_landmarker.task"
 
 # MediaPipe 478-landmark indices for forehead, nose bridge, and left/right malar cheeks

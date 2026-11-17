@@ -1,0 +1,30 @@
+{
+  "slug": "ngat_walking_hill",
+  "creator": "ngat",
+  "video_model": "gemini-omni-1.2-flash-preview",
+  "quality": "360p",
+  "work_dir": "renders/ngat_walking_hill",
+  "output_path": "renders/ngat_walking_hill/ngat_walking_hill_web_optimized.mp4",
+  "camera": "Vertical 9:16 handheld mobile camera moving slightly ahead of her on a hillside trail, natural footsteps bounce, slight tilt, and focus breathing. Pristine clean camera footage, absolutely no watermarks, no logos, no text overlays, no usernames.",
+  "environment": "Open grassy hillside trail in late afternoon, wind-bent tall wild grass, scattered gravel and dirt path, distant rolling hills under soft haze.",
+  "subject_first_scene": "Adult 30-year-old East Asian female speaker matching <IMAGE_REF_0> wearing the white casual crewneck t-shirt and soft pink headband in <IMAGE_REF_1>. Walking uphill naturally along the trail while speaking with calm, reflective warmth.",
+  "skin_texture": "Real skin: visible pores, fine sweat at the temple, sun-flushed cheeks, natural dry lips.",
+  "lighting_prompt": "Hard late-afternoon sun from the upper left, one side of her face and shoulder warmly lit, the other side in deep natural shadow.",
+  "scale": "Her body fills about half of the frame height so the wide grassy hill and sky keep their real scale.",
+  "physics": "Footsteps press into loose dirt and grass, small pebbles shift underfoot, breeze whips stray hair strands and the hem of her white t-shirt.",
+  "imperfection": "Slightly off-centre framing, wind-tangled hair strands, uneven wild grass and dirt on the trail.",
+  "audio_description_template": "Clear spoken Vietnamese dialogue with natural northern cadence: \"{dialogue}\". Natural outdoor wind, footsteps on gravel, and cloth rustle only. No background music, no soundtrack.",
+  "scenes": [
+    {
+      "actions": [
+        "00:00 - 00:03: She walks steadily uphill along the narrow dirt and grass path, glancing briefly at the trail ahead while speaking naturally.",
+        "00:03 - 00:07: She continues walking up the slope, gesturing lightly with one hand as the breeze brushes her hair, speaking earnestly toward the camera.",
+        "00:07 - 00:10: She slows near the crest of the hill, takes a gentle breath with a calm grounded expression, and finishes her thought."
+      ],
+      "clauses": [
+        "Đôi khi mình chỉ cần đi bộ lên một ngọn đồi lộng gió,",
+        "để thấy mọi lo âu thường ngày tự nhiên nhỏ lại hẳn."
+      ]
+    }
+  ]
+}
