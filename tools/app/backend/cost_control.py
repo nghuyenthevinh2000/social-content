@@ -31,6 +31,7 @@ if str(WORKSPACE) not in sys.path:
     sys.path.insert(0, str(WORKSPACE))
 
 from tools.app.backend.db import ro, tx
+from tools.loop.viral_analyzer.platforms import get_platform
 
 logger = logging.getLogger(__name__)
 
@@ -48,23 +49,6 @@ TRANSCRIPT_ENDPOINTS = frozenset({
     "/v1/tiktok/video/transcript",
     "/v2/instagram/media/transcript",
 })
-
-_FB_TRANSCRIPT_URL_RE = re.compile(
-    r"^https?://(?:[\w.-]+\.)?facebook\.com/(?:reel/\d+|[^/]+/videos/\d+|watch/?\?(?:[^#]*&)?v=\d+)",
-    re.IGNORECASE,
-)
-_YT_TRANSCRIPT_URL_RE = re.compile(
-    r"^https?://(?:(?:[\w.-]+\.)?youtube\.com/(?:watch/?\?(?:[^#]*&)?v=|shorts/)[A-Za-z0-9_-]{6,}|youtu\.be/[A-Za-z0-9_-]{6,})",
-    re.IGNORECASE,
-)
-_TT_TRANSCRIPT_URL_RE = re.compile(
-    r"^https?://(?:[\w.-]+\.)?tiktok\.com/(?:@[\w.-]+/(?:video|photo)/\d+|t/[A-Za-z0-9_-]+|[A-Za-z0-9_-]+)",
-    re.IGNORECASE,
-)
-_IG_TRANSCRIPT_URL_RE = re.compile(
-    r"^https?://(?:[\w.-]+\.)?instagram\.com/(?:[\w.-]+/)?(?:reels?|p|tv)/[A-Za-z0-9_-]+",
-    re.IGNORECASE,
-)
 
 ACTION_BUDGETS: Dict[str, Dict[str, int]] = {
     "keyword_search": {"max_calls": 18, "max_cost_micro": 35_000},
@@ -147,20 +131,27 @@ def submit_with_context(executor: Any, fn: Callable[..., Any], *args: Any, **kwa
     return executor.submit(ctx.run, fn, *args, **kwargs)
 
 
+def _matches_platform_transcript_url(platform: str, url: str) -> bool:
+    if not url:
+        return False
+    spec = get_platform(platform)
+    return bool(spec and spec.transcript_url_re and spec.transcript_url_re.match(url.strip()))
+
+
 def is_valid_facebook_transcript_url(url: str) -> bool:
-    return bool(url and _FB_TRANSCRIPT_URL_RE.match(url.strip()))
+    return _matches_platform_transcript_url("facebook", url)
 
 
 def is_valid_youtube_transcript_url(url: str) -> bool:
-    return bool(url and _YT_TRANSCRIPT_URL_RE.match(url.strip()))
+    return _matches_platform_transcript_url("youtube", url)
 
 
 def is_valid_tiktok_transcript_url(url: str) -> bool:
-    return bool(url and _TT_TRANSCRIPT_URL_RE.match(url.strip()))
+    return _matches_platform_transcript_url("tiktok", url)
 
 
 def is_valid_instagram_transcript_url(url: str) -> bool:
-    return bool(url and _IG_TRANSCRIPT_URL_RE.match(url.strip()))
+    return _matches_platform_transcript_url("instagram", url)
 
 
 def parse_glasser_stdout(text: str) -> Dict[str, Any]:

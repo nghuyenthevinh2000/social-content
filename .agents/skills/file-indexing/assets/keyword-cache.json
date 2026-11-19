@@ -191,5 +191,38 @@
     "account",
     "creator",
     "channel"
+  ],
+  "topic": [
+    "subject",
+    "theme",
+    "chủ",
+    "tài"
+  ],
+  "agent": [
+    "assistant",
+    "bot",
+    "trợ",
+    "tác"
+  ],
+  "8100": [
+    "port",
+    "8100",
+    "cổng",
+    "localhost",
+    "server"
+  ],
+  "library": [
+    "thư",
+    "viện",
+    "collection",
+    "package",
+    "module"
+  ],
+  "job id": [
+    "task",
+    "công",
+    "việc",
+    "run",
+    "process"
   ]
 }

@@ -176,6 +176,13 @@ def canonicalize_reel_url(
                     if "/shorts/" in lowered:
                         return f"https://www.youtube.com/shorts/{vid}", "youtube"
                     return f"https://www.youtube.com/watch?v={vid}", "youtube"
+                if spec.name == "facebook" and "/permalink.php" in lowered:
+                    qs = parse_qs(urlparse(target_url).query)
+                    story_fbid = (qs.get("story_fbid") or [match.group(1)])[0]
+                    page_id = (qs.get("id") or [""])[0]
+                    if page_id:
+                        return f"https://www.facebook.com/permalink.php?story_fbid={story_fbid}&id={page_id}", "facebook"
+                    return f"https://www.facebook.com/permalink.php?story_fbid={story_fbid}", "facebook"
                 return clean, spec.name
     return None
 
@@ -341,11 +348,19 @@ register_platform(PlatformSpec(
     name="facebook",
     domains=("facebook.com", "fb.com", "fb.watch"),
     reel_patterns=(
-        re.compile(r"https?://(?:www\.)?facebook\.com/reel/(\d+)", re.I),
-        re.compile(r"https?://(?:www\.)?facebook\.com/share/[rvp]/([a-zA-Z0-9_-]+)", re.I),
-        re.compile(r"https?://(?:www\.)?facebook\.com/watch/?\?(?:[^#\s]*&)?v=(\d+)", re.I),
-        re.compile(r"https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.-]+/videos/(\d+)", re.I),
-        re.compile(r"https?://(?:www\.)?facebook\.com/ads/library/\?(?:[^#\s]*&)?id=(\d+)", re.I),
+        re.compile(r"https?://(?:(?:www|m|web)\.)?facebook\.com/reel/(\d+)(?=[/?#]|$)", re.I),
+        re.compile(r"https?://(?:(?:www|m|web)\.)?facebook\.com/share/[rvp]/([a-zA-Z0-9_-]+)(?=[/?#]|$)", re.I),
+        re.compile(r"https?://(?:(?:www|m|web)\.)?facebook\.com/watch/?\?(?:[^#\s]*&)?v=(\d+)", re.I),
+        re.compile(r"https?://(?:(?:www|m|web)\.)?facebook\.com/[^/?#\s]+/videos/(?:[^/?#\s]+/)?(\d+)(?=[/?#]|$)", re.I),
+        re.compile(
+            r"https?://(?:(?:www|m|web)\.)?facebook\.com/(?:groups/[^/?#\s]+|[^/?#\s]+)/posts/(?:[^/?#\s]+/)?(\d+|pfbid[a-zA-Z0-9]+)(?=[/?#]|$)",
+            re.I,
+        ),
+        re.compile(
+            r"https?://(?:(?:www|m|web)\.)?facebook\.com/permalink\.php\?(?:[^#\s]*&)?story_fbid=(\d+|pfbid[a-zA-Z0-9]+)",
+            re.I,
+        ),
+        re.compile(r"https?://(?:(?:www|m|web)\.)?facebook\.com/ads/library/\?(?:[^#\s]*&)?id=(\d+)", re.I),
         re.compile(r"https?://fb\.watch/([a-zA-Z0-9_-]+)", re.I),
     ),
     handle_fn=facebook_handle,
@@ -358,7 +373,13 @@ register_platform(PlatformSpec(
     ],
     transcript_endpoint=("/v1/facebook/post/transcript", 4),
     transcript_url_re=re.compile(
-        r"^https?://(?:[\w.-]+\.)?facebook\.com/(?:reel/\d+|[^/]+/videos/\d+|watch/?\?(?:[^#]*&)?v=\d+)",
+        r"^https?://(?:[\w.-]+\.)?facebook\.com/(?:"
+        r"reel/\d+(?=[/?#]|$)"
+        r"|[^/?#]+/videos/(?:[^/?#]+/)?\d+(?=[/?#]|$)"
+        r"|(?:groups/[^/?#]+|[^/?#]+)/posts/(?:[^/?#]+/)?(?:\d+|pfbid[A-Za-z0-9]+)(?=[/?#]|$)"
+        r"|watch/?\?(?:[^#]*&)?v=\d+"
+        r"|permalink\.php\?(?:[^#]*&)?story_fbid=(?:\d+|pfbid[A-Za-z0-9]+)"
+        r")",
         re.I,
     ),
     normalize_profile_fn=normalize.normalize_profile_facebook,
