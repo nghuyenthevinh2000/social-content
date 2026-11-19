@@ -172,6 +172,49 @@ def fetch_top_reels_transcripts(
             except Exception:
                 pass
 
+    still_missing = [it for it in needed if not (it.get("transcript") and str(it["transcript"]).strip())]
+    if not still_missing:
+        return
+
+    from tools.loop.viral_analyzer.video_research.collect import _download_reel_video, download_video_stream
+    from tools.loop.viral_analyzer.video_research.pipeline import _transcribe_local_fallback
+
+    _log = progress_cb or (lambda msg: logger.info(msg))
+    _log(f"[*] Chạy transcript local dự phòng cho {len(still_missing)} video không có phụ đề nền tảng...")
+    for item in still_missing:
+        reel_url = (
+            item.get("reel_url")
+            or item.get("url")
+            or (item.get("source_urls", [""])[0] if item.get("source_urls") else "")
+        )
+        vid = item.get("video_id") or (platforms.extract_video_id(reel_url) if reel_url else None)
+        video_url = str(item.get("video_url") or "").strip()
+        video_path = None
+        downloaded_tmp = None
+        try:
+            if video_url:
+                cand = runtime.unique_temp_path(f"tr_{vid or 'vid'}", ".mp4")
+                if download_video_stream(video_url, cand):
+                    video_path = cand
+                    downloaded_tmp = cand
+            if video_path is None and reel_url:
+                video_path = _download_reel_video(reel_url, vid, _log)
+                downloaded_tmp = video_path
+            if video_path is not None:
+                tr = _transcribe_local_fallback(video_path, vid, reel_url or video_url, _log)
+                if tr:
+                    item["transcript"] = tr
+                    item.setdefault("segments", [])
+                    item.setdefault("language", "vi")
+        except Exception as exc:
+            logger.warning("Local ASR fallback failed for %s: %s", reel_url or video_url, exc)
+        finally:
+            if downloaded_tmp is not None and downloaded_tmp.exists():
+                try:
+                    downloaded_tmp.unlink()
+                except OSError:
+                    pass
+
 
 transcribe_reels_glasser = fetch_top_reels_transcripts
 

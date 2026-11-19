@@ -57,6 +57,13 @@ def _normalize_profile_reels(data: Any, platform: str, handle: str) -> List[Dict
     return []
 
 
+def resolve_profile_cache_keys(target: Dict[str, Any], config: Any) -> Tuple[str, str, str, str, str]:
+    """Return (platform, handle, cache_key, provider, endpoint) for a profile target."""
+    platform, handle, _profile_url, provider, endpoint, _ver, _payload = _resolve_profile_query(target, config)
+    cache_key = handle if platform == "facebook" else f"{platform}:{handle}"
+    return platform, handle, cache_key, provider, endpoint
+
+
 def fetch_target_reels(
     target: Dict[str, Any],
     config: Any,
@@ -65,6 +72,8 @@ def fetch_target_reels(
     progress_cb: Optional[Callable[[str], None]] = None,
     error_collector: Optional[List[GlasserError]] = None,
     ctx: Optional[runtime.EngineContext] = None,
+    prefetched_cache: Optional[Dict[str, Tuple[List[Dict[str, Any]], str, str]]] = None,
+    pending_cache_writes: Optional[List[Tuple[str, List[Dict[str, Any]], str, str, Optional[float]]]] = None,
 ) -> List[Dict[str, Any]]:
     """Fetch profile reels/videos via single-flight Glasser ScrapeCreators or centralized cache."""
     eng_ctx = ctx or runtime.default_context()
@@ -75,20 +84,26 @@ def fetch_target_reels(
     slug = cache_key.replace(":", "_").replace(".", "_")
 
     with eng_ctx.single_flight.acquire(f"profile:{cache_key}"):
-        # 1. Check centralized cache (with legacy JSON auto-import)
-        cached = read_cached_reels(
-            cache_key,
-            cache_dir=cache_dir,
-            legacy_cache=legacy_cache,
-            allow_expired=False,
-        )
-        if cached is None and cache_key != handle:
+        # 1. Check prefetched batch cache, then centralized cache (with legacy JSON auto-import)
+        cached = None
+        if prefetched_cache is not None:
+            cached = prefetched_cache.get(cache_key)
+            if cached is None and cache_key != handle:
+                cached = prefetched_cache.get(handle)
+        if cached is None and (prefetched_cache is None or legacy_cache):
             cached = read_cached_reels(
-                handle,
+                cache_key,
                 cache_dir=cache_dir,
                 legacy_cache=legacy_cache,
                 allow_expired=False,
             )
+            if cached is None and cache_key != handle:
+                cached = read_cached_reels(
+                    handle,
+                    cache_dir=cache_dir,
+                    legacy_cache=legacy_cache,
+                    allow_expired=False,
+                )
         if cached is not None:
             from tools.app.backend import cost_control
 
@@ -134,12 +149,15 @@ def fetch_target_reels(
                     data = json.load(f)
                 reels = _normalize_profile_reels(data, platform, handle)
                 status = data.get("status", "ok") if isinstance(data, dict) else "ok"
-                write_cached_reels(
-                    handle=cache_key,
-                    reels=reels,
-                    status=status,
-                    profile_url=profile_url,
-                )
+                if pending_cache_writes is not None:
+                    pending_cache_writes.append((cache_key, reels, status, profile_url, time.time()))
+                else:
+                    write_cached_reels(
+                        handle=cache_key,
+                        reels=reels,
+                        status=status,
+                        profile_url=profile_url,
+                    )
                 for r in reels:
                     if isinstance(r, dict):
                         r["_source"] = "glasser"

@@ -270,6 +270,79 @@ class TestViralAnalyzerPipeline(unittest.TestCase):
         self.assertIs(research_engine.research_single_reel, vid_pipeline.research_single_reel)
         self.assertIs(research_engine.run_viral_video_search, kw_pipeline.run_viral_video_search)
 
+    def test_profile_pipeline_batches_cache_reads_and_writes(self):
+        from datetime import datetime, timezone
+        from unittest import mock
+
+        from tools.loop.viral_analyzer.profile_research import config as pr_cfg
+        from tools.loop.viral_analyzer.profile_research import pipeline as pr_pipe
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        with tempfile.TemporaryDirectory() as td:
+            cfg = pr_cfg.load_config(
+                {
+                    "window_hours": 48,
+                    "storage": {"video_dir": str(Path(td) / "videos"), "output_file": str(Path(td) / "out.json")},
+                    "targets": [
+                        {"handle": "cached_user", "url": "https://www.tiktok.com/@cached_user", "platform": "tiktok"},
+                        {"handle": "fresh_user", "url": "https://www.tiktok.com/@fresh_user", "platform": "tiktok"},
+                    ],
+                }
+            )
+            cached_reel = {"id": "c1", "video_id": "c1", "views": 1000, "creation_time": now_iso, "_source": "cache"}
+            fresh_reel = {"id": "f1", "video_id": "f1", "views": 2000, "creation_time": now_iso, "_source": "glasser"}
+            fetch_calls = []
+            batch_writes = []
+
+            def fake_fetch(target, _cfg, pending_cache_writes=None, **_kw):
+                fetch_calls.append(target["handle"])
+                if pending_cache_writes is not None:
+                    pending_cache_writes.append((f"tiktok:{target['handle']}", [fresh_reel], "ok", target["url"], 1.0))
+                return [fresh_reel]
+
+            with (
+                mock.patch.object(pr_pipe, "read_cached_reels_batch", return_value={"tiktok:cached_user": ([cached_reel], "ok", "database")}),
+                mock.patch.object(pr_pipe, "write_cached_reels_batch", side_effect=lambda entries: batch_writes.extend(entries)),
+                mock.patch.object(pr_pipe, "fetch_target_reels", side_effect=fake_fetch),
+                mock.patch.object(pr_pipe, "persist_to_database"),
+            ):
+                res = pr_pipe.run_analyzer_pipeline(cfg, transcribe=False, legacy_cache=False, ctx=runtime.EngineContext())
+
+            self.assertEqual(fetch_calls, ["fresh_user"])
+            self.assertEqual(len(batch_writes), 1)
+            self.assertEqual(batch_writes[0][0], "tiktok:fresh_user")
+            self.assertEqual(res["source_breakdown"]["cache"], ["cached_user"])
+            self.assertEqual(res["source_breakdown"]["glasser_api"], ["fresh_user"])
+
+    def test_fetch_top_reels_transcripts_falls_back_to_local_asr(self):
+        from unittest import mock
+
+        from tools.loop.viral_analyzer.video_research import collect as vr_collect
+        from tools.loop.viral_analyzer.video_research import pipeline as vr_pipe
+        from tools.loop.viral_analyzer.video_research.transcriber import glasser as tr_glasser
+
+        items = [
+            {
+                "reel_url": "https://www.tiktok.com/@u/video/123",
+                "video_url": "https://cdn.example.com/123.mp4",
+                "video_id": "123",
+                "transcript": "",
+            }
+        ]
+
+        def fake_download(_url, dest):
+            Path(dest).write_bytes(b"fake-mp4")
+            return True
+
+        with (
+            mock.patch.object(tr_glasser, "fetch_reel_transcript", return_value=None),
+            mock.patch.object(vr_collect, "download_video_stream", side_effect=fake_download),
+            mock.patch.object(vr_pipe, "_transcribe_local_fallback", return_value="local transcript text"),
+        ):
+            tr_glasser.fetch_top_reels_transcripts(items, max_workers=1)
+
+        self.assertEqual(items[0]["transcript"], "local transcript text")
+
 
 if __name__ == "__main__":
     unittest.main()

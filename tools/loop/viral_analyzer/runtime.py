@@ -99,7 +99,7 @@ class EngineContext:
     """Injectable concurrency, transport, cache, and LLM runner configuration."""
 
     max_workers: int = field(
-        default_factory=lambda: max(1, int(os.environ.get("VIRAL_MAX_WORKERS", "5")))
+        default_factory=lambda: max(1, int(os.environ.get("VIRAL_MAX_WORKERS", "8")))
     )
     glasser_semaphore: threading.BoundedSemaphore = field(default_factory=lambda: GLASSER_SEMAPHORE)
     single_flight: SingleFlight = field(default_factory=lambda: SINGLE_FLIGHT)

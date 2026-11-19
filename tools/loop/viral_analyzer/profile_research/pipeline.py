@@ -22,6 +22,8 @@ from tools.app.backend.errors import (
 from tools.loop.viral_analyzer import platforms, profiling, runtime
 from tools.loop.viral_analyzer.cache import (
     persist_to_database,
+    read_cached_reels_batch,
+    write_cached_reels_batch,
 )
 from tools.loop.viral_analyzer.glasser import (
     GlasserError,
@@ -33,6 +35,7 @@ from tools.loop.viral_analyzer.glasser import (
 )
 from tools.loop.viral_analyzer.profile_research.collect import (
     fetch_target_reels,
+    resolve_profile_cache_keys,
 )
 from tools.loop.viral_analyzer.profile_research.config import (
     ViralAnalyzerConfig,
@@ -200,6 +203,40 @@ def run_analyzer_pipeline(
     targets_to_scan = config.targets[:limit_targets] if limit_targets else config.targets
     total_targets = len(targets_to_scan)
 
+    def _filter_target_reels(
+        target: Dict[str, Any],
+        raw_items: List[Dict[str, Any]],
+    ) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+        target_source = raw_items[0].get("_source", "cache") if raw_items else None
+        raw_plat = str(target.get("platform") or platforms.detect_platform(target.get("url") or "")).strip().lower()
+        target_platform = raw_plat if (platforms.get_platform(raw_plat) is not None and raw_plat != "google") else "facebook"
+        target_reels: List[Dict[str, Any]] = []
+        for r in raw_items:
+            pub_ts = _parse_reel_pub_ts(r, now)
+            if pub_ts < cutoff_time:
+                continue
+            target_reels.append(
+                _build_extracted_reel(r, target, target_platform, target_source, pub_ts, now, config)
+            )
+        return target_source, target_reels
+
+    prefetched_cache: Dict[str, Tuple[List[Dict[str, Any]], str, str]] = {}
+    target_meta: List[Tuple[int, Dict[str, Any], str, str, str, str]] = []
+    lookup_keys: List[str] = []
+    for idx, target in enumerate(targets_to_scan, 1):
+        _plat, handle, cache_key, provider, endpoint = resolve_profile_cache_keys(target, config)
+        target_meta.append((idx, target, handle, cache_key, provider, endpoint))
+        lookup_keys.append(cache_key)
+        if cache_key != handle:
+            lookup_keys.append(handle)
+    if lookup_keys:
+        try:
+            prefetched_cache = read_cached_reels_batch(lookup_keys, allow_expired=False)
+        except Exception:
+            prefetched_cache = {}
+
+    pending_cache_writes: List[Tuple[str, List[Dict[str, Any]], str, str, Optional[float]]] = []
+
     def _crawl_target(idx: int, target: Dict[str, Any]) -> Tuple[str, Optional[str], List[Dict[str, Any]], List[GlasserError]]:
         handle = target.get("handle", "unknown")
         print(f"[{idx}/{total_targets}] Querying {handle}...")
@@ -213,35 +250,67 @@ def run_analyzer_pipeline(
             progress_cb=progress_cb,
             error_collector=local_errors,
             ctx=eng_ctx,
+            prefetched_cache=prefetched_cache,
+            pending_cache_writes=pending_cache_writes,
         )
-        target_source = raw_items[0].get("_source", "cache") if raw_items else None
-        raw_plat = str(target.get("platform") or platforms.detect_platform(target.get("url") or "")).strip().lower()
-        target_platform = raw_plat if (platforms.get_platform(raw_plat) is not None and raw_plat != "google") else "facebook"
-
-        target_reels: List[Dict[str, Any]] = []
-        for r in raw_items:
-            pub_ts = _parse_reel_pub_ts(r, now)
-            if pub_ts < cutoff_time:
-                continue
-            target_reels.append(
-                _build_extracted_reel(r, target, target_platform, target_source, pub_ts, now, config)
-            )
-
+        target_source, target_reels = _filter_target_reels(target, raw_items)
         source_label = "Glasser API" if target_source == "glasser" else ("Cache" if target_source else "Không có reel")
         print(f"    -> Extracted {len(target_reels)} reels in 48h window ({source_label}).")
         progress_cb and progress_cb(f"    -> {handle}: {len(target_reels)} reel(s) trong 48h ({source_label}).")
         return handle, target_source, target_reels, local_errors
 
+    crawled_by_idx: Dict[int, Tuple[str, Optional[str], List[Dict[str, Any]], List[GlasserError]]] = {}
+    uncached_targets: List[Tuple[int, Dict[str, Any]]] = []
+
     with profiling.span("profile", "crawl_targets"):
-        if total_targets > 1 and eff_workers > 1:
-            with ThreadPoolExecutor(max_workers=min(eff_workers, total_targets)) as pool:
+        for idx, target, handle, cache_key, provider, endpoint in target_meta:
+            cached = prefetched_cache.get(cache_key)
+            if cached is None and cache_key != handle:
+                cached = prefetched_cache.get(handle)
+            if cached is not None:
+                try:
+                    from tools.app.backend import cost_control
+
+                    cost_control.record_cost_event(
+                        provider=provider,
+                        endpoint=endpoint,
+                        cost_micro=0,
+                        cache_hit=True,
+                        sub_action="profile_cache",
+                    )
+                except Exception:
+                    pass
+                raw_items, _status, src_label = cached
+                print(f"[{idx}/{total_targets}] Querying {handle}...")
+                progress_cb and progress_cb(f"[{idx}/{total_targets}] Querying {handle}...")
+                print(f"    [cache] Dùng cache ({len(raw_items)} reel) cho {handle} ({src_label}).")
+                progress_cb and progress_cb(f"[cache] Dùng cache ({len(raw_items)} reel) cho {handle} ({src_label})")
+                target_source, target_reels = _filter_target_reels(target, raw_items)
+                print(f"    -> Extracted {len(target_reels)} reels in 48h window (Cache).")
+                progress_cb and progress_cb(f"    -> {handle}: {len(target_reels)} reel(s) trong 48h (Cache).")
+                crawled_by_idx[idx] = (handle, target_source, target_reels, [])
+            else:
+                uncached_targets.append((idx, target))
+
+        if len(uncached_targets) > 1 and eff_workers > 1:
+            with ThreadPoolExecutor(max_workers=min(eff_workers, len(uncached_targets))) as pool:
                 futures = [
-                    eng_ctx.submit_fn(pool, _crawl_target, idx, target)
-                    for idx, target in enumerate(targets_to_scan, 1)
+                    (idx, eng_ctx.submit_fn(pool, _crawl_target, idx, target))
+                    for idx, target in uncached_targets
                 ]
-                crawled = [fut.result() for fut in futures]
+                for idx, fut in futures:
+                    crawled_by_idx[idx] = fut.result()
         else:
-            crawled = [_crawl_target(idx, target) for idx, target in enumerate(targets_to_scan, 1)]
+            for idx, target in uncached_targets:
+                crawled_by_idx[idx] = _crawl_target(idx, target)
+
+        if pending_cache_writes:
+            try:
+                write_cached_reels_batch(pending_cache_writes)
+            except Exception as exc:
+                logger.warning("Batch cache write failed (%d entries): %s", len(pending_cache_writes), exc)
+
+    crawled = [crawled_by_idx[idx] for idx, _t, _h, _ck, _p, _e in target_meta]
 
     extracted_reels: List[Dict[str, Any]] = []
     glasser_errors: List[Any] = []

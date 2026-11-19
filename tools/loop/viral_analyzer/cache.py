@@ -81,6 +81,64 @@ def _legacy_json_candidates(
     return files
 
 
+def _resolve_ttl_seconds(ttl_seconds: Optional[float]) -> float:
+    if ttl_seconds is not None:
+        return ttl_seconds
+    return float(int(os.environ.get("VIRAL_APP_CACHE_TTL_HOURS", "24")) * 3600)
+
+
+def _decode_cached_row(
+    reels_json: Any,
+    status: Optional[str],
+    fetched_at: Any,
+    ttl_seconds: float,
+    now_ts: float,
+    allow_expired: bool,
+    source_tag: str,
+) -> Optional[Tuple[List[Dict[str, Any]], str, str]]:
+    clean_status = status or "ok"
+    ts_val = float(fetched_at or 0.0)
+    is_fresh = ttl_seconds <= 0 or (now_ts - ts_val) <= ttl_seconds
+    if not (is_fresh or allow_expired):
+        return None
+    try:
+        reels = json.loads(reels_json) if isinstance(reels_json, str) else reels_json
+        if isinstance(reels, list):
+            if allow_expired and not reels and clean_status != "not_found":
+                return None
+            return _tag_reels_source(reels, source_tag), clean_status, "database"
+    except Exception:
+        pass
+    return None
+
+
+def read_cached_reels_batch(
+    handles: List[str],
+    ttl_seconds: Optional[float] = None,
+    allow_expired: bool = False,
+) -> Dict[str, Tuple[List[Dict[str, Any]], str, str]]:
+    """Batch-read profile reels from PostgreSQL `profile_cache` keyed by handle."""
+    clean_handles = [h for h in dict.fromkeys(handles) if h]
+    if not clean_handles:
+        return {}
+    from tools.app.backend.db import ro
+
+    eff_ttl = _resolve_ttl_seconds(ttl_seconds)
+    now_ts = time.time()
+    source_tag = "cache_fallback" if allow_expired else "cache"
+    out: Dict[str, Tuple[List[Dict[str, Any]], str, str]] = {}
+    with ro() as conn:
+        rows = conn.execute(
+            "SELECT handle, reels_json, status, fetched_at FROM profile_cache WHERE handle = ANY(%s)",
+            (clean_handles,),
+        ).fetchall()
+    for handle, reels_json, status, fetched_at in rows:
+        decoded = _decode_cached_row(reels_json, status, fetched_at, eff_ttl, now_ts, allow_expired, source_tag)
+        if decoded is not None:
+            out[handle] = decoded
+    return out
+
+
 def read_cached_reels(
     handle: str,
     cache_dir: Optional[Path] = None,
@@ -96,10 +154,7 @@ def read_cached_reels(
     """
     from tools.app.backend.db import ro
 
-    if ttl_seconds is None:
-        ttl_hours = int(os.environ.get("VIRAL_APP_CACHE_TTL_HOURS", "24"))
-        ttl_seconds = float(ttl_hours * 3600)
-
+    eff_ttl = _resolve_ttl_seconds(ttl_seconds)
     now_ts = time.time()
     slug = handle.replace(".", "_")
     source_tag = "cache_fallback" if allow_expired else "cache"
@@ -111,23 +166,14 @@ def read_cached_reels(
             (handle,),
         ).fetchone()
         if row:
-            reels_json, status, fetched_at = row[0], row[1] or "ok", float(row[2] or 0.0)
-            is_fresh = ttl_seconds <= 0 or (now_ts - fetched_at) <= ttl_seconds
-            if is_fresh or allow_expired:
-                try:
-                    reels = json.loads(reels_json) if isinstance(reels_json, str) else reels_json
-                    if isinstance(reels, list):
-                        if allow_expired and not reels and status != "not_found":
-                            pass
-                        else:
-                            return _tag_reels_source(reels, source_tag), status, "database"
-                except Exception:
-                    pass
+            decoded = _decode_cached_row(row[0], row[1], row[2], eff_ttl, now_ts, allow_expired, source_tag)
+            if decoded is not None:
+                return decoded
 
     # 2. Check legacy JSON files in cache_dir (auto-imports into DB on hit)
     for c_path in _legacy_json_candidates(slug, cache_dir=cache_dir, legacy_cache=legacy_cache):
         mtime = c_path.stat().st_mtime
-        is_fresh = ttl_seconds <= 0 or (now_ts - mtime) <= ttl_seconds
+        is_fresh = eff_ttl <= 0 or (now_ts - mtime) <= eff_ttl
         if not is_fresh and not allow_expired:
             continue
         try:
@@ -148,6 +194,51 @@ def read_cached_reels(
     return None
 
 
+def write_cached_reels_batch(
+    entries: List[Tuple[str, List[Dict[str, Any]], str, str, Optional[float]]],
+) -> None:
+    """Batch-upsert profile reels into PostgreSQL `profile_cache` table."""
+    if not entries:
+        return
+    from tools.app.backend.db import tx
+
+    default_ts = time.time()
+    iso = now_iso()
+    params = []
+    for handle, reels, status, profile_url, fetched_at in entries:
+        clean_reels = [
+            {k: v for k, v in r.items() if k != "_source"} if isinstance(r, dict) else r
+            for r in reels
+        ]
+        ts = float(fetched_at if fetched_at is not None else default_ts)
+        params.append((
+            handle,
+            profile_url or "",
+            json.dumps(clean_reels, ensure_ascii=False),
+            status or "ok",
+            len(clean_reels),
+            ts,
+            iso,
+        ))
+
+    with tx() as conn:
+        with conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO profile_cache (handle, profile_url, reels_json, status, reel_count, fetched_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT(handle) DO UPDATE SET
+                    profile_url = CASE WHEN EXCLUDED.profile_url != '' THEN EXCLUDED.profile_url ELSE profile_cache.profile_url END,
+                    reels_json = EXCLUDED.reels_json,
+                    status = EXCLUDED.status,
+                    reel_count = EXCLUDED.reel_count,
+                    fetched_at = EXCLUDED.fetched_at,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                params,
+            )
+
+
 def write_cached_reels(
     handle: str,
     reels: List[Dict[str, Any]],
@@ -157,36 +248,7 @@ def write_cached_reels(
     **_kwargs: Any,
 ) -> None:
     """Upsert profile reels into PostgreSQL `profile_cache` table."""
-    from tools.app.backend.db import tx
-
-    clean_reels = [
-        {k: v for k, v in r.items() if k != "_source"} if isinstance(r, dict) else r
-        for r in reels
-    ]
-    ts = float(fetched_at if fetched_at is not None else time.time())
-    with tx() as conn:
-        conn.execute(
-            """
-            INSERT INTO profile_cache (handle, profile_url, reels_json, status, reel_count, fetched_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT(handle) DO UPDATE SET
-                profile_url = CASE WHEN EXCLUDED.profile_url != '' THEN EXCLUDED.profile_url ELSE profile_cache.profile_url END,
-                reels_json = EXCLUDED.reels_json,
-                status = EXCLUDED.status,
-                reel_count = EXCLUDED.reel_count,
-                fetched_at = EXCLUDED.fetched_at,
-                updated_at = EXCLUDED.updated_at
-            """,
-            (
-                handle,
-                profile_url,
-                json.dumps(clean_reels, ensure_ascii=False),
-                status,
-                len(clean_reels),
-                ts,
-                now_iso(),
-            ),
-        )
+    write_cached_reels_batch([(handle, reels, status, profile_url, fetched_at)])
 
 
 def read_cached_followers(urls: List[str]) -> Dict[str, int]:
