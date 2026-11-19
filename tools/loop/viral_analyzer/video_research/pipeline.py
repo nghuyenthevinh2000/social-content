@@ -1,4 +1,4 @@
-"""Video Research Pipeline: transcript analysis, visual extraction, and topic/director prompts."""
+"""Video Research Pipeline: transcript analysis, visual extraction, video-structure breakdown, and director prompts."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from tools.loop.viral_analyzer.video_research.config import (
     VISUAL_PROMPT,
     _fallback_reel_url,
     _reel_digest,
-    build_topic_prompt,
+    build_video_structure_prompt,
     format_director_prompt,
 )
 from tools.loop.viral_analyzer.video_research.transcriber import (
@@ -63,7 +63,7 @@ def _resolve_to_reel_url(url: str, reels: List[Dict[str, Any]]) -> str:
         return ""
     if is_reel_url(url) or any(
         tok in url
-        for tok in ("/reel/", "/reels/", "/videos/", "/video/", "/watch", "/shorts/", "youtu.be/", "/p/", "/tv/")
+        for tok in ("/reel/", "/reels/", "/videos/", "/video/", "/posts/", "permalink.php", "/watch", "/shorts/", "youtu.be/", "/p/", "/tv/")
     ):
         return url
 
@@ -84,19 +84,19 @@ def _resolve_to_reel_url(url: str, reels: List[Dict[str, Any]]) -> str:
     return url
 
 
-def normalize_topics(
+def normalize_video_analyses(
     data: Any,
     fallback: List[Dict[str, Any]],
     reels: Optional[List[Dict[str, Any]]] = None,
     sheet_name: str = "",
     actor_profile: Optional[Dict[str, Any]] = None,
-    limit: int = 10,
+    limit: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     if isinstance(data, dict):
-        data = data.get("topics") or data.get("ideas") or [data]
+        data = data.get("analyses") or data.get("videos") or data.get("topics") or data.get("ideas") or [data]
     if not isinstance(data, list):
         return fallback
-    topics = []
+    analyses = []
     dur = get_video_duration()
     ranked_reels = sorted(
         reels or [],
@@ -158,9 +158,9 @@ def normalize_topics(
         if not t_platform:
             t_platform = "facebook"
 
-        topics.append(
+        analyses.append(
             {
-                "title": str(item.get("title") or "").strip() or (fallback[index]["title"] if index < len(fallback) else "Chủ đề mới"),
+                "title": str(item.get("title") or "").strip() or (fallback[index]["title"] if index < len(fallback) else "Phân tích cấu trúc video"),
                 "hook": str(item.get("hook") or "").strip(),
                 "angle": str(item.get("angle") or "").strip(),
                 "why_viral": str(item.get("why_viral") or item.get("why") or "").strip(),
@@ -185,22 +185,20 @@ def normalize_topics(
                 "generated_by": "agent",
             }
         )
-    while len(topics) < len(fallback) and len(topics) < limit:
-        topics.append(fallback[len(topics)])
-    while len(topics) < 3 and len(fallback) >= 3:
-        topics.append(fallback[len(topics)])
+    if limit is not None:
+        while len(analyses) < len(fallback) and len(analyses) < limit:
+            analyses.append(fallback[len(analyses)])
 
-    has_views = any((t.get("views") or 0) > 0 for t in topics)
+    has_views = any((a.get("views") or 0) > 0 for a in analyses)
     if has_views:
-        topics.sort(
+        analyses.sort(
             key=lambda x: (
                 int(x.get("views") or 0),
                 float(x.get("velocity_per_hour") or 0),
             ),
             reverse=True,
         )
-    selected = topics[:limit]
-    return selected
+    return analyses[:limit] if limit is not None else analyses
 
 
 def _extract_json_candidates(text: str) -> List[str]:
@@ -216,30 +214,35 @@ def _extract_json_candidates(text: str) -> List[str]:
     return candidates
 
 
-def parse_topics(
+def parse_video_analyses(
     text: str,
     fallback: List[Dict[str, Any]],
     reels: Optional[List[Dict[str, Any]]] = None,
     sheet_name: str = "",
     actor_profile: Optional[Dict[str, Any]] = None,
+    limit: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     for candidate in _extract_json_candidates(text):
         try:
             data = json.loads(candidate)
         except json.JSONDecodeError:
             continue
-        topics = normalize_topics(data, fallback, reels=reels, sheet_name=sheet_name, actor_profile=actor_profile)
-        if topics:
-            return topics
+        analyses = normalize_video_analyses(
+            data, fallback, reels=reels, sheet_name=sheet_name, actor_profile=actor_profile, limit=limit
+        )
+        if analyses:
+            return analyses
     return fallback
 
 
-def heuristic_topics(
+def heuristic_video_analyses(
     sheet_name: str,
     reels: List[Dict[str, Any]],
     actor_profile: Optional[Dict[str, Any]] = None,
-    limit: int = 10,
+    limit: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
+    if not reels:
+        return []
     dur = get_video_duration()
     ranked = sorted(
         reels,
@@ -250,8 +253,9 @@ def heuristic_topics(
         ),
         reverse=True,
     )
-    topics: List[Dict[str, Any]] = []
-    for reel in ranked[:limit]:
+    target_reels = ranked[:limit] if limit is not None else ranked
+    analyses: List[Dict[str, Any]] = []
+    for reel in target_reels:
         title = str(reel.get("title") or "").strip() or f"Video từ @{reel.get('author_handle', 'reel')}"
         views = int(reel.get("views") or 0)
         velocity = float(reel.get("velocity_per_hour") or 0)
@@ -262,15 +266,15 @@ def heuristic_topics(
             platform = detected if detected != "web" else "facebook"
         if not platform:
             platform = "facebook"
-        t = {
-            "title": f"Kể lại: {title[:90]}",
-            "hook": f"Vì sao chuyện này đạt {views:,} lượt xem trong 48 giờ?" if views else "Đây là điều bất ngờ nhất bạn từng nghe?",
-            "angle": f"Phân tích góc P{reel.get('current_pool', 0)} - {reel.get('pool_name', '')}, tập trung vào cảm xúc và bình luận." if views else "Tập trung vào yếu tố cảm xúc và sự tò mò trong nội dung gốc.",
-            "why_viral": f"{views:,} views, {velocity:,.0f} views/giờ, pool P{reel.get('current_pool', 0)}." if views else "Video thu hút sự chú ý mạnh mẽ nhờ yếu tố bất ngờ.",
+        entry = {
+            "title": title[:90],
+            "hook": f"Mở đầu 3s giữ chân người xem ({views:,} lượt xem / 48h)." if views else "Mở đầu 3 giây đầu gây tò mò trực tiếp từ video gốc.",
+            "angle": f"Cấu trúc P{reel.get('current_pool', 0)} - {reel.get('pool_name', '')}: giữ nhịp nhanh và bám sát bố cục gốc." if views else "Phân tích cấu trúc mở đầu - triển khai - kết của video gốc.",
+            "why_viral": f"{views:,} views, {velocity:,.0f} views/giờ, pool P{reel.get('current_pool', 0)}." if views else "Video giữ chân người xem nhờ hook mở đầu và nhịp triển khai gọn.",
             "outline": [
-                f"Mở bằng chi tiết gây tò mò từ video gốc của @{reel.get('author_handle', 'creator')}",
-                "Kể lại câu chuyện bằng hình ảnh/điện thoại, giữ nhịp nhanh",
-                "Kết bằng câu hỏi mở để kéo bình luận",
+                f"00:00-00:03 Hook mở đầu từ video gốc của @{reel.get('author_handle', 'creator')}",
+                "00:03-00:26 Triển khai nội dung chính theo nhịp video gốc",
+                "00:26-00:30 Kết luận & CTA tương tác",
             ],
             "format": f"Reels {dur}s UGC",
             "source_urls": [reel_url] if reel_url else [],
@@ -291,50 +295,12 @@ def heuristic_topics(
             "visual": str(reel.get("visual") or "").strip(),
             "generated_by": "heuristic",
         }
-        t["prompt"] = format_director_prompt(t, sheet_name=sheet_name, actor_profile=actor_profile)
-        topics.append(t)
-
-    generic = [
-        {
-            "title": f"'{sheet_name}': điều 90% người xem hiểu sai",
-            "hook": f"Bạn đang làm sai điều cơ bản nhất về {sheet_name}?",
-            "angle": "Myth-busting: nêu hiểu lầm phổ biến rồi sửa bằng ví dụ đời thường.",
-            "why_viral": "Chủ đề dựa trên tên nhóm; khai thác điểm nghẽn nhận thức của số đông.",
-            "outline": ["Nêu hiểu lầm", "Đưa bằng chứng trực quan", "Chốt bằng mẹo làm ngay"],
-            "format": f"Reels {dur}s UGC",
-            "source_urls": [],
-            "generated_by": "heuristic",
-        },
-        {
-            "title": f"Thử thách 7 ngày về {sheet_name}",
-            "hook": "Tôi thử điều này 7 ngày và kết quả bất ngờ.",
-            "angle": "Nhật ký trải nghiệm cá nhân, tạo chuỗi theo dõi nhiều tập.",
-            "why_viral": "Chuỗi thử thách giữ chân người xem quay lại.",
-            "outline": ["Ngày 1: mục tiêu", "Ngày 3-5: khó khăn", "Ngày 7: kết quả"],
-            "format": f"Chuỗi Reels {dur}s UGC",
-            "source_urls": [],
-            "generated_by": "heuristic",
-        },
-        {
-            "title": f"3 mẹo {sheet_name} cho người mới",
-            "hook": "Đừng bắt đầu trước khi biết 3 điều này.",
-            "angle": "Danh sách nhanh, dễ lưu và chia sẻ.",
-            "why_viral": "Nội dung lưu/chia sẻ tốt, phù hợp người mới.",
-            "outline": ["Mẹo 1", "Mẹo 2", "Mẹo 3 + lời mời lưu video"],
-            "format": f"Reels {dur}s UGC",
-            "source_urls": [],
-            "generated_by": "heuristic",
-        },
-    ]
-    for g in generic:
-        g["prompt"] = format_director_prompt(g, sheet_name=sheet_name, actor_profile=actor_profile)
-    while len(topics) < 3:
-        topics.append(generic[len(topics)])
-    selected = topics[:limit]
-    return selected
+        entry["prompt"] = format_director_prompt(entry, sheet_name=sheet_name, actor_profile=actor_profile)
+        analyses.append(entry)
+    return analyses
 
 
-def suggest_topics(
+def analyze_video_structure(
     agent_id: str,
     sheet_name: str,
     targets: List[Dict[str, Any]],
@@ -345,12 +311,15 @@ def suggest_topics(
     model: Optional[str] = None,
     actor_profile: Optional[Dict[str, Any]] = None,
     ctx: Optional[runtime.EngineContext] = None,
+    limit: Optional[int] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     if not reels:
-        log(f"Không có reel nào cho '{sheet_name}'; bỏ qua gợi ý chủ đề.")
+        log(f"Không có reel nào cho '{sheet_name}'; bỏ qua phân tích video.")
         return [], None
-    fallback = heuristic_topics(sheet_name, reels, actor_profile=actor_profile)
-    prompt = build_topic_prompt(sheet_name, targets, reels, actor_profile=actor_profile)
+    fallback = heuristic_video_analyses(sheet_name, reels, actor_profile=actor_profile, limit=limit)
+    prompt = build_video_structure_prompt(
+        sheet_name, targets, reels, actor_profile=actor_profile
+    )
     eng_ctx = ctx or runtime.default_context()
 
     if eng_ctx.agent_runner is not None:
@@ -358,13 +327,16 @@ def suggest_topics(
             text = eng_ctx.agent_runner(prompt)
             if not str(text).strip():
                 raise ACPError("Agent trả về nội dung rỗng.")
-            topics = parse_topics(str(text), fallback, reels=reels, sheet_name=sheet_name, actor_profile=actor_profile)
-            fetch_top_reels_transcripts(topics[:3], ctx=eng_ctx)
-            return topics, None
+            analyses = parse_video_analyses(
+                str(text), fallback, reels=reels, sheet_name=sheet_name, actor_profile=actor_profile, limit=limit
+            )
+            fetch_top_reels_transcripts(analyses[:limit] if limit is not None else analyses, ctx=eng_ctx)
+            return analyses, None
         except Exception as exc:
             log(f"Agent runner thất bại: {exc}")
-            fetch_top_reels_transcripts(fallback[:3], ctx=eng_ctx)
-            return fallback, str(exc)
+            fb_slice = fallback[:limit] if limit is not None else fallback
+            fetch_top_reels_transcripts(fb_slice, ctx=eng_ctx)
+            return fb_slice, str(exc)
 
     client = None
     from tools.app.backend.research_engine.research import _harness_lock, resolve_agent
@@ -380,13 +352,15 @@ def suggest_topics(
             text = client.prompt(session_id, prompt)
             if not text.strip():
                 raise ACPError("Agent trả về nội dung rỗng.")
-            topics = parse_topics(text, fallback, reels=reels, sheet_name=sheet_name, actor_profile=actor_profile)
-            if topics and topics[0].get("generated_by") == "agent":
-                log("Agent đã trả về 3 chủ đề.")
+            analyses = parse_video_analyses(
+                text, fallback, reels=reels, sheet_name=sheet_name, actor_profile=actor_profile, limit=limit
+            )
+            if analyses and analyses[0].get("generated_by") == "agent":
+                log(f"Agent đã trả về {len(analyses)} phân tích video.")
             else:
-                log("Không parse được JSON từ agent; dùng gợi ý dự phòng.")
-            fetch_top_reels_transcripts(topics[:3])
-            return topics, None
+                log("Không parse được JSON từ agent; dùng phân tích dự phòng.")
+            fetch_top_reels_transcripts(analyses[:limit] if limit is not None else analyses)
+            return analyses, None
         except Exception as exc:
             detail = str(exc)
             if client is not None and client.stderr_tail:
@@ -394,8 +368,9 @@ def suggest_topics(
             if "auth" in detail.lower():
                 detail = f"{detail} | Gợi ý đăng nhập harness rồi thử lại."
             log(f"ACP thất bại: {detail}")
-            fetch_top_reels_transcripts(fallback[:3])
-            return fallback, detail
+            fb_slice = fallback[:limit] if limit is not None else fallback
+            fetch_top_reels_transcripts(fb_slice)
+            return fb_slice, detail
         finally:
             if client is not None:
                 client.close()
@@ -593,10 +568,10 @@ def research_single_reel(
     topics: List[Dict[str, Any]] = []
     error: Optional[str] = None
 
-    with profiling.span("video", "suggest_topics"):
+    with profiling.span("video", "analyze_video_structure"):
         if has_runner and cwd:
             targets = [{"name": sheet_name, "url": clean_url}]
-            topics, error = suggest_topics(
+            topics, error = analyze_video_structure(
                 agent_id=agent_id or "",
                 sheet_name=sheet_name,
                 targets=targets,
@@ -606,12 +581,13 @@ def research_single_reel(
                 log=_log,
                 model=model,
                 actor_profile=actor_profile,
+                limit=1,
                 **ctx_kwargs,
             )
             topics = topics[:1]
 
     if not topics:
-        topics = heuristic_topics(sheet_name, [reel_obj], actor_profile=actor_profile, limit=1)
+        topics = heuristic_video_analyses(sheet_name, [reel_obj], actor_profile=actor_profile, limit=1)
         for t in topics:
             t["source_urls"] = [clean_url]
             t["reel_url"] = clean_url
@@ -641,13 +617,13 @@ def research_reels(
     timeout_sec: float = 180.0,
     ctx: Optional[runtime.EngineContext] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
-    """Generate viral topics and director prompts for a collection of reels."""
+    """Analyze viral structure and generate replication director prompts for a collection of reels."""
     _log = log or (lambda msg: logger.info(msg))
     if not reels:
         return [], None
     targets = [{"name": r.get("author_name") or r.get("author_handle", "Reel"), "url": r.get("url") or r.get("reel_url", "")} for r in reels]
     if agent_id and cwd:
-        return suggest_topics(
+        return analyze_video_structure(
             agent_id=agent_id,
             sheet_name=sheet_name,
             targets=targets,
@@ -659,6 +635,6 @@ def research_reels(
             actor_profile=actor_profile,
             ctx=ctx,
         )
-    topics = heuristic_topics(sheet_name, reels, actor_profile=actor_profile, limit=3)
-    fetch_top_reels_transcripts(topics[:3], **({"ctx": ctx} if ctx is not None else {}))
-    return topics, None
+    analyses = heuristic_video_analyses(sheet_name, reels, actor_profile=actor_profile)
+    fetch_top_reels_transcripts(analyses, **({"ctx": ctx} if ctx is not None else {}))
+    return analyses, None

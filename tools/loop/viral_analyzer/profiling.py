@@ -446,9 +446,9 @@ def run_video_context(iterations: int, collector: BenchCollector) -> None:
     ])
 
     def _bench_topics() -> List[Dict[str, Any]]:
-        heur = vid_pipeline.heuristic_topics("Bench", sample_reels, limit=20)
-        prompt = vid_pipeline.build_topic_prompt("Bench", [{"name": "c", "url": "https://fb.com/c"}], sample_reels)
-        parsed = vid_pipeline.parse_topics(agent_json, heur, reels=sample_reels, sheet_name="Bench")
+        heur = vid_pipeline.heuristic_video_analyses("Bench", sample_reels, limit=20)
+        prompt = vid_pipeline.build_video_structure_prompt("Bench", [{"name": "c", "url": "https://fb.com/c"}], sample_reels)
+        parsed = vid_pipeline.parse_video_analyses(agent_json, heur, reels=sample_reels, sheet_name="Bench")
         for topic in parsed:
             vid_pipeline.format_director_prompt(topic, sheet_name="Bench")
         return parsed if prompt else []

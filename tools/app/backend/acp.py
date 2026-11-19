@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import socket
 import subprocess
 import threading
 import time
@@ -40,29 +41,51 @@ class ACPClient:
         self._stderr_lines: List[str] = []
         self._closed = False
         self._notification_hook: Optional[Callable[[Dict[str, Any]], None]] = None
-        self._proc = subprocess.Popen(
-            command,
-            cwd=self.cwd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            env={**os.environ, "NO_COLOR": "1"},
-        )
-        threading.Thread(target=self._read_stdout, daemon=True).start()
-        threading.Thread(target=self._read_stderr, daemon=True).start()
+        self._proc: Optional[subprocess.Popen[str]] = None
+        self._sock: Optional[socket.socket] = None
+        bridge = os.environ.get("AGY_HOST_BRIDGE", "").strip()
+        if bridge and command and Path(command[0]).name == "agy":
+            host, _, port_str = bridge.rpartition(":")
+            port = int(port_str) if port_str.isdigit() else 8766
+            try:
+                self._sock = socket.create_connection((host or "host.docker.internal", port), timeout=10)
+                self._sock.settimeout(None)
+            except OSError as exc:
+                raise ACPError(
+                    f"Không kết nối được host agy bridge tại {bridge}: {exc}. "
+                    "Chạy `python tools/app/agy_host_bridge.py` trên máy host."
+                ) from exc
+            self._stdin = self._sock.makefile("w", encoding="utf-8", buffering=1)
+            self._stdout = self._sock.makefile("r", encoding="utf-8")
+            self._stdin.write(json.dumps({"command": command}, ensure_ascii=False) + "\n")
+            self._stdin.flush()
+            threading.Thread(target=self._read_stdout, daemon=True).start()
+        else:
+            self._proc = subprocess.Popen(
+                command,
+                cwd=self.cwd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                env={**os.environ, "NO_COLOR": "1"},
+            )
+            self._stdin = self._proc.stdin
+            self._stdout = self._proc.stdout
+            threading.Thread(target=self._read_stdout, daemon=True).start()
+            threading.Thread(target=self._read_stderr, daemon=True).start()
 
     # -- transport -----------------------------------------------------------
     def _send(self, payload: Dict[str, Any]) -> None:
-        if not self._proc.stdin:
+        if not self._stdin:
             raise ACPError("Agent stdin is closed")
-        self._proc.stdin.write(json.dumps(payload, ensure_ascii=False) + "\n")
-        self._proc.stdin.flush()
+        self._stdin.write(json.dumps(payload, ensure_ascii=False) + "\n")
+        self._stdin.flush()
 
     def _read_stdout(self) -> None:
-        assert self._proc.stdout
-        for line in self._proc.stdout:
+        assert self._stdout
+        for line in self._stdout:
             line = line.strip()
             if not line:
                 continue
@@ -93,7 +116,8 @@ class ACPClient:
                 })
 
     def _read_stderr(self) -> None:
-        assert self._proc.stderr
+        if not self._proc or not self._proc.stderr:
+            return
         for line in self._proc.stderr:
             line = line.strip()
             if line:
@@ -217,7 +241,21 @@ class ACPClient:
 
     def close(self) -> None:
         self._closed = True
-        if self._proc.poll() is None:
+        if self._sock is not None:
+            try:
+                self._sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                self._sock.close()
+            except OSError:
+                pass
+        if self._stdin is not None:
+            try:
+                self._stdin.close()
+            except OSError:
+                pass
+        if self._proc is not None and self._proc.poll() is None:
             self._proc.terminate()
             try:
                 self._proc.wait(timeout=3)

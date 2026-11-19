@@ -45,15 +45,15 @@ from tools.loop.viral_analyzer.profile_research.pipeline import (
 )
 from tools.loop.viral_analyzer.runtime import submit_with_context
 from tools.loop.viral_analyzer.video_research.pipeline import (
-    build_topic_prompt,
+    analyze_video_structure,
+    build_video_structure_prompt,
     format_director_prompt,
-    heuristic_topics,
+    heuristic_video_analyses,
     is_reel_url,
-    normalize_topics,
-    parse_topics,
+    normalize_video_analyses,
+    parse_video_analyses,
     research_reels,
     research_single_reel,
-    suggest_topics,
 )
 from tools.app.backend.store import JobStore, now_iso
 from tools.app.backend.video_engine import get_video_duration
@@ -115,6 +115,8 @@ _ELF_MAGIC = b"\x7fELF"
 
 def _check_agent_binary(binary_name: str) -> Tuple[bool, Optional[str]]:
     """Verify binary exists in PATH and matches the host OS executable format."""
+    if binary_name == "agy" and os.environ.get("AGY_HOST_BRIDGE", "").strip():
+        return True, None
     resolved = shutil.which(binary_name)
     if not resolved:
         return False, None
@@ -430,11 +432,13 @@ def _process_sheet_inner(
         ]
     elif job_kind == "reel":
         log(f"Phát hiện {len(targets)} Reel đơn lẻ; chạy Reel Research trực tiếp (bỏ qua profile scraper).")
-        reel_targets = [
-            (t.get("url", ""), t.get("name") or sheet_name)
-            for t in targets
-            if is_reel_url(t.get("url", ""))
-        ]
+        reel_targets = []
+        for t in targets:
+            t_url = t.get("url", "")
+            if is_reel_url(t_url):
+                reel_targets.append((t_url, t.get("name") or sheet_name))
+            else:
+                log(f"Bỏ qua URL không phải bài viết/video/Reel trực tiếp: {t_url}")
 
         def _analyze_one_reel(
             t_idx: int, t_url: str, t_name: str
@@ -507,7 +511,7 @@ def _process_sheet_inner(
         notice = prof_res.get("notice")
 
         if reels:
-            topics, topic_error = suggest_topics(
+            topics, topic_error = analyze_video_structure(
                 agent_id=agent_choice,
                 sheet_name=sheet_name,
                 targets=targets,

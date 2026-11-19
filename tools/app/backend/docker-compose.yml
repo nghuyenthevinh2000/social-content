@@ -80,6 +80,8 @@ services:
       - ENABLE_DM_POLLER=${ENABLE_DM_POLLER:-0}
       - VIRAL_APP_AGENT=${VIRAL_APP_AGENT:-agy}
       - VIRAL_APP_AGY_MODEL=${VIRAL_APP_AGY_MODEL:-gemini-4-hydrogen-low}
+      # Needed for macOS: host `agy` (Mach-O + Keychain) cannot run in Linux Docker directly.
+      - AGY_HOST_BRIDGE=${AGY_HOST_BRIDGE:-host.docker.internal:8766}
       - OPENCODE_CONFIG_CONTENT=${OPENCODE_CONFIG_CONTENT:-}
       - GLASSER_API_KEY=${GLASSER_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -100,6 +102,8 @@ services:
       - AGENT_PLATFORM_LOCATION=${AGENT_PLATFORM_LOCATION:-global}
       - VIDEO_GENERATION_DURATION=${VIDEO_GENERATION_DURATION:-15}
       - RATE_PER_SEC_MICRO=${RATE_PER_SEC_MICRO:-23000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - aibrand-hf:/home/app/.cache/huggingface
       - ${HOME:-/home/vinh}/.gemini:/home/app/.gemini
@@ -129,6 +133,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/aibrand
       - DB_POOL_MAX=${DB_POOL_MAX:-10}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/app/tools/app/backend
       - ../../loop:/app/tools/loop

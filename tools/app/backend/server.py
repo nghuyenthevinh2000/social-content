@@ -1,4 +1,4 @@
-"""Local web app for Excel -> viral research -> 3 topic ideas per sheet.
+"""Local web app for Excel -> viral video structure research -> director prompt per sheet.
 
 Run:
     python3 tools/app/backend/server.py --port 8765

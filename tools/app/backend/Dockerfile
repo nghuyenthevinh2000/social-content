@@ -31,18 +31,6 @@ RUN useradd --create-home --uid 1000 app \
     && mkdir -p /home/app/.config/glasser /home/app/.local/share/opencode /home/app/.cache/huggingface \
     && chown -R app /home/app
 
-# Native Linux agy CLI matched to image arch (prevents host Mach-O mount Exec format errors).
-RUN python3 -c "import hashlib, io, json, os, platform, tarfile, urllib.request; \
-arch = {'x86_64': 'amd64', 'amd64': 'amd64', 'aarch64': 'arm64', 'arm64': 'arm64'}[platform.machine()]; \
-m = json.loads(urllib.request.urlopen(f'https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_{arch}.json', timeout=30).read()); \
-data = urllib.request.urlopen(m['url'], timeout=120).read(); \
-assert hashlib.sha512(data).hexdigest() == m['sha512']; \
-tf = tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') if '.tar.gz' in m['url'] else None; \
-raw = tf.extractfile(next(mem for mem in tf.getmembers() if mem.name.lstrip('./') == 'antigravity')).read() if tf else data; \
-open('/usr/local/bin/agy', 'wb').write(raw); \
-os.chmod('/usr/local/bin/agy', 0o755); \
-os.symlink('/usr/local/bin/agy', '/usr/local/bin/antigravity')"
-
 WORKDIR /app
 RUN mkdir -p /app/local/aibrand/temp /app/local/app-runs && chown -R app /app/local
 COPY --chown=app tools/common tools/common

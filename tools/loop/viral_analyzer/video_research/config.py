@@ -151,7 +151,7 @@ def format_director_prompt(
     )
 
 
-def build_topic_prompt(
+def build_video_structure_prompt(
     sheet_name: str,
     targets: List[Dict[str, Any]],
     reels: List[Dict[str, Any]],
@@ -174,7 +174,7 @@ def build_topic_prompt(
     hook_end = "03"
     cta_start = f"{max(4, dur - 4):02d}"
 
-    return f"""Bạn là chiến lược gia nội dung viral cho Facebook Reels & video ngắn tiếng Việt.
+    return f"""Bạn là chiến lược gia phân tích cấu trúc video viral cho Reels & video ngắn tiếng Việt.
 
 NHÓM CHỦ ĐỀ: {sheet_name}
 KÊNH / NGUỒN REEL: {channels}
@@ -182,8 +182,8 @@ PHÂN BỔ POOL: {pool_text}
 DỮ LIỆU REEL:
 {digest}
 
-NHIỆM VỤ: Đề xuất ĐÚNG 3 chủ đề video có khả năng viral cao nhất cho nội dung này.
-Mỗi chủ đề phải đi kèm trường "prompt" chứa kịch bản đạo diễn (director prompt) hoàn chỉnh, chuẩn bị sẵn cho AI tạo video (tỷ lệ 9:16 dọc, thời lượng {dur} giây).
+NHIỆM VỤ: Phân tích cấu trúc của video trong dữ liệu reel trên — giải thích vì sao video có khả năng viral và bóc tách dàn ý/cấu trúc để nhân bản lại độ viral.
+Mỗi phân tích video phải đi kèm trường "prompt" chứa kịch bản đạo diễn (director prompt) hoàn chỉnh để tái tạo cấu trúc viral đó cho AI tạo video (tỷ lệ 9:16 dọc, thời lượng {dur} giây).
 
 CẤU TRÚC PROMPT ĐẠO DIỄN (bắt buộc đúng 5 phần theo chuẩn UGC):
 [CAMERA & COMPOSITION]
@@ -205,7 +205,9 @@ Phân chia nhịp thời gian chính xác trong đúng {dur} giây:
 Giọng {gender_vn} ({age} tuổi), giọng {tone_str}, lời thoại tiếng Việt tự nhiên, súc tích, nhịp điệu nhanh vừa khớp thời lượng {dur} giây.
 
 Yêu cầu:
-- 3 chủ đề phải khác nhau rõ rệt về góc khai thác, không trùng ý.
+- Phân tích đúng cấu trúc và yếu tố viral của chính video trong dữ liệu (1 phần tử cho mỗi video cần phân tích; không bịa thêm chủ đề ngoài video).
+- Trường "why_viral" giải thích rõ vì sao video này viral (hook, tâm lý người xem, nhịp độ, hình ảnh/âm thanh, dẫn số liệu từ dữ liệu).
+- Trường "outline" bóc tách cấu trúc thực tế của video theo từng phần (mở đầu/hook, thân bài/triển khai, kết/CTA) để nhân bản độ viral.
 - Dựa trên bằng chứng thật từ dữ liệu trên (view, velocity, pool, transcript, tên kênh, reel_url).
 - Nếu có mô tả hình ảnh, bám sát bối cảnh, góc máy, ánh sáng, đạo cụ và chữ trên màn hình thật của video.
 - Cụ thể, có thể bấm máy quay làm ngay; không viết chung chung.

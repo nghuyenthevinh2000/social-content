@@ -22,9 +22,9 @@ from tools.app.backend.profiles import (
 )
 from tools.app.backend.research_engine.research import (
     create_job,
-    heuristic_topics,
-    normalize_topics,
-    parse_topics,
+    heuristic_video_analyses,
+    normalize_video_analyses,
+    parse_video_analyses,
 )
 from tools.app.backend.store import JobStore
 from tools.loop.viral_analyzer.profile_research.config import load_config
@@ -108,8 +108,8 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(slugify("tổng hợp"), "tong-hop")
         self.assertEqual(slugify("mẹ chồng - nàng dâu"), "me-chong-nang-dau")
 
-    def test_parse_topics_from_fenced_json(self):
-        fallback = heuristic_topics("thực phẩm bẩn", [])
+    def test_parse_video_analyses_from_fenced_json(self):
+        fallback = heuristic_video_analyses("thực phẩm bẩn", [{"url": "https://x", "title": "Sample"}])
         answer = "```json\n" + json.dumps(
             [
                 {"title": "A", "hook": "H", "angle": "G", "why_viral": "W", "outline": ["1", "2"], "source_urls": ["https://x"]},
@@ -118,63 +118,59 @@ class BackendTests(unittest.TestCase):
             ],
             ensure_ascii=False,
         ) + "\n```"
-        topics = parse_topics(answer, fallback)
-        self.assertEqual(len(topics), 3)
-        self.assertEqual(topics[0]["title"], "A")
-        self.assertEqual(topics[0]["generated_by"], "agent")
-        self.assertEqual(topics[1]["generated_by"], "agent")
+        analyses = parse_video_analyses(answer, fallback)
+        self.assertEqual(len(analyses), 3)
+        self.assertEqual(analyses[0]["title"], "A")
+        self.assertEqual(analyses[0]["generated_by"], "agent")
+        self.assertEqual(analyses[1]["generated_by"], "agent")
 
     def test_invalid_agent_output_falls_back(self):
-        fallback = heuristic_topics("mẹ bé", [])
-        topics = parse_topics("xin lỗi, tôi không trả JSON", fallback)
-        self.assertEqual(len(topics), 3)
-        self.assertEqual(topics[0]["generated_by"], "heuristic")
+        fallback = heuristic_video_analyses("mẹ bé", [{"url": "https://www.facebook.com/reel/1", "title": "Reel 1"}])
+        analyses = parse_video_analyses("xin lỗi, tôi không trả JSON", fallback)
+        self.assertEqual(len(analyses), 1)
+        self.assertEqual(analyses[0]["generated_by"], "heuristic")
 
-    def test_normalize_pads_to_three(self):
-        fallback = heuristic_topics("mẹ bé", [])
-        topics = normalize_topics([{"title": "Chỉ một"}], fallback)
-        self.assertEqual(len(topics), 3)
+    def test_normalize_does_not_pad_to_three(self):
+        fallback = heuristic_video_analyses("mẹ bé", [{"url": "https://www.facebook.com/reel/1", "title": "Reel 1"}])
+        analyses = normalize_video_analyses([{"title": "Chỉ một"}], fallback)
+        self.assertEqual(len(analyses), 1)
 
-    def test_heuristic_and_normalize_topics_sorted_by_views_up_to_10(self):
+    def test_heuristic_and_normalize_video_analyses_sorted_by_views_up_to_10(self):
         reels = [
             {"video_id": f"v_{i}", "url": f"https://www.facebook.com/reel/v_{i}", "views": i * 1000, "velocity_per_hour": i * 100}
             for i in range(1, 15)
         ]
-        fallback = heuristic_topics("test sheet", reels, limit=10)
+        fallback = heuristic_video_analyses("test sheet", reels, limit=10)
         self.assertEqual(len(fallback), 10)
         self.assertEqual(fallback[0]["views"], 14000)
         self.assertEqual(fallback[-1]["views"], 5000)
-        # Verify descending order
         views_list = [t["views"] for t in fallback]
         self.assertEqual(views_list, sorted(views_list, reverse=True))
 
-        # Test normalize_topics also preserves max 10 and descending view sort
         agent_data = [{"title": "Hot video", "source_urls": ["https://www.facebook.com/reel/v_14"]}]
-        normalized = normalize_topics(agent_data, fallback, reels=reels, limit=10)
+        normalized = normalize_video_analyses(agent_data, fallback, reels=reels, limit=10)
         self.assertEqual(len(normalized), 10)
         self.assertEqual(normalized[0]["views"], 14000)
 
-    def test_normalize_topics_resolves_page_url_to_reel_url(self):
-        fallback = heuristic_topics("kênh", [])
+    def test_normalize_video_analyses_resolves_page_url_to_reel_url(self):
+        fallback = heuristic_video_analyses("kênh", [])
         reels = [
             {"author_handle": "my_page", "video_id": "123456", "url": "https://www.facebook.com/reel/123456"},
             {"author_handle": "another_page", "video_id": "789101", "url": "https://www.facebook.com/reel/789101"},
         ]
-        # Agent provided a page URL instead of reel URL
         agent_data = [
             {"title": "T1", "source_urls": ["https://www.facebook.com/my_page"]},
             {"title": "T2", "source_urls": ["https://www.facebook.com/reel/789101"]},
         ]
-        topics = normalize_topics(agent_data, fallback, reels=reels)
-        # Should resolve page URL to the actual reel URL
-        self.assertEqual(topics[0]["source_urls"], ["https://www.facebook.com/reel/123456"])
-        self.assertEqual(topics[1]["source_urls"], ["https://www.facebook.com/reel/789101"])
+        analyses = normalize_video_analyses(agent_data, fallback, reels=reels)
+        self.assertEqual(analyses[0]["source_urls"], ["https://www.facebook.com/reel/123456"])
+        self.assertEqual(analyses[1]["source_urls"], ["https://www.facebook.com/reel/789101"])
 
-    def test_normalize_topics_cross_checks_actor_profile(self):
-        fallback = heuristic_topics("hôn nhân", [])
+    def test_normalize_video_analyses_cross_checks_actor_profile(self):
+        fallback = heuristic_video_analyses("hôn nhân", [])
         agent_data = [
             {
-                "title": "Chủ đề hôn nhân",
+                "title": "Cấu trúc video hôn nhân",
                 "prompt": (
                     "[CAMERA & COMPOSITION]\nVertical 9:16\n\n"
                     "[ENVIRONMENT & ATMOSPHERE]\nPhòng khách\n\n"
@@ -185,8 +181,8 @@ class BackendTests(unittest.TestCase):
             }
         ]
         actor_prof = {"gender": "male", "age": 28, "voice_tone": "Bắc"}
-        topics = normalize_topics(agent_data, fallback, actor_profile=actor_prof)
-        prompt = topics[0]["prompt"]
+        analyses = normalize_video_analyses(agent_data, fallback, actor_profile=actor_prof)
+        prompt = analyses[0]["prompt"]
         self.assertIn("Người dẫn nam 28 tuổi", prompt)
         self.assertIn("Giọng nam (28 tuổi)", prompt)
         self.assertIn("Ngoại hình nhất quán của người dẫn nam (28 tuổi)", prompt)
@@ -575,10 +571,10 @@ class BackendTests(unittest.TestCase):
                 self.assertIn("dup_channel", payload["source_breakdown"]["cache"])
                 self.assertTrue(any("Thống kê nguồn cào:" in log for log in logs))
 
-    def test_suggest_topics_empty_reels_returns_empty(self):
-        from tools.app.backend.research_engine.research import suggest_topics
+    def test_analyze_video_structure_empty_reels_returns_empty(self):
+        from tools.app.backend.research_engine.research import analyze_video_structure
         logs = []
-        topics, err = suggest_topics(
+        topics, err = analyze_video_structure(
             "agy",
             "test_sheet",
             [{"name": "chan", "url": "https://facebook.com/chan"}],
@@ -968,7 +964,7 @@ class BackendTests(unittest.TestCase):
             }
             with mock.patch("tools.loop.viral_analyzer.video_research.pipeline.fetch_reel_transcript", return_value="Nội dung transcript mẫu"):
                 with mock.patch("tools.loop.viral_analyzer.video_research.pipeline._download_reel_video", return_value=None):
-                    with mock.patch("tools.loop.viral_analyzer.video_research.pipeline.suggest_topics", return_value=([mock_topic], None)):
+                    with mock.patch("tools.loop.viral_analyzer.video_research.pipeline.analyze_video_structure", return_value=([mock_topic], None)):
                         _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48}, job_kind="reel")
 
             snap = self._store.snapshot(job_id)
@@ -988,13 +984,58 @@ class BackendTests(unittest.TestCase):
         with mock.patch.object(reel_research, "fetch_reel_transcript", return_value="Nội dung"):
             with mock.patch.object(reel_research, "fetch_top_reels_transcripts", return_value=None):
                 with mock.patch.object(reel_research, "_download_reel_video", return_value=None):
-                    with mock.patch.object(reel_research, "suggest_topics", return_value=(fake_topics, None)):
+                    with mock.patch.object(reel_research, "analyze_video_structure", return_value=(fake_topics, None)):
                         agent_res = reel_research.research_single_reel(url, agent_id="agy", cwd=Path("."))
                     heuristic_res = reel_research.research_single_reel(url, agent_id=None)
 
         self.assertEqual(len(agent_res["topics"]), 1)
         self.assertEqual(len(heuristic_res["topics"]), 1)
         self.assertTrue(agent_res["topics"][0]["prompt"])
+
+    def test_agy_host_bridge_validation_and_resolve_agent(self):
+        from tools.app import agy_host_bridge
+        from tools.app.backend.research_engine import research as research_mod
+
+        self.assertEqual(agy_host_bridge._validate_agy_command(["agy", "acp"]), ["agy", "acp"])
+        self.assertEqual(
+            agy_host_bridge._validate_agy_command(["agy", "--model", "gemini-4-hydrogen-low", "acp"]),
+            ["agy", "--model", "gemini-4-hydrogen-low", "acp"],
+        )
+        with self.assertRaises(ValueError):
+            agy_host_bridge._validate_agy_command(["bash", "-c", "id"])
+
+        with mock.patch.dict(os.environ, {"AGY_HOST_BRIDGE": "host.docker.internal:8766"}, clear=False):
+            with mock.patch("tools.app.backend.research_engine.research.shutil.which", return_value=None):
+                resolved = research_mod.resolve_agent("agy", model="gemini-4-hydrogen-low")
+        self.assertEqual(resolved["command"], ["agy", "--model", "gemini-4-hydrogen-low", "acp"])
+
+    def test_analyze_video_structure_without_3_topics(self):
+        from tools.loop.viral_analyzer.video_research import pipeline as reel_research
+
+        url = "https://www.instagram.com/reel/Dcxb-meiex7/"
+        captured_prompts = []
+        agent_json = json.dumps(
+            [{"title": "Phân tích video", "why_viral": "Hook mạnh", "outline": ["Hook", "Thân", "CTA"], "source_urls": [url]}],
+            ensure_ascii=False,
+        )
+        ctx = reel_research.runtime.EngineContext(agent_runner=lambda p: (captured_prompts.append(p), agent_json)[1])
+        with mock.patch.object(reel_research, "fetch_top_reels_transcripts", return_value=None):
+            topics, err = reel_research.analyze_video_structure(
+                agent_id="agy",
+                sheet_name="Reel đã lưu",
+                targets=[{"name": "Reel đã lưu", "url": url}],
+                reels=[{"url": url, "reel_url": url, "video_id": "Dcxb-meiex7", "platform": "instagram"}],
+                cwd=Path("."),
+                timeout_sec=10,
+                log=lambda _m: None,
+                ctx=ctx,
+                limit=1,
+            )
+
+        self.assertIsNone(err)
+        self.assertEqual(len(topics), 1)
+        self.assertIn("why_viral", captured_prompts[0])
+        self.assertNotIn("Đề xuất ĐÚNG 3 chủ đề", captured_prompts[0])
 
     def test_research_single_reel_analyzes_and_deletes_video(self):
         from tools.loop.viral_analyzer.video_research import pipeline as reel_research
@@ -1011,7 +1052,7 @@ class BackendTests(unittest.TestCase):
                             "analyze_video_visuals",
                             return_value="Bối cảnh bếp sáng, góc máy cận cảnh, có chữ overlay.",
                         ):
-                            with mock.patch.object(reel_research, "suggest_topics", return_value=([], None)):
+                            with mock.patch.object(reel_research, "analyze_video_structure", return_value=([], None)):
                                 res = reel_research.research_single_reel(
                                     url, agent_id="agy", cwd=Path(".")
                                 )
@@ -1277,7 +1318,7 @@ class BackendTests(unittest.TestCase):
                  mock.patch.object(reel_research, "_download_reel_video", return_value=video_path), \
                  mock.patch.object(reel_research, "_transcribe_local_fallback", return_value="Local ASR text") as mock_local, \
                  mock.patch.object(reel_research, "analyze_video_visuals", return_value="Visuals"), \
-                 mock.patch.object(reel_research, "suggest_topics", return_value=([{"title": "T1", "source_urls": [url]}], None)) as mock_suggest:
+                 mock.patch.object(reel_research, "analyze_video_structure", return_value=([{"title": "T1", "source_urls": [url]}], None)) as mock_suggest:
                 res = reel_research.research_single_reel(url, agent_id="agy", cwd=Path(tmpdir))
             mock_local.assert_called_once()
             self.assertEqual(res["transcript"], "Local ASR text")
@@ -1391,6 +1432,30 @@ class BackendTests(unittest.TestCase):
             ("https://www.tiktok.com/@creator/video/7499229683859426602?is_from_webapp=1", "https://www.tiktok.com/@creator/video/7499229683859426602", "tiktok", "7499229683859426602"),
             ("https://www.instagram.com/reel/DOq6eV6iIgD/?igsh=1", "https://www.instagram.com/reel/DOq6eV6iIgD", "instagram", "DOq6eV6iIgD"),
             ("https://www.instagram.com/p/PostCode99/?igsh=1", "https://www.instagram.com/p/PostCode99", "instagram", "PostCode99"),
+            (
+                "https://www.facebook.com/61552426085742/posts/kh%E1%BB%91i-u-v%C3%BA-c%C3%B3-th%E1%BB%83-bi%E1%BA%BFn-m%E1%BA%A5t-ch%E1%BB%89-nh%E1%BB%9D-thu%E1%BB%91c-nam-vi%E1%BB%87n-gi%C3%A1p-v%C3%BA-gan-bs-l%C3%AA-l%C3%BD-tr%E1%BB%8Dng-h%C6%B0ng/122353337234080869/",
+                "https://www.facebook.com/61552426085742/posts/kh%E1%BB%91i-u-v%C3%BA-c%C3%B3-th%E1%BB%83-bi%E1%BA%BFn-m%E1%BA%A5t-ch%E1%BB%89-nh%E1%BB%9D-thu%E1%BB%91c-nam-vi%E1%BB%87n-gi%C3%A1p-v%C3%BA-gan-bs-l%C3%AA-l%C3%BD-tr%E1%BB%8Dng-h%C6%B0ng/122353337234080869",
+                "facebook",
+                "122353337234080869",
+            ),
+            (
+                "https://www.facebook.com/61552426085742/posts/pfbid02AbC123xyz/?mibextid=abc",
+                "https://www.facebook.com/61552426085742/posts/pfbid02AbC123xyz",
+                "facebook",
+                "pfbid02AbC123xyz",
+            ),
+            (
+                "https://www.facebook.com/somepage/videos/some-title-slug/9876543210/?ref=share",
+                "https://www.facebook.com/somepage/videos/some-title-slug/9876543210",
+                "facebook",
+                "9876543210",
+            ),
+            (
+                "https://www.facebook.com/permalink.php?id=61552426085742&story_fbid=pfbid02xyz&mibextid=1",
+                "https://www.facebook.com/permalink.php?story_fbid=pfbid02xyz&id=61552426085742",
+                "facebook",
+                "pfbid02xyz",
+            ),
         ]
         for raw, expected_url, expected_platform, expected_vid in cases:
             self.assertTrue(is_reel_url(raw), raw)
@@ -1399,6 +1464,14 @@ class BackendTests(unittest.TestCase):
             norm = _normalize_target(raw, name="Video")
             self.assertEqual(norm["url"], expected_url)
             self.assertEqual(norm["platform"], expected_platform)
+
+        for non_reel in (
+            "https://www.facebook.com/61552426085742",
+            "https://www.facebook.com/61552426085742/posts/",
+            "https://www.facebook.com/61552426085742/posts/10-meo-hay/",
+            "https://www.facebook.com/61552426085742/videos/",
+        ):
+            self.assertFalse(is_reel_url(non_reel), non_reel)
 
         self.assertTrue(is_social_url("https://www.youtube.com/@drericberg"))
         self.assertTrue(is_social_url("https://www.tiktok.com/@ttdoc"))
@@ -1604,7 +1677,7 @@ class BackendTests(unittest.TestCase):
             })
             with mock.patch("tools.loop.viral_analyzer.video_research.pipeline.fetch_reel_transcript", return_value="YT tr"), \
                  mock.patch("tools.loop.viral_analyzer.video_research.pipeline._download_reel_video", return_value=None), \
-                 mock.patch("tools.loop.viral_analyzer.video_research.pipeline.suggest_topics", return_value=([{"title": "T1", "source_urls": [yt_url], "platform": "youtube"}], None)):
+                 mock.patch("tools.loop.viral_analyzer.video_research.pipeline.analyze_video_structure", return_value=([{"title": "T1", "source_urls": [yt_url], "platform": "youtube"}], None)):
                 _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy"}, job_kind="reel")
             snap = self._store.snapshot(job_id)
             self.assertEqual(snap["sheets"][0]["status"], "completed")

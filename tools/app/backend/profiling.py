@@ -398,8 +398,8 @@ def run_worker_context(iterations: int, collector: MetricsCollector, live: bool 
             for _ in range(max(1, min(iterations, 5))):
                 with request_scope("WORKER", "keyword_search", context="worker"):
                     keyword_search.run_viral_video_search("gyno conditions", run_dir, options={})
-                with request_scope("WORKER", "heuristic_topics", context="worker"):
-                    reel_research.heuristic_topics("Bench Sheet", sample_reels)
+                with request_scope("WORKER", "heuristic_video_analyses", context="worker"):
+                    reel_research.heuristic_video_analyses("Bench Sheet", sample_reels)
     finally:
         keyword_search._glasser_run_json = orig_glasser
 

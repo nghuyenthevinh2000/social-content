@@ -71,6 +71,9 @@ def test_policy_guards_and_budget_circuit_breakers():
             "https://www.youtube.com/watch?v=LYxSPJPO4vE",
             "https://www.tiktok.com/@creator/video/123",
             "https://www.instagram.com/reel/abc/",
+            "https://www.facebook.com/61552426085742",
+            "https://www.facebook.com/61552426085742/posts/",
+            "https://www.facebook.com/61552426085742/posts/10-meo-hay/",
         ):
             with pytest.raises(cost_control.CostPolicyError):
                 cost_control.check_call_allowed(
@@ -78,6 +81,17 @@ def test_policy_guards_and_budget_circuit_breakers():
                     "/v1/facebook/post/transcript",
                     payload={"url": bad_url},
                 )
+        for fb_good_url in (
+            "https://www.facebook.com/61552426085742/posts/kh%E1%BB%91i-u-v%C3%BA/122353337234080869",
+            "https://www.facebook.com/61552426085742/posts/pfbid02AbC123xyz",
+            "https://www.facebook.com/somepage/videos/some-slug/9876543210",
+            "https://www.facebook.com/permalink.php?story_fbid=pfbid02xyz&id=61552426085742",
+        ):
+            assert cost_control.check_call_allowed(
+                "scrapecreators",
+                "/v1/facebook/post/transcript",
+                payload={"url": fb_good_url},
+            )[0] is True
         for endpoint, bad_url, good_url in (
             ("/v1/youtube/video/transcript", "https://www.tiktok.com/@creator/video/123", "https://www.youtube.com/watch?v=LYxSPJPO4vE"),
             ("/v1/tiktok/video/transcript", "https://www.youtube.com/watch?v=LYxSPJPO4vE", "https://www.tiktok.com/@creator/video/123"),
@@ -215,7 +229,7 @@ def test_transcriber_blocks_non_fb_and_negative_caches_404():
     assert get_cached_transcript(fb_vid, include_negative=True) == NO_TRANSCRIPT_SENTINEL
 
 
-def test_suggest_topics_fetches_transcripts_once_for_top_3(tmp_path: Path):
+def test_analyze_video_structure_fetches_transcripts_once_for_analyzed_reels(tmp_path: Path):
     reels = [
         {
             "url": f"https://www.facebook.com/reel/{1000 + i}",
@@ -263,7 +277,7 @@ def test_suggest_topics_fetches_transcripts_once_for_top_3(tmp_path: Path):
 
     with patch.object(reel_research, "ACPClient", FakeACP):
         with patch.object(reel_research, "fetch_top_reels_transcripts", side_effect=fake_fetch):
-            topics, err = reel_research.suggest_topics(
+            topics, err = reel_research.analyze_video_structure(
                 agent_id="agy",
                 sheet_name="Test Sheet",
                 targets=[{"name": "t", "url": "https://www.facebook.com/test"}],
@@ -274,8 +288,8 @@ def test_suggest_topics_fetches_transcripts_once_for_top_3(tmp_path: Path):
             )
 
     assert err is None
-    assert len(topics) >= 3
-    assert fetch_calls == [3]
+    assert len(topics) == 5
+    assert fetch_calls == [5]
 
 
 def test_cost_store_summaries_and_cli_report():
