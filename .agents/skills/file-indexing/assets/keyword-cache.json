@@ -41,5 +41,136 @@
     "thế",
     "giới",
     "đời"
+  ],
+  "rename": [
+    "move",
+    "change",
+    "name",
+    "đổi",
+    "tên"
+  ],
+  "video": [
+    "clip",
+    "media",
+    "footage",
+    "phim"
+  ],
+  "search": [
+    "query",
+    "lookup",
+    "tìm",
+    "kiếm"
+  ],
+  "keyword": [
+    "term",
+    "token",
+    "tag",
+    "khóa"
+  ],
+  "tools": [
+    "utility",
+    "script",
+    "cli",
+    "công"
+  ],
+  "app": [
+    "application",
+    "webapp",
+    "dashboard",
+    "ứng",
+    "dụng"
+  ],
+  "backend": [
+    "server",
+    "api",
+    "service",
+    "máy",
+    "chủ"
+  ],
+  "research": [
+    "discovery",
+    "analysi",
+    "scrap",
+    "nghiên",
+    "cứu"
+  ],
+  "engine": [
+    "pipeline",
+    "worker",
+    "processor",
+    "máy"
+  ],
+  "youtube": [
+    "video",
+    "platform",
+    "channel",
+    "kênh",
+    "youtube"
+  ],
+  "tiktok": [
+    "short",
+    "video",
+    "douyin",
+    "kênh",
+    "tiktok"
+  ],
+  "instagram": [
+    "insta",
+    "reel",
+    "mạng",
+    "hội"
+  ],
+  "profiles": [
+    "account",
+    "creator",
+    "channel"
+  ],
+  "videos": [
+    "clip",
+    "media",
+    "post",
+    "bài",
+    "đăng"
+  ],
+  "loop": [
+    "cycle",
+    "iteration",
+    "automation",
+    "vòng",
+    "lặp"
+  ],
+  "viral": [
+    "trend",
+    "popular",
+    "hit",
+    "hướng"
+  ],
+  "analyzer": [
+    "evaluator",
+    "inspector",
+    "parser",
+    "phân",
+    "tích"
+  ],
+  "pipeline": [
+    "workflow",
+    "process",
+    "stream",
+    "quy",
+    "trình"
+  ],
+  "transcriber": [
+    "speech",
+    "text",
+    "stt",
+    "captioner",
+    "phiên"
+  ],
+  "download": [
+    "fetch",
+    "save",
+    "grab",
+    "tải",
+    "xuống"
   ]
 }

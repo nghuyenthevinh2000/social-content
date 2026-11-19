@@ -42,8 +42,27 @@ KEYWORD_SEARCH_ALLOWED_ENDPOINTS = frozenset({
     "/v2/instagram/reels/search",
 })
 
+TRANSCRIPT_ENDPOINTS = frozenset({
+    "/v1/facebook/post/transcript",
+    "/v1/youtube/video/transcript",
+    "/v1/tiktok/video/transcript",
+    "/v2/instagram/media/transcript",
+})
+
 _FB_TRANSCRIPT_URL_RE = re.compile(
     r"^https?://(?:[\w.-]+\.)?facebook\.com/(?:reel/\d+|[^/]+/videos/\d+|watch/?\?(?:[^#]*&)?v=\d+)",
+    re.IGNORECASE,
+)
+_YT_TRANSCRIPT_URL_RE = re.compile(
+    r"^https?://(?:(?:[\w.-]+\.)?youtube\.com/(?:watch/?\?(?:[^#]*&)?v=|shorts/)[A-Za-z0-9_-]{6,}|youtu\.be/[A-Za-z0-9_-]{6,})",
+    re.IGNORECASE,
+)
+_TT_TRANSCRIPT_URL_RE = re.compile(
+    r"^https?://(?:[\w.-]+\.)?tiktok\.com/(?:@[\w.-]+/(?:video|photo)/\d+|t/[A-Za-z0-9_-]+|[A-Za-z0-9_-]+)",
+    re.IGNORECASE,
+)
+_IG_TRANSCRIPT_URL_RE = re.compile(
+    r"^https?://(?:[\w.-]+\.)?instagram\.com/(?:[\w.-]+/)?(?:reels?|p|tv)/[A-Za-z0-9_-]+",
     re.IGNORECASE,
 )
 
@@ -132,6 +151,18 @@ def is_valid_facebook_transcript_url(url: str) -> bool:
     return bool(url and _FB_TRANSCRIPT_URL_RE.match(url.strip()))
 
 
+def is_valid_youtube_transcript_url(url: str) -> bool:
+    return bool(url and _YT_TRANSCRIPT_URL_RE.match(url.strip()))
+
+
+def is_valid_tiktok_transcript_url(url: str) -> bool:
+    return bool(url and _TT_TRANSCRIPT_URL_RE.match(url.strip()))
+
+
+def is_valid_instagram_transcript_url(url: str) -> bool:
+    return bool(url and _IG_TRANSCRIPT_URL_RE.match(url.strip()))
+
+
 def parse_glasser_stdout(text: str) -> Dict[str, Any]:
     """Parse Glasser CLI stdout/stderr for Run ID, Run URL, HTTP status, and exact Decimal Charge."""
     raw = text or ""
@@ -203,7 +234,7 @@ def record_cost_event(
                 scope.cache_hits += 1
             elif http_status != 403:
                 scope.api_calls += 1
-                if endpoint == "/v1/facebook/post/transcript":
+                if endpoint in TRANSCRIPT_ENDPOINTS:
                     scope.transcript_calls += 1
             if wasted:
                 scope.wasted_calls += 1
@@ -247,6 +278,14 @@ def record_cost_event(
         logger.debug("Failed to persist cost_event (%s %s): %s", provider, endpoint, exc)
 
 
+_TRANSCRIPT_URL_VALIDATORS: Dict[str, Tuple[str, Callable[[str], bool]]] = {
+    "/v1/facebook/post/transcript": ("Facebook", is_valid_facebook_transcript_url),
+    "/v1/youtube/video/transcript": ("YouTube", is_valid_youtube_transcript_url),
+    "/v1/tiktok/video/transcript": ("TikTok", is_valid_tiktok_transcript_url),
+    "/v2/instagram/media/transcript": ("Instagram", is_valid_instagram_transcript_url),
+}
+
+
 def check_call_allowed(
     provider: str,
     endpoint: str,
@@ -257,15 +296,17 @@ def check_call_allowed(
     """Enforce URL guards, keyword_search allowlist, and per-action budget circuit breakers."""
     reason: Optional[str] = None
 
-    if endpoint == "/v1/facebook/post/transcript":
+    validator_entry = _TRANSCRIPT_URL_VALIDATORS.get(endpoint)
+    if validator_entry is not None:
+        plat_label, validator = validator_entry
         url = str((payload or {}).get("url") or "").strip()
-        if not is_valid_facebook_transcript_url(url):
-            reason = f"Blocked non-Facebook URL for transcript endpoint: {url or '<empty>'}"
+        if not validator(url):
+            reason = f"Blocked non-{plat_label} URL for transcript endpoint: {url or '<empty>'}"
 
     scope = current_cost_scope()
     if reason is None and scope is not None:
         if scope.action == "keyword_search" and provider == "scrapecreators":
-            if endpoint == "/v1/facebook/post/transcript" or endpoint not in KEYWORD_SEARCH_ALLOWED_ENDPOINTS:
+            if endpoint in TRANSCRIPT_ENDPOINTS or endpoint not in KEYWORD_SEARCH_ALLOWED_ENDPOINTS:
                 reason = f"Endpoint {endpoint} is not allowed during keyword_search"
 
         if reason is None:
@@ -274,7 +315,7 @@ def check_call_allowed(
                 if "max_calls" in budget and scope.api_calls >= budget["max_calls"]:
                     reason = f"Budget exceeded for {scope.action}: api_calls={scope.api_calls} >= {budget['max_calls']}"
                 elif (
-                    endpoint == "/v1/facebook/post/transcript"
+                    endpoint in TRANSCRIPT_ENDPOINTS
                     and "max_transcript_calls" in budget
                     and scope.transcript_calls >= budget["max_transcript_calls"]
                 ):

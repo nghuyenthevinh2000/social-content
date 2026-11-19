@@ -279,6 +279,16 @@ def handle_acp_error(
             suggestion="Tăng acp_timeout trong cấu hình hoặc kiểm tra tải máy.",
             details={"raw": raw_text},
         )
+    elif "exec format error" in lower or "errno 8" in lower or "mach-o" in lower:
+        app_err = AppError(
+            category=ErrorCategory.ACP.value,
+            code="ACP_BINARY_FORMAT_ERROR",
+            message=f"Binary harness '{agent_id or 'agent'}' sai định dạng hệ điều hành/kiến trúc (Exec format error)",
+            severity=ErrorSeverity.ERROR.value,
+            source=agent_id,
+            suggestion="Bỏ mount binary macOS vào container Linux và dùng binary Linux trong image (/usr/local/bin/agy).",
+            details={"raw": raw_text},
+        )
     else:
         app_err = AppError(
             category=ErrorCategory.ACP.value,

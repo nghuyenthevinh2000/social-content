@@ -22,6 +22,7 @@ import urllib.parse
 import urllib.request
 
 from tools.app.backend.acp import ACPClient, ACPError
+from tools.app.backend.profiles import detect_platform
 from tools.app.backend.video_engine import get_video_duration
 from tools.loop.viral_analyzer.transcriber import fetch_reel_transcript, fetch_top_reels_transcripts
 
@@ -43,13 +44,18 @@ Trả về một đoạn văn 4-6 câu, không markdown, không nhận xét ngo�
 REEL_PATTERNS = [
     re.compile(r'https?://(?:www\.)?facebook\.com/reel/(\d+)', re.I),
     re.compile(r'https?://(?:www\.)?facebook\.com/share/[rvp]/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?facebook\.com/watch/\?v=(\d+)', re.I),
+    re.compile(r'https?://(?:www\.)?facebook\.com/watch/?\?(?:[^#\s]*&)?v=(\d+)', re.I),
     re.compile(r'https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.-]+/videos/(\d+)', re.I),
+    re.compile(r'https?://(?:www\.)?facebook\.com/ads/library/\?(?:[^#\s]*&)?id=(\d+)', re.I),
     re.compile(r'https?://fb\.watch/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?instagram\.com/reel/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?instagram\.com/p/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?tiktok\.com/@[\w.-]+/video/(\d+)', re.I),
+    re.compile(r'https?://(?:(?:www|m)\.)?youtube\.com/watch/?\?(?:[^#\s]*&)?v=([a-zA-Z0-9_-]{6,})', re.I),
+    re.compile(r'https?://(?:(?:www|m)\.)?youtube\.com/shorts/([a-zA-Z0-9_-]{6,})', re.I),
+    re.compile(r'https?://youtu\.be/([a-zA-Z0-9_-]{6,})', re.I),
+    re.compile(r'https?://(?:www\.)?instagram\.com/(?:[a-zA-Z0-9_.-]+/)?reels?/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?instagram\.com/(?:[a-zA-Z0-9_.-]+/)?(?:p|tv)/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?tiktok\.com/@[\w.-]+/(?:video|photo)/(\d+)', re.I),
     re.compile(r'https?://(?:vm|vt)\.tiktok\.com/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?tiktok\.com/t/([a-zA-Z0-9_-]+)', re.I),
 ]
 
 
@@ -89,11 +95,17 @@ def canonicalize_reel_url(url: str, resolve_redirects: bool = True) -> Optional[
         match = pattern.search(target_url)
         if match:
             clean = match.group(0).rstrip('/')
-            if 'facebook.com' in clean or 'fb.watch' in clean:
+            lowered = clean.lower()
+            if 'youtube.com' in lowered or 'youtu.be' in lowered:
+                vid = match.group(1)
+                if '/shorts/' in lowered:
+                    return f'https://www.youtube.com/shorts/{vid}', 'youtube'
+                return f'https://www.youtube.com/watch?v={vid}', 'youtube'
+            if 'facebook.com' in lowered or 'fb.watch' in lowered:
                 return clean, 'facebook'
-            if 'instagram.com' in clean:
+            if 'instagram.com' in lowered:
                 return clean, 'instagram'
-            if 'tiktok.com' in clean:
+            if 'tiktok.com' in lowered:
                 return clean, 'tiktok'
     return None
 
@@ -134,7 +146,7 @@ def _reel_digest(reels: List[Dict[str, Any]], limit: int = 12) -> str:
             transcript = f" | transcript: {transcript[:400]}"
         reel_url = str(reel.get("url") or reel.get("reel_url") or "").strip()
         if not reel_url and reel.get("video_id"):
-            reel_url = f"https://www.facebook.com/reel/{reel['video_id']}"
+            reel_url = _fallback_reel_url(reel)
         url_part = f" | reel_url: {reel_url}" if reel_url else ""
         visual = str(reel.get("visual") or "").strip().replace("\n", " ")
         visual_part = f" | hình ảnh: {visual[:600]}" if visual else ""
@@ -313,12 +325,31 @@ def _normalize_sources(value: Any) -> List[str]:
     return []
 
 
+def _fallback_reel_url(reel: Dict[str, Any]) -> str:
+    """Build a platform-appropriate fallback video URL when only video_id is present."""
+    vid = str(reel.get("video_id") or "").strip()
+    if not vid:
+        return ""
+    platform = str(reel.get("platform") or "").strip().lower()
+    if platform == "youtube":
+        return f"https://www.youtube.com/watch?v={vid}"
+    if platform == "tiktok":
+        handle = str(reel.get("author_handle") or "").strip().lstrip("@")
+        return f"https://www.tiktok.com/@{handle}/video/{vid}" if handle else f"https://www.tiktok.com/video/{vid}"
+    if platform == "instagram":
+        return f"https://www.instagram.com/reel/{vid}/"
+    return f"https://www.facebook.com/reel/{vid}"
+
+
 def _resolve_to_reel_url(url: str, reels: List[Dict[str, Any]]) -> str:
-    """Ensure URL points directly to a reel rather than a generic profile/page."""
+    """Ensure URL points directly to a reel/video rather than a generic profile/page."""
     url = url.strip()
     if not url:
         return ""
-    if "/reel/" in url or "/videos/" in url or "/watch/" in url:
+    if is_reel_url(url) or any(
+        tok in url
+        for tok in ("/reel/", "/reels/", "/videos/", "/video/", "/watch", "/shorts/", "youtu.be/", "/p/", "/tv/")
+    ):
         return url
 
     clean = url.rstrip("/")
@@ -330,7 +361,7 @@ def _resolve_to_reel_url(url: str, reels: List[Dict[str, Any]]) -> str:
             if r.get("url") or r.get("reel_url"):
                 return str(r.get("url") or r.get("reel_url")).strip()
             if r.get("video_id"):
-                return f"https://www.facebook.com/reel/{r['video_id']}"
+                return _fallback_reel_url(r)
 
     if "facebook.com" in clean and not clean.endswith("/reels"):
         return f"{clean}/reels/"
@@ -365,8 +396,11 @@ def normalize_topics(
         if not sources and index < len(fallback):
             sources = fallback[index].get("source_urls", [])
         if not sources and ranked_reels and index < len(ranked_reels):
-            top_url = ranked_reels[index].get("url") or ranked_reels[index].get("reel_url") or (
-                f"https://www.facebook.com/reel/{ranked_reels[index]['video_id']}" if ranked_reels[index].get("video_id") else None
+            top_url = (
+                ranked_reels[index].get("url")
+                or ranked_reels[index].get("reel_url")
+                or _fallback_reel_url(ranked_reels[index])
+                or None
             )
             if top_url:
                 sources = [top_url]
@@ -401,6 +435,13 @@ def normalize_topics(
         t_name = str((matched_reel.get("author_name") if matched_reel else fb_item.get("author_name")) or "")
         t_transcript = str((matched_reel.get("transcript") if matched_reel else fb_item.get("transcript")) or "").strip()
         t_visual = str((matched_reel.get("visual") if matched_reel else fb_item.get("visual")) or "").strip()
+        resolved_reel_url = sources[0] if sources else (matched_reel.get("url") or matched_reel.get("reel_url") if matched_reel else "")
+        t_platform = str((matched_reel.get("platform") if matched_reel else fb_item.get("platform")) or "").strip()
+        if not t_platform and resolved_reel_url:
+            detected = detect_platform(resolved_reel_url)
+            t_platform = detected if detected != "web" else "facebook"
+        if not t_platform:
+            t_platform = "facebook"
 
         topics.append(
             {
@@ -411,7 +452,8 @@ def normalize_topics(
                 "outline": _normalize_outline(item.get("outline")),
                 "format": str(item.get("format") or f"Reels {dur}s UGC").strip(),
                 "source_urls": sources,
-                "reel_url": sources[0] if sources else (matched_reel.get("url") or matched_reel.get("reel_url") if matched_reel else ""),
+                "reel_url": resolved_reel_url,
+                "platform": t_platform,
                 "video_url": t_video_url,
                 "video_id": t_video_id,
                 "views": t_views,
@@ -498,7 +540,13 @@ def heuristic_topics(
         title = str(reel.get("title") or "").strip() or f"Video từ @{reel.get('author_handle', 'reel')}"
         views = int(reel.get("views") or 0)
         velocity = float(reel.get("velocity_per_hour") or 0)
-        reel_url = reel.get("url") or reel.get("reel_url") or (f"https://www.facebook.com/reel/{reel['video_id']}" if reel.get("video_id") else "")
+        reel_url = reel.get("url") or reel.get("reel_url") or _fallback_reel_url(reel)
+        platform = str(reel.get("platform") or "").strip()
+        if not platform and reel_url:
+            detected = detect_platform(reel_url)
+            platform = detected if detected != "web" else "facebook"
+        if not platform:
+            platform = "facebook"
         t = {
             "title": f"Kể lại: {title[:90]}",
             "hook": f"Vì sao chuyện này đạt {views:,} lượt xem trong 48 giờ?" if views else "Đây là điều bất ngờ nhất bạn từng nghe?",
@@ -512,6 +560,7 @@ def heuristic_topics(
             "format": f"Reels {dur}s UGC",
             "source_urls": [reel_url] if reel_url else [],
             "reel_url": reel_url,
+            "platform": platform,
             "video_url": reel.get("video_url"),
             "video_id": str(reel.get("video_id") or ""),
             "views": views,
@@ -794,13 +843,16 @@ def research_single_reel(
     _log = log or (lambda msg: logger.info(msg))
     canon_res = canonicalize_reel_url(reel_url)
     clean_url = canon_res[0] if canon_res else reel_url.strip()
-    platform = canon_res[1] if canon_res else "facebook"
+    if canon_res:
+        platform = canon_res[1]
+    else:
+        detected = detect_platform(clean_url)
+        platform = detected if detected != "web" else "facebook"
     vid = extract_video_id(clean_url)
 
     _log(f"Bắt đầu phân tích Reel: {clean_url}")
 
-    # Fetch transcript only for Facebook reels; non-FB URLs cannot use /v1/facebook/post/transcript
-    transcript = fetch_reel_transcript(clean_url, video_id=vid) if platform == "facebook" else None
+    transcript = fetch_reel_transcript(clean_url, video_id=vid)
     if transcript:
         _log(f"Đã trích xuất transcript ({len(transcript)} ký tự).")
     else:

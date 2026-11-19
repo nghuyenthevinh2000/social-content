@@ -368,7 +368,7 @@ def run_supervisor_context(iterations: int, collector: MetricsCollector) -> None
 
 
 def run_worker_context(iterations: int, collector: MetricsCollector, live: bool = False) -> None:
-    from tools.app.backend.research_engine import reel_research, video_search
+    from tools.app.backend.research_engine import keyword_search, reel_research
 
     sample_reels = [
         {
@@ -384,23 +384,23 @@ def run_worker_context(iterations: int, collector: MetricsCollector, live: bool 
         for i in range(6)
     ]
 
-    orig_glasser = video_search._glasser_run_json
+    orig_glasser = keyword_search._glasser_run_json
     if not live:
         def _fake_glasser(provider, endpoint, version, payload, cache_dir, task_id=None, timeout=45.0):
             time.sleep(0.01)
             return {"videos": [{"id": "yt1", "title": "Demo", "url": "https://youtube.com/watch?v=1", "viewCountInt": 5000}]}, "cache", None
-        video_search._glasser_run_json = _fake_glasser
+        keyword_search._glasser_run_json = _fake_glasser
 
     try:
         with tempfile.TemporaryDirectory(prefix="prof-worker-") as tmp:
             run_dir = Path(tmp)
             for _ in range(max(1, min(iterations, 5))):
-                with request_scope("WORKER", "video_search", context="worker"):
-                    video_search.run_viral_video_search("gyno conditions", run_dir, options={})
+                with request_scope("WORKER", "keyword_search", context="worker"):
+                    keyword_search.run_viral_video_search("gyno conditions", run_dir, options={})
                 with request_scope("WORKER", "heuristic_topics", context="worker"):
                     reel_research.heuristic_topics("Bench Sheet", sample_reels)
     finally:
-        video_search._glasser_run_json = orig_glasser
+        keyword_search._glasser_run_json = orig_glasser
 
 
 def run_video_context(iterations: int, collector: MetricsCollector, live: bool = False) -> None:

@@ -193,14 +193,16 @@ NO_TRANSCRIPT_SENTINEL = "__NO_TRANSCRIPT__"
 def get_cached_transcript(
     video_id: str,
     include_negative: bool = False,
+    platform: Optional[str] = None,
     **_kwargs: Any,
 ) -> Optional[str]:
     """Retrieve previously transcribed text for a video from PostgreSQL `videos` table."""
     try:
         with ro() as conn:
             row = conn.execute(
-                "SELECT transcript FROM videos WHERE id = %s",
-                (f"facebook:{video_id}",),
+                "SELECT transcript FROM videos WHERE id = %s OR video_id = %s "
+                "ORDER BY transcribed_at DESC NULLS LAST LIMIT 1",
+                (f"{platform or 'facebook'}:{video_id}", str(video_id)),
             ).fetchone()
             if row and row[0]:
                 val = str(row[0])
@@ -218,12 +220,27 @@ def save_cached_transcript(
     url: Optional[str] = None,
     author_handle: str = "",
     title: str = "",
+    platform: Optional[str] = None,
     **_kwargs: Any,
 ) -> None:
     """Save or update video transcript in PostgreSQL `videos` table."""
     if not video_id or not transcript:
         return
-    primary_id = f"facebook:{video_id}"
+    from tools.app.backend.profiles import detect_platform
+
+    eff_platform = (platform or (detect_platform(url) if url else "") or "facebook").strip().lower()
+    if eff_platform not in {"facebook", "youtube", "tiktok", "instagram"}:
+        eff_platform = "facebook"
+    primary_id = f"{eff_platform}:{video_id}"
+    fallback_url = {
+        "youtube": f"https://www.youtube.com/watch?v={video_id}",
+        "tiktok": (
+            f"https://www.tiktok.com/@{author_handle.lstrip('@')}/video/{video_id}"
+            if author_handle
+            else f"https://www.tiktok.com/video/{video_id}"
+        ),
+        "instagram": f"https://www.instagram.com/reel/{video_id}/",
+    }.get(eff_platform, f"https://www.facebook.com/reel/{video_id}")
     now_ts = now_iso()
     try:
         with tx() as conn:
@@ -232,15 +249,16 @@ def save_cached_transcript(
                 INSERT INTO videos (
                     id, platform, video_id, url, author_handle, title,
                     transcript, transcribed_at, first_seen_at, last_scraped_at
-                ) VALUES (%s, 'facebook', %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT(id) DO UPDATE SET
                     transcript = EXCLUDED.transcript,
                     transcribed_at = EXCLUDED.transcribed_at
                 """,
                 (
                     primary_id,
+                    eff_platform,
                     video_id,
-                    url or f"https://www.facebook.com/reel/{video_id}",
+                    url or fallback_url,
                     author_handle or "unknown",
                     title or "",
                     transcript,
@@ -258,14 +276,17 @@ def persist_to_database(reels: List[Dict[str, Any]], **_kwargs: Any) -> None:
     now_ts = now_iso()
     with tx() as conn:
         for r in reels:
-            primary_id = f"facebook:{r['video_id']}"
+            platform = str(r.get("platform") or "facebook").strip().lower()
+            if platform not in {"facebook", "youtube", "tiktok", "instagram"}:
+                platform = "facebook"
+            primary_id = f"{platform}:{r['video_id']}"
             conn.execute(
                 """
                 INSERT INTO videos (
                     id, platform, video_id, url, author_handle, title,
                     current_pool, published_at, first_seen_at, last_scraped_at,
                     transcript, transcribed_at
-                ) VALUES (%s, 'facebook', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT(id) DO UPDATE SET
                     current_pool = EXCLUDED.current_pool,
                     last_scraped_at = EXCLUDED.last_scraped_at,
@@ -275,6 +296,7 @@ def persist_to_database(reels: List[Dict[str, Any]], **_kwargs: Any) -> None:
                 """,
                 (
                     primary_id,
+                    platform,
                     r["video_id"],
                     r["url"],
                     r["author_handle"],

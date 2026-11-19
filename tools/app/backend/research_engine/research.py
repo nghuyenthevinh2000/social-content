@@ -48,7 +48,7 @@ from tools.app.backend.research_engine.reel_research import (
     research_single_reel,
     suggest_topics,
 )
-from tools.app.backend.research_engine.video_search import run_viral_video_search
+from tools.app.backend.research_engine.keyword_search import run_viral_video_search
 from tools.app.backend.store import JobStore, now_iso
 from tools.app.backend.video_engine import get_video_duration
 from tools.loop.viral_analyzer.glasser import ensure_glasser_env
@@ -99,6 +99,42 @@ AGENT_PRESETS: List[Dict[str, Any]] = [
 ]
 
 
+_MACHO_MAGICS = {
+    b"\xcf\xfa\xed\xfe",
+    b"\xce\xfa\xed\xfe",
+    b"\xfe\xed\xfa\xcf",
+    b"\xfe\xed\xfa\xce",
+    b"\xca\xfe\xba\xbe",
+}
+_ELF_MAGIC = b"\x7fELF"
+
+
+def _check_agent_binary(binary_name: str) -> Tuple[bool, Optional[str]]:
+    """Verify binary exists in PATH and matches the host OS executable format."""
+    resolved = shutil.which(binary_name)
+    if not resolved:
+        return False, None
+    if os.path.isfile(resolved):
+        try:
+            with open(resolved, "rb") as fh:
+                magic = fh.read(4)
+        except OSError:
+            return True, None
+        if sys.platform.startswith("linux") and magic in _MACHO_MAGICS:
+            return (
+                False,
+                f"Binary '{binary_name}' tại {resolved} là định dạng macOS (Mach-O), "
+                f"không thể chạy trong container Linux (Exec format error).",
+            )
+        if sys.platform == "darwin" and magic == _ELF_MAGIC:
+            return (
+                False,
+                f"Binary '{binary_name}' tại {resolved} là định dạng Linux (ELF), "
+                f"không thể chạy trên macOS (Exec format error).",
+            )
+    return True, None
+
+
 def configured_agent() -> Dict[str, Any]:
     """Harness from VIRAL_APP_AGENT, else the first installed preset."""
     agent_id = os.environ.get("VIRAL_APP_AGENT")
@@ -108,7 +144,7 @@ def configured_agent() -> Dict[str, Any]:
         except ACPError:
             pass
     for preset in AGENT_PRESETS:
-        if shutil.which(preset["detect"]):
+        if _check_agent_binary(preset["detect"])[0]:
             return resolve_agent(preset["id"])
     raise ACPError("Không tìm thấy harness nào trên máy (agy, opencode, claude, codex).")
 
@@ -116,10 +152,14 @@ def configured_agent() -> Dict[str, Any]:
 def resolve_agent(agent_id: str, model: Optional[str] = None) -> Dict[str, Any]:
     for preset in AGENT_PRESETS:
         if preset["id"] == agent_id:
-            if shutil.which(preset["detect"]) is None:
+            ok, reason = _check_agent_binary(preset["detect"])
+            if not ok:
                 raise ACPError(
-                    f"Không tìm thấy harness '{preset['label']}' trên máy. "
-                    f"Cài đặt rồi thử lại (gợi ý đăng nhập: {preset['login_hint']})."
+                    reason
+                    or (
+                        f"Không tìm thấy harness '{preset['label']}' trên máy. "
+                        f"Cài đặt rồi thử lại (gợi ý đăng nhập: {preset['login_hint']})."
+                    )
                 )
             result = dict(preset)
             if agent_id == "agy":
@@ -339,7 +379,7 @@ def _process_sheet_inner(
         resolve_agent(agent_choice)
     except ACPError:
         for preset in AGENT_PRESETS:
-            if shutil.which(preset["detect"]):
+            if _check_agent_binary(preset["detect"])[0]:
                 agent_choice = preset["id"]
                 break
 

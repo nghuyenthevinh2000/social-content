@@ -78,8 +78,8 @@ services:
       - PORT=8765
       - ROLE=${ROLE:-all}
       - ENABLE_DM_POLLER=${ENABLE_DM_POLLER:-0}
-      - VIRAL_APP_AGENT=${VIRAL_APP_AGENT:-opencode}
-      - VIRAL_APP_AGY_MODEL=${VIRAL_APP_AGY_MODEL:-gemini-3.8-flash-low}
+      - VIRAL_APP_AGENT=${VIRAL_APP_AGENT:-agy}
+      - VIRAL_APP_AGY_MODEL=${VIRAL_APP_AGY_MODEL:-gemini-4-hydrogen-low}
       - OPENCODE_CONFIG_CONTENT=${OPENCODE_CONFIG_CONTENT:-}
       - GLASSER_API_KEY=${GLASSER_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -102,7 +102,6 @@ services:
       - RATE_PER_SEC_MICRO=${RATE_PER_SEC_MICRO:-23000}
     volumes:
       - aibrand-hf:/home/app/.cache/huggingface
-      - ${HOME:-/home/vinh}/.local/bin/agy:/usr/local/bin/agy:ro
       - ${HOME:-/home/vinh}/.gemini:/home/app/.gemini
       - .:/app/tools/app/backend
       - ../../loop:/app/tools/loop

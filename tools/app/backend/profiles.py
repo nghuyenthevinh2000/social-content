@@ -116,6 +116,17 @@ def is_facebook_url(value: str) -> bool:
     return lowered.startswith("http") and ("facebook.com" in lowered or "fb.com" in lowered)
 
 
+def is_social_url(value: str) -> bool:
+    """Return True if value is an HTTP(S) URL for a supported social platform."""
+    lowered = (value or "").strip().lower()
+    return lowered.startswith(("http://", "https://")) and detect_platform(lowered) in {
+        "facebook",
+        "youtube",
+        "tiktok",
+        "instagram",
+    }
+
+
 def clean_name(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
@@ -126,13 +137,16 @@ def _normalize_target(url: str, name: str = "", category: str = "") -> Dict[str,
     direct = canonicalize_reel_url(url, resolve_redirects=False)
     if direct:
         handle, canonical = direct[1], direct[0]
+        platform = direct[1]
     else:
         handle, canonical = social_handle(url)
+        platform = detect_platform(canonical)
     return {
         "handle": handle,
         "url": canonical,
         "name": name or handle,
         "category": category,
+        "platform": platform,
     }
 
 
@@ -191,7 +205,7 @@ def parse_workbook(source: Union[Path, bytes, io.BytesIO, str]) -> List[Dict[str
                     (
                         i
                         for i, cell in enumerate(raw_cells)
-                        if is_facebook_url(cell) or canonicalize_reel_url(cell, resolve_redirects=False)
+                        if is_social_url(cell) or canonicalize_reel_url(cell, resolve_redirects=False)
                     ),
                     None,
                 )
@@ -201,7 +215,7 @@ def parse_workbook(source: Union[Path, bytes, io.BytesIO, str]) -> List[Dict[str
                 name = ""
                 if url_index + 1 < len(raw_cells):
                     candidate = raw_cells[url_index + 1]
-                    if candidate and not is_facebook_url(candidate) and candidate.lower() not in {
+                    if candidate and not is_social_url(candidate) and candidate.lower() not in {
                         "tên kênh", "mô tả", "source lưu", "file excel", "chú ý", "chú ys",
                         "link chatbot", "chatbot tạo ảnh", "link page đối chiếu", "tên page",
                     }:

@@ -313,4 +313,120 @@ describe('Analysis results rendering', () => {
       expect(screen.getByRole('button', { name: 'Đã lưu tất cả video' })).toHaveTextContent('✓');
     });
   });
+
+  test('toggles platform filter buttons in keyword search results', async () => {
+    const multiPlatformKeywordJob = {
+      id: 'job_kw_filter',
+      job_kind: 'keyword',
+      status: 'completed',
+      filename: 'gyno conditions',
+      created_at: '2026-11-16T10:00:00Z',
+      current_sheet: null,
+      sheets: [
+        {
+          name: 'gyno conditions',
+          slug: 'gyno-conditions',
+          status: 'completed',
+          targets: 2,
+          reels: 2,
+          pool_distribution: {},
+          queries: [{ kind: 'original', text: 'gyno conditions' }],
+          creators: [
+            {
+              name: 'Dr YT',
+              handle: 'dryt',
+              url: 'https://www.youtube.com/@dryt',
+              platform: 'youtube',
+              followers: 120000,
+              video_count: 1,
+              top_views: 50000,
+            },
+            {
+              name: 'TT Doc',
+              handle: 'ttdoc',
+              url: 'https://www.tiktok.com/@ttdoc',
+              platform: 'tiktok',
+              followers: 80000,
+              video_count: 1,
+              top_views: 90000,
+            },
+          ],
+          error: null,
+          notice: null,
+          topics: [
+            {
+              title: 'YT Gyno Video',
+              hook: '',
+              angle: '',
+              why_viral: '',
+              outline: [],
+              format: 'youtube',
+              source_urls: ['https://www.youtube.com/watch?v=yt1'],
+              reel_url: 'https://www.youtube.com/watch?v=yt1',
+              platform: 'youtube',
+              author_name: 'Dr YT',
+              author_handle: 'dryt',
+              generated_by: 'glasser',
+              views: 50000,
+            },
+            {
+              title: 'TT Gyno Video',
+              hook: '',
+              angle: '',
+              why_viral: '',
+              outline: [],
+              format: 'tiktok',
+              source_urls: ['https://www.tiktok.com/@ttdoc/video/123'],
+              reel_url: 'https://www.tiktok.com/@ttdoc/video/123',
+              platform: 'tiktok',
+              author_name: 'TT Doc',
+              author_handle: 'ttdoc',
+              generated_by: 'glasser',
+              views: 90000,
+            },
+          ],
+        },
+      ],
+      logs: [],
+    };
+
+    setupMockFetch({ job_kw_filter: multiPlatformKeywordJob });
+
+    render(
+      <MemoryRouter initialEntries={['/?tab=analyzer&job_id=job_kw_filter']}>
+        <Home />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('TT Gyno Video')).toBeInTheDocument();
+    });
+
+    const ytBtn = screen.getByRole('button', { name: 'youtube: 1' });
+    const ttBtn = screen.getByRole('button', { name: 'tiktok: 1' });
+    expect(ytBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(ttBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText('YT Gyno Video')).toBeInTheDocument();
+    expect(screen.getByText('TT Gyno Video')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Dr YT/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /TT Doc/i })).toBeInTheDocument();
+
+    // Filter to YouTube only
+    ytBtn.click();
+    await waitFor(() => {
+      expect(ytBtn).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByText('YT Gyno Video')).toBeInTheDocument();
+      expect(screen.queryByText('TT Gyno Video')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Dr YT/i })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /TT Doc/i })).not.toBeInTheDocument();
+    });
+
+    // Toggle YouTube off -> restores all platforms
+    ytBtn.click();
+    await waitFor(() => {
+      expect(ytBtn).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByText('YT Gyno Video')).toBeInTheDocument();
+      expect(screen.getByText('TT Gyno Video')).toBeInTheDocument();
+    });
+  });
 });

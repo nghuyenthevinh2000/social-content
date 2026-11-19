@@ -34,13 +34,18 @@ from tools.common.errors import AgentError
 REEL_PATTERNS = [
     re.compile(r'https?://(?:www\.)?facebook\.com/reel/(\d+)', re.I),
     re.compile(r'https?://(?:www\.)?facebook\.com/share/[rvp]/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?facebook\.com/watch/\?v=(\d+)', re.I),
+    re.compile(r'https?://(?:www\.)?facebook\.com/watch/?\?(?:[^#\s]*&)?v=(\d+)', re.I),
     re.compile(r'https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.-]+/videos/(\d+)', re.I),
+    re.compile(r'https?://(?:www\.)?facebook\.com/ads/library/\?(?:[^#\s]*&)?id=(\d+)', re.I),
     re.compile(r'https?://fb\.watch/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?instagram\.com/reel/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?instagram\.com/p/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?tiktok\.com/@[\w.-]+/video/(\d+)', re.I),
+    re.compile(r'https?://(?:(?:www|m)\.)?youtube\.com/watch/?\?(?:[^#\s]*&)?v=([a-zA-Z0-9_-]{6,})', re.I),
+    re.compile(r'https?://(?:(?:www|m)\.)?youtube\.com/shorts/([a-zA-Z0-9_-]{6,})', re.I),
+    re.compile(r'https?://youtu\.be/([a-zA-Z0-9_-]{6,})', re.I),
+    re.compile(r'https?://(?:www\.)?instagram\.com/(?:[a-zA-Z0-9_.-]+/)?reels?/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?instagram\.com/(?:[a-zA-Z0-9_.-]+/)?(?:p|tv)/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?tiktok\.com/@[\w.-]+/(?:video|photo)/(\d+)', re.I),
     re.compile(r'https?://(?:vm|vt)\.tiktok\.com/([a-zA-Z0-9_-]+)', re.I),
+    re.compile(r'https?://(?:www\.)?tiktok\.com/t/([a-zA-Z0-9_-]+)', re.I),
 ]
 
 
@@ -87,11 +92,17 @@ def canonicalize_reel_url(url: str, resolve_redirects: bool = True) -> Optional[
         match = pattern.search(target_url)
         if match:
             clean = match.group(0).rstrip('/')
-            if 'facebook.com' in clean or 'fb.watch' in clean:
+            lowered = clean.lower()
+            if 'youtube.com' in lowered or 'youtu.be' in lowered:
+                vid = match.group(1)
+                if '/shorts/' in lowered:
+                    return f'https://www.youtube.com/shorts/{vid}', 'youtube'
+                return f'https://www.youtube.com/watch?v={vid}', 'youtube'
+            if 'facebook.com' in lowered or 'fb.watch' in lowered:
                 return clean, 'facebook'
-            if 'instagram.com' in clean:
+            if 'instagram.com' in lowered:
                 return clean, 'instagram'
-            if 'tiktok.com' in clean:
+            if 'tiktok.com' in lowered:
                 return clean, 'tiktok'
     return None
 

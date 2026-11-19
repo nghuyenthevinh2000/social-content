@@ -29,7 +29,7 @@ from tools.app.backend.research_engine.research import (
     resolve_agent,
     run_job,
 )
-from tools.app.backend.research_engine.video_search import (
+from tools.app.backend.research_engine.keyword_search import (
     expand_keyword,
     run_viral_video_search,
 )

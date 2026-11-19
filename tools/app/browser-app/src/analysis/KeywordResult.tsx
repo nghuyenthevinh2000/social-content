@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { ReelPlayerBox } from './TopicCard';
 import { formatCompact, formatNumber, getEmbedUrl, getTopicReelUrl, inferPlatform, PLATFORM_LABELS } from './format';
@@ -35,10 +35,29 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
     counts[p] = (counts[p] || 0) + 1;
   });
 
-  const creatorsWithUrl = creators.filter((c) => !!c.url);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(() => new Set());
+  const togglePlatform = (platform: string) => {
+    setSelectedPlatforms((prev) => {
+      const next = new Set(prev);
+      if (next.has(platform)) next.delete(platform);
+      else next.add(platform);
+      return next;
+    });
+  };
+
+  const filteredCreators =
+    selectedPlatforms.size > 0
+      ? creators.filter((c) => selectedPlatforms.has(c.platform || 'facebook'))
+      : creators;
+  const filteredTopics =
+    selectedPlatforms.size > 0
+      ? orderedTopics.filter((t) => selectedPlatforms.has(t.platform || inferPlatform(t, getTopicReelUrl(t))))
+      : orderedTopics;
+
+  const creatorsWithUrl = filteredCreators.filter((c) => !!c.url);
   const allCreatorsAdded =
     creatorsWithUrl.length > 0 && creatorsWithUrl.every((c) => addedCreatorUrls.has(c.url));
-  const videosWithUrl = orderedTopics.filter((t) => !!getTopicReelUrl(t));
+  const videosWithUrl = filteredTopics.filter((t) => !!getTopicReelUrl(t));
   const allVideosSaved =
     videosWithUrl.length > 0 && videosWithUrl.every((t) => savedUrls.has(getTopicReelUrl(t)));
 
@@ -56,18 +75,29 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
 
       {Object.keys(counts).length > 0 && (
         <div className="source-breakdown muted">
-          {Object.entries(counts)
-            .map(([p, c]) => `${p}: ${c}`)
-            .join(' · ')}
+          {Object.entries(counts).map(([p, c]) => {
+            const active = selectedPlatforms.has(p);
+            return (
+              <button
+                key={p}
+                type="button"
+                className={`platform-filter-btn ${active ? 'active' : ''}`}
+                aria-pressed={active}
+                onClick={() => togglePlatform(p)}
+              >
+                {p}: {c}
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {creators.length > 0 && (
+      {filteredCreators.length > 0 && (
         <details className="sheet keyword-subpanel">
           <summary>
             <span className="sheet-title">
               <strong>Kênh (Creators)</strong>
-              <small className="muted">{creators.length} kênh</small>
+              <small className="muted">{filteredCreators.length} kênh</small>
             </span>
             {onAddCreator && creatorsWithUrl.length > 0 && (
               <button
@@ -90,7 +120,7 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
             )}
           </summary>
           <div className="creator-list">
-            {creators.map((c) => (
+            {filteredCreators.map((c) => (
               <div key={c.url || `${c.platform}:${c.handle}`} className="creator-row">
                 <div className="creator-row-main">
                   {c.url ? (
@@ -131,12 +161,12 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
         </details>
       )}
 
-      {orderedTopics.length > 0 && (
+      {filteredTopics.length > 0 && (
         <details className="sheet keyword-subpanel">
           <summary>
             <span className="sheet-title">
               <strong>Video</strong>
-              <small className="muted">{orderedTopics.length} video · vuốt trái/phải</small>
+              <small className="muted">{filteredTopics.length} video · vuốt trái/phải</small>
             </span>
             {onSaveVideo && videosWithUrl.length > 0 && (
               <button
@@ -160,7 +190,7 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
             )}
           </summary>
           <div className="topics topics-carousel">
-            {orderedTopics.map((topic, idx) => {
+            {filteredTopics.map((topic, idx) => {
               const reelUrl = getTopicReelUrl(topic);
               const platform = inferPlatform(topic, reelUrl);
               const platformLabel = PLATFORM_LABELS[platform] || 'Facebook';

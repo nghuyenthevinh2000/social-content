@@ -695,6 +695,43 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(agent["model"], "param-model")
             self.assertEqual(agent["command"], ["agy", "--model", "param-model", "acp"])
 
+    def test_agent_binary_format_mismatch_and_fallback(self):
+        from tools.app.backend.acp import ACPError
+        from tools.app.backend.errors import handle_acp_error
+        from tools.app.backend.research_engine import research
+
+        with tempfile.TemporaryDirectory() as tmp:
+            macho_bin = Path(tmp) / "agy-macho"
+            macho_bin.write_bytes(b"\xcf\xfa\xed\xfe" + b"\x00" * 16)
+            elf_bin = Path(tmp) / "agy-elf"
+            elf_bin.write_bytes(b"\x7fELF" + b"\x00" * 16)
+
+            def which_linux_mismatch(name: str):
+                if name == "agy":
+                    return str(macho_bin)
+                if name == "opencode":
+                    return "/mock/opencode"
+                return None
+
+            with mock.patch.object(research.sys, "platform", "linux"):
+                with mock.patch("shutil.which", side_effect=which_linux_mismatch):
+                    with self.assertRaises(ACPError) as ctx:
+                        research.resolve_agent("agy")
+                    self.assertIn("Mach-O", str(ctx.exception))
+
+                    with mock.patch.dict(os.environ, {"VIRAL_APP_AGENT": "agy"}):
+                        chosen = research.configured_agent()
+                        self.assertEqual(chosen["id"], "opencode")
+
+            with mock.patch.object(research.sys, "platform", "darwin"):
+                with mock.patch("shutil.which", return_value=str(elf_bin)):
+                    with self.assertRaises(ACPError) as ctx:
+                        research.resolve_agent("agy")
+                    self.assertIn("ELF", str(ctx.exception))
+
+        err = handle_acp_error("[Errno 8] Exec format error: 'agy'", agent_id="agy")
+        self.assertEqual(err.code, "ACP_BINARY_FORMAT_ERROR")
+
     def test_glasser_module_and_error_classification(self):
         import subprocess
         from tools.loop.viral_analyzer.glasser import (
@@ -1247,7 +1284,7 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(mock_suggest.call_args.kwargs["reels"][0]["transcript"], "Local ASR text")
 
     def test_expand_keyword_and_viral_video_search(self):
-        from tools.app.backend.research_engine import expand_keyword, run_viral_video_search, video_search
+        from tools.app.backend.research_engine import expand_keyword, keyword_search, run_viral_video_search
 
         queries = expand_keyword("gyno conditions")
         self.assertEqual([q["text"] for q in queries], ["gyno conditions", "gynecomastia", "nữ hóa tuyến vú"])
@@ -1270,7 +1307,7 @@ class BackendTests(unittest.TestCase):
             return {}, "glasser_api", None
 
         with tempfile.TemporaryDirectory() as tmpdir, \
-             mock.patch.object(video_search, "_glasser_run_json", side_effect=fake_glasser):
+             mock.patch.object(keyword_search, "_glasser_run_json", side_effect=fake_glasser):
             res = run_viral_video_search("gyno conditions", Path(tmpdir))
 
         self.assertLessEqual(len(calls), 15)
@@ -1334,6 +1371,240 @@ class BackendTests(unittest.TestCase):
         resp = json.loads(h.wfile.getvalue().decode())
         self.assertEqual(resp["reel"]["platform"], "tiktok")
         self.assertTrue(any("INSERT INTO saved_reels" in sql for sql, _ in executed))
+
+    def test_multi_platform_url_helpers_and_workbook(self):
+        from tools.app.backend.profiles import _normalize_target, is_social_url
+        from tools.app.backend.research_engine.reel_research import (
+            canonicalize_reel_url,
+            extract_video_id,
+            is_reel_url,
+        )
+
+        cases = [
+            ("https://www.youtube.com/watch?feature=share&v=abc123XYZ", "https://www.youtube.com/watch?v=abc123XYZ", "youtube", "abc123XYZ"),
+            ("https://www.youtube.com/shorts/short999?si=1", "https://www.youtube.com/shorts/short999", "youtube", "short999"),
+            ("https://youtu.be/youtu1234?t=5", "https://www.youtube.com/watch?v=youtu1234", "youtube", "youtu1234"),
+            ("https://www.tiktok.com/@creator/video/7499229683859426602?is_from_webapp=1", "https://www.tiktok.com/@creator/video/7499229683859426602", "tiktok", "7499229683859426602"),
+            ("https://www.instagram.com/reel/DOq6eV6iIgD/?igsh=1", "https://www.instagram.com/reel/DOq6eV6iIgD", "instagram", "DOq6eV6iIgD"),
+            ("https://www.instagram.com/p/PostCode99/?igsh=1", "https://www.instagram.com/p/PostCode99", "instagram", "PostCode99"),
+        ]
+        for raw, expected_url, expected_platform, expected_vid in cases:
+            self.assertTrue(is_reel_url(raw), raw)
+            self.assertEqual(canonicalize_reel_url(raw, resolve_redirects=False), (expected_url, expected_platform))
+            self.assertEqual(extract_video_id(expected_url), expected_vid)
+            norm = _normalize_target(raw, name="Video")
+            self.assertEqual(norm["url"], expected_url)
+            self.assertEqual(norm["platform"], expected_platform)
+
+        self.assertTrue(is_social_url("https://www.youtube.com/@drericberg"))
+        self.assertTrue(is_social_url("https://www.tiktok.com/@ttdoc"))
+        self.assertTrue(is_social_url("https://www.instagram.com/igdoc/"))
+        self.assertFalse(is_social_url("https://example.com/profile"))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "multi.xlsx"
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Multi"
+            ws.append(["url", "name"])
+            ws.append(["https://www.youtube.com/@drericberg", "Dr Eric Berg"])
+            ws.append(["https://www.tiktok.com/@ttdoc", "TT Doc"])
+            ws.append(["https://www.instagram.com/igdoc/", "IG Doc"])
+            ws.append(["https://www.facebook.com/fbpage", "FB Page"])
+            wb.save(path)
+
+            sheets = parse_workbook(path)
+            targets = sheets[0]["targets"]
+            self.assertEqual(len(targets), 4)
+            self.assertEqual([t["platform"] for t in targets], ["youtube", "tiktok", "instagram", "facebook"])
+            self.assertEqual([t["handle"] for t in targets], ["drericberg", "ttdoc", "igdoc", "fbpage"])
+
+    def test_fetch_target_reels_and_pipeline_multi_platform(self):
+        from datetime import datetime, timedelta, timezone
+        import subprocess
+        from tools.loop.viral_analyzer import glasser as va_glasser
+
+        now_utc = datetime.now(timezone.utc)
+        fresh_iso = (now_utc - timedelta(hours=6)).isoformat()
+        old_iso = (now_utc - timedelta(days=7)).isoformat()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = load_config({
+                "window_hours": 48,
+                "storage": {
+                    "video_dir": str(root / "videos"),
+                    "output_file": str(root / "out.json"),
+                },
+                "targets": [
+                    {"handle": "drericberg", "url": "https://www.youtube.com/@drericberg", "name": "Dr Eric", "platform": "youtube"},
+                    {"handle": "ttdoc", "url": "https://www.tiktok.com/@ttdoc", "name": "TT Doc", "platform": "tiktok"},
+                    {"handle": "igdoc", "url": "https://www.instagram.com/igdoc/", "name": "IG Doc", "platform": "instagram"},
+                ],
+            })
+
+            seen_calls = []
+
+            def fake_run(cmd, *args, **kwargs):
+                ep = cmd[cmd.index("-e") + 1]
+                payload = json.loads(cmd[cmd.index("-i") + 1])
+                out_path = Path(cmd[cmd.index("-o") + 1])
+                seen_calls.append((ep, payload))
+                if ep == "/v1/youtube/channel-videos":
+                    out_path.write_text(json.dumps({
+                        "videos": [
+                            {
+                                "id": "yt_v1",
+                                "url": "https://www.youtube.com/watch?v=yt_v1",
+                                "title": "YT Channel Video",
+                                "viewCountInt": 15000,
+                                "publishDate": fresh_iso,
+                            },
+                            {
+                                "id": "yt_old",
+                                "url": "https://www.youtube.com/watch?v=yt_old",
+                                "title": "YT Old Video",
+                                "viewCountInt": 99000,
+                                "publishedTimeText": "1 week ago",
+                            },
+                        ]
+                    }), encoding="utf-8")
+                elif ep == "/v3/tiktok/profile/videos":
+                    out_path.write_text(json.dumps({
+                        "aweme_list": [
+                            {
+                                "aweme_id": "7499229683859426602",
+                                "desc": "TikTok Profile Video",
+                                "create_time": int(time.time()) - 3600,
+                                "author": {"unique_id": "ttdoc"},
+                                "statistics": {"play_count": 25000, "digg_count": 300, "comment_count": 20, "share_count": 10},
+                                "video": {"play_addr": {"url_list": ["https://cdn.tiktok.local/v.mp4"]}},
+                            },
+                            {
+                                "aweme_id": "7499229683859420000",
+                                "desc": "TikTok Old Video",
+                                "create_time": int(time.time()) - 7 * 86400,
+                                "author": {"unique_id": "ttdoc"},
+                                "statistics": {"play_count": 90000},
+                            },
+                        ]
+                    }), encoding="utf-8")
+                elif ep == "/v1/instagram/user/reels":
+                    out_path.write_text(json.dumps({
+                        "items": [
+                            {
+                                "media": {
+                                    "pk": "3540614075954356349",
+                                    "code": "DEiyb48AeB9",
+                                    "taken_at": int(time.time()) - 7200,
+                                    "play_count": 8000,
+                                    "like_count": 120,
+                                    "comment_count": 15,
+                                    "caption": {"text": "IG User Reel"},
+                                    "video_versions": [{"url": "https://cdn.ig.local/r.mp4"}],
+                                }
+                            },
+                            {
+                                "media": {
+                                    "pk": "3540614075954350000",
+                                    "code": "IGold1week",
+                                    "created_at": old_iso,
+                                    "taken_at": int(time.time()) - 7 * 86400,
+                                    "play_count": 50000,
+                                    "caption": {"text": "IG Old Reel"},
+                                }
+                            },
+                        ]
+                    }), encoding="utf-8")
+                return subprocess.CompletedProcess(cmd, 0, stdout="Run ID: r1\nResponse: HTTP 200\nCharge: $0.00188\n", stderr="")
+
+            with mock.patch("tools.loop.viral_analyzer.glasser.read_cached_reels", return_value=None), \
+                 mock.patch("tools.loop.viral_analyzer.glasser.write_cached_reels") as mock_write_cache, \
+                 mock.patch("tools.loop.viral_analyzer.glasser.check_glasser_key", return_value=(True, None)), \
+                 mock.patch("tools.loop.viral_analyzer.pipeline.persist_to_database"), \
+                 mock.patch("tools.app.backend.cost_control.record_cost_event"), \
+                 mock.patch("tools.app.backend.cost_control.shutil.which", return_value="/usr/local/bin/glasser"), \
+                 mock.patch("tools.app.backend.cost_control.subprocess.run", side_effect=fake_run):
+                res = run_analyzer_pipeline(config, cache_dir=root / "cache", transcribe=False, legacy_cache=False)
+
+            self.assertEqual([ep for ep, _ in seen_calls], [
+                "/v1/youtube/channel-videos",
+                "/v3/tiktok/profile/videos",
+                "/v1/instagram/user/reels",
+            ])
+            self.assertEqual(seen_calls[0][1], {"handle": "drericberg", "sort": "latest"})
+            self.assertEqual(seen_calls[1][1], {"handle": "ttdoc", "sort_by": "latest"})
+            self.assertEqual(seen_calls[2][1], {"handle": "igdoc"})
+            self.assertEqual([call.kwargs["handle"] for call in mock_write_cache.call_args_list], [
+                "youtube:drericberg",
+                "tiktok:ttdoc",
+                "instagram:igdoc",
+            ])
+
+            reels = res["all_reels"]
+            self.assertEqual(len(reels), 3)
+            self.assertEqual({r["video_id"] for r in reels}, {"yt_v1", "7499229683859426602", "3540614075954356349"})
+            by_plat = {r["platform"]: r for r in reels}
+            self.assertEqual(by_plat["youtube"]["url"], "https://www.youtube.com/watch?v=yt_v1")
+            self.assertEqual(by_plat["youtube"]["views"], 15000)
+            self.assertEqual(by_plat["tiktok"]["likes"], 300)
+            self.assertEqual(by_plat["tiktok"]["comments"], 20)
+            self.assertEqual(by_plat["tiktok"]["shares"], 10)
+            self.assertEqual(by_plat["instagram"]["url"], "https://www.instagram.com/reel/DEiyb48AeB9/")
+            self.assertEqual(by_plat["instagram"]["likes"], 120)
+
+    def test_research_single_reel_and_process_sheet_multi_platform(self):
+        from tools.app.backend.research_engine import reel_research
+        from tools.app.backend.research_engine.research import _process_sheet
+
+        for url, expected_plat, expected_vid in (
+            ("https://www.youtube.com/watch?v=LYxSPJPO4vE", "youtube", "LYxSPJPO4vE"),
+            ("https://www.tiktok.com/@ttdoc/video/7499229683859426602", "tiktok", "7499229683859426602"),
+            ("https://www.instagram.com/reel/DOq6eV6iIgD/", "instagram", "DOq6eV6iIgD"),
+        ):
+            with mock.patch.object(reel_research, "fetch_reel_transcript", return_value="Sample transcript") as mock_tr, \
+                 mock.patch.object(reel_research, "fetch_top_reels_transcripts"), \
+                 mock.patch.object(reel_research, "_download_reel_video", return_value=None):
+                res = reel_research.research_single_reel(url, agent_id=None)
+            mock_tr.assert_called_once_with(url.rstrip("/") if expected_plat == "instagram" else url, video_id=expected_vid)
+            self.assertEqual(res["platform"], expected_plat)
+            self.assertEqual(res["transcript"], "Sample transcript")
+            self.assertEqual(res["topics"][0]["platform"], expected_plat)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            job_id = "job_yt_reel"
+            yt_url = "https://www.youtube.com/watch?v=LYxSPJPO4vE"
+            sheet = {
+                "name": "YT Saved Reel",
+                "slug": "yt-saved-reel",
+                "targets": [{"name": "YT Video", "url": yt_url}],
+            }
+            self._store.put({
+                "id": job_id,
+                "job_kind": "reel",
+                "status": "running",
+                "created_at": "2026-01-01",
+                "sheets": [{
+                    "name": sheet["name"],
+                    "slug": sheet["slug"],
+                    "status": "pending",
+                    "targets": 1,
+                    "reels": 0,
+                    "topics": [],
+                    "error": None,
+                    "notice": None,
+                }],
+                "logs": [],
+            })
+            with mock.patch("tools.app.backend.research_engine.reel_research.fetch_reel_transcript", return_value="YT tr"), \
+                 mock.patch("tools.app.backend.research_engine.reel_research._download_reel_video", return_value=None), \
+                 mock.patch("tools.app.backend.research_engine.reel_research.suggest_topics", return_value=([{"title": "T1", "source_urls": [yt_url], "platform": "youtube"}], None)):
+                _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy"}, job_kind="reel")
+            snap = self._store.snapshot(job_id)
+            self.assertEqual(snap["sheets"][0]["status"], "completed")
+            self.assertEqual(snap["sheets"][0]["reels"], 1)
+            self.assertEqual(snap["sheets"][0]["topics"][0]["platform"], "youtube")
 
 
 if __name__ == "__main__":

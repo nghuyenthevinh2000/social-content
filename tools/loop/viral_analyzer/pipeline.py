@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -25,6 +26,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 CURRENT_DIR = Path(__file__).parent
 sys.path.append(str(CURRENT_DIR.parent.parent.parent))
 
+from tools.app.backend.profiles import detect_platform
 from tools.loop.viral_analyzer.cache import (
     persist_to_database,
 )
@@ -61,6 +63,103 @@ def classify_pool(views: int, config: ViralAnalyzerConfig) -> Tuple[int, str]:
         if definition.contains(views):
             return pool_id, definition.name
     return 1, config.pools.get(1, config.pools[min(config.pools.keys())]).name
+
+
+def _parse_reel_pub_ts(r: Dict[str, Any], now: datetime) -> datetime:
+    creation_str = r.get("creation_time")
+    pub_ts = None
+    if creation_str:
+        raw_str = str(creation_str).strip()
+        try:
+            pub_ts = datetime.fromisoformat(raw_str.replace("Z", "+00:00"))
+            if pub_ts.tzinfo is None:
+                pub_ts = pub_ts.replace(tzinfo=timezone.utc)
+        except ValueError:
+            m = re.search(
+                r"(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago",
+                raw_str,
+                re.IGNORECASE,
+            )
+            if m:
+                qty = int(m.group(1))
+                unit = m.group(2).lower()
+                mult_hours = {
+                    "second": 1 / 3600.0,
+                    "minute": 1 / 60.0,
+                    "hour": 1.0,
+                    "day": 24.0,
+                    "week": 24.0 * 7,
+                    "month": 24.0 * 30,
+                    "year": 24.0 * 365,
+                }[unit]
+                pub_ts = now - timedelta(hours=qty * mult_hours)
+    if not pub_ts and r.get("timestamp"):
+        try:
+            pub_ts = datetime.fromtimestamp(float(r["timestamp"]), tz=timezone.utc)
+        except (TypeError, ValueError, OSError):
+            pass
+    return pub_ts or (now - timedelta(hours=12))
+
+
+def _build_extracted_reel(
+    r: Dict[str, Any],
+    target: Dict[str, Any],
+    target_platform: str,
+    target_source: Optional[str],
+    pub_ts: datetime,
+    now: datetime,
+    config: ViralAnalyzerConfig,
+) -> Dict[str, Any]:
+    handle = target.get("handle", "unknown")
+    platform = str(r.get("platform") or target_platform or "facebook").strip().lower()
+    if platform not in {"facebook", "youtube", "tiktok", "instagram"}:
+        platform = "facebook"
+    vid = str(r.get("video_id") or r.get("id") or "")
+    url = str(r.get("url") or "").strip()
+    if not url and vid:
+        if platform == "youtube":
+            url = f"https://www.youtube.com/watch?v={vid}"
+        elif platform == "tiktok":
+            clean_h = handle.lstrip("@")
+            url = f"https://www.tiktok.com/@{clean_h}/video/{vid}" if clean_h else f"https://www.tiktok.com/video/{vid}"
+        elif platform == "instagram":
+            url = f"https://www.instagram.com/reel/{vid}/"
+        else:
+            url = f"https://www.facebook.com/reel/{vid}"
+
+    views = int(r.get("view_count") or r.get("views") or 0)
+    desc = str(r.get("description") or r.get("title") or f"Reel by {target.get('name', handle)}")
+
+    elapsed_hours = max((now - pub_ts).total_seconds() / 3600.0, 0.5)
+    velocity = round(views / elapsed_hours, 2)
+    pool_id, pool_name = classify_pool(views, config)
+
+    likes = int(r["likes"]) if r.get("likes") is not None else int(views * 0.045)
+    comments = int(r["comments"]) if r.get("comments") is not None else int(likes * 0.12)
+    shares = int(r["shares"]) if r.get("shares") is not None else int(likes * 0.035)
+
+    return {
+        "video_id": vid,
+        "url": url,
+        "reel_url": url,
+        "video_url": r.get("video_url"),
+        "platform": platform,
+        "author_handle": handle,
+        "author_name": target.get("name", handle),
+        "category": target.get("category", "general"),
+        "title": desc[:120].strip(),
+        "views": views,
+        "likes": likes,
+        "comments": comments,
+        "shares": shares,
+        "published_at": pub_ts.isoformat(),
+        "elapsed_hours": round(elapsed_hours, 1),
+        "current_pool": pool_id,
+        "pool_name": pool_name,
+        "velocity_per_hour": velocity,
+        "comment_ratio": round(comments / max(likes, 1), 3),
+        "source": r.get("_source", target_source or "cache"),
+    }
 
 
 def run_analyzer_pipeline(
@@ -133,56 +232,21 @@ def run_analyzer_pipeline(
         else:
             profiles_empty.append(handle)
 
-        for r in raw_items:
-            creation_str = r.get("creation_time")
-            pub_ts = None
-            if creation_str:
-                try:
-                    pub_ts = datetime.fromisoformat(creation_str.replace("Z", "+00:00"))
-                except ValueError:
-                    pass
-            if not pub_ts and r.get("timestamp"):
-                pub_ts = datetime.fromtimestamp(r["timestamp"], tz=timezone.utc)
-            if not pub_ts:
-                pub_ts = now - timedelta(hours=12)
+        target_platform = str(target.get("platform") or detect_platform(target.get("url") or "")).strip().lower()
+        if target_platform not in {"facebook", "youtube", "tiktok", "instagram"}:
+            target_platform = "facebook"
 
+        target_reels: List[Dict[str, Any]] = []
+        for r in raw_items:
+            pub_ts = _parse_reel_pub_ts(r, now)
             if pub_ts < cutoff_time:
                 continue
+            target_reels.append(
+                _build_extracted_reel(r, target, target_platform, target_source, pub_ts, now, config)
+            )
 
-            vid = str(r.get("video_id") or r.get("id") or "")
-            url = r.get("url") or f"https://www.facebook.com/reel/{vid}"
-            views = int(r.get("view_count") or r.get("views") or 0)
-            desc = r.get("description") or f"Reel by {target.get('name', handle)}"
-
-            elapsed_hours = max((now - pub_ts).total_seconds() / 3600.0, 0.5)
-            velocity = round(views / elapsed_hours, 2)
-            pool_id, pool_name = classify_pool(views, config)
-
-            likes = int(views * 0.045)
-            comments = int(likes * 0.12)
-            shares = int(likes * 0.035)
-
-            extracted_reels.append({
-                "video_id": vid,
-                "url": url,
-                "video_url": r.get("video_url"),
-                "author_handle": handle,
-                "author_name": target.get("name", handle),
-                "category": target.get("category", "general"),
-                "title": desc[:120].strip(),
-                "views": views,
-                "likes": likes,
-                "comments": comments,
-                "shares": shares,
-                "published_at": pub_ts.isoformat(),
-                "elapsed_hours": round(elapsed_hours, 1),
-                "current_pool": pool_id,
-                "pool_name": pool_name,
-                "velocity_per_hour": velocity,
-                "comment_ratio": round(comments / max(likes, 1), 3),
-                "source": r.get("_source", target_source or "cache"),
-            })
-            count_for_target += 1
+        extracted_reels.extend(target_reels)
+        count_for_target = len(target_reels)
 
         source_label = "Glasser API" if target_source == "glasser" else ("Cache" if target_source else "Không có reel")
         print(f"    -> Extracted {count_for_target} reels in 48h window ({source_label}).")

@@ -601,6 +601,10 @@
   margin-bottom: var(--space-3);
 }
 
+.panel-head > div {
+  min-width: 0;
+}
+
 .panel-head h2 {
   margin: 0;
 }
@@ -608,6 +612,12 @@
 .count {
   margin: 0;
   font-size: var(--text-sm);
+}
+
+#results > div.panel-head > div > p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row {
