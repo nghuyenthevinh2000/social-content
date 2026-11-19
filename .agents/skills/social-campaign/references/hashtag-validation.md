@@ -34,17 +34,17 @@ campaign context + hashtag history → build-prompt → agent JSON → import-re
 
 | Step | Command | Writes |
 |---|---|---|
-| Prompt | `python3 -m tools.loop.viral_analyzer.hashtag_generate build-prompt --project local/<SLUG> --run <RUN_ID> --platform <P> --market-language <L> --application "<NEED>" [--seed-evidence <JSON>] [--max-candidates <N>]` | `context.json`, `prompt.md`; root `brief.md`/`report.md` starters if not already authored |
+| Prompt | `python3 -m tools.loop.viral_analyzer.keyword_research build-prompt --project local/<SLUG> --run <RUN_ID> --platform <P> --market-language <L> --application "<NEED>" [--seed-evidence <JSON>] [--max-candidates <N>]` | `context.json`, `prompt.md`; root `brief.md`/`report.md` starters if not already authored |
 | Compatibility | `--hypothesis` / `--new-test` are deprecated optional flags; neither reads a hypothesis file nor changes product-only context. | nothing |
-| Import | `python3 -m tools.loop.viral_analyzer.hashtag_generate import-response --project local/<SLUG> --run <RUN_ID> --response <JSON>` | `response.raw.json`, `candidates.json` |
-| Plan | `python3 -m tools.loop.viral_analyzer.hashtag_verify plan --project local/<SLUG> --run <RUN_ID> --schema <JSON> [--web-evidence <JSON>] [--ceiling <USD>]` | `plan.json` |
-| Collect preview | `python3 -m tools.loop.viral_analyzer.hashtag_verify collect --project local/<SLUG> --run <RUN_ID>` | nothing |
-| Collect paid | `python3 -m tools.loop.viral_analyzer.hashtag_verify collect --project local/<SLUG> --run <RUN_ID> --execute --ceiling <USD> [--resume]` | `calls/*.json`, `calls/*.txt`; root automatic `report.md` updated even for empty/errors |
-| Report / recover | `python3 -m tools.loop.viral_analyzer.hashtag_verify report --project local/<SLUG> --run <RUN_ID>` | Root `brief.md` if missing and missing/automatic `report.md` from saved receipts; no network or history changes; authored reports preserved |
-| Review prompt | `python3 -m tools.loop.viral_analyzer.hashtag_verify build-review-prompt --project local/<SLUG> --run <RUN_ID>` | `review-prompt.md` |
-| Record review | `python3 -m tools.loop.viral_analyzer.hashtag_verify record-review --project local/<SLUG> --run <RUN_ID> --review <JSON> [--correction] [--human-corrected]` | `review.json`, `evaluations.json`, campaign history |
-| History | `python3 -m tools.loop.viral_analyzer.hashtag_verify history --project local/<SLUG> [--platform <P>] [--key <TERM>]` | nothing |
-| Expand | `python3 -m tools.loop.viral_analyzer.viral_scrape --project local/<SLUG> --run <RUN_ID> --schema <JSON> [--platform <P>] [--limit <N>] [--execute --ceiling <USD>] [--resume]` | `expansion/calls/*`, `expansion/viral-candidates.json` |
+| Import | `python3 -m tools.loop.viral_analyzer.keyword_research import-response --project local/<SLUG> --run <RUN_ID> --response <JSON>` | `response.raw.json`, `candidates.json` |
+| Plan | `python3 -m tools.loop.viral_analyzer.keyword_research plan --project local/<SLUG> --run <RUN_ID> --schema <JSON> [--web-evidence <JSON>] [--ceiling <USD>]` | `plan.json` |
+| Collect preview | `python3 -m tools.loop.viral_analyzer.keyword_research collect --project local/<SLUG> --run <RUN_ID>` | nothing |
+| Collect paid | `python3 -m tools.loop.viral_analyzer.keyword_research collect --project local/<SLUG> --run <RUN_ID> --execute --ceiling <USD> [--resume]` | `calls/*.json`, `calls/*.txt`; root automatic `report.md` updated even for empty/errors |
+| Report / recover | `python3 -m tools.loop.viral_analyzer.keyword_research report --project local/<SLUG> --run <RUN_ID>` | Root `brief.md` if missing and missing/automatic `report.md` from saved receipts; no network or history changes; authored reports preserved |
+| Review prompt | `python3 -m tools.loop.viral_analyzer.keyword_research build-review-prompt --project local/<SLUG> --run <RUN_ID>` | `review-prompt.md` |
+| Record review | `python3 -m tools.loop.viral_analyzer.keyword_research record-review --project local/<SLUG> --run <RUN_ID> --review <JSON> [--correction] [--human-corrected]` | `review.json`, `evaluations.json`, campaign history |
+| History | `python3 -m tools.loop.viral_analyzer.keyword_research history --project local/<SLUG> [--platform <P>] [--key <TERM>]` | nothing |
+| Expand | `python3 -m tools.loop.viral_analyzer.keyword_research scrape --project local/<SLUG> --run <RUN_ID> --schema <JSON> [--platform <P>] [--limit <N>] [--execute --ceiling <USD>] [--resume]` | `expansion/calls/*`, `expansion/viral-candidates.json` |
 | Tests | `python3 -m unittest discover -s tools/loop/tests -p 'test_hashtag_*.py'` | nothing |
 | Tests (expansion) | `python3 -m unittest discover -s tools/loop/tests -p 'test_viral_scrape.py'` | nothing |
 
@@ -84,7 +84,7 @@ campaign context + hashtag history → build-prompt → agent JSON → import-re
 | Rule | Requirement |
 |---|---|
 | Activated only | A target is scraped only when its latest history decision is `promising` or `limited_expand`. `mixed`, `deferred_for_context` and `insufficient_evidence` never activate. |
-| Fetch | `viral_scrape` is schema-driven and previews by default. `--execute` needs `--ceiling` and explicit spend approval; it writes request, raw response, status and normalized candidates. |
+| Fetch | `keyword_research scrape` is schema-driven and previews by default. `--execute` needs `--ceiling` and explicit spend approval; it writes request, raw response, status and normalized candidates. |
 | No trending | Never substitute untargeted trending or an invented query. Scrape the tested target text on its own platform and query kind. |
 | Metrics | Missing views/likes/comments/shares stay null; never coerce them to zero. Candidates feed viral relevance review, not automatic qualification. |
 

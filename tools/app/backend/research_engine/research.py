@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import json
 import logging
@@ -36,8 +37,14 @@ from tools.app.backend.profiles import (
     PROFILE_STORE,
     RUNS_ROOT,
 )
-from tools.app.backend.research_engine.profile_research import run_profile_research
-from tools.app.backend.research_engine.reel_research import (
+from tools.loop.viral_analyzer.glasser import ensure_glasser_env
+from tools.loop.viral_analyzer.keyword_research.pipeline import run_viral_video_search
+from tools.loop.viral_analyzer.profile_research.pipeline import (
+    run_analyzer_pipeline,
+    run_profile_research,
+)
+from tools.loop.viral_analyzer.runtime import submit_with_context
+from tools.loop.viral_analyzer.video_research.pipeline import (
     build_topic_prompt,
     format_director_prompt,
     heuristic_topics,
@@ -48,11 +55,8 @@ from tools.app.backend.research_engine.reel_research import (
     research_single_reel,
     suggest_topics,
 )
-from tools.app.backend.research_engine.keyword_search import run_viral_video_search
 from tools.app.backend.store import JobStore, now_iso
 from tools.app.backend.video_engine import get_video_duration
-from tools.loop.viral_analyzer.glasser import ensure_glasser_env
-from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
 
 logger = logging.getLogger("research")
 ensure_glasser_env()
@@ -426,12 +430,16 @@ def _process_sheet_inner(
         ]
     elif job_kind == "reel":
         log(f"Phát hiện {len(targets)} Reel đơn lẻ; chạy Reel Research trực tiếp (bỏ qua profile scraper).")
-        for t_idx, target in enumerate(targets, 1):
-            t_url = target.get("url", "")
-            t_name = target.get("name") or sheet_name
-            if not is_reel_url(t_url):
-                continue
-            log(f"[{t_idx}/{len(targets)}] Đang phân tích Reel: {t_url}")
+        reel_targets = [
+            (t.get("url", ""), t.get("name") or sheet_name)
+            for t in targets
+            if is_reel_url(t.get("url", ""))
+        ]
+
+        def _analyze_one_reel(
+            t_idx: int, t_url: str, t_name: str
+        ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+            log(f"[{t_idx}/{len(reel_targets)}] Đang phân tích Reel: {t_url}")
             try:
                 res = research_single_reel(
                     reel_url=t_url,
@@ -443,8 +451,31 @@ def _process_sheet_inner(
                     cwd=run_dir,
                     timeout_sec=float(options.get("acp_timeout", 180)),
                 )
-                if res.get("topics"):
-                    topics.extend(res["topics"])
+                return res, None
+            except Exception as exc:
+                log(f"Lỗi khi phân tích Reel {t_url}: {exc}")
+                return None, str(exc)
+
+        if len(reel_targets) > 1:
+            with ThreadPoolExecutor(max_workers=min(5, len(reel_targets))) as pool:
+                futures = [
+                    (t_url, t_name, submit_with_context(pool, _analyze_one_reel, idx, t_url, t_name))
+                    for idx, (t_url, t_name) in enumerate(reel_targets, 1)
+                ]
+                outcomes = [(t_url, t_name, fut.result()) for t_url, t_name, fut in futures]
+        else:
+            outcomes = [
+                (t_url, t_name, _analyze_one_reel(idx, t_url, t_name))
+                for idx, (t_url, t_name) in enumerate(reel_targets, 1)
+            ]
+
+        for t_url, t_name, (res, err) in outcomes:
+            if err is not None:
+                error = err
+                continue
+            if res and res.get("topics"):
+                topics.extend(res["topics"])
+            if res:
                 reels.append({
                     "url": res.get("reel_url") or t_url,
                     "reel_url": res.get("reel_url") or t_url,
@@ -454,9 +485,6 @@ def _process_sheet_inner(
                     "visual": res.get("visual") or "",
                     "platform": res.get("platform") or "facebook",
                 })
-            except Exception as exc:
-                log(f"Lỗi khi phân tích Reel {t_url}: {exc}")
-                error = str(exc)
 
         if not topics and not error:
             notice = "Không trích xuất được chủ đề nào từ danh sách Reel này."

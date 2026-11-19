@@ -131,6 +131,7 @@ services:
       - DB_POOL_MAX=${DB_POOL_MAX:-10}
     volumes:
       - .:/app/tools/app/backend
+      - ../../loop:/app/tools/loop
       - ../../facebook_agent:/app/tools/facebook_agent
       - ../../common:/app/tools/common
     command: ["python", "tools/app/backend/services/dm_service.py", "--interval", "5"]

@@ -7,8 +7,8 @@ from types import SimpleNamespace
 import unittest
 
 from test_hashtag_generate import write_campaign
-from tools.loop.viral_analyzer import hashtag_common as hc
-from tools.loop.viral_analyzer import viral_scrape as vs
+from tools.loop.viral_analyzer.keyword_research import config as hc
+from tools.loop.viral_analyzer.keyword_research.campaign import scrape as vs
 
 
 def add_evaluation(root, platform, key, decision, *, kind='hashtag',

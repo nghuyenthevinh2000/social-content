@@ -27,8 +27,8 @@ from tools.app.backend.research_engine.research import (
     parse_topics,
 )
 from tools.app.backend.store import JobStore
-from tools.loop.viral_analyzer.config import load_config
-from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
+from tools.loop.viral_analyzer.profile_research.config import load_config
+from tools.loop.viral_analyzer.profile_research.pipeline import run_analyzer_pipeline
 import unittest.mock as mock
 
 
@@ -445,7 +445,7 @@ class BackendTests(unittest.TestCase):
 
     def test_fetch_target_reels_cache_hit_and_fallback(self):
         from tools.loop.viral_analyzer.cache import write_cached_reels
-        from tools.loop.viral_analyzer.pipeline import fetch_target_reels
+        from tools.loop.viral_analyzer.profile_research.collect import fetch_target_reels
         import subprocess
         with tempfile.TemporaryDirectory() as tmp:
             fake_reels = [{"video_id": "99", "url": "https://facebook.com/reel/99", "view_count": 1000}]
@@ -484,7 +484,7 @@ class BackendTests(unittest.TestCase):
 
     def test_duplicate_target_uses_cache(self):
         from tools.loop.viral_analyzer.cache import read_cached_reels
-        from tools.loop.viral_analyzer.pipeline import fetch_target_reels
+        from tools.loop.viral_analyzer.profile_research.collect import fetch_target_reels
         import subprocess
         import unittest.mock as mock
 
@@ -535,7 +535,7 @@ class BackendTests(unittest.TestCase):
                 self.assertTrue(any("[cache] Dùng cache" in log for log in logs_2))
 
     def test_pipeline_duplicate_targets_hit_cache(self):
-        from tools.loop.viral_analyzer.pipeline import run_analyzer_pipeline
+        from tools.loop.viral_analyzer.profile_research.pipeline import run_analyzer_pipeline
         import subprocess
         import unittest.mock as mock
 
@@ -966,9 +966,9 @@ class BackendTests(unittest.TestCase):
                 "prompt": "[CAMERA & COMPOSITION]\nKhung hình 9:16",
                 "source_urls": ["https://www.facebook.com/reel/1963371435020478"],
             }
-            with mock.patch("tools.app.backend.research_engine.reel_research.fetch_reel_transcript", return_value="Nội dung transcript mẫu"):
-                with mock.patch("tools.app.backend.research_engine.reel_research._download_reel_video", return_value=None):
-                    with mock.patch("tools.app.backend.research_engine.reel_research.suggest_topics", return_value=([mock_topic], None)):
+            with mock.patch("tools.loop.viral_analyzer.video_research.pipeline.fetch_reel_transcript", return_value="Nội dung transcript mẫu"):
+                with mock.patch("tools.loop.viral_analyzer.video_research.pipeline._download_reel_video", return_value=None):
+                    with mock.patch("tools.loop.viral_analyzer.video_research.pipeline.suggest_topics", return_value=([mock_topic], None)):
                         _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48}, job_kind="reel")
 
             snap = self._store.snapshot(job_id)
@@ -981,7 +981,7 @@ class BackendTests(unittest.TestCase):
             self.assertTrue(bool(target_sheet["topics"][0].get("prompt")))
 
     def test_research_single_reel_returns_one_prompt(self):
-        from tools.app.backend.research_engine import reel_research
+        from tools.loop.viral_analyzer.video_research import pipeline as reel_research
 
         url = "https://www.facebook.com/reel/1963371435020478"
         fake_topics = [{"title": f"T{i}", "prompt": "p", "source_urls": [url]} for i in range(3)]
@@ -997,7 +997,7 @@ class BackendTests(unittest.TestCase):
         self.assertTrue(agent_res["topics"][0]["prompt"])
 
     def test_research_single_reel_analyzes_and_deletes_video(self):
-        from tools.app.backend.research_engine import reel_research
+        from tools.loop.viral_analyzer.video_research import pipeline as reel_research
 
         url = "https://www.facebook.com/reel/1963371435020478"
         with tempfile.TemporaryDirectory() as tmp:
@@ -1267,7 +1267,7 @@ class BackendTests(unittest.TestCase):
             mock_profile.assert_not_called()
 
     def test_research_single_reel_falls_back_to_local_asr_when_glasser_returns_none(self):
-        from tools.app.backend.research_engine import reel_research
+        from tools.loop.viral_analyzer.video_research import pipeline as reel_research
 
         with tempfile.TemporaryDirectory() as tmpdir:
             video_path = Path(tmpdir) / "reel_999.mp4"
@@ -1284,7 +1284,11 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(mock_suggest.call_args.kwargs["reels"][0]["transcript"], "Local ASR text")
 
     def test_expand_keyword_and_viral_video_search(self):
-        from tools.app.backend.research_engine import expand_keyword, keyword_search, run_viral_video_search
+        from tools.loop.viral_analyzer.keyword_research import (
+            expand_keyword,
+            pipeline as keyword_search,
+            run_viral_video_search,
+        )
 
         queries = expand_keyword("gyno conditions")
         self.assertEqual([q["text"] for q in queries], ["gyno conditions", "gynecomastia", "nữ hóa tuyến vú"])
@@ -1374,7 +1378,7 @@ class BackendTests(unittest.TestCase):
 
     def test_multi_platform_url_helpers_and_workbook(self):
         from tools.app.backend.profiles import _normalize_target, is_social_url
-        from tools.app.backend.research_engine.reel_research import (
+        from tools.loop.viral_analyzer.video_research.pipeline import (
             canonicalize_reel_url,
             extract_video_id,
             is_reel_url,
@@ -1518,28 +1522,29 @@ class BackendTests(unittest.TestCase):
                     }), encoding="utf-8")
                 return subprocess.CompletedProcess(cmd, 0, stdout="Run ID: r1\nResponse: HTTP 200\nCharge: $0.00188\n", stderr="")
 
-            with mock.patch("tools.loop.viral_analyzer.glasser.read_cached_reels", return_value=None), \
-                 mock.patch("tools.loop.viral_analyzer.glasser.write_cached_reels") as mock_write_cache, \
+            with mock.patch("tools.loop.viral_analyzer.profile_research.collect.read_cached_reels", return_value=None), \
+                 mock.patch("tools.loop.viral_analyzer.profile_research.collect.write_cached_reels") as mock_write_cache, \
                  mock.patch("tools.loop.viral_analyzer.glasser.check_glasser_key", return_value=(True, None)), \
-                 mock.patch("tools.loop.viral_analyzer.pipeline.persist_to_database"), \
+                 mock.patch("tools.loop.viral_analyzer.profile_research.pipeline.persist_to_database"), \
                  mock.patch("tools.app.backend.cost_control.record_cost_event"), \
                  mock.patch("tools.app.backend.cost_control.shutil.which", return_value="/usr/local/bin/glasser"), \
                  mock.patch("tools.app.backend.cost_control.subprocess.run", side_effect=fake_run):
                 res = run_analyzer_pipeline(config, cache_dir=root / "cache", transcribe=False, legacy_cache=False)
 
-            self.assertEqual([ep for ep, _ in seen_calls], [
+            seen_by_ep = dict(seen_calls)
+            self.assertEqual(set(seen_by_ep.keys()), {
                 "/v1/youtube/channel-videos",
                 "/v3/tiktok/profile/videos",
                 "/v1/instagram/user/reels",
-            ])
-            self.assertEqual(seen_calls[0][1], {"handle": "drericberg", "sort": "latest"})
-            self.assertEqual(seen_calls[1][1], {"handle": "ttdoc", "sort_by": "latest"})
-            self.assertEqual(seen_calls[2][1], {"handle": "igdoc"})
-            self.assertEqual([call.kwargs["handle"] for call in mock_write_cache.call_args_list], [
+            })
+            self.assertEqual(seen_by_ep["/v1/youtube/channel-videos"], {"handle": "drericberg", "sort": "latest"})
+            self.assertEqual(seen_by_ep["/v3/tiktok/profile/videos"], {"handle": "ttdoc", "sort_by": "latest"})
+            self.assertEqual(seen_by_ep["/v1/instagram/user/reels"], {"handle": "igdoc"})
+            self.assertEqual({call.kwargs["handle"] for call in mock_write_cache.call_args_list}, {
                 "youtube:drericberg",
                 "tiktok:ttdoc",
                 "instagram:igdoc",
-            ])
+            })
 
             reels = res["all_reels"]
             self.assertEqual(len(reels), 3)
@@ -1554,7 +1559,7 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(by_plat["instagram"]["likes"], 120)
 
     def test_research_single_reel_and_process_sheet_multi_platform(self):
-        from tools.app.backend.research_engine import reel_research
+        from tools.loop.viral_analyzer.video_research import pipeline as reel_research
         from tools.app.backend.research_engine.research import _process_sheet
 
         for url, expected_plat, expected_vid in (
@@ -1597,9 +1602,9 @@ class BackendTests(unittest.TestCase):
                 }],
                 "logs": [],
             })
-            with mock.patch("tools.app.backend.research_engine.reel_research.fetch_reel_transcript", return_value="YT tr"), \
-                 mock.patch("tools.app.backend.research_engine.reel_research._download_reel_video", return_value=None), \
-                 mock.patch("tools.app.backend.research_engine.reel_research.suggest_topics", return_value=([{"title": "T1", "source_urls": [yt_url], "platform": "youtube"}], None)):
+            with mock.patch("tools.loop.viral_analyzer.video_research.pipeline.fetch_reel_transcript", return_value="YT tr"), \
+                 mock.patch("tools.loop.viral_analyzer.video_research.pipeline._download_reel_video", return_value=None), \
+                 mock.patch("tools.loop.viral_analyzer.video_research.pipeline.suggest_topics", return_value=([{"title": "T1", "source_urls": [yt_url], "platform": "youtube"}], None)):
                 _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy"}, job_kind="reel")
             snap = self._store.snapshot(job_id)
             self.assertEqual(snap["sheets"][0]["status"], "completed")

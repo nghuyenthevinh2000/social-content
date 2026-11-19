@@ -21,8 +21,8 @@ Library (Topics, Imports, DM Reels) -> Analyzer (P1-P5, Transcripts, Prompts) ->
 | Library (`Thư viện`) | Curated creator packs | Built-in preset creator lists (e.g., Top 50 Creators in `creatorPacks.ts`). |
 | Library (`Thư viện`) | Saved Reels via DM sync | 24/7 Meta Graph API v27.0 Page DM polling (`dm_service.py`) captures shared Reels into user libraries (`/api/saved-reels`). |
 | Analyzer (`Phân tích`) | Batch & single-topic jobs | Run viral research on one or all topics with background polling, cancel, delete, and export (`/api/jobs`). |
-| Analyzer (`Phân tích`) | Profile traffic-pool scoring | Crawls competitor channels, tracks views/velocity/engagement, and classifies reels into P1–P5 pools (`profile_research.py`). |
-| Analyzer (`Phân tích`) | Reel & transcript analysis | Fetches transcripts (Glasser/ASR), analyzes 9:16 UGC pacing, explains "Why Viral" triggers, and generates Director Prompts via ACP (`reel_research.py`, `acp.py`). |
+| Analyzer (`Phân tích`) | Profile traffic-pool scoring | Crawls competitor channels, tracks views/velocity/engagement, and classifies reels into P1–P5 pools (`tools.loop.viral_analyzer.profile_research.pipeline`). |
+| Analyzer (`Phân tích`) | Reel & transcript analysis | Fetches transcripts (Glasser/ASR), analyzes 9:16 UGC pacing, explains "Why Viral" triggers, and generates Director Prompts via ACP (`tools.loop.viral_analyzer.video_research.pipeline`, `acp.py`). |
 | Analyzer (`Phân tích`) | Results & AI prompt export | Structured topic cards, job history, and one-click "Copy cho AI" script/prompt export (`JobResult.tsx`). |
 | Video (`Tạo Video`) | Reference-to-video generation | Generates short AI videos (default 15s) from a prompt, required profile face image, and optional context images (`video_engine.py`). |
 | Video (`Tạo Video`) | Credits & cost estimation | Pre-flight micro-USD cost estimation (`/api/videos/estimate`), balance checks, and credit ledger (`/api/credits`). |

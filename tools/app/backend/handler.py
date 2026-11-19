@@ -107,7 +107,7 @@ def run_worker(poll_sec: float = 1.0) -> None:
 
 
 def _job_process(job: Dict[str, Any], worker_pid: int) -> None:
-    os.environ["DB_POOL_MAX"] = "2"
+    os.environ.setdefault("DB_POOL_MAX", "5")
     if hasattr(os, "setsid"):
         # Own process group, so a kill also reaches the agent CLI, ffmpeg and yt-dlp children.
         os.setsid()

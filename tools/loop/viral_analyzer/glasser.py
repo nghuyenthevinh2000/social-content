@@ -1,20 +1,16 @@
-"""Glasser CLI client, error detection, and response caching for Facebook Reels.
-
-Handles authentication checks, ScrapeCreators reel harvesting, TTL-based caching,
-and detailed error classification (e.g. missing API key, missing binary, execution failure).
-"""
+"""Shared Glasser CLI client, error classification, and concurrency-safe runner."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
-import tempfile
-import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
+
+from tools.loop.viral_analyzer import runtime
 
 CURRENT_DIR = Path(__file__).parent.resolve()
 
@@ -128,7 +124,6 @@ def check_glasser_key() -> Tuple[bool, Optional[str]]:
             return False, "GLASSER_API_KEY quá ngắn hoặc không hợp lệ."
         return True, None
 
-    # Fallback: check if Glasser CLI has a locally stored key (glasser keys list)
     glasser_bin = shutil.which("glasser")
     if glasser_bin:
         try:
@@ -163,7 +158,53 @@ def check_glasser_status() -> Dict[str, Any]:
     }
 
 
-# -- Execution --------------------------------------------------------------
+# -- Execution & Failure Classification -------------------------------------
+
+_IGNORED_PREFIXES = (
+    "Idempotency-Key:",
+    "Update available:",
+    "upgrade:",
+    "skill:",
+    "Run ID:",
+    "Run URL:",
+)
+
+
+def _classify_glasser_failure(
+    res: Dict[str, Any],
+    handle: str,
+    has_key: bool,
+    endpoint_label: Optional[str] = None,
+) -> GlasserError:
+    """Map non-zero/empty Glasser CLI execution output to a typed GlasserError."""
+    stdout_text = str(res.get("stdout") or "").strip()
+    stderr_text = str(res.get("stderr") or "").strip()
+    output_text = f"{stdout_text}\n{stderr_text}".strip()
+    err_lines = [
+        line.strip()
+        for line in output_text.splitlines()
+        if line.strip() and not any(line.strip().startswith(p) for p in _IGNORED_PREFIXES)
+    ]
+    err_first_line = err_lines[0] if err_lines else "Lỗi không xác định"
+    rc = res.get("returncode")
+
+    if rc == 2 or ("No Key configured" in output_text) or (not has_key and "key" in output_text.lower()):
+        return GlasserMissingKeyError(
+            message=f"Glasser thiếu API Key: {err_first_line}",
+            handle=handle,
+            returncode=rc,
+            raw_output=output_text,
+            suggestion="Thêm 'GLASSER_API_KEY=gl_...' vào file local/deployment-service/.env rồi khởi động lại backend.",
+        )
+
+    target_desc = endpoint_label or "query"
+    return GlasserExecutionError(
+        message=f"Glasser {target_desc} thất bại (code {rc}): {err_first_line}",
+        handle=handle,
+        returncode=rc,
+        raw_output=output_text,
+    )
+
 
 def execute_glasser_query(
     profile_url: str,
@@ -175,35 +216,33 @@ def execute_glasser_query(
     handle: str = "unknown",
     timeout: float = 45.0,
     payload: Optional[Dict[str, Any]] = None,
+    ctx: Optional[runtime.EngineContext] = None,
 ) -> Tuple[bool, Optional[str], Optional[GlasserError]]:
-    """Execute glasser run command and classify any failure."""
+    """Execute glasser run command under shared concurrency limit and classify failures."""
     from tools.app.backend import cost_control
 
+    eng_ctx = ctx or runtime.default_context()
     has_key, _ = check_glasser_key()
 
     try:
-        res = cost_control.run_glasser_tracked(
-            provider=provider,
-            endpoint=endpoint,
-            version=endpoint_version,
-            payload=payload if payload is not None else {"url": profile_url},
-            idempotency_key=idempotency_key,
-            out_file=temp_out,
-            timeout=timeout,
-            sub_action="profile_scrape",
-        )
+        with eng_ctx.glasser_semaphore:
+            res = cost_control.run_glasser_tracked(
+                provider=provider,
+                endpoint=endpoint,
+                version=endpoint_version,
+                payload=payload if payload is not None else {"url": profile_url},
+                idempotency_key=idempotency_key,
+                out_file=temp_out,
+                timeout=timeout,
+                sub_action="profile_scrape",
+            )
         if res.get("not_found"):
             err = GlasserNotFoundError(handle=handle)
             return False, err.message, err
         if res["ok"] and temp_out.exists() and temp_out.stat().st_size > 0:
             return True, None, None
 
-        # Analyze failure or 404 output across both stdout and stderr
-        stdout_text = res["stdout"].strip()
-        stderr_text = res["stderr"].strip()
-        output_text = f"{stdout_text}\n{stderr_text}".strip()
-
-        # Handle Facebook 404 / no reels tab (COMPLETED run with HTTP 404 or empty output)
+        output_text = f"{str(res.get('stdout') or '').strip()}\n{str(res.get('stderr') or '').strip()}".strip()
         is_not_found = res["returncode"] == 0 and (
             "HTTP 404" in output_text
             or '"errorStatus": 404' in output_text
@@ -220,41 +259,12 @@ def execute_glasser_query(
         )
         if is_not_found:
             try:
-                temp_out.write_text(json.dumps({"reels": [], "status": "not_found", "handle": handle}), encoding="utf-8")
+                runtime.atomic_write_json(temp_out, {"reels": [], "status": "not_found", "handle": handle})
                 return True, None, None
             except Exception:
                 pass
 
-        # Parse specific failure cause, skipping banners and updater notices
-        ignored_prefixes = (
-            "Idempotency-Key:",
-            "Update available:",
-            "upgrade:",
-            "skill:",
-            "Run ID:",
-            "Run URL:",
-        )
-        err_lines = [
-            line.strip() for line in output_text.splitlines()
-            if line.strip() and not any(line.strip().startswith(p) for p in ignored_prefixes)
-        ]
-        err_first_line = err_lines[0] if err_lines else "Lỗi không xác định"
-
-        if res["returncode"] == 2 or ("No Key configured" in output_text) or (not has_key and "key" in output_text.lower()):
-            err = GlasserMissingKeyError(
-                message=f"Glasser thiếu API Key: {err_first_line}",
-                handle=handle,
-                returncode=res["returncode"],
-                raw_output=output_text,
-                suggestion="Thêm 'GLASSER_API_KEY=gl_...' vào file local/deployment-service/.env rồi khởi động lại backend.",
-            )
-        else:
-            err = GlasserExecutionError(
-                message=f"Glasser query thất bại (code {res['returncode']}): {err_first_line}",
-                handle=handle,
-                returncode=res["returncode"],
-                raw_output=output_text,
-            )
+        err = _classify_glasser_failure(res, handle=handle, has_key=has_key)
         return False, err.message, err
     except cost_control.CostPolicyError as exc:
         err = GlasserExecutionError(message=str(exc), handle=handle)
@@ -274,393 +284,86 @@ def execute_glasser_query(
         return False, err.message, err
 
 
-from tools.loop.viral_analyzer.cache import (
-    read_cached_reels,
-    write_cached_reels,
-)
+def run_glasser_json(
+    provider: str,
+    endpoint: str,
+    version: int,
+    payload: Dict[str, Any],
+    cache_dir: Optional[Path],
+    task_id: Optional[str] = None,
+    timeout: float = 45.0,
+    sub_action: str = "keyword_search",
+    cache_sub_action: str = "keyword_cache",
+    ctx: Optional[runtime.EngineContext] = None,
+) -> Tuple[Optional[Any], Optional[str], Optional[Exception]]:
+    """Run a single Glasser endpoint with single-flight dedup, semaphore, and atomic disk cache."""
+    from tools.app.backend import cost_control
 
-# -- Fetching with Cache & Error Tracking ------------------------------------
+    eng_ctx = ctx or runtime.default_context()
+    cache_key = hashlib.sha256(
+        json.dumps({"p": provider, "e": endpoint, "v": version, "i": payload}, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:20]
+    cache_file = (cache_dir / f"{cache_key}.json") if cache_dir else None
+    handle = f"{provider}:{endpoint}"
 
-def _safe_int(val: Any) -> int:
-    if isinstance(val, (int, float)):
-        return int(val)
-    if isinstance(val, str):
-        digits = re.sub(r"[^\d]", "", val)
-        return int(digits) if digits else 0
-    return 0
-
-
-def _first_int(*vals: Any) -> Optional[int]:
-    for val in vals:
-        if val is not None:
-            return _safe_int(val)
-    return None
-
-
-def _resolve_profile_query(
-    target: Dict[str, Any],
-    config: Any,
-) -> Tuple[str, str, str, str, str, int, Dict[str, Any]]:
-    from tools.app.backend.profiles import detect_platform, social_handle
-
-    raw_url = str(target.get("url") or "").strip()
-    platform = str(target.get("platform") or (detect_platform(raw_url) if raw_url else "") or "facebook").strip().lower()
-    if platform not in {"facebook", "youtube", "tiktok", "instagram"}:
-        platform = "facebook"
-
-    handle = str(target.get("handle") or "").strip()
-    canonical_url = raw_url
-    if not handle or handle == "unknown":
-        if raw_url:
+    with eng_ctx.single_flight.acquire(f"glasser:{cache_key}"):
+        if cache_file and cache_file.exists():
             try:
-                h, canonical = social_handle(raw_url)
-                handle = h or "unknown"
-                canonical_url = canonical or raw_url
-            except Exception:
-                handle = "unknown"
-        else:
-            handle = "unknown"
-
-    profile_url = canonical_url or raw_url
-    clean_h = handle.lstrip("@")
-    if not profile_url:
-        if platform == "youtube":
-            profile_url = f"https://www.youtube.com/@{clean_h}"
-        elif platform == "tiktok":
-            profile_url = f"https://www.tiktok.com/@{clean_h}"
-        elif platform == "instagram":
-            profile_url = f"https://www.instagram.com/{clean_h}/"
-        else:
-            profile_url = f"https://www.facebook.com/{handle}"
-
-    if platform == "youtube":
-        is_shorts = "/shorts" in profile_url.lower()
-        endpoint = "/v1/youtube/channel/shorts" if is_shorts else "/v1/youtube/channel-videos"
-        payload: Dict[str, Any] = {
-            "handle": clean_h,
-            "sort": "newest" if is_shorts else "latest",
-        }
-        if "/channel/" in profile_url or (clean_h.startswith("UC") and len(clean_h) >= 20):
-            payload["channelId"] = clean_h
-        return platform, handle, profile_url, "scrapecreators", endpoint, 4, payload
-
-    if platform == "tiktok":
-        return (
-            platform,
-            handle,
-            profile_url,
-            "scrapecreators",
-            "/v3/tiktok/profile/videos",
-            4,
-            {"handle": clean_h, "sort_by": "latest"},
-        )
-
-    if platform == "instagram":
-        return (
-            platform,
-            handle,
-            profile_url,
-            "scrapecreators",
-            "/v1/instagram/user/reels",
-            4,
-            {"handle": clean_h},
-        )
-
-    return (
-        platform,
-        handle,
-        profile_url,
-        getattr(config, "glasser_provider", "scrapecreators"),
-        getattr(config, "glasser_endpoint", "/v1/facebook/profile/reels"),
-        getattr(config, "glasser_endpoint_version", 2),
-        {"url": profile_url},
-    )
-
-
-def _normalize_profile_reels(data: Any, platform: str, handle: str) -> List[Dict[str, Any]]:
-    if not isinstance(data, dict):
-        return []
-
-    if platform == "facebook":
-        reels = data.get("reels", [])
-        return reels if isinstance(reels, list) else []
-
-    out: List[Dict[str, Any]] = []
-    if platform == "youtube":
-        items = data.get("videos") or data.get("shorts") or data.get("reels") or []
-        if not isinstance(items, list):
-            return []
-        for v in items:
-            if not isinstance(v, dict):
-                continue
-            vid = str(v.get("id") or v.get("videoId") or v.get("video_id") or "")
-            url = str(v.get("url") or v.get("link") or (f"https://www.youtube.com/watch?v={vid}" if vid else ""))
-            if not url and not vid:
-                continue
-            views = _first_int(v.get("viewCountInt"), v.get("views"), v.get("viewCount"), v.get("view_count")) or 0
-            likes = _first_int(v.get("likeCountInt"), v.get("likes"), v.get("likeCount"))
-            comments = _first_int(v.get("commentCountInt"), v.get("comments"), v.get("commentCount"))
-            item: Dict[str, Any] = {
-                "video_id": vid,
-                "url": url,
-                "video_url": v.get("video_url"),
-                "view_count": views,
-                "description": str(v.get("title") or v.get("description") or f"Video by @{handle}"),
-                "creation_time": v.get("creation_time") or v.get("publishDate") or v.get("publishedTime") or v.get("publishedTimeText"),
-                "platform": "youtube",
-            }
-            if likes is not None:
-                item["likes"] = likes
-            if comments is not None:
-                item["comments"] = comments
-            out.append(item)
-        return out
-
-    if platform == "tiktok":
-        items = data.get("aweme_list") or data.get("videos") or data.get("reels") or data.get("data") or []
-        if not isinstance(items, list):
-            return []
-        for raw in items:
-            if not isinstance(raw, dict):
-                continue
-            v = raw.get("aweme_info") if isinstance(raw.get("aweme_info"), dict) else raw
-            vid = str(v.get("aweme_id") or v.get("id") or v.get("video_id") or "")
-            author = v.get("author") if isinstance(v.get("author"), dict) else {}
-            author_h = str(author.get("unique_id") or v.get("author_handle") or handle).lstrip("@")
-            url = str(
-                v.get("url")
-                or (f"https://www.tiktok.com/@{author_h}/video/{vid}" if author_h and vid else "")
-                or v.get("share_url")
-                or ""
-            )
-            if not url and not vid:
-                continue
-            video_obj = v.get("video") if isinstance(v.get("video"), dict) else {}
-            play_addr = video_obj.get("play_addr") if isinstance(video_obj.get("play_addr"), dict) else {}
-            url_list = play_addr.get("url_list") if isinstance(play_addr.get("url_list"), list) else []
-            video_url = v.get("video_url") or play_addr.get("url") or (url_list[0] if url_list else None)
-            stats = v.get("statistics") if isinstance(v.get("statistics"), dict) else {}
-            views = _first_int(stats.get("play_count"), v.get("views"), v.get("play_count"), v.get("view_count")) or 0
-            likes = _first_int(stats.get("digg_count"), v.get("likes"), v.get("digg_count"))
-            comments = _first_int(stats.get("comment_count"), v.get("comments"), v.get("comment_count"))
-            shares = _first_int(stats.get("share_count"), v.get("shares"), v.get("share_count"))
-            item = {
-                "video_id": vid,
-                "url": url,
-                "video_url": video_url,
-                "view_count": views,
-                "description": str(v.get("desc") or v.get("description") or v.get("title") or f"TikTok by @{author_h}"),
-                "creation_time": v.get("creation_time") or v.get("create_time_utc"),
-                "timestamp": v.get("create_time") or v.get("timestamp"),
-                "platform": "tiktok",
-            }
-            if likes is not None:
-                item["likes"] = likes
-            if comments is not None:
-                item["comments"] = comments
-            if shares is not None:
-                item["shares"] = shares
-            out.append(item)
-        return out
-
-    if platform == "instagram":
-        items = data.get("items") or data.get("reels") or data.get("data") or []
-        if not isinstance(items, list):
-            return []
-        for raw in items:
-            if not isinstance(raw, dict):
-                continue
-            v = raw.get("media") if isinstance(raw.get("media"), dict) else raw
-            code = str(v.get("code") or v.get("shortcode") or "")
-            vid = str(v.get("pk") or v.get("id") or v.get("video_id") or code)
-            url = str(v.get("url") or (f"https://www.instagram.com/reel/{code}/" if code else ""))
-            if not url and not vid:
-                continue
-            versions = v.get("video_versions") if isinstance(v.get("video_versions"), list) else []
-            first_ver = versions[0] if versions and isinstance(versions[0], dict) else {}
-            video_url = v.get("video_url") or first_ver.get("url")
-            views = _first_int(
-                v.get("play_count"),
-                v.get("ig_play_count"),
-                v.get("view_count"),
-                v.get("views"),
-            ) or 0
-            likes = _first_int(v.get("like_count"), v.get("likes"))
-            comments = _first_int(v.get("comment_count"), v.get("comments"))
-            cap = v.get("caption")
-            desc = str(
-                cap.get("text") if isinstance(cap, dict) else (cap or v.get("description") or v.get("title") or f"Reel by @{handle}")
-            )
-            item = {
-                "video_id": vid,
-                "url": url,
-                "video_url": video_url,
-                "view_count": views,
-                "description": desc,
-                "creation_time": v.get("creation_time") or v.get("created_at"),
-                "timestamp": v.get("taken_at") or v.get("timestamp") or (cap.get("created_at") if isinstance(cap, dict) else None),
-                "platform": "instagram",
-            }
-            if likes is not None:
-                item["likes"] = likes
-            if comments is not None:
-                item["comments"] = comments
-            out.append(item)
-        return out
-
-    return []
-
-
-def fetch_target_reels(
-    target: Dict[str, Any],
-    config: Any,
-    cache_dir: Optional[Path] = None,
-    legacy_cache: bool = True,
-    progress_cb: Optional[Callable[[str], None]] = None,
-    error_collector: Optional[List[GlasserError]] = None,
-) -> List[Dict[str, Any]]:
-    """Fetch profile reels/videos via Glasser ScrapeCreators or centralized cache.
-
-    Appends encountered GlasserErrors to error_collector if provided.
-    """
-    platform, handle, profile_url, provider, endpoint, endpoint_version, query_payload = _resolve_profile_query(
-        target, config
-    )
-    cache_key = handle if platform == "facebook" else f"{platform}:{handle}"
-    slug = cache_key.replace(":", "_").replace(".", "_")
-
-    # 1. Check centralized cache (with legacy JSON auto-import)
-    cached = read_cached_reels(
-        cache_key,
-        cache_dir=cache_dir,
-        legacy_cache=legacy_cache,
-        allow_expired=False,
-    )
-    if cached is None and cache_key != handle:
-        cached = read_cached_reels(
-            handle,
-            cache_dir=cache_dir,
-            legacy_cache=legacy_cache,
-            allow_expired=False,
-        )
-    if cached is not None:
-        from tools.app.backend import cost_control
-
-        reels, _status, src_label = cached
-        cost_control.record_cost_event(
-            provider=provider,
-            endpoint=endpoint,
-            cost_micro=0,
-            cache_hit=True,
-            sub_action="profile_cache",
-        )
-        msg = f"    [cache] Dùng cache ({len(reels)} reel) cho {handle} ({src_label})."
-        print(msg)
-        if progress_cb:
-            progress_cb(f"[cache] Dùng cache ({len(reels)} reel) cho {handle} ({src_label})")
-        return reels
-
-    # 2. Glasser CLI Fetch
-    msg = f"    [api] Gọi Glasser ({platform}) cho {handle}..."
-    print(msg)
-    if progress_cb:
-        progress_cb(f"[api] Gọi Glasser ({platform}) cho {handle}...")
-
-    temp_out = Path(tempfile.gettempdir()) / f"glasser_{slug}.json"
-    idempotency_key = f"viral-loop-{slug}-{int(time.time() // 86400)}"
-
-    ok, err_msg, glasser_err = execute_glasser_query(
-        profile_url=profile_url,
-        provider=provider,
-        endpoint=endpoint,
-        endpoint_version=endpoint_version,
-        idempotency_key=idempotency_key,
-        temp_out=temp_out,
-        handle=handle,
-        timeout=45.0,
-        payload=query_payload,
-    )
-
-    if ok and temp_out.exists():
-        try:
-            with open(temp_out, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                reels = _normalize_profile_reels(data, platform, handle)
-                status = data.get("status", "ok") if isinstance(data, dict) else "ok"
-                write_cached_reels(
-                    handle=cache_key,
-                    reels=reels,
-                    status=status,
-                    profile_url=profile_url,
+                cached_data = json.loads(cache_file.read_text(encoding="utf-8"))
+                cost_control.record_cost_event(
+                    provider=provider,
+                    endpoint=endpoint,
+                    cost_micro=0,
+                    cache_hit=True,
+                    sub_action=cache_sub_action,
                 )
-                for r in reels:
-                    if isinstance(r, dict):
-                        r["_source"] = "glasser"
-                if status == "not_found":
-                    status_msg = f"    [api] Kênh {handle} không tồn tại hoặc không có reels (not_found)."
-                    print(status_msg)
-                    if progress_cb:
-                        progress_cb(f"[api] Kênh {handle} không tồn tại hoặc không có reels (not_found)")
-                else:
-                    success_msg = f"    [api] Glasser thành công ({len(reels)} reel) cho {handle}."
-                    print(success_msg)
-                    if progress_cb:
-                        progress_cb(f"[api] Glasser thành công ({len(reels)} reel mới từ API) cho {handle}")
-                return reels
-        except Exception as read_err:
-            glasser_err = GlasserExecutionError(
-                message=f"Không đọc được file kết quả JSON từ Glasser: {read_err}",
+                return cached_data, "cache", None
+            except Exception:
+                pass
+
+        ensure_glasser_env()
+        has_key, _ = check_glasser_key()
+        tmp_out = runtime.unique_temp_path(f"glasser_{cache_key}", ".json")
+        idem = f"vvs-{cache_key}"
+
+        try:
+            with eng_ctx.glasser_semaphore:
+                res = cost_control.run_glasser_tracked(
+                    provider=provider,
+                    endpoint=endpoint,
+                    version=version,
+                    payload=payload,
+                    idempotency_key=idem,
+                    out_file=tmp_out,
+                    task_id=task_id,
+                    timeout=timeout,
+                    sub_action=sub_action,
+                )
+            if res.get("not_found"):
+                return None, None, GlasserNotFoundError(handle=handle)
+            if res["ok"] and tmp_out.exists() and tmp_out.stat().st_size > 0:
+                data = json.loads(tmp_out.read_text(encoding="utf-8"))
+                if cache_file is not None:
+                    runtime.atomic_write_json(cache_file, data)
+                return data, "glasser_api", None
+            return None, None, _classify_glasser_failure(
+                res,
+                handle=handle,
+                has_key=has_key,
+                endpoint_label=f"{provider}{endpoint}",
+            )
+        except cost_control.CostPolicyError as exc:
+            return None, None, GlasserExecutionError(message=str(exc), handle=handle)
+        except subprocess.TimeoutExpired:
+            return None, None, GlasserExecutionError(
+                message=f"Glasser {provider}{endpoint} timeout sau {timeout:.0f}s",
                 handle=handle,
             )
+        except Exception as exc:
+            return None, None, GlasserExecutionError(message=str(exc), handle=handle)
         finally:
-            if temp_out.exists():
+            if tmp_out.exists():
                 try:
-                    os.remove(temp_out)
-                except Exception:
+                    tmp_out.unlink()
+                except OSError:
                     pass
-
-    # Record error if Glasser query failed
-    if glasser_err:
-        if error_collector is not None:
-            error_collector.append(glasser_err)
-        log_msg = f"    [!] Glasser lỗi cho {handle}: {glasser_err.message}"
-        print(log_msg)
-        if progress_cb:
-            progress_cb(log_msg)
-
-    # 3. Fallback to expired cache if Glasser query failed or was unavailable
-    expired = read_cached_reels(
-        cache_key,
-        cache_dir=cache_dir,
-        legacy_cache=legacy_cache,
-        allow_expired=True,
-    )
-    if expired is None and cache_key != handle:
-        expired = read_cached_reels(
-            handle,
-            cache_dir=cache_dir,
-            legacy_cache=legacy_cache,
-            allow_expired=True,
-        )
-    if expired is not None:
-        reels, _status, _src_label = expired
-        if reels:
-            fallback_msg = f"    [!] Glasser lỗi; dùng lại cache cũ ({len(reels)} reel) cho {handle}."
-            print(fallback_msg)
-            if progress_cb:
-                progress_cb(f"[cache-fallback] {handle}: Glasser lỗi, dùng lại cache cũ ({len(reels)} reel)")
-            return reels
-
-    return []
-
-
-# -- Transcript Fetching & Caching (delegated to transcriber.glasser) --------
-
-from tools.loop.viral_analyzer.transcriber.glasser import (
-    GlasserTranscriber,
-    fetch_reel_transcript,
-    fetch_top_reels_transcripts,
-    transcribe_reels_glasser,
-)
-
-

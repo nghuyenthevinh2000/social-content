@@ -51,21 +51,21 @@
   ],
   "video": [
     "clip",
+    "reel",
     "media",
-    "footage",
     "phim"
   ],
   "search": [
-    "query",
     "lookup",
     "tìm",
-    "kiếm"
+    "kiếm",
+    "query"
   ],
   "keyword": [
+    "query",
     "term",
-    "token",
-    "tag",
-    "khóa"
+    "khóa",
+    "phrase"
   ],
   "tools": [
     "utility",
@@ -88,17 +88,17 @@
     "chủ"
   ],
   "research": [
+    "study",
     "discovery",
-    "analysi",
-    "scrap",
     "nghiên",
-    "cứu"
+    "cứu",
+    "explore"
   ],
   "engine": [
-    "pipeline",
-    "worker",
+    "core",
     "processor",
-    "máy"
+    "thống",
+    "module"
   ],
   "youtube": [
     "video",
@@ -142,15 +142,16 @@
   "viral": [
     "trend",
     "popular",
-    "hit",
-    "hướng"
+    "hướng",
+    "lan",
+    "truyền"
   ],
   "analyzer": [
-    "evaluator",
+    "analysi",
     "inspector",
-    "parser",
     "phân",
-    "tích"
+    "tích",
+    "evaluator"
   ],
   "pipeline": [
     "workflow",
@@ -172,5 +173,23 @@
     "grab",
     "tải",
     "xuống"
+  ],
+  "hashtag": [
+    "tag",
+    "topic",
+    "thẻ",
+    "label"
+  ],
+  "common": [
+    "shar",
+    "base",
+    "dùng",
+    "chung",
+    "utility"
+  ],
+  "profile": [
+    "account",
+    "creator",
+    "channel"
   ]
 }

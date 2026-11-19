@@ -29,82 +29,16 @@ if _project_root not in sys.path:
 from tools.common.cli_support import JsonArgumentParser, emit_error, emit_success
 from tools.common.config import load_environment
 from tools.common.errors import AgentError
-
-# Supported Reel, Short-Form, and Video Share URL patterns
-REEL_PATTERNS = [
-    re.compile(r'https?://(?:www\.)?facebook\.com/reel/(\d+)', re.I),
-    re.compile(r'https?://(?:www\.)?facebook\.com/share/[rvp]/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?facebook\.com/watch/?\?(?:[^#\s]*&)?v=(\d+)', re.I),
-    re.compile(r'https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.-]+/videos/(\d+)', re.I),
-    re.compile(r'https?://(?:www\.)?facebook\.com/ads/library/\?(?:[^#\s]*&)?id=(\d+)', re.I),
-    re.compile(r'https?://fb\.watch/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:(?:www|m)\.)?youtube\.com/watch/?\?(?:[^#\s]*&)?v=([a-zA-Z0-9_-]{6,})', re.I),
-    re.compile(r'https?://(?:(?:www|m)\.)?youtube\.com/shorts/([a-zA-Z0-9_-]{6,})', re.I),
-    re.compile(r'https?://youtu\.be/([a-zA-Z0-9_-]{6,})', re.I),
-    re.compile(r'https?://(?:www\.)?instagram\.com/(?:[a-zA-Z0-9_.-]+/)?reels?/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?instagram\.com/(?:[a-zA-Z0-9_.-]+/)?(?:p|tv)/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?tiktok\.com/@[\w.-]+/(?:video|photo)/(\d+)', re.I),
-    re.compile(r'https?://(?:vm|vt)\.tiktok\.com/([a-zA-Z0-9_-]+)', re.I),
-    re.compile(r'https?://(?:www\.)?tiktok\.com/t/([a-zA-Z0-9_-]+)', re.I),
-]
-
-
-def resolve_short_url(url: str, timeout: float = 3.0) -> str:
-    """Resolve short share URLs (fb.watch, facebook.com/share/*, vm.tiktok.com) to target URL."""
-    if not url or not any(x in url for x in ('facebook.com/share/', 'fb.watch/', 'tiktok.com/')):
-        return url
-    try:
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
-        )
-
-        class _NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, req, fp, code, msg, headers, newurl):
-                return None
-
-        opener = urllib.request.build_opener(_NoRedirect)
-        try:
-            resp = opener.open(req, timeout=timeout)
-            loc = resp.headers.get("Location")
-        except urllib.error.HTTPError as exc:
-            loc = exc.headers.get("Location")
-        if loc:
-            return loc
-    except Exception:
-        pass
-    return url
+from tools.loop.viral_analyzer.platforms import (
+    REEL_PATTERNS,
+    canonicalize_reel_url as _canonicalize_reel_url,
+    resolve_short_url,
+)
 
 
 def canonicalize_reel_url(url: str, resolve_redirects: bool = True) -> Optional[tuple[str, str]]:
-    """Clean tracking params from Reel URL and detect platform.
-
-    If resolve_redirects is True and the URL is a short share link (such as
-    facebook.com/share/v/*), resolves HTTP 301/302 redirects to find the canonical reel ID.
-
-    Returns:
-        tuple of (canonical_url, platform) or None if not recognized.
-    """
-    if not url:
-        return None
-    target_url = resolve_short_url(url) if resolve_redirects else url
-    for pattern in REEL_PATTERNS:
-        match = pattern.search(target_url)
-        if match:
-            clean = match.group(0).rstrip('/')
-            lowered = clean.lower()
-            if 'youtube.com' in lowered or 'youtu.be' in lowered:
-                vid = match.group(1)
-                if '/shorts/' in lowered:
-                    return f'https://www.youtube.com/shorts/{vid}', 'youtube'
-                return f'https://www.youtube.com/watch?v={vid}', 'youtube'
-            if 'facebook.com' in lowered or 'fb.watch' in lowered:
-                return clean, 'facebook'
-            if 'instagram.com' in lowered:
-                return clean, 'instagram'
-            if 'tiktok.com' in lowered:
-                return clean, 'tiktok'
-    return None
+    """Clean tracking params from Reel URL and detect platform."""
+    return _canonicalize_reel_url(url, resolve_redirects=resolve_redirects, resolver=resolve_short_url)
 
 
 def extract_reels_from_text(text: str) -> List[Dict[str, str]]:

@@ -3,10 +3,10 @@
 | Responsibility | Location |
 | --- | --- |
 | Reusable stage modules, tests and guidance | `tools/loop/` |
-| Hashtag vocabulary generation/verification | `tools/loop/viral_analyzer/` scripts; offline tests in `tools/loop/tests/test_hashtag_*.py` |
+| Hashtag vocabulary generation/verification | `tools/loop/viral_analyzer/keyword_research/` unified CLI; offline tests in `tools/loop/tests/test_hashtag_*.py` |
 | Viral analyzer context | Only `<project>/product-marketing.json` is required: nonempty `marketing_goal` and named entries in `product.catalog`. Optional past `sources/viral/` analyses and hashtag history inform proposals/review, not current product facts or fresh verification. Brand/customer/hypothesis/loop files are not prerequisites. |
 | Viral analyzer run layout | New `sources/viral/<RUN>/` roots contain only `brief.md`, `report.md` and `artifacts/`. Context, prompts, plans, receipts, reviews, raw evidence and expansion outputs live under `artifacts/`; flat legacy runs resume in place without migration. |
-| Failed/empty viral discovery | Executed hashtag collection also writes a root report from receipts. Recover with `hashtag_verify report --project <PROJECT> --run <RUN>` without network. Agent finalizes every platform report, separating zero retrieval yield from unproven platform-wide marketing conclusions. |
+| Failed/empty viral discovery | Executed hashtag collection also writes a root report from receipts. Recover with `python3 -m tools.loop.viral_analyzer.keyword_research report --project <PROJECT> --run <RUN>` without network. Agent finalizes every platform report, separating zero retrieval yield from unproven platform-wide marketing conclusions. |
 | Page identity and optional hypothesis mapping | `<project>/loop/config.json` |
 | Publications, pending reviews, lock and current stage | `<project>/loop/publications.json`, `<project>/loop/.engine.lock`, `<project>/loop/status.json` |
 | Metrics and audit evidence | `<project>/sources/post-metrics/` |
@@ -91,9 +91,9 @@ register → checkpoints → collect → normalize → eligibility
 | `python -m tools.loop --project PATH collect-insights` | Collect due dashboards through the authenticated browser; no Glasser charge. |
 | `python -m tools.loop --project PATH collect --max-cost-usd AMOUNT` | Optional paid public-metrics fallback with an explicit per-invocation ceiling. |
 | `python -m tools.loop --project PATH review --id PUBLICATION_ID --file REVIEW.json` | Legacy single-publication review. |
-| `python3 -m tools.loop.viral_analyzer.hashtag_generate --help` | Build a campaign hashtag prompt/context and validate a saved AI response; no network or writes to history. |
-| `python3 -m tools.loop.viral_analyzer.hashtag_verify --help` | Plan, preview/collect bounded provider probes, review evidence and append campaign hashtag history. |
-| `python3 -m tools.loop.viral_analyzer.viral_scrape --help` | Collect viral candidates only for targets already marked `promising`/`limited_expand`; preview by default. |
+| `python3 -m tools.loop.viral_analyzer.keyword_research --help` | Unified keyword search, hashtag prompt/validation (`build-prompt`, `import-response`, `plan`, `collect`, `report`, `build-review-prompt`, `record-review`, `history`), and gated viral scraping (`scrape`). |
+| `python3 -m tools.loop.viral_analyzer.profile_research --help` | 48h creator/profile scraper, 5-pool classification, retention sweep, and transcription pipeline. |
+| `python3 -m tools.loop.viral_analyzer.video_research --help` | Standalone single-reel visual/transcript analysis and topic generation CLI. |
 | `python -m unittest discover -s tools/loop/tests` | Offline stage, status, workflow, CLI, hashtag vocabulary and project-isolation tests. |
 
 | Behavior / limit | Rule |

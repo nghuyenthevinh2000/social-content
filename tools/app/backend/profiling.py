@@ -368,7 +368,8 @@ def run_supervisor_context(iterations: int, collector: MetricsCollector) -> None
 
 
 def run_worker_context(iterations: int, collector: MetricsCollector, live: bool = False) -> None:
-    from tools.app.backend.research_engine import keyword_search, reel_research
+    from tools.loop.viral_analyzer.keyword_research import pipeline as keyword_search
+    from tools.loop.viral_analyzer.video_research import pipeline as reel_research
 
     sample_reels = [
         {

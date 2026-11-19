@@ -6,8 +6,8 @@ from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
 
-from tools.loop.viral_analyzer import hashtag_common as hc
-from tools.loop.viral_analyzer import hashtag_generate as hg
+from tools.loop.viral_analyzer.keyword_research import config as hc
+from tools.loop.viral_analyzer.keyword_research.campaign import generate as hg
 
 
 def write_campaign(root, slug='test-campaign'):

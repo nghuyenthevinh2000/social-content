@@ -11,9 +11,9 @@ import pytest
 
 from tools.app.backend import cost_control
 from tools.app.backend.db import init_schema, ro, tx
-from tools.app.backend.research_engine import reel_research
+from tools.loop.viral_analyzer.video_research import pipeline as reel_research
 from tools.loop.viral_analyzer.cache import NO_TRANSCRIPT_SENTINEL, get_cached_transcript
-from tools.loop.viral_analyzer.transcriber import glasser as tr_glasser
+from tools.loop.viral_analyzer.video_research.transcriber import glasser as tr_glasser
 
 
 def test_parse_glasser_stdout_exact_decimal_and_wasted():

@@ -6,9 +6,9 @@ from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
 
-from tools.loop.viral_analyzer import hashtag_common as hc
-from tools.loop.viral_analyzer import hashtag_generate as hg
-from tools.loop.viral_analyzer import hashtag_verify as hv
+from tools.loop.viral_analyzer.keyword_research import config as hc
+from tools.loop.viral_analyzer.keyword_research.campaign import generate as hg
+from tools.loop.viral_analyzer.keyword_research.campaign import verify as hv
 from test_hashtag_generate import (build_args, candidate, response_for,
                                    write_campaign)
 

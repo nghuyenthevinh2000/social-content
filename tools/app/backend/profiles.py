@@ -14,11 +14,15 @@ import unicodedata
 import urllib.error
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple, Union
-from urllib.parse import parse_qs, urlparse
 
 import openpyxl
 
 from tools.facebook_agent.dm_crawl.crawler import canonicalize_reel_url
+from tools.loop.viral_analyzer.platforms import (
+    detect_platform,
+    facebook_handle,
+    social_handle,
+)
 
 WORKSPACE = Path(__file__).resolve().parents[3]
 custom_runs = os.environ.get("VIRAL_APP_RUNS")
@@ -51,64 +55,6 @@ def slugify(value: str) -> str:
     ascii_text = "".join(ch for ch in normalized if not unicodedata.combining(ch))
     ascii_text = ascii_text.replace("đ", "d").replace("Đ", "D")
     return re.sub(r"[^a-zA-Z0-9]+", "-", ascii_text).strip("-").lower() or "sheet"
-
-
-def detect_platform(url: str) -> str:
-    """Identify social platform from a URL."""
-    lowered = (url or "").lower()
-    if "youtube.com" in lowered or "youtu.be" in lowered:
-        return "youtube"
-    if "tiktok.com" in lowered:
-        return "tiktok"
-    if "instagram.com" in lowered:
-        return "instagram"
-    if "facebook.com" in lowered or "fb.com" in lowered or "fb.watch" in lowered:
-        return "facebook"
-    return "web"
-
-
-def facebook_handle(url: str) -> Tuple[str, str]:
-    """Return (handle, canonical_url) from a Facebook profile/reel/page URL."""
-    parsed = urlparse(url)
-    query = parse_qs(parsed.query)
-    if "profile.php" in parsed.path and query.get("id"):
-        profile_id = query["id"][0]
-        return f"profile_{profile_id}", f"https://www.facebook.com/profile.php?id={profile_id}"
-    parts = [part for part in parsed.path.split("/") if part]
-    if parts:
-        handle = parts[0]
-        return handle, f"https://www.facebook.com/{handle}"
-    return parsed.netloc or "unknown", url
-
-
-def social_handle(url: str) -> Tuple[str, str]:
-    """Return (handle, canonical_url) preserving non-Facebook platform URLs."""
-    cleaned = (url or "").strip()
-    if not cleaned.lower().startswith(("http://", "https://")):
-        return cleaned or "unknown", cleaned
-    platform = detect_platform(cleaned)
-    if platform == "facebook":
-        return facebook_handle(cleaned)
-    parsed = urlparse(cleaned)
-    parts = [part for part in parsed.path.split("/") if part]
-    if platform == "youtube":
-        if parts and parts[0].startswith("@"):
-            handle = parts[0].lstrip("@")
-            return handle, f"https://www.youtube.com/@{handle}"
-        if len(parts) >= 2 and parts[0] in {"channel", "c", "user"}:
-            return parts[1], f"https://www.youtube.com/{parts[0]}/{parts[1]}"
-        return (parts[0] if parts else parsed.netloc or "youtube"), cleaned
-    if platform == "tiktok":
-        if parts and parts[0].startswith("@"):
-            handle = parts[0].lstrip("@")
-            return handle, f"https://www.tiktok.com/@{handle}"
-        return (parts[0] if parts else parsed.netloc or "tiktok"), cleaned
-    if platform == "instagram":
-        if parts and parts[0] not in {"reel", "reels", "p", "tv", "stories"}:
-            handle = parts[0].lstrip("@")
-            return handle, f"https://www.instagram.com/{handle}/"
-        return (parts[0] if parts else parsed.netloc or "instagram"), cleaned
-    return (parts[0] if parts else parsed.netloc or platform), cleaned
 
 
 def is_facebook_url(value: str) -> bool:

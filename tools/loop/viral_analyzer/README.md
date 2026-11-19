@@ -1,95 +1,59 @@
-# Standardized Viral Reels Analyzer Engine (`tools.loop.viral_analyzer`)
-
-Standardized, end-to-end operational engine for 48-hour short-form viral video discovery, traffic pool classification, 7-day video cache retention, and Apple Silicon Metal GPU speech-to-text transcription.
-
----
-
-## 1. Core Operating Contract
-
-> **Crucial Rule:** The engine alone is the sole execution mechanism. Never write one-off crawler scripts, glue wrappers, or ad-hoc runners in `local/`. Every operation is driven from a single input config JSON file via standard module invocation.
-
-```bash
-# Standard end-to-end execution
-uv run python -m tools.loop.viral_analyzer --config <path/to/config.json>
-
-# With optional video quota ceiling (e.g., stop once 100 videos are reached)
-uv run python -m tools.loop.viral_analyzer --config <path/to/config.json> --max-videos 100
-
-# Dry-run preview without network queries or transcription
-uv run python -m tools.loop.viral_analyzer --config <path/to/config.json> --dry-run
-```
-
----
-
-## 2. Architecture & Pipeline Sequence
+# Viral Analyzer Engine
 
 ```text
-Config JSON -> Retention Sweep (Purge > 7d) -> Glasser v2 Ingestion (48h Window)
-                    │
-                    ├── 5-Pool View Classification (P1-P5)
-                    ├── Direct CDN / yt-dlp Video Stream Download (< 80MB)
-                    ├── 7-Day Video Retention Manifest Registration
-                    ├── FFmpeg 16kHz Mono Audio Capping (180s max)
-                    ├── Apple Silicon Metal GPU Qwen3-ASR (0.6B) Transcription
-                    └── Database Upsert (traffic_pools.db) & Multi-Pool JSON Artifact
+Shared Core: platforms | normalize | runtime | glasser | cache
+                               ↓
+<domain>_research/: __init__ + __main__ + config + collect + pipeline
+  ├── profile_research/  (48h creator crawls & P1–P5 traffic pools)
+  ├── video_research/    (reel visuals, topics, 7d retention, transcriber/)
+  └── keyword_research/  (5-platform keyword search & campaign/)
+                               ↓
+tools/app/backend/research_engine/ (research.py imports canonical pipelines directly)
 ```
 
----
+## Standardized Package Layout
 
-## 3. Configuration Reference (`config.sample.json`)
+| Module / Package | Role | Key Exports & Responsibilities |
+|---|---|---|
+| `tools/loop/viral_analyzer/__init__.py`, `__main__.py` | Root facade & default CLI | PEP 562 lazy exports (zero eager `psycopg` import); routes default CLI to `profile_research` |
+| `platforms.py` | Platform registry core | Pure-stdlib `PlatformSpec`, `PLATFORMS_REGISTRY` (`facebook`, `youtube`, `tiktok`, `instagram`, `google`), `register_platform()`, URL/ID/handle/transcript routing |
+| `normalize.py` | Payload normalizers | Pure-stdlib `parse_int`, `first_int`, `parse_compact_count`, `extract_metric` (`None`-preserving), `raw_media_items`, per-platform profile & search normalizers |
+| `runtime.py` | High-throughput primitives | `EngineContext` (`max_workers`, `submit_fn`, pluggable `agent_runner`), `SingleFlight`, shared `BoundedSemaphore` (`VIRAL_GLASSER_MAX_CONCURRENCY=8`), `unique_temp_path`, `atomic_write_json` |
+| `glasser.py` | Shared Glasser client | Env/key checks, unified failure classifier, `execute_glasser_query()`, `run_glasser_json()` with single-flight + semaphore + atomic cache |
+| `cache.py` | Centralized DB cache | Lazy-DB `profile_cache` (reels & batch followers), `videos` transcripts, batched `persist_to_database()` (3 SQL calls/run) |
+| `profiling.py` | Opt-in profiler & bench | Stdlib `span()` instrumentation (`PROFILE_VIRAL_ANALYZER=1`), `profile_callable()` (`cProfile` + `tracemalloc`), and 6-context isolated benchmarks (`core`, `profile`, `video`, `keyword`, `concurrency`, `cache`) |
+| `profile_research/` | Profile & pool engine | 48h creator scraper, P1–P5 classification (`0..500`, `500..5k`, `5k..50k`, `50k..500k`, `>=500k`), parallel target fan-out (`ViralAnalyzerConfig` defaults) |
+| `video_research/` | Video & transcript engine | Single-reel research, frame extraction, topic & director prompts, `fcntl.flock` 7-day retention manifest, `transcriber/` (`glasser`, `local` Qwen3-ASR 0.6B/Whisper) |
+| `keyword_research/` | Keyword & hashtag engine | Parallel 5-platform `search`, follower enrichment, and `campaign/` (`generate`, `verify`, `scrape`) gated hashtag workflow |
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `window_hours` | `int` | `48` | Lookback window in hours for video publication timestamps. |
-| `retention_days` | `int` | `7` | Cache retention TTL in days. Expired videos are purged automatically. |
-| `max_videos` | `int` | `null` | Optional stop quota. Halts additional downloads once target is reached. |
-| `pools` | `dict` | Pools 1–5 | View count thresholds defining each traffic pool. |
-| `storage.video_dir` | `string` | `local/.../cache/videos` | Directory for downloaded video MP4 files and manifest. |
-| `storage.output_file` | `string` | `local/.../viral_reels_48h.json` | Path to output JSON summary artifact. |
-| `transcription.engine` | `string` | `"local"` | Transcriber engine (`"local"` or `"glasser"`). |
-| `transcription.model` | `string` | `"Qwen/Qwen3-ASR-0.6B"` | Model HuggingFace identifier. |
-| `transcription.language` | `string` | `null` | Speech language (`null` enables native auto-detection). |
-| `transcription.max_audio_duration_sec` | `int` | `180` | Maximum audio duration extracted to prevent memory spikes. |
-| `glasser_provider` | `string` | `"scrapecreators"` | Glasser provider name. |
-| `glasser_endpoint` | `string` | `"/v1/facebook/profile/reels"` | Glasser API endpoint (must start with `/` and use version 2). |
-| `glasser_endpoint_version` | `int` | `2` | Glasser endpoint version. |
-| `targets` | `list` | `[]` | List of target accounts (`handle`, `url`, `name`, `category`). |
-| `creators_file` | `string` | `null` | Path to a `creators.json` file for automated candidate discovery. |
+## Standardized 5-File Engine Contract
 
----
+| File | Shared Contract Across Every `<domain>_research/` Package |
+|---|---|
+| `__init__.py` | Public domain facade exporting types and `run_*` entrypoints |
+| `__main__.py` | Standalone CLI (`python3 -m tools.loop.viral_analyzer.<domain>_research`) |
+| `config.py` | Pure-stdlib domain settings, schemas, prompt templates, constants |
+| `collect.py` | External acquisition & caching (Glasser/HTTP/download + `SingleFlight` / `flock`) |
+| `pipeline.py` | Parallel orchestration, scoring/analysis, persistence (`sys.modules` backend shim target) |
+| Submodule *(optional)* | Present only for multi-stage/backend internals (`video_research/transcriber/`, `keyword_research/campaign/`) |
 
-## 4. 5 Traffic Pools Classification
+## CLI Entrypoints & Backend Integration
 
-| Pool Level | Name | View Range | Typical Characteristics |
-| --- | --- | --- | --- |
-| **Pool 1** | `sandbox` | 0 – 500 | Newly published reels, initial testing phase. |
-| **Pool 2** | `testing` | 500 – 5,000 | Algorithmic exploration, seed engagement. |
-| **Pool 3** | `niche` | 5,000 – 50,000 | Community / niche traction, steady velocity. |
-| **Pool 4** | `surge` | 50,000 – 500,000 | Broad algorithmic recommendation across multiple audiences. |
-| **Pool 5** | `mega_breakout` | ≥ 500,000 | Viral breakout, mass reach, national-level trend. |
+| Entrypoint | Command | Behavior |
+|---|---|---|
+| Profile pipeline | `python3 -m tools.loop.viral_analyzer.profile_research [--config <JSON>] [--target <URL>] [--max-videos N] [--dry-run]` | Retention sweep (`>7d`), parallel 48h target crawl, transcription (`local` or `glasser`), batched DB + atomic JSON write |
+| Video pipeline | `python3 -m tools.loop.viral_analyzer.video_research --url <URL> [--sheet-name <S>] [--agent <ID>]` | Direct single-reel transcript, visual frame analysis (capped 80 MB stream / 180s audio), and topic generation |
+| Keyword search | `python3 -m tools.loop.viral_analyzer.keyword_research search --keyword <KW> [--platforms p1,p2] [--run-dir DIR]` | Keyword expansion (`<=3` queries) + parallel search across registered platforms (`youtube`, `google`, `facebook`, `tiktok`, `instagram`) |
+| Hashtag campaign CLI | `python3 -m tools.loop.viral_analyzer.keyword_research <build-prompt\|import-response\|plan\|collect\|report\|build-review-prompt\|record-review\|history\|scrape>` | Offline prompt build/import, preview-first bounded probes, locked `hashtag-performance.json` history, `promising`/`limited_expand`-gated `scrape` |
+| Backend integration | `tools/app/backend/research_engine/research.py` | Imports `profile_research`, `video_research`, and `keyword_research` pipelines directly; fans out multi-reel jobs concurrently |
+| Engine benchmark CLI | `python3 -m tools.loop.viral_analyzer.profiling --context all --iterations 5 --cprofile` | Benchmarks `core`, `profile`, `video`, `keyword`, `concurrency`, and `_test` DB `cache` operations with p50/p95/max latency and RSS delta |
 
----
+## Extensibility & Verification
 
-## 5. Key Operational Findings & Production Nuances
-
-### 5.1 Speech-to-Text: Qwen3-ASR 0.6B vs. Whisper Base
-
-- **Failure Mode:** Whisper Base (74M) severely hallucinates Vietnamese diacritics, slang, and brand terms (e.g. transcribing "đổ xăng tiện cầm" as "đủ răng tiện cơm").
-- **Solution:** `Qwen/Qwen3-ASR-0.6B` running natively on Apple Silicon Metal GPU via `mlx-qwen3-asr` delivers ground-truth accuracy in ~1–2 seconds per video.
-- **Language Detection:** Always set `language=None` so Qwen3-ASR's native multilingual routing detects Vietnamese without throwing unsupported language alias warnings.
-
-### 5.2 Audio Preprocessing & OOM Prevention
-
-- **Failure Mode:** Decoding full-length live broadcast videos (e.g. 841 MB Gala livestreams) directly in Python/PyAV causes process termination (Exit code 137 / Out of Memory).
-- **Solution:** Pre-extract 16kHz mono WAV audio using FFmpeg (`-vn -ar 16000 -ac 1 -t 180`), capped at 180 seconds. Video streaming downloads are capped at 80 MB.
-
-### 5.3 7-Day Video Retention TTL
-
-- **Manifest:** Video files are registered in `cache/videos/retention_manifest.json` with an explicit `expires_at = downloaded_at + 7 days`.
-- **Automated Sweep:** [`purge_expired_videos()`](retention.py) runs on every engine launch, removing physical video files exceeding 7 days while keeping transcripts and analytics permanently in SQLite.
-
-### 5.4 Glasser Ingestion & Direct CDN Streaming
-
-- **Endpoint:** Glasser provider `scrapecreators` endpoint `/v1/facebook/profile/reels` with `--endpoint-version 2`.
-- **Direct CDN Streaming:** Many Glasser records provide direct Facebook CDN `video_url` (`https://video-*.xx.fbcdn.net/...`). The engine streams directly over HTTP chunking, downloading clips in 1–2 seconds without invoking external CLI subprocesses. `yt-dlp` is used strictly as a fallback.
-- **Transcript Cache Reuse:** Before extracting audio, the engine checks `traffic_pools.db` for existing transcripts. If already transcribed, GPU computation is skipped immediately.
+| Task | Procedure | Check Command |
+|---|---|---|
+| Add a social platform | Call `platforms.register_platform(PlatformSpec(...))` with domains, `reel_patterns`, query specs, and `normalize` helpers | `python3 -m unittest discover -s tools/loop/tests -p 'test_viral_*.py'` |
+| Add `<new>_research/` domain | Create the 5 standard files (`__init__`, `__main__`, `config`, `collect`, `pipeline`) reusing `runtime`, `platforms`, `normalize`, `glasser`, `cache`; register lazy export in `__init__.py` | `python3 -m tools.loop.viral_analyzer.<new>_research --help` |
+| Swap LLM runner or tune concurrency | Pass `EngineContext(max_workers=..., agent_runner=...)` or set `VIRAL_MAX_WORKERS` / `VIRAL_GLASSER_MAX_CONCURRENCY` | `.venv/bin/python -m pytest tools/app/backend/tests/test_cost_control.py tools/app/backend/tests/test_backend.py` |
+| Hashtag regression suite | Offline prompt, collection, review, locking, and expansion gate coverage (no `psycopg` required) | `python3 -m unittest discover -s tools/loop/tests -p 'test_hashtag_*.py'` |
+| Opt-in stage spans | Set `PROFILE_VIRAL_ANALYZER=1` and `PROFILE_VIRAL_CONTEXTS=all\|profile,video,keyword,cache` | `python3 -m unittest discover -s tools/loop/tests -p 'test_viral_*.py'` |

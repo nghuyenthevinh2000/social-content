@@ -25,7 +25,7 @@ Existing campaign → Brief → Validated brief → Sources → Promotion gate
 | Item | Requirement |
 |---|---|
 | Reference | Follow [hashtag validation](hashtag-validation.md) for the full command sequence, provider boundary, labels, decisions, history contract and limits. |
-| Tools | `python3 -m tools.loop.viral_analyzer.hashtag_generate`, `…hashtag_verify` and `…viral_scrape`; templates in [assets/hashtag-generation](../assets/hashtag-generation/). |
+| Tools | `python3 -m tools.loop.viral_analyzer.keyword_research` (unified 10-command CLI covering prompt generation, verification, history, search, and `scrape`); templates in [assets/hashtag-generation](../assets/hashtag-generation/). |
 | Boundary | Generation is offline; collection spends only with `--execute --ceiling` plus approval. Labels are agent judgments over inspected samples; history is campaign-local. |
 
 ## Per-run sub-agent contract
@@ -63,7 +63,7 @@ Resolved campaign + requested platforms → Offline candidates → Import
 
 | Situation | Required next action |
 |---|---|
-| Topic/hashtag discovery | Run `hashtag_generate build-prompt` before external searches; read its prompt, save the agent JSON and run `import-response`. Supplied-video and explicitly requested feed/creator analysis retain their own routes. |
+| Topic/hashtag discovery | Run `keyword_research build-prompt` before external searches; read its prompt, save the agent JSON and run `keyword_research import-response`. Supplied-video and explicitly requested feed/creator analysis retain their own routes. |
 | No hashtag history | Treat absent `sources/viral/hashtag-performance.json`, or no matching platform history, as a cold start. Propose a small set from application, process and workshop-role vocabulary, marked `generated_unverified`. Do not manufacture win/lose evidence. |
 | Past analyses | Include available campaign-local `sources/viral/` analyses as optional historical feedback: useful hooks, failed branches, relevance judgments and limitations. Never borrow another campaign's results or treat prose as structured hashtag win/lose history. |
 | Analysis bounds | `build-prompt` includes up to five newest readable Markdown/JSON analysis/report/review/relevance/evaluation/creator-style files, each at most 20,000 bytes. Skipped/limited context produces warnings. Raw/calls/expansion folders, prompts and the current run are excluded. Paths/hashes are recorded; missing analyses never block. |
@@ -273,10 +273,10 @@ Config JSON -> Retention Sweep (Purge > 7d) -> Glasser v2 Ingestion (48h Window)
 
 | Component | Standard Path / Command | Contract & Requirements |
 |---|---|---|
-| **CLI Execution** | `python3 -m tools.loop.viral_analyzer --config <path> [--max-videos N] [--dry-run]` | Standard entrypoint in `tools/loop/viral_analyzer/__main__.py`. No custom runner scripts permitted. |
-| **Configuration** | `tools/loop/viral_analyzer/config.py` | Configures `window_hours` (48), `retention_days` (7), `pools` (1–5), `storage`, `transcription`, `targets` or `creators_file`, and optional `max_videos`. |
-| **Traffic Pools** | `tools/loop/viral_analyzer/pipeline.py` | P1 Sandbox (0–500), P2 Testing (500–5k), P3 Niche (5k–50k), P4 Surge (50k–500k), P5 Mega Breakout (≥500k). |
-| **Video Retention** | `tools/loop/viral_analyzer/retention.py` | Manifest-driven 7-day TTL in `cache/videos/retention_manifest.json`. `purge_expired_videos()` sweeps expired media before each ingestion. |
-| **Speech-to-Text** | `tools/loop/viral_analyzer/transcription.py` | `UnifiedTranscriber` utilizing `mlx-qwen3-asr` on Apple Silicon Metal GPU with automatic fallback to `faster-whisper`. |
-| **Data Persistence** | `tools/loop/viral_analyzer/pipeline.py` | Persists metadata and transcripts into SQLite (`videos`, `metric_snapshots`) and outputs consolidated multi-pool JSON. Reuses existing DB transcripts to skip redundant GPU cycles. |
+| **CLI Execution** | `python3 -m tools.loop.viral_analyzer.profile_research --config <path> [--max-videos N] [--dry-run]` | Standard entrypoint in `tools/loop/viral_analyzer/profile_research/__main__.py` (also aliased at root `__main__.py`). No custom runner scripts permitted. |
+| **Configuration** | `tools/loop/viral_analyzer/profile_research/config.py` | Configures `window_hours` (48), `retention_days` (7), `pools` (1–5), `storage`, `transcription`, `targets` or `creators_file`, and optional `max_videos`. |
+| **Traffic Pools** | `tools/loop/viral_analyzer/profile_research/pipeline.py` | P1 Sandbox (0–500), P2 Testing (500–5k), P3 Niche (5k–50k), P4 Surge (50k–500k), P5 Mega Breakout (≥500k). |
+| **Video Retention** | `tools/loop/viral_analyzer/video_research/collect.py` | `fcntl.flock`-guarded 7-day TTL in `cache/videos/retention_manifest.json`. `purge_expired_videos()` sweeps expired media before each ingestion. |
+| **Speech-to-Text** | `tools/loop/viral_analyzer/video_research/transcriber/` | `UnifiedTranscriber` utilizing `mlx-qwen3-asr` on Apple Silicon Metal GPU with automatic fallback to `faster-whisper`, plus `GlasserTranscriber` single-flight API transcripts. |
+| **Data Persistence** | `tools/loop/viral_analyzer/cache.py` | Batches metadata and reusable transcripts into PostgreSQL (`videos`, `metric_snapshots`, `profile_cache`) via lazy DB imports and outputs atomic multi-pool JSON. |
 
