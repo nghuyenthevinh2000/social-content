@@ -13,6 +13,8 @@ export type DiscoveredCreator = {
   followers?: number;
   video_count: number;
   top_views: number;
+  relevance?: string;
+  why_relevant?: string;
 };
 
 export type Topic = {

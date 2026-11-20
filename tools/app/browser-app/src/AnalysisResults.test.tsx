@@ -243,6 +243,8 @@ describe('Analysis results rendering', () => {
               followers: 120000,
               video_count: 1,
               top_views: 50000,
+              relevance: 'direct',
+              why_relevant: 'Covers gynecomastia directly.',
             },
           ],
           error: null,
@@ -288,6 +290,8 @@ describe('Analysis results rendering', () => {
     expect(screen.getByText('VI: nữ hóa tuyến vú')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Dr YT/i })).toHaveAttribute('href', 'https://www.youtube.com/@dryt');
     expect(screen.getByText('120K followers')).toBeInTheDocument();
+    expect(screen.getByText('direct')).toBeInTheDocument();
+    expect(screen.getByText('Covers gynecomastia directly.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Copy cho AI/i })).not.toBeInTheDocument();
 
     const subpanels = document.querySelectorAll('details.keyword-subpanel');
@@ -342,6 +346,8 @@ describe('Analysis results rendering', () => {
               followers: 120000,
               video_count: 1,
               top_views: 50000,
+              relevance: 'direct',
+              why_relevant: 'Covers gynecomastia directly.',
             },
             {
               name: 'TT Doc',

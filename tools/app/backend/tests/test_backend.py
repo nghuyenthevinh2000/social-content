@@ -1351,9 +1351,25 @@ class BackendTests(unittest.TestCase):
                 return {"reels": [{"code": "ig1", "caption": {"text": "IG Gyno"}, "play_count": 30000, "user": {"username": "igdoc", "full_name": "IG Doc"}}]}, "glasser_api", None
             return {}, "glasser_api", None
 
+        def fake_enrich(creators):
+            for c in creators:
+                if c.get("url"):
+                    c["followers"] = 1234
+
+        def fake_agent(prompt):
+            return json.dumps({
+                "https://www.youtube.com/@dryt": {"relevance": "direct", "why_relevant": "Covers gyno directly"},
+                "https://www.tiktok.com/@ttdoc": {"relevance": "direct", "why_relevant": "TikTok gyno video"},
+                "https://www.instagram.com/igdoc/": {"relevance": "adjacent", "why_relevant": "IG health clip"},
+            })
+
+        from tools.loop.viral_analyzer import runtime
+
+        ctx = runtime.EngineContext(agent_runner=fake_agent)
         with tempfile.TemporaryDirectory() as tmpdir, \
-             mock.patch.object(keyword_search, "_glasser_run_json", side_effect=fake_glasser):
-            res = run_viral_video_search("gyno conditions", Path(tmpdir))
+             mock.patch.object(keyword_search, "_glasser_run_json", side_effect=fake_glasser), \
+             mock.patch.object(keyword_search, "_enrich_creator_followers", side_effect=fake_enrich):
+            res = run_viral_video_search("gyno conditions", Path(tmpdir), ctx=ctx)
 
         self.assertLessEqual(len(calls), 15)
         self.assertEqual(len(res["queries"]), 3)
@@ -1363,7 +1379,12 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(res["reels"][0]["platform"], "tiktok")
         self.assertEqual(res["reels"][0]["views"], 50000)
         creator_platforms = {c["platform"] for c in res["creators"]}
-        self.assertTrue({"youtube", "tiktok", "instagram"}.issubset(creator_platforms))
+        self.assertEqual(creator_platforms, {"youtube", "tiktok", "instagram"})
+        for c in res["creators"]:
+            self.assertTrue(c["url"].startswith("http"))
+            self.assertGreater(c["followers"], 0)
+            self.assertIn(c.get("relevance"), {"direct", "adjacent"})
+            self.assertTrue(c.get("why_relevant"))
 
     def test_social_handle_and_saved_reels_post(self):
         import io

@@ -136,6 +136,7 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                     <span className="creator-name">{c.name || `@${c.handle}`}</span>
                   )}
                   <span className="pool">{c.platform}</span>
+                  {c.relevance && <span className="pool">{c.relevance}</span>}
                 </div>
                 <div className="creator-row-meta">
                   <span className="muted">
@@ -160,6 +161,7 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                     {c.url && addedCreatorUrls.has(c.url) ? '✓' : '+'}
                   </button>
                 </div>
+                {c.why_relevant && <div className="creator-why muted">{c.why_relevant}</div>}
               </div>
             ))}
           </div>

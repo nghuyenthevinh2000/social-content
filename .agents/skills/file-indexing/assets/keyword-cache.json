@@ -62,10 +62,10 @@
     "query"
   ],
   "keyword": [
-    "query",
-    "term",
     "khóa",
-    "phrase"
+    "term",
+    "query",
+    "hashtag"
   ],
   "tools": [
     "utility",
@@ -88,11 +88,12 @@
     "chủ"
   ],
   "research": [
-    "study",
-    "discovery",
     "nghiên",
     "cứu",
-    "explore"
+    "analysi",
+    "discovery",
+    "phân",
+    "tích"
   ],
   "engine": [
     "core",
@@ -224,5 +225,11 @@
     "việc",
     "run",
     "process"
+  ],
+  "acp": [
+    "agent",
+    "client",
+    "protocol",
+    "rpc"
   ]
 }
