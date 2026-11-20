@@ -614,7 +614,8 @@
   font-size: var(--text-sm);
 }
 
-#results > div.panel-head > div > p {
+#results > div.panel-head > div > p,
+.results-section > div.panel-head > div > p {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1109,6 +1110,17 @@
 
 .collapsible-head .store-toggle-icon.open {
   transform: rotate(45deg);
+}
+
+.panel-collapse-btn {
+  background: none;
+  border: 0;
+  padding: var(--space-1);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 /* Saved Reels Section (dm_service feature) */

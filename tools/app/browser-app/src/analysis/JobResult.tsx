@@ -11,6 +11,8 @@ type JobResultProps = {
   job: Job;
   historyCount: number;
   copiedKey: string | null;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
   onBack: () => void;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
@@ -100,6 +102,8 @@ export const JobResult: React.FC<JobResultProps> = ({
   job,
   historyCount,
   copiedKey,
+  collapsed = false,
+  onToggleCollapse,
   onBack,
   onCopyTopic,
   onAddCreator,
@@ -137,9 +141,16 @@ export const JobResult: React.FC<JobResultProps> = ({
 
   return (
     <>
-      <div className="panel-head">
+      <div className={`panel-head${onToggleCollapse ? ' collapsible-head' : ''}`} onClick={onToggleCollapse}>
         <div>
-          <button type="button" className="history-back-btn" onClick={onBack}>
+          <button
+            type="button"
+            className="history-back-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBack();
+            }}
+          >
             ← Lịch sử chạy ({historyCount})
           </button>
           <h2>Kết quả</h2>
@@ -148,43 +159,61 @@ export const JobResult: React.FC<JobResultProps> = ({
             {job.created_at && ` · ${formatTime(job.created_at)}`}
           </p>
         </div>
+        {onToggleCollapse && (
+          <button
+            type="button"
+            className="panel-collapse-btn"
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Mở rộng kết quả' : 'Thu gọn kết quả'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCollapse();
+            }}
+          >
+            <span className={`store-toggle-icon ${!collapsed ? 'open' : ''}`} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
-      <div className="bar">
-        <span style={{ width: `${progress.pct}%` }} />
-      </div>
-      <div className="progress-meta muted">
-        <span>{progress.pct}%</span>
-        <span>{job.current_sheet ? `Đang xử lý: ${job.current_sheet}` : ''}</span>
-      </div>
+      {!collapsed && (
+        <>
+          <div className="bar">
+            <span style={{ width: `${progress.pct}%` }} />
+          </div>
+          <div className="progress-meta muted">
+            <span>{progress.pct}%</span>
+            <span>{job.current_sheet ? `Đang xử lý: ${job.current_sheet}` : ''}</span>
+          </div>
 
-      {job.sheets.map((sheet, index) => (
-        <SheetSection
-          key={sheet.slug}
-          sheet={sheet}
-          index={index}
-          totalSheets={job.sheets.length}
-          renderer={renderer}
-          copiedKey={copiedKey}
-          isKeyword={isKeyword}
-          savedUrls={savedUrls}
-          addedCreatorUrls={addedCreatorUrls}
-          onCopyTopic={onCopyTopic}
-          onAddCreator={handleAddCreator}
-          onSaveVideo={handleSave}
-        />
-      ))}
+          {job.sheets.map((sheet, index) => (
+            <SheetSection
+              key={sheet.slug}
+              sheet={sheet}
+              index={index}
+              totalSheets={job.sheets.length}
+              renderer={renderer}
+              copiedKey={copiedKey}
+              isKeyword={isKeyword}
+              savedUrls={savedUrls}
+              addedCreatorUrls={addedCreatorUrls}
+              onCopyTopic={onCopyTopic}
+              onAddCreator={handleAddCreator}
+              onSaveVideo={handleSave}
+            />
+          ))}
 
-      <button className="ghost logs-toggle" type="button" onClick={() => setShowLogs((v) => !v)}>
-        {showLogs ? 'Ẩn log' : `Xem log (${job.logs.length})`}
-      </button>
-      {showLogs && (
-        <pre className="logs">
-          {job.logs
-            .slice(-120)
-            .map((e) => `${e.at.slice(11, 19)} ${e.sheet ? `[${e.sheet}] ` : ''}${e.message}`)
-            .join('\n')}
-        </pre>
+          <button className="ghost logs-toggle" type="button" onClick={() => setShowLogs((v) => !v)}>
+            {showLogs ? 'Ẩn log' : `Xem log (${job.logs.length})`}
+          </button>
+          {showLogs && (
+            <pre className="logs">
+              {job.logs
+                .slice(-120)
+                .map((e) => `${e.at.slice(11, 19)} ${e.sheet ? `[${e.sheet}] ` : ''}${e.message}`)
+                .join('\n')}
+            </pre>
+          )}
+        </>
       )}
     </>
   );

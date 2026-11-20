@@ -174,13 +174,36 @@ def build_video_structure_prompt(
     hook_end = "03"
     cta_start = f"{max(4, dur - 4):02d}"
 
+    brand = (actor_profile or {}).get("brand") if isinstance(actor_profile, dict) else None
+    brand_lines = []
+    if isinstance(brand, dict):
+        for key, label in (
+            ("identity", "Nhân hiệu (điều mọi người nhớ tới)"),
+            ("audience", "Khách hàng / Khán giả mục tiêu"),
+            ("differentiator", "Giá trị cốt lõi & Điểm khác biệt"),
+            ("tone", "Phong cách & Giọng điệu"),
+        ):
+            val = str(brand.get(key) or "").strip()
+            if val:
+                brand_lines.append(f"- {label}: {val}")
+    brand_block = (
+        "\n\nĐỊNH HƯỚNG NHÂN HIỆU (BẮT BUỘC BÁM SÁT):\n" + "\n".join(brand_lines)
+        if brand_lines
+        else ""
+    )
+    brand_rule = (
+        '\n- Mọi góc khai thác ("angle"), hook, dàn ý ("outline") và kịch bản ("prompt") phải nhất quán với ĐỊNH HƯỚNG NHÂN HIỆU ở trên.'
+        if brand_lines
+        else ""
+    )
+
     return f"""Bạn là chiến lược gia phân tích cấu trúc video viral cho Reels & video ngắn tiếng Việt.
 
 NHÓM CHỦ ĐỀ: {sheet_name}
 KÊNH / NGUỒN REEL: {channels}
 PHÂN BỔ POOL: {pool_text}
 DỮ LIỆU REEL:
-{digest}
+{digest}{brand_block}
 
 NHIỆM VỤ: Phân tích cấu trúc của video trong dữ liệu reel trên — giải thích vì sao video có khả năng viral và bóc tách dàn ý/cấu trúc để nhân bản lại độ viral.
 Mỗi phân tích video phải đi kèm trường "prompt" chứa kịch bản đạo diễn (director prompt) hoàn chỉnh để tái tạo cấu trúc viral đó cho AI tạo video (tỷ lệ 9:16 dọc, thời lượng {dur} giây).
@@ -210,7 +233,7 @@ Yêu cầu:
 - Trường "outline" bóc tách cấu trúc thực tế của video theo từng phần (mở đầu/hook, thân bài/triển khai, kết/CTA) để nhân bản độ viral.
 - Dựa trên bằng chứng thật từ dữ liệu trên (view, velocity, pool, transcript, tên kênh, reel_url).
 - Nếu có mô tả hình ảnh, bám sát bối cảnh, góc máy, ánh sáng, đạo cụ và chữ trên màn hình thật của video.
-- Cụ thể, có thể bấm máy quay làm ngay; không viết chung chung.
+- Cụ thể, có thể bấm máy quay làm ngay; không viết chung chung.{brand_rule}
 - Viết tiếng Việt.
 - Trả về DUY NHẤT một JSON array, không markdown, không giải thích ngoài JSON.
 

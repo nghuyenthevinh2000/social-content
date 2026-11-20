@@ -70,8 +70,10 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     age INTEGER NOT NULL DEFAULT 28,
     name TEXT,
     voice_tone TEXT DEFAULT 'natural',
+    brand_json TEXT,
     updated_at TEXT NOT NULL
 );
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS brand_json TEXT;
 
 CREATE TABLE IF NOT EXISTS topics (
     user_id TEXT NOT NULL,

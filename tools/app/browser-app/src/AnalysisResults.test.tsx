@@ -3,6 +3,8 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
+import { AnalyzerTab } from './components/AnalyzerTab';
+import { BrandPanel } from './components/BrandPanel';
 import Home from './pages/Home';
 
 const profileJobFixture = {
@@ -427,6 +429,122 @@ describe('Analysis results rendering', () => {
       expect(ytBtn).toHaveAttribute('aria-pressed', 'false');
       expect(screen.getByText('YT Gyno Video')).toBeInTheDocument();
       expect(screen.getByText('TT Gyno Video')).toBeInTheDocument();
+    });
+  });
+
+  test('collapses and expands #results panel in history and job result views', async () => {
+    const onFetchHistory = vi.fn();
+    const onSelectJob = vi.fn();
+    const baseProps = {
+      keyword: '',
+      onKeywordChange: vi.fn(),
+      onSearchKeyword: vi.fn(),
+      blocked: false,
+      error: null,
+      starting: false,
+      jobId: null,
+      job: null,
+      visibleHistory: [
+        {
+          id: 'job_kw_1',
+          job_kind: 'keyword' as const,
+          status: 'completed' as const,
+          filename: 'skincare',
+          created_at: '2026-11-12T10:00:00Z',
+          finished_at: null,
+          current_sheet: null,
+          total_sheets: 1,
+          completed_sheets: 1,
+          total_topics: 3,
+        },
+        {
+          id: 'job_profile_1',
+          job_kind: 'profile' as const,
+          status: 'completed' as const,
+          filename: 'all_topics.json',
+          created_at: '2026-11-12T10:00:00Z',
+          finished_at: null,
+          current_sheet: null,
+          total_sheets: 1,
+          completed_sheets: 1,
+          total_topics: 2,
+        },
+      ],
+      loadingHistory: false,
+      onFetchHistory,
+      onSelectJob,
+      onDeleteJob: vi.fn(),
+      tourDemoId: '',
+      copiedKey: null,
+      onCopyTopic: vi.fn(),
+      onAddCreator: vi.fn(),
+      onSaveVideo: vi.fn(),
+      onGoToLibrary: vi.fn(),
+    };
+
+    const { unmount } = render(<AnalyzerTab {...baseProps} />);
+    expect(screen.getByRole('heading', { name: 'Khám phá brand' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Phân tích creator/video' })).toBeInTheDocument();
+
+    const brandToggle = screen.getByRole('button', { name: /Thu gọn Khám phá brand/i });
+    const analysisToggle = screen.getByRole('button', { name: /Thu gọn Phân tích creator\/video/i });
+    expect(brandToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(analysisToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getAllByText('Xem kết quả')).toHaveLength(2);
+
+    // Refresh button does not collapse
+    screen.getAllByRole('button', { name: '↻ Làm mới' })[0].click();
+    expect(onFetchHistory).toHaveBeenCalledTimes(1);
+    expect(brandToggle).toHaveAttribute('aria-expanded', 'true');
+
+    // Collapsing Khám phá brand persists to localStorage independently
+    brandToggle.click();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Mở rộng Khám phá brand/i })).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getAllByText('Xem kết quả')).toHaveLength(1);
+      expect(localStorage.getItem('aibrand-results-brand-collapsed')).toBe('1');
+      expect(localStorage.getItem('aibrand-results-analysis-collapsed')).toBeNull();
+    });
+
+    // Remounting restores collapsed state from localStorage
+    unmount();
+    const remounted = render(<AnalyzerTab {...baseProps} />);
+    expect(screen.getByRole('button', { name: /Mở rộng Khám phá brand/i })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: /Thu gọn Phân tích creator\/video/i })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+
+    // JobResult view for profile job renders in Phân tích creator/video and is collapsible
+    remounted.rerender(<AnalyzerTab {...baseProps} jobId="job_profile_1" job={profileJobFixture as never} />);
+    const resultToggle = screen.getByRole('button', { name: /Thu gọn kết quả/i });
+    expect(resultToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('100%')).toBeInTheDocument();
+
+    resultToggle.click();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Mở rộng kết quả/i })).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByText('100%')).not.toBeInTheDocument();
+      expect(localStorage.getItem('aibrand-results-analysis-collapsed')).toBe('1');
+    });
+
+    // Back button does not toggle collapse
+    screen.getByRole('button', { name: /Lịch sử chạy/i }).click();
+    expect(onSelectJob).toHaveBeenCalledWith(null);
+    expect(screen.getByRole('button', { name: /Mở rộng kết quả/i })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('renders BrandPanel with Nhân hiệu question and saves to /api/user/profile', async () => {
+    render(<BrandPanel />);
+    const input = screen.getByLabelText(/Nhân hiệu:/i) as HTMLInputElement;
+    expect(screen.getByText(/Khi nhắc tới bạn, mọi người sẽ nhớ tới gì\?/i)).toBeInTheDocument();
+
+    input.value = 'Chuyên gia nấu ăn 15 phút';
+    screen.getByRole('button', { name: 'Cập nhật Brand' }).click();
+    await waitFor(() => {
+      expect(localStorage.getItem('aibrand_brand_profile')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Cập nhật Brand' })).toBeInTheDocument();
+      expect(document.querySelector('ion-toast')).toHaveAttribute('message', 'Đã cập nhật Brand');
     });
   });
 });

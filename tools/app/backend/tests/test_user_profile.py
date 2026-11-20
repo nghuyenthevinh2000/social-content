@@ -66,3 +66,20 @@ def test_user_profile_store_memory_fallback(monkeypatch):
     assert retrieved["gender"] == "female"
     assert retrieved["age"] == 27
     assert retrieved["name"] == "Linh"
+
+    # Partial brand update preserves existing actor fields
+    saved_brand = store.save_profile("test-user-1", {
+        "brand": {"identity": "Chuyên gia skincare tối giản", "audience": "Dân văn phòng"},
+    })
+    assert saved_brand["gender"] == "female"
+    assert saved_brand["name"] == "Linh"
+    assert saved_brand["brand"]["identity"] == "Chuyên gia skincare tối giản"
+    assert saved_brand["brand"]["audience"] == "Dân văn phòng"
+
+    # Analysis prompt includes brand guidance when brand is set
+    from tools.loop.viral_analyzer.video_research.config import build_video_structure_prompt
+
+    prompt = build_video_structure_prompt("Skincare", [], [], actor_profile=saved_brand)
+    assert "ĐỊNH HƯỚNG NHÂN HIỆU" in prompt
+    assert "Chuyên gia skincare tối giản" in prompt
+    assert "Dân văn phòng" in prompt

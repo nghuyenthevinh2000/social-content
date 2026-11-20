@@ -16,6 +16,7 @@ import {
 import type { Job, JobKind, JobSummary, Topic } from '../analysis/types';
 import { apiFetch, apiJson } from '../api';
 import { AuthModal } from '../components/AuthModal';
+import { BrandPanel } from '../components/BrandPanel';
 import { MediaPanel } from '../components/MediaPanel';
 import { Tour, type TourStep } from '../components/Tour';
 import { VideoTab } from '../components/VideoTab';
@@ -363,6 +364,7 @@ const Home: React.FC = () => {
 
   // Collapsible Topics & Saved Reels (dm_service feature)
   const [topicsCollapsed, setTopicsCollapsed] = useState(false);
+  const [brandCollapsed, setBrandCollapsed] = useState(false);
   const [mediaCollapsed, setMediaCollapsed] = useState(false);
   const [savedReels, setSavedReels] = useState<SavedReel[]>([]);
   const [loadingReels, setLoadingReels] = useState(false);
@@ -935,6 +937,35 @@ const Home: React.FC = () => {
                 >
                   Đăng xuất
                 </button>
+              </section>
+
+              <section className="panel" id="brand-profile">
+                <div
+                  className="panel-head collapsible-head"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!brandCollapsed}
+                  onClick={() => setBrandCollapsed((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setBrandCollapsed((v) => !v);
+                    }
+                  }}
+                >
+                  <div>
+                    <h2>Nhân hiệu</h2>
+                    <p className="muted profile-media-desc">
+                      Định hình nhân hiệu bạn muốn xây dựng để mọi kết quả phân tích luôn bám sát bản sắc riêng.
+                    </p>
+                  </div>
+                  <span className={`store-toggle-icon ${!brandCollapsed ? 'open' : ''}`} aria-hidden="true" />
+                </div>
+                {!brandCollapsed && (
+                  <div style={{ marginTop: 'var(--space-3)' }}>
+                    <BrandPanel />
+                  </div>
+                )}
               </section>
 
               <section className="panel">

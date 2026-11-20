@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { JobResult } from '../analysis/JobResult';
 import { cleanTopicTitle, formatTime, STATUS_LABEL, TERMINAL } from '../analysis/format';
@@ -7,8 +7,19 @@ import type { Job, JobKind, JobSummary, Topic } from '../analysis/types';
 const KIND_LABEL: Record<JobKind, string> = {
   profile: 'Kênh',
   reel: 'Reel',
-  keyword: 'Từ khoá',
+  keyword: 'brand',
 };
+
+const BRAND_COLLAPSED_KEY = 'aibrand-results-brand-collapsed';
+const ANALYSIS_COLLAPSED_KEY = 'aibrand-results-analysis-collapsed';
+
+function readCollapsed(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
 
 type AnalyzerTabProps = {
   keyword: string;
@@ -32,16 +43,35 @@ type AnalyzerTabProps = {
   onGoToLibrary: () => void;
 };
 
-export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
-  keyword,
-  onKeywordChange,
-  onSearchKeyword,
-  blocked,
-  error,
-  starting,
-  jobId,
-  job,
-  visibleHistory,
+type ResultsSectionProps = {
+  id: string;
+  title: string;
+  storageKey: string;
+  items: JobSummary[];
+  activeJob: Job | null;
+  emptyText: string;
+  emptyActionLabel?: string;
+  onEmptyAction?: () => void;
+  loadingHistory: boolean;
+  onFetchHistory: () => void;
+  onSelectJob: (id: string | null) => void;
+  onDeleteJob: (id: string, e: React.MouseEvent) => void;
+  tourDemoId: string;
+  copiedKey: string | null;
+  onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
+  onAddCreator: (creator: { name: string; url: string; platform?: string }) => void;
+  onSaveVideo: (topic: Topic) => void;
+};
+
+const ResultsSection: React.FC<ResultsSectionProps> = ({
+  id,
+  title,
+  storageKey,
+  items,
+  activeJob,
+  emptyText,
+  emptyActionLabel,
+  onEmptyAction,
   loadingHistory,
   onFetchHistory,
   onSelectJob,
@@ -51,73 +81,74 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   onCopyTopic,
   onAddCreator,
   onSaveVideo,
-  onGoToLibrary,
 }) => {
-  return (
-    <>
-      <section className="panel keyword-search-panel">
-        <h2>Tìm video viral</h2>
-        <form
-          className="row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const kw = keyword.trim();
-            if (kw) onSearchKeyword(kw);
-          }}
-        >
-          <input
-            type="text"
-            className="text-input"
-            placeholder="Tìm video viral theo từ khoá (vd: gyno conditions)"
-            aria-label="Tìm video viral theo từ khoá"
-            value={keyword}
-            onChange={(e) => onKeywordChange(e.target.value)}
-          />
-          <button
-            type="submit"
-            className="primary"
-            style={{ flex: 'none', width: 'auto', padding: '0 var(--space-4)' }}
-            disabled={blocked || !keyword.trim()}
-          >
-            Tìm Video Viral
-          </button>
-        </form>
-      </section>
+  const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey));
 
-      <section className="panel" id="results">
-        {error && <div className="alert error">{error}</div>}
-        {starting ? (
-          <div className="empty">
-            <p className="muted">Đang tạo job…</p>
-          </div>
-        ) : jobId && !job ? (
-          <div className="empty">
-            <p className="muted">Đang tải kết quả phân tích…</p>
-          </div>
-        ) : !job ? (
-          <>
-            <div className="panel-head">
-              <div>
-                <h2>Lịch sử phân tích</h2>
-                <p className="muted count">
-                  {visibleHistory.length > 0 ? `${visibleHistory.length} lần chạy` : 'Chưa có lần chạy nào'}
-                </p>
-              </div>
-              <button type="button" className="ghost small" onClick={onFetchHistory} disabled={loadingHistory}>
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        if (next) {
+          localStorage.setItem(storageKey, '1');
+        } else {
+          localStorage.removeItem(storageKey);
+        }
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  };
+
+  return (
+    <section className="panel results-section" id={id}>
+      {!activeJob ? (
+        <>
+          <div className="panel-head collapsible-head" onClick={toggleCollapsed}>
+            <div>
+              <h2>{title}</h2>
+              <p className="muted count">{items.length > 0 ? `${items.length} lần chạy` : 'Chưa có lần chạy nào'}</p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexShrink: 0 }}>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFetchHistory();
+                }}
+                disabled={loadingHistory}
+              >
                 {loadingHistory ? 'Đang tải…' : '↻ Làm mới'}
               </button>
+              <button
+                type="button"
+                className="panel-collapse-btn"
+                aria-expanded={!collapsed}
+                aria-label={collapsed ? `Mở rộng ${title}` : `Thu gọn ${title}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCollapsed();
+                }}
+              >
+                <span className={`store-toggle-icon ${!collapsed ? 'open' : ''}`} aria-hidden="true" />
+              </button>
             </div>
+          </div>
 
-            {visibleHistory.length === 0 ? (
+          {!collapsed &&
+            (items.length === 0 ? (
               <div className="empty">
-                <p className="muted">Chưa có lần chạy nào trong lịch sử.</p>
-                <button type="button" className="ghost" onClick={onGoToLibrary}>
-                  Chọn chủ đề trong Thư viện để chạy
-                </button>
+                <p className="muted">{emptyText}</p>
+                {emptyActionLabel && onEmptyAction && (
+                  <button type="button" className="ghost" onClick={onEmptyAction}>
+                    {emptyActionLabel}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="history-list">
-                {visibleHistory.map((item) => {
+                {items.map((item) => {
                   const isRunning = !TERMINAL.has(item.status);
                   const kind: JobKind = item.job_kind ?? 'profile';
                   return (
@@ -188,20 +219,139 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
                   );
                 })}
               </div>
-            )}
-          </>
-        ) : (
-          <JobResult
-            job={job}
-            historyCount={visibleHistory.length}
-            copiedKey={copiedKey}
-            onBack={() => onSelectJob(null)}
-            onCopyTopic={onCopyTopic}
-            onAddCreator={onAddCreator}
-            onSaveVideo={onSaveVideo}
+            ))}
+        </>
+      ) : (
+        <JobResult
+          job={activeJob}
+          historyCount={items.length}
+          copiedKey={copiedKey}
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapsed}
+          onBack={() => onSelectJob(null)}
+          onCopyTopic={onCopyTopic}
+          onAddCreator={onAddCreator}
+          onSaveVideo={onSaveVideo}
+        />
+      )}
+    </section>
+  );
+};
+
+export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
+  keyword,
+  onKeywordChange,
+  onSearchKeyword,
+  blocked,
+  error,
+  starting,
+  jobId,
+  job,
+  visibleHistory,
+  loadingHistory,
+  onFetchHistory,
+  onSelectJob,
+  onDeleteJob,
+  tourDemoId,
+  copiedKey,
+  onCopyTopic,
+  onAddCreator,
+  onSaveVideo,
+  onGoToLibrary,
+}) => {
+  const brandHistory = visibleHistory.filter((item) => item.job_kind === 'keyword');
+  const analysisHistory = visibleHistory.filter((item) => item.job_kind !== 'keyword');
+  const activeIsBrand = job?.job_kind === 'keyword';
+
+  return (
+    <>
+      <section className="panel keyword-search-panel">
+        <h2>Nghiên cứu Brand</h2>
+        <p className="muted count" style={{ marginTop: 'var(--space-1)' }}>
+          Nhập keyword để khám phá các Brand cùng sự quan tâm
+        </p>
+        <form
+          className="row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const kw = keyword.trim();
+            if (kw) onSearchKeyword(kw);
+          }}
+        >
+          <input
+            type="text"
+            className="text-input"
+            placeholder="Keyword đang quan tâm"
+            aria-label="Keyword đang quan tâm"
+            value={keyword}
+            onChange={(e) => onKeywordChange(e.target.value)}
           />
-        )}
+          <button
+            type="submit"
+            className="primary"
+            style={{ flex: 'none', width: 'auto', padding: '0 var(--space-4)' }}
+            disabled={blocked || !keyword.trim()}
+          >
+            Khám phá brand
+          </button>
+        </form>
       </section>
+
+      <div id="results" style={{ display: 'contents' }}>
+        {error && <div className="alert error">{error}</div>}
+        {starting ? (
+          <section className="panel">
+            <div className="empty">
+              <p className="muted">Đang tạo job…</p>
+            </div>
+          </section>
+        ) : jobId && !job ? (
+          <section className="panel">
+            <div className="empty">
+              <p className="muted">Đang tải kết quả phân tích…</p>
+            </div>
+          </section>
+        ) : (
+          <>
+            <ResultsSection
+              id="results-brand"
+              title="Khám phá brand"
+              storageKey={BRAND_COLLAPSED_KEY}
+              items={brandHistory}
+              activeJob={job && activeIsBrand ? job : null}
+              emptyText="Chưa có lần khám phá brand nào."
+              loadingHistory={loadingHistory}
+              onFetchHistory={onFetchHistory}
+              onSelectJob={onSelectJob}
+              onDeleteJob={onDeleteJob}
+              tourDemoId={tourDemoId}
+              copiedKey={copiedKey}
+              onCopyTopic={onCopyTopic}
+              onAddCreator={onAddCreator}
+              onSaveVideo={onSaveVideo}
+            />
+            <ResultsSection
+              id="results-analysis"
+              title="Phân tích creator/video"
+              storageKey={ANALYSIS_COLLAPSED_KEY}
+              items={analysisHistory}
+              activeJob={job && !activeIsBrand ? job : null}
+              emptyText="Chưa có lần phân tích creator/video nào."
+              emptyActionLabel="Chọn chủ đề trong Thư viện để chạy"
+              onEmptyAction={onGoToLibrary}
+              loadingHistory={loadingHistory}
+              onFetchHistory={onFetchHistory}
+              onSelectJob={onSelectJob}
+              onDeleteJob={onDeleteJob}
+              tourDemoId={tourDemoId}
+              copiedKey={copiedKey}
+              onCopyTopic={onCopyTopic}
+              onAddCreator={onAddCreator}
+              onSaveVideo={onSaveVideo}
+            />
+          </>
+        )}
+      </div>
     </>
   );
 };

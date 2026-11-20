@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 from typing import Any, Dict, Optional
 
 from tools.app.backend.db import ro, tx
@@ -17,6 +18,24 @@ DEFAULT_PROFILE: Dict[str, Any] = {
     "name": "",
     "voice_tone": "Bắc",
 }
+
+BRAND_FIELDS = ("identity", "audience", "differentiator", "tone")
+
+
+def normalize_brand_profile(data: Optional[Dict[str, Any]]) -> Dict[str, str]:
+    raw = data if isinstance(data, dict) else {}
+    return {field: str(raw.get(field) or "").strip()[:500] for field in BRAND_FIELDS}
+
+
+def _parse_brand_json(raw: Any) -> Dict[str, str]:
+    if isinstance(raw, dict):
+        return normalize_brand_profile(raw)
+    if isinstance(raw, str) and raw.strip():
+        try:
+            return normalize_brand_profile(json.loads(raw))
+        except (ValueError, TypeError):
+            pass
+    return normalize_brand_profile(None)
 
 
 def normalize_actor_profile(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -56,7 +75,7 @@ class UserProfileStore:
         try:
             with ro() as conn:
                 cur = conn.execute(
-                    "SELECT gender, age, name, voice_tone, updated_at FROM user_profiles WHERE user_id = %s",
+                    "SELECT gender, age, name, voice_tone, brand_json, updated_at FROM user_profiles WHERE user_id = %s",
                     (user_id,),
                 )
                 row = cur.fetchone()
@@ -67,7 +86,8 @@ class UserProfileStore:
                         "age": row[1],
                         "name": row[2] or "",
                         "voice_tone": row[3] or "Bắc",
-                        "updated_at": row[4],
+                        "brand": _parse_brand_json(row[4]),
+                        "updated_at": row[5],
                     }
         except Exception:
             pass
@@ -82,11 +102,24 @@ class UserProfileStore:
             "age": 28,
             "name": "",
             "voice_tone": "Bắc",
+            "brand": normalize_brand_profile(None),
             "updated_at": now_iso(),
         }
 
     def save_profile(self, user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        norm = normalize_actor_profile(data)
+        existing = self.get_profile(user_id)
+        merged_actor = {
+            "gender": data.get("gender", existing.get("gender")),
+            "age": data.get("age", existing.get("age")),
+            "name": data.get("name", existing.get("name")),
+            "voice_tone": data.get("voice_tone", existing.get("voice_tone")),
+        }
+        norm = normalize_actor_profile(merged_actor)
+        brand = (
+            normalize_brand_profile({**(existing.get("brand") or {}), **data["brand"]})
+            if isinstance(data.get("brand"), dict)
+            else normalize_brand_profile(existing.get("brand"))
+        )
         updated = now_iso()
         record = {
             "user_id": user_id,
@@ -94,6 +127,7 @@ class UserProfileStore:
             "age": norm["age"],
             "name": norm["name"],
             "voice_tone": norm["voice_tone"],
+            "brand": brand,
             "updated_at": updated,
         }
         self._memory_cache[user_id] = record
@@ -102,16 +136,25 @@ class UserProfileStore:
             with tx() as conn:
                 conn.execute(
                     """
-                    INSERT INTO user_profiles (user_id, gender, age, name, voice_tone, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO user_profiles (user_id, gender, age, name, voice_tone, brand_json, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (user_id) DO UPDATE SET
                         gender = EXCLUDED.gender,
                         age = EXCLUDED.age,
                         name = EXCLUDED.name,
                         voice_tone = EXCLUDED.voice_tone,
+                        brand_json = EXCLUDED.brand_json,
                         updated_at = EXCLUDED.updated_at
                     """,
-                    (record["user_id"], record["gender"], record["age"], record["name"], record["voice_tone"], record["updated_at"]),
+                    (
+                        record["user_id"],
+                        record["gender"],
+                        record["age"],
+                        record["name"],
+                        record["voice_tone"],
+                        json.dumps(brand, ensure_ascii=False),
+                        record["updated_at"],
+                    ),
                 )
         except Exception:
             pass
