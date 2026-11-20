@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'Poppins';font-weight:400;src:url(fonts/poppins-latin-400-normal.woff2) format('woff2')}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#000;--fg:#f4f4f4;--soft:#bdbdbd}
+.light{--bg:#fff;--fg:#111;--soft:#555}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg)}
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--bg)}
+.cap{position:absolute;left:100px;width:880px;top:236px;text-align:center;font:400 44px/1.2 'Poppins';color:var(--fg);letter-spacing:-.005em}
+svg{position:absolute;left:0;top:0}
+#bars{stroke:var(--fg)} #orbit{stroke:var(--fg)} #ring{stroke:var(--soft)} #sparks,#ball{fill:var(--fg)} #pulse{stroke:var(--fg)}
+</style></head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="__DURATION__" data-fps="30" data-width="1080" data-height="1920">
+<div class="cap" id="c1"></div>
+<div class="cap" id="c2" style="visibility:hidden"></div>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <mask id="om" maskUnits="userSpaceOnUse" x="0" y="0" width="1080" height="1920">
+      <circle id="omc" r="140" fill="none" stroke="#fff" stroke-width="14" stroke-dasharray="880" stroke-dashoffset="880"/>
+    </mask>
+    <mask id="em" maskUnits="userSpaceOnUse" x="0" y="0" width="1080" height="1920">
+      <ellipse id="emc" rx="220" ry="46" fill="none" stroke="#fff" stroke-width="14" stroke-dasharray="1000" stroke-dashoffset="1000"/>
+    </mask>
+  </defs>
+  <g id="bars" fill="none" stroke-width="2.6"></g>
+  <circle id="orbit" r="140" fill="none" stroke-width="2" stroke-dasharray="5 9" mask="url(#om)"/>
+  <ellipse id="ring" rx="220" ry="46" fill="none" stroke-width="2" mask="url(#em)"/>
+  <g id="sparks"></g>
+  <circle id="pulse" cx="0" cy="0" r="34" fill="none" stroke-width="3" opacity="0"/>
+  <circle id="ball" cx="0" cy="0" r="31"/>
+</svg>
+<script src="vendor/gsap.min.js"></script>
+<script>
+(function () {
+const SPEC = __SPEC__;
+const NS = 'http://www.w3.org/2000/svg';
+const gsap = window.gsap;
+const tl = gsap.timeline({ paused: true });
+if (SPEC.light) document.documentElement.classList.add('light');
+const lines = SPEC.lines.length ? SPEC.lines : [''];
+document.getElementById('c1').textContent = lines[0];
+document.getElementById('c2').textContent = lines[1] || lines[0];
+// N outlined steps between x 137 and 853, rising from y 1240 to 520
+const N = SPEC.steps, LX = 137, RX = 853;
+const BW = Math.min(116, (RX - LX) / N * .77);
+const pitch = (RX - LX - BW) / (N - 1);
+const BX = [...Array(N)].map((_, k) => LX + BW / 2 + k * pitch);
+const TOP = [...Array(N)].map((_, k) => 1240 - k * (720 / (N - 1)));
+const R = 31;
+const OX = BX[N - 1], OY = TOP[N - 1] - R;                // the payoff happens on top of the last step
+const bars = document.getElementById('bars');
+BX.forEach((x, k) => {
+  const r = document.createElementNS(NS, 'rect');
+  r.id = 'b' + k; r.setAttribute('x', (x - BW / 2).toFixed(1)); r.setAttribute('y', 1960);
+  r.setAttribute('width', BW.toFixed(1)); r.setAttribute('height', 1700); bars.appendChild(r);
+});
+for (const [id, a, b] of [['omc', 'cx', 'cy'], ['emc', 'cx', 'cy'], ['orbit', 'cx', 'cy'], ['ring', 'cx', 'cy']]) {
+  const el = document.getElementById(id); el.setAttribute(a, OX); el.setAttribute(b, OY);
+}
+document.getElementById('omc').setAttribute('transform', `rotate(-90 ${OX} ${OY})`);
+// sparks: 22 dots that burst out of the ball when it reaches the top
+const sp = document.getElementById('sparks');
+for (let i = 0; i < 22; i++) {
+  const c = document.createElementNS(NS, 'circle');
+  c.setAttribute('cx', OX); c.setAttribute('cy', OY); c.setAttribute('r', i % 3 ? 4 : 6); c.setAttribute('opacity', 0);
+  c.id = 'sp' + i; sp.appendChild(c);
+}
+gsap.set('#ball', { x: BX[0], y: TOP[0] - R, transformOrigin: '50% 100%', scale: 0 });
+gsap.set('#pulse', { x: BX[0], y: TOP[0] - R, transformOrigin: '50% 50%' });
+// ball arrives as a big dot that settles, a hairline ring breathes out of it
+tl.to('#ball', { scale: 2.1, duration: .16, ease: 'power2.out' }, 0);
+tl.to('#ball', { scale: 1, duration: .26, ease: 'power3.inOut' }, .16);
+tl.fromTo('#pulse', { opacity: .9, scale: 1 }, { opacity: 0, scale: 3.2, duration: .5, ease: 'power2.out' }, .2);
+tl.to('#b0', { attr: { y: TOP[0] }, duration: .34, ease: 'power3.out' }, .18);
+// each next step rises, then the ball hops onto it
+const STEP = Math.min(.5, Math.max(.3, 1.6 / (N - 1)));
+for (let k = 1; k < N; k++) {
+  const tb = .42 + STEP * (k - 1);
+  const th = tb + .2;
+  const y0 = TOP[k - 1] - R, y1 = TOP[k] - R, peak = Math.min(y0, y1) - 120;
+  tl.to('#b' + k, { attr: { y: TOP[k] }, duration: .3, ease: 'power3.out' }, tb);
+  tl.to('#ball', { scaleY: .78, scaleX: 1.18, duration: .05, ease: 'power1.out' }, th - .05);
+  tl.to('#ball', { x: BX[k], duration: .3, ease: 'none' }, th);
+  tl.to('#ball', { scaleY: 1.12, scaleX: .9, duration: .1, ease: 'power1.out' }, th);
+  tl.to('#ball', { scaleY: 1, scaleX: 1, duration: .1, ease: 'power1.in' }, th + .1);
+  tl.to('#ball', { y: peak, duration: .15, ease: 'power2.out' }, th);
+  tl.to('#ball', { y: y1, duration: .15, ease: 'power2.in' }, th + .15);
+  tl.to('#ball', { scaleY: .74, scaleX: 1.22, duration: .05, ease: 'power1.out' }, th + .3);
+  tl.to('#ball', { scaleY: 1, scaleX: 1, duration: .18, ease: 'back.out(3)' }, th + .35);
+}
+// the payoff at the top: line two swaps in, orbit + ring draw, sparks burst, the steps fall back
+const TP = .42 + STEP * (N - 2) + .58;
+if (lines.length > 1) { tl.set('#c1', { visibility: 'hidden' }, TP); tl.set('#c2', { visibility: 'visible' }, TP); }
+tl.fromTo('#pulse', { x: OX, y: OY, opacity: .9, scale: 1 }, { opacity: 0, scale: 4.2, duration: .6, ease: 'power2.out', immediateRender: false }, TP);
+tl.to('#omc', { attr: { 'stroke-dashoffset': 0 }, duration: .55, ease: 'power2.inOut' }, TP + .05);
+tl.to('#emc', { attr: { 'stroke-dashoffset': 0 }, duration: .6, ease: 'power2.inOut' }, TP + .18);
+tl.fromTo('#orbit', { rotation: 0, svgOrigin: `${OX} ${OY}` }, { rotation: 40, svgOrigin: `${OX} ${OY}`, duration: 1.6, ease: 'none' }, TP);
+tl.to('#bars', { opacity: .32, duration: .5, ease: 'power2.out' }, TP + .1);
+for (let i = 0; i < 22; i++) {
+  const a = i / 22 * Math.PI * 2 + (i % 2) * .12;
+  const d = 190 + (i % 4) * 34;
+  tl.fromTo('#sp' + i, { x: 0, y: 0, opacity: 0 }, { x: Math.cos(a) * d, y: Math.sin(a) * d, opacity: 1, duration: .5, ease: 'power3.out' }, TP + .05);
+  tl.to('#sp' + i, { opacity: i % 3 ? .35 : .8, duration: .5, ease: 'power1.out' }, TP + .55);
+}
+tl.set({}, {}, __DURATION__);
+window.__timelines = window.__timelines || {};
+window.__timelines["main"] = tl;
+})();
+</script>
+</div>
+</body></html>

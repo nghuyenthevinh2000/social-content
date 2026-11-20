@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'Inter';font-weight:500;src:url(fonts/inter-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Inter Tight';font-weight:700;src:url(fonts/inter-tight-latin-700-normal.woff2) format('woff2')}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#fff;--fg:#000;--mute:#8c8c8c;--axis:#a3a3a3;--grid:#e6e6e6}
+.dark{--bg:#000;--fg:#fff;--mute:#8a8a8a;--axis:#707070;--grid:#262626}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg)}
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--bg);color:var(--fg)}
+#lab{position:absolute;left:120px;top:330px;font:500 34px 'Inter';color:var(--mute);white-space:nowrap}
+#num{position:absolute;left:114px;top:382px;font:700 180px/1 'Inter Tight';letter-spacing:-.05em;font-variant-numeric:tabular-nums;white-space:nowrap}
+svg{position:absolute;left:0;top:0}
+.grid{stroke:var(--grid)} .base,#drop,#line{stroke:var(--fg)} #halo{fill:var(--fg)} #tip{fill:var(--fg);stroke:var(--bg)}
+.mo{font:500 26px 'Inter';fill:var(--axis)}
+</style></head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="__DURATION__" data-fps="30" data-width="1080" data-height="1920">
+<div id="lab"></div>
+<div id="num">0</div>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920">
+  <line class="grid" id="g1" x1="120" y1="1050" x2="120" y2="1050" stroke-width="2"/>
+  <line class="grid" id="g2" x1="120" y1="770" x2="120" y2="770" stroke-width="2"/>
+  <line class="base" id="g0" x1="120" y1="1330" x2="120" y2="1330" stroke-width="2"/>
+  <g id="months"></g>
+  <line id="drop" x1="0" y1="0" x2="0" y2="0" stroke-width="2" stroke-dasharray="3 9" opacity="0"/>
+  <path id="line" fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle id="halo" r="12" opacity="0"/>
+  <circle id="tip" r="13" stroke-width="5" opacity="0"/>
+</svg>
+<script src="vendor/gsap.min.js"></script>
+<script>
+(function () {
+const SPEC = __SPEC__;
+const gsap = window.gsap;
+const tl = gsap.timeline({ paused: true });
+if (SPEC.dark) document.documentElement.classList.add('dark');
+document.getElementById('lab').textContent = SPEC.label || '';
+const X0 = 120, X1 = 940, Y0 = 1330, Y1 = 770;            // chart box: 0 at Y0, the highest value at Y1
+const V = SPEC.values.map(Number);
+const M = SPEC.labels || [];
+const vmax = Math.max(...V) || 1;
+const last = V[V.length - 1] || 1;
+const FINAL = SPEC.final != null ? Number(SPEC.final) : last;
+const scale = FINAL / last;                                // the count shows (value under the tip) x scale
+const dec = SPEC.decimals || 0;
+const fmt = (x) => (SPEC.prefix || '') + x.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + (SPEC.suffix || '');
+// shrink the big number if its widest state would run past the right margin
+const num = document.getElementById('num');
+{
+  const s = fmt(FINAL);
+  let em = 0;
+  for (const ch of s) em += /[0-9]/.test(ch) ? .56 : /[,.]/.test(ch) ? .24 : ch === ' ' ? .25 : /[A-Z$€£%+]/.test(ch) ? .62 : .54;
+  const size = Math.min(180, 850 / Math.max(1, em));
+  num.style.fontSize = size.toFixed(0) + 'px';
+}
+const px = i => X0 + i * (X1 - X0) / (V.length - 1);
+const py = v => Y0 - v / vmax * (Y0 - Y1);
+const P = V.map((v, i) => [px(i), py(v)]);
+// Catmull-Rom -> cubic beziers, for one smooth line through every point
+let d = `M${P[0][0]},${P[0][1]}`;
+for (let i = 0; i < P.length - 1; i++) {
+  const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
+  const t = 0.5 / 3;
+  const c1 = [p1[0] + (p2[0] - p0[0]) * t, p1[1] + (p2[1] - p0[1]) * t];
+  const c2 = [p2[0] - (p3[0] - p1[0]) * t, p2[1] - (p3[1] - p1[1]) * t];
+  d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0]},${p2[1]}`;
+}
+const line = document.getElementById('line');
+line.setAttribute('d', d);
+const L = line.getTotalLength();
+line.setAttribute('stroke-dasharray', L);
+line.setAttribute('stroke-dashoffset', L);
+const mg = document.getElementById('months');
+const every = Math.ceil(M.length / 12);
+M.forEach((m, i) => {
+  if (i >= V.length || i % every) return;
+  const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  t.setAttribute('class', 'mo'); t.setAttribute('x', px(i)); t.setAttribute('y', 1388); t.setAttribute('text-anchor', 'middle');
+  t.setAttribute('opacity', 0); t.id = 'm' + i; t.textContent = m; mg.appendChild(t);
+});
+const tip = document.getElementById('tip'), halo = document.getElementById('halo');
+const st = { p: 0 };
+function draw() {
+  const q = st.p * L;
+  line.setAttribute('stroke-dashoffset', L - q);
+  const pt = line.getPointAtLength(Math.max(.01, q));
+  tip.setAttribute('cx', pt.x); tip.setAttribute('cy', pt.y);
+  halo.setAttribute('cx', pt.x); halo.setAttribute('cy', pt.y);
+  const v = st.p <= 0 ? 0 : Math.max(0, (Y0 - pt.y) / (Y0 - Y1) * vmax);
+  const shown = st.p >= 1 ? FINAL : Math.round(v * scale * 10 ** dec) / 10 ** dec;
+  num.textContent = fmt(st.p <= 0 ? 0 : shown);
+}
+draw();
+// axes draw in, labels fade up
+tl.to('#g0', { attr: { x2: X1 }, duration: .45, ease: 'power3.out' }, 0);
+tl.to('#g1', { attr: { x2: X1 }, duration: .45, ease: 'power3.out' }, .06);
+tl.to('#g2', { attr: { x2: X1 }, duration: .45, ease: 'power3.out' }, .12);
+mg.querySelectorAll('text').forEach((el, i) => tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: .3, ease: 'power1.out' }, .1 + i * .03));
+// the line draws itself, the count follows the tip
+const T0 = .3, TD = 2.7, TE = T0 + TD;
+tl.to('#tip', { opacity: 1, duration: .15 }, T0);
+tl.to(st, { p: 1, duration: TD, ease: 'power1.inOut', onUpdate: draw }, T0);
+// landing: a soft ring, a dotted drop to the baseline
+const end = P[P.length - 1];
+tl.fromTo('#halo', { opacity: .18, attr: { r: 13 } }, { opacity: 0, attr: { r: 60 }, duration: .7, ease: 'power2.out' }, TE);
+tl.set('#drop', { attr: { x1: end[0], x2: end[0], y1: end[1] + 22, y2: end[1] + 22 }, opacity: 1 }, TE);
+tl.to('#drop', { attr: { y2: Y0 }, duration: .45, ease: 'power2.inOut' }, TE + .05);
+tl.set({}, {}, __DURATION__);
+window.__timelines = window.__timelines || {};
+window.__timelines["main"] = tl;
+})();
+</script>
+</div>
+</body></html>

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'Inter';font-weight:500;src:url(fonts/inter-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Inter';font-weight:600;src:url(fonts/inter-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Inter';font-weight:700;src:url(fonts/inter-700-normal.woff2) format('woff2')}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#eef0f1}
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;background:#eef0f1;font-family:'Inter',sans-serif}
+#c{position:absolute;left:0;top:0;width:1080px;height:1920px;display:block}
+.lbl{position:absolute;left:0;top:0;transform:translate(-50%,-50%);font:600 27px 'Inter';color:#77797c;white-space:nowrap;letter-spacing:.01em;
+  text-shadow:0 0 4px #fff,0 0 4px #fff,0 0 8px #fff;opacity:0}
+#card{position:absolute;left:0;top:0;transform:translate(-50%,-100%);background:#fff;border-radius:26px;padding:22px 30px 24px;
+  box-shadow:0 14px 40px rgba(30,40,60,.18),0 2px 6px rgba(30,40,60,.08);opacity:0;white-space:nowrap}
+#card b{display:block;font:700 38px/1 'Inter';color:#16181b}
+#card span{display:flex;align-items:center;gap:12px;margin-top:12px;font:500 28px/1 'Inter';color:#6b6f75}
+#card span i{width:14px;height:14px;border-radius:50%;background:var(--accent)}
+#eta{position:absolute;left:110px;top:250px;background:#fff;border-radius:28px;padding:20px 28px;display:flex;align-items:center;gap:20px;
+  box-shadow:0 10px 30px rgba(30,40,60,.14)}
+#eta .ic{width:58px;height:58px;border-radius:18px;background:var(--accent);display:grid;place-items:center}
+#eta b{display:block;font:700 34px/1 'Inter';color:#16181b}
+#eta span{display:block;margin-top:8px;font:500 25px/1 'Inter';color:#6b6f75}
+</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="__DURATION__" data-fps="30" data-width="1080" data-height="1920">
+<canvas id="c" width="1080" height="1920"></canvas>
+<div class="lbl" id="l0"></div>
+<div class="lbl" id="l1"></div>
+<div class="lbl" id="l2"></div>
+<div class="lbl" id="l3"></div>
+<div class="lbl" id="l4"></div>
+<div id="eta"><div class="ic"><svg width="34" height="34" viewBox="0 0 24 24"><path d="M12 2.5 20 21l-8-4-8 4z" fill="#fff"/></svg></div>
+<div><b id="etan"></b><span id="etad"></span></div></div>
+<div id="card"><b id="cardn"></b><span><i></i><em id="cardd" style="font-style:normal"></em></span></div>
+<script type="module">
+import * as THREE from "three";
+
+const SPEC = __SPEC__;
+const W = 1080, H = 1920, DUR = 4.0;
+const ACC = SPEC.accent;
+document.documentElement.style.setProperty('--accent', ACC);
+const KM = Number(SPEC.distance), MIN = Number(SPEC.minutes), UNIT = SPEC.unit;
+const fmtD = (x) => `${x.toFixed(1).replace(/\.0$/, '')} ${UNIT}`;
+document.getElementById('cardn').textContent = SPEC.destination;
+document.getElementById('cardd').textContent = `${MIN} min · ${fmtD(KM)}`;
+SPEC.places.slice(0, 5).forEach((p, i) => { document.getElementById('l' + i).textContent = p || ''; });
+// ------------------------------------------------------------ seeded random
+let seed = SPEC.seed;
+const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const ease = (x) => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;          // quad in-out
+const easeOut3 = (x) => 1 - Math.pow(1 - x, 3);
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+renderer.setSize(W, H, false); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const BG = 0xeef0f1;
+scene.background = new THREE.Color(BG);
+scene.fog = new THREE.Fog(BG, 90, 160);
+const camera = new THREE.PerspectiveCamera(30, W / H, 0.5, 300);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xcfd3d6, 1.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.55);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 140 });
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02; sun.shadow.radius = 3;
+scene.add(sun, sun.target);
+
+// ------------------------------------------------------------ city layout
+const CELL = 4, ST = 1.0, BLK = CELL - ST;            // street every 4 units, blocks 3 x 3
+const KX = [-9, 9], KZ = [-22, 6];                    // street index range (x, z)
+const riverZ = (x) => -18 + 2.2 * Math.sin(x * 0.16 + 0.6);
+const RIVER_HW = 1.75;
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+// river ribbon (+ softer bank)
+function ribbonAlong(fx, hw, y, color, x0 = -80, x1 = 80) {
+  const pos = [], idx = [];
+  const n = 200;
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + (x1 - x0) * i / n;
+    const z = fx(x);
+    const dz = (fx(x + .01) - fx(x - .01)) / .02;
+    const len = Math.hypot(1, dz);
+    const nx = -dz / len, nz = 1 / len;
+    pos.push(x + nx * hw, y, z + nz * hw, x - nx * hw, y, z - nz * hw);
+    if (i) { const a = (i - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color, roughness: .9, side: THREE.DoubleSide }));
+  m.receiveShadow = true; scene.add(m); return m;
+}
+ribbonAlong(riverZ, RIVER_HW + .55, 0.012, 0xdfe3e0);
+ribbonAlong(riverZ, RIVER_HW, 0.02, 0x9fcbf2);
+
+// bridges: every north-south street crosses the river
+const bridgeMat = new THREE.MeshStandardMaterial({ color: 0xfafaf8, roughness: 1 });
+for (let k = KX[0]; k <= KX[1]; k++) {
+  const x = k * CELL;
+  const b = new THREE.Mesh(new THREE.BoxGeometry(ST + .3, .12, RIVER_HW * 2 + 1.6), bridgeMat);
+  b.position.set(x, .06, riverZ(x)); b.rotation.y = -Math.atan((riverZ(x + .01) - riverZ(x - .01)) / .02) * 0; b.receiveShadow = true; b.castShadow = true;
+  scene.add(b);
+}
+
+// blocks: pavement pads, parks with round trees, white buildings
+const padMat = new THREE.MeshStandardMaterial({ color: 0xe6e6e2, roughness: 1 });
+const parkMat = new THREE.MeshStandardMaterial({ color: 0xd3e9c6, roughness: 1 });
+const boxGeo = new THREE.BoxGeometry(1, 1, 1); boxGeo.translate(0, .5, 0);
+const lots = [], trees = [], parksAt = [];
+const PARK_KEYS = new Set(['-4,-7', '-3,-7', '2,-3', '3,1', '-5,2', '4,-11', '-2,-12']);
+for (let i = KX[0]; i < KX[1]; i++) {
+  for (let j = KZ[0]; j < KZ[1]; j++) {
+    const cx = i * CELL + CELL / 2, cz = j * CELL + CELL / 2;
+    if (Math.abs(cz - riverZ(cx)) < RIVER_HW + 2.3) continue;          // the river cuts through
+    const key = `${i},${j}`;
+    const park = PARK_KEYS.has(key) || rnd() < .05;
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(BLK + .2, .04, BLK + .2), park ? parkMat : padMat);
+    pad.position.set(cx, .02, cz); pad.receiveShadow = true; scene.add(pad);
+    if (park) {
+      parksAt.push([cx, cz]);
+      const nT = 5 + Math.floor(rnd() * 5);
+      for (let t = 0; t < nT; t++) trees.push([cx + (rnd() - .5) * (BLK - .8), cz + (rnd() - .5) * (BLK - .8), .32 + rnd() * .22]);
+      continue;
+    }
+    // split the block into 1, 2 or 4 lots
+    const r = rnd(), inset = .18, s = BLK - inset * 2;
+    let parts;
+    if (r < .22) parts = [[0, 0, s, s]];
+    else if (r < .55) parts = rnd() < .5 ? [[-s / 4 - .06, 0, s / 2 - .12, s], [s / 4 + .06, 0, s / 2 - .12, s]] : [[0, -s / 4 - .06, s, s / 2 - .12], [0, s / 4 + .06, s, s / 2 - .12]];
+    else { const q = s / 2 - .12; parts = [[-s / 4 - .06, -s / 4 - .06, q, q], [s / 4 + .06, -s / 4 - .06, q, q], [-s / 4 - .06, s / 4 + .06, q, q], [s / 4 + .06, s / 4 + .06, q, q]]; }
+    for (const [dx, dz, w, d] of parts) {
+      const tall = rnd() < .07;
+      const h = tall ? 1.9 + rnd() * 1.1 : .42 + rnd() * 1.0;
+      lots.push([cx + dx, cz + dz, w, d, h]);
+    }
+  }
+}
+const bMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .92 });
+const bInst = new THREE.InstancedMesh(boxGeo, bMat, lots.length);
+const m4 = new THREE.Matrix4(), col = new THREE.Color();
+lots.forEach(([x, z, w, d, h], i) => {
+  m4.makeScale(w, h, d); m4.setPosition(x, 0, z); bInst.setMatrixAt(i, m4);
+  const g = .955 + rnd() * .045; bInst.setColorAt(i, col.setRGB(g, g, g * 1.003));
+});
+bInst.castShadow = true; bInst.receiveShadow = true; scene.add(bInst);
+const treeGeo = new THREE.IcosahedronGeometry(1, 2);
+const tInst = new THREE.InstancedMesh(treeGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .85, flatShading: false }), trees.length);
+trees.forEach(([x, z, r], i) => {
+  m4.makeScale(r, r * .92, r); m4.setPosition(x, r * .9, z); tInst.setMatrixAt(i, m4);
+  tInst.setColorAt(i, col.set(rnd() < .5 ? 0x8fcd78 : 0x7cbf68));
+});
+tInst.castShadow = true; tInst.receiveShadow = true; scene.add(tInst);
+
+// ------------------------------------------------------------ the route
+const WP = [[-8, 10], [-8, -4], [0, -4], [0, -28], [8, -28], [8, -42]];
+function roundedPath(pts, r) {
+  const out = [];
+  const v = (a) => new THREE.Vector2(a[0], a[1]);
+  out.push(v(pts[0]));
+  for (let i = 1; i < pts.length - 1; i++) {
+    const A = v(pts[i - 1]), Wp = v(pts[i]), B = v(pts[i + 1]);
+    const c1 = Wp.clone().add(A.clone().sub(Wp).normalize().multiplyScalar(r));
+    const c2 = Wp.clone().add(B.clone().sub(Wp).normalize().multiplyScalar(r));
+    out.push(c1);
+    for (let k = 1; k < 12; k++) {
+      const t = k / 12, a = c1.clone().lerp(Wp, t), b = Wp.clone().lerp(c2, t);
+      out.push(a.lerp(b, t));
+    }
+    out.push(c2);
+  }
+  out.push(v(pts[pts.length - 1]));
+  // resample at even spacing
+  const res = [out[0].clone()];
+  const STEP = .06;
+  let carry = 0;
+  for (let i = 1; i < out.length; i++) {
+    const a = out[i - 1], b = out[i], seg = a.distanceTo(b);
+    let d = STEP - carry;
+    while (d <= seg) { res.push(a.clone().lerp(b, d / seg)); d += STEP; }
+    carry = seg - (d - STEP);
+  }
+  res.push(out[out.length - 1].clone());
+  return res;
+}
+const RP = roundedPath(WP, 1.6);
+const N = RP.length;
+function routeRibbon(hw, y, color, order) {
+  const pos = [], idx = [];
+  for (let i = 0; i < N; i++) {
+    const a = RP[Math.max(0, i - 1)], b = RP[Math.min(N - 1, i + 1)];
+    const t = b.clone().sub(a).normalize();
+    pos.push(RP[i].x - t.y * hw, y, RP[i].y + t.x * hw, RP[i].x + t.y * hw, y, RP[i].y - t.x * hw);
+    if (i) { const k = (i - 1) * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, polygonOffset: true, polygonOffsetFactor: -order, polygonOffsetUnits: -order * 4 }));
+  m.renderOrder = order; scene.add(m); return m;
+}
+const routeEdge = routeRibbon(.5, .16, 0xffffff, 2);
+const routeLine = routeRibbon(.34, .17, ACC, 3);
+const disc = (r, color, y, order) => {
+  const m = new THREE.Mesh(new THREE.CircleGeometry(r, 48), new THREE.MeshBasicMaterial({ color, transparent: true, depthTest: true }));
+  m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; scene.add(m); return m;
+};
+const startOuter = disc(.62, ACC, .19, 4), startInner = disc(.36, 0xffffff, .2, 5);
+startOuter.position.x = startInner.position.x = RP[0].x; startOuter.position.z = startInner.position.z = RP[0].y;
+const headPulse = disc(1, ACC, .185, 4);
+const headOuter = disc(.72, 0xffffff, .2, 6), headInner = disc(.5, ACC, .21, 7);
+
+// destination pin
+const pin = new THREE.Group();
+const pinMat = new THREE.MeshStandardMaterial({ color: 0xf0483e, roughness: .45, metalness: 0 });
+const head = new THREE.Mesh(new THREE.SphereGeometry(.85, 40, 28), pinMat); head.position.y = 2.25; head.castShadow = true;
+const tipG = new THREE.ConeGeometry(.6, 1.7, 40); tipG.rotateX(Math.PI);
+const tip = new THREE.Mesh(tipG, pinMat); tip.position.y = 1.08; tip.castShadow = true;
+const dot = new THREE.Mesh(new THREE.SphereGeometry(.34, 24, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .5 }));
+dot.position.y = 2.3;
+pin.add(head, tip, dot);
+const END = RP[N - 1];
+pin.position.set(END.x, 0, END.y); scene.add(pin);
+const pinShadow = disc(.9, 0x000000, .19, 4); pinShadow.material.opacity = 0; pinShadow.position.set(END.x, .19, END.y);
+
+// labels (projected)
+const LBL = [['l0', -12, 4], ['l1', -6, -33], ['l2', 6, -12], ['l3', 14, -36], ['l4', 4.6, -19.6]];
+const lblEls = LBL.map(([id]) => document.getElementById(id));
+const card = document.getElementById('card'), etan = document.getElementById('etan'), etad = document.getElementById('etad');
+const v3 = new THREE.Vector3();
+function project(x, y, z) { v3.set(x, y, z).project(camera); return [(v3.x + 1) / 2 * W, (1 - v3.y) / 2 * H, v3.z]; }
+
+const pathAt = (p) => { const f = clamp(p, 0, 1) * (N - 1), i = Math.floor(f), j = Math.min(N - 1, i + 1); return RP[i].clone().lerp(RP[j], f - i); };
+
+// ------------------------------------------------------------ time
+const T_DRAW0 = .25, T_DRAW1 = 2.75, T_PIN = 2.62;
+function renderAt(t) {
+  const pr = ease(clamp((t - T_DRAW0) / (T_DRAW1 - T_DRAW0), 0, 1));
+  const k = Math.floor(pr * (N - 1));
+  routeLine.geometry.setDrawRange(0, k * 6); routeEdge.geometry.setDrawRange(0, k * 6);
+  const hp = pathAt(pr);
+  headOuter.position.set(hp.x, .2, hp.y); headInner.position.set(hp.x, .21, hp.y);
+  const ph = (t * 1.6) % 1;
+  headPulse.position.set(hp.x, .185, hp.y); headPulse.scale.setScalar(.8 + ph * .9); headPulse.material.opacity = .35 * (1 - ph);
+  const hv = pr > 0 ? 1 : smooth(0, .2, t);
+  headOuter.visible = headInner.visible = headPulse.visible = t > .02;
+
+  // camera: rides behind the head, pushes in and swings round as it goes
+  const lag = pathAt(Math.max(0, pr - .02));
+  const fin = smooth(2.45, DUR, t);
+  const tgt = new THREE.Vector3(lag.x, 0, lag.y).lerp(new THREE.Vector3(3, 0, -27), fin * .85);
+  const intro = smooth(0, 1.0, t);
+  const dist = 62 - 14 * intro + 30 * fin;
+  const pol = THREE.MathUtils.degToRad(30 + 8 * intro - 10 * fin);
+  const az = THREE.MathUtils.degToRad(28 - 18 * smooth(0, DUR, t));
+  camera.position.set(tgt.x + dist * Math.sin(pol) * Math.sin(az), tgt.y + dist * Math.cos(pol), tgt.z + dist * Math.sin(pol) * Math.cos(az));
+  camera.lookAt(tgt.x, tgt.y, tgt.z - 3);
+  sun.position.set(tgt.x - 18, 34, tgt.z + 12); sun.target.position.set(tgt.x, 0, tgt.z - 4);
+
+  // pin drops with one bounce
+  const pt = t - T_PIN;
+  let py = 9, ps = 0;
+  if (pt > 0) {
+    if (pt < .28) py = 9 * (1 - Math.pow(pt / .28, 2));
+    else if (pt < .5) { const u = (pt - .28) / .22; py = 1.1 * Math.sin(Math.PI * u); }
+    else py = 0;
+    ps = 1;
+  }
+  pin.visible = pt > 0; pin.position.y = py;
+  const squash = pt > .28 && pt < .4 ? 1 - .18 * Math.sin(Math.PI * (pt - .28) / .12) : 1;
+  pin.scale.set(1 / Math.sqrt(squash), squash, 1 / Math.sqrt(squash));
+  pinShadow.material.opacity = ps * .16 * (1 - clamp(py / 9, 0, 1) * .8); pinShadow.scale.setScalar(1.2 - clamp(py / 9, 0, 1) * .5);
+
+  camera.updateMatrixWorld();
+  renderer.render(scene, camera);
+
+  // DOM: labels, eta, card
+  LBL.forEach(([id, x, z], i) => {
+    const [sx, sy] = project(x, .3, z);
+    const el = lblEls[i];
+    el.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px) translate(-50%,-50%)`;
+    const inside = sx > 140 && sx < 940 && sy > 400 && sy < 1560;
+    el.style.opacity = (inside ? 1 : 0) * smooth(.15, .5, t);
+  });
+  const left = KM * (1 - pr);
+  etan.textContent = pr >= 1 ? 'Arrived' : `${Math.max(1, Math.round(MIN * (1 - pr)))} min`;
+  etad.textContent = pr >= 1 ? `${fmtD(KM)} in ${MIN} min` : `${fmtD(Math.max(.1, left))} to go`;
+  const [cx, cy] = project(END.x, 3.4, END.y);
+  const ca = smooth(T_PIN + .45, T_PIN + .7, t);
+  card.style.opacity = ca;
+  const cw = card.offsetWidth, ccx = clamp(cx, 100 + cw / 2, 980 - cw / 2);
+  card.style.transform = `translate(${ccx.toFixed(1)}px,${(cy - 18 + 16 * (1 - ca)).toFixed(1)}px) translate(-50%,-100%)`;
+}
+window.addEventListener('hf-seek', (e) => renderAt(e.detail.time));
+renderAt(window.__hfThreeTime || 0);
+</script>
+</div>
+</body></html>

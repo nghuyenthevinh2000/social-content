@@ -19,3 +19,6 @@
 	path = tools/taktik-bot
 	url = https://github.com/nghuyenthevinh2000/taktik-bot
 	ignore = untracked
+[submodule "projects/nirvana"]
+	path = projects/nirvana
+	url = https://github.com/nghuyenthevinh2000/nirvana.git

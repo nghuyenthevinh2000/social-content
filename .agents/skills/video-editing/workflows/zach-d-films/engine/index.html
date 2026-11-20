@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>zach-d-films</title>
+<style>
+  @font-face { font-family: 'Cap'; src: url('node_modules/@fontsource/montserrat/files/montserrat-latin-700-normal.woff2') format('woff2'); font-weight: 700; }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  #stage { position: relative; width: 720px; height: 1280px; }
+  canvas { display: block; }
+  #cap {
+    position: absolute; left: 0; right: 0; top: 968px; text-align: center;
+    font: 700 46px/1.1 'Cap', sans-serif; color: #fff; letter-spacing: -0.3px;
+    text-shadow: 0 0 2px rgba(0,0,0,.55), 0 3px 10px rgba(0,0,0,.55), 0 0 22px rgba(0,0,0,.25);
+    -webkit-text-stroke: 0.6px rgba(0,0,0,.25);
+  }
+  #fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+  #hud { position: fixed; left: 730px; top: 10px; color: #aaa; font: 13px monospace; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "./node_modules/three/build/three.module.js",
+  "three/addons/": "./node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage"><div id="fade"></div><div id="cap"></div></div>
+<div id="hud"></div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

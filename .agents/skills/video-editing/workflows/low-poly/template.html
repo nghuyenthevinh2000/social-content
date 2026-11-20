@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'Inter';font-weight:700;src:url(fonts/inter-700-normal.woff2) format('woff2')}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#3a2a1f}
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;background:#3a2a1f;font-family:'Inter',sans-serif}
+#c{position:absolute;left:0;top:0;width:1080px;height:1920px;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+.cap{position:absolute;left:60px;width:880px;top:1272px;text-align:center;font:700 50px/1.1 'Inter';color:#fff21a;letter-spacing:.05em;
+  visibility:hidden;white-space:nowrap;
+  text-shadow:-3px -3px 0 #000,3px -3px 0 #000,-3px 3px 0 #000,3px 3px 0 #000,0 -3px 0 #000,0 3px 0 #000,-3px 0 0 #000,3px 0 0 #000,0 4px 0 #000}
+</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="__DURATION__" data-fps="30" data-width="1080" data-height="1920">
+<canvas id="c" width="360" height="640"></canvas>
+<div class="cap" id="cap1"></div>
+<div class="cap" id="cap2"></div>
+<script type="module">
+import * as THREE from "three";
+
+// Low-poly (PS1/N64) Hachiko: a train pulls away and he is still sitting there.
+// Internal render 360x640, shown 3x with nearest-neighbour upscaling; vertex snapping + 15-bit dither in every material.
+const SPEC = __SPEC__;
+const RW = 360, RH = 640, DUR = Number(document.getElementById('root').dataset.duration);
+document.getElementById('cap1').textContent = SPEC.lines[0];
+document.getElementById('cap2').textContent = SPEC.lines[1] || '';
+let seed = 1925;
+const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const lerp = (a, b, k) => a + (b - a) * k;
+
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: false });
+renderer.setPixelRatio(1); renderer.setSize(RW, RH, false);
+const scene = new THREE.Scene();
+const FOG = 0x4a3426;
+scene.background = new THREE.Color(FOG);
+scene.fog = new THREE.Fog(FOG, 10, 30);
+const camera = new THREE.PerspectiveCamera(52, RW / RH, 0.08, 80);
+
+// ------------------------------------------------------------ PS1 shader patch
+const SNX = (RW / 2).toFixed(1), SNY = (RH / 2).toFixed(1);
+function ps1(m) {
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+      if (gl_Position.w > 0.0) { vec2 sn = vec2(${SNX}, ${SNY});
+        gl_Position.xy = floor(gl_Position.xy / gl_Position.w * sn + 0.5) / sn * gl_Position.w; }`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <dithering_fragment>', `#include <dithering_fragment>
+      { const float BY[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
+        ivec2 q = ivec2(mod(gl_FragCoord.xy, 4.0));
+        float th = (BY[q.x + q.y * 4] + 0.5) / 16.0 - 0.5;
+        gl_FragColor.rgb = clamp(floor(gl_FragColor.rgb * 31.0 + th + 0.5) / 31.0, 0.0, 1.0); }`);
+  };
+  m.customProgramCacheKey = () => 'ps1';
+  return m;
+}
+const lam = (o) => ps1(new THREE.MeshLambertMaterial(Object.assign({ flatShading: true }, o)));
+const basic = (o) => ps1(new THREE.MeshBasicMaterial(o));
+
+// ------------------------------------------------------------ pixel textures
+function tex(w, h, draw) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; draw(g, w, h);
+  const t = new THREE.CanvasTexture(cv);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const rgbOf = (h) => [(h >> 16) & 255, (h >> 8) & 255, h & 255];
+const col = (h, k = 1) => { const [r, g, b] = rgbOf(h); return `rgb(${clamp(r * k, 0, 255) | 0},${clamp(g * k, 0, 255) | 0},${clamp(b * k, 0, 255) | 0})`; };
+const px = (g, x, y, c, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+const noise = (g, x0, y0, w, h, base, j) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) px(g, x, y, col(base, 1 + (rnd() * 2 - 1) * j)); };
+function uvs(geo, sx, sy) { const a = geo.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, a.getX(i) * sx, a.getY(i) * sy); return geo; }
+
+const T = {};
+T.concrete = tex(32, 32, (g) => {               // platform paving: 2x2 slabs per tile
+  noise(g, 0, 0, 32, 32, 0x9c9282, .07);
+  for (let i = 0; i < 32; i++) { px(g, i, 0, col(0x6c6355)); px(g, 0, i, col(0x6c6355)); px(g, i, 16, col(0x766c5e)); px(g, 16, i, col(0x766c5e)); }
+  for (let k = 0; k < 14; k++) px(g, rnd() * 32 | 0, rnd() * 32 | 0, col(0x857b6c));
+});
+T.tactile = tex(16, 16, (g) => {                 // yellow tactile strip with raised dots
+  noise(g, 0, 0, 16, 16, 0xe2b11c, .05);
+  for (let y = 1; y < 16; y += 4) for (let x = 1; x < 16; x += 4) { px(g, x, y, col(0xf7d455), 2, 2); px(g, x, y + 2, col(0xa97f0e), 2, 1); }
+});
+T.face = tex(32, 32, (g) => {                    // platform wall facing the tracks (in the lip's shadow)
+  noise(g, 0, 0, 32, 32, 0x4d4238, .09);
+  for (let x = 0; x < 32; x++) { px(g, x, 0, col(0x1f1a15), 1, 3); px(g, x, 3, col(0x2f2720)); if (rnd() < .3) px(g, x, 4 + (rnd() * 18 | 0), col(0x3e352c), 1, 4 + (rnd() * 6 | 0)); }
+  for (let x = 0; x < 32; x += 16) for (let y = 0; y < 32; y++) px(g, x, y, col(0x362e26));
+  px(g, 0, 20, col(0x2a241e), 32, 2); px(g, 0, 22, col(0x5c5044), 32, 1);           // cable tray
+});
+T.ballastSnow = tex(32, 32, (g) => {             // the same bed after years of winters: snow on the stones
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) { const r = rnd(); px(g, x, y, col(r < .58 ? 0xe8ecef : r < .78 ? 0xc9d0d6 : r < .92 ? 0x6f665a : 0x463f38, .94 + rnd() * .08)); }
+});
+T.ballast = tex(32, 32, (g) => {
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) { const r = rnd(); px(g, x, y, col(r < .3 ? 0x5d554c : r < .6 ? 0x6f665a : r < .85 ? 0x857a6b : 0x463f38, .9 + rnd() * .2)); }
+});
+T.wood = tex(32, 32, (g) => {                    // warm planks, grain along u
+  for (let y = 0; y < 32; y++) { const b = [0x8a5a34, 0x7a4e2c, 0x956238, 0x815330][(y / 8) | 0]; for (let x = 0; x < 32; x++) px(g, x, y, col(b, .9 + rnd() * .14 + .05 * Math.sin(x * .6 + y)), 1, 1); }
+  for (let y = 7; y < 32; y += 8) for (let x = 0; x < 32; x++) px(g, x, y, col(0x4a2e18));
+  for (let k = 0; k < 4; k++) px(g, rnd() * 30 | 0, rnd() * 30 | 0, col(0x4f3019), 2, 1);
+});
+T.ceiling = tex(32, 32, (g) => {                 // speckled ceiling tiles
+  noise(g, 0, 0, 32, 32, 0xe4d8c2, .04);
+  for (let k = 0; k < 70; k++) px(g, rnd() * 32 | 0, rnd() * 32 | 0, col(rnd() < .5 ? 0xc3b49b : 0xb0a188));
+  for (let i = 0; i < 32; i++) { px(g, i, 0, col(0x9c8e78)); px(g, 0, i, col(0x9c8e78)); }
+});
+T.plaster = tex(32, 32, (g) => { noise(g, 0, 0, 32, 32, 0xd9be8f, .045); for (let k = 0; k < 20; k++) px(g, rnd() * 32 | 0, rnd() * 32 | 0, col(0xc8ab7b)); });
+T.panel = tex(32, 32, (g) => {                   // lower wainscot: vertical boards
+  for (let x = 0; x < 32; x++) { const b = (x % 8 === 0) ? 0x3f2716 : 0x6b4427; for (let y = 0; y < 32; y++) px(g, x, y, col(b, .92 + rnd() * .14)); }
+  for (let x = 0; x < 32; x++) { px(g, x, 0, col(0x2e1c10)); px(g, x, 1, col(0x8b5c36)); }
+});
+T.fur = tex(16, 16, (g) => {
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(g, x, y, col(0xffffff, .86 + rnd() * .14));
+  for (let k = 0; k < 10; k++) px(g, rnd() * 16 | 0, rnd() * 15 | 0, col(0xffffff, .78), 1, 2);
+});
+T.sky = tex(16, 32, (g) => {                     // warm evening seen through the back windows
+  const st = [0xffd27a, 0xffc06a, 0xf8a65f, 0xee8f5c, 0xdb7a5e, 0xc0695f, 0x9e5c63, 0x7f5268];
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 16; x++) { const f = (31 - y) / 31 * 7 + (((x + y) & 1) ? .35 : -.35); px(g, x, y, col(st[clamp(Math.round(f), 0, 7)])); }
+  for (let x = 0; x < 16; x++) { const hgt = 3 + (Math.sin(x * 1.7) > 0 ? 3 : 1) + (x % 5 === 0 ? 3 : 0); px(g, x, 32 - hgt, col(0x4b3040), 1, hgt); }
+});
+
+// --- bitmap font for the station sign (no web font in a canvas)
+const GL = {
+  'A': ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  'B': ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+  'C': ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
+  'D': ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+  'E': ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
+  'F': ['#####', '#....', '#....', '####.', '#....', '#....', '#....'],
+  'G': ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.####'],
+  'H': ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  'I': ['.###.', '..#..', '..#..', '..#..', '..#..', '..#..', '.###.'],
+  'J': ['..###', '...#.', '...#.', '...#.', '...#.', '#..#.', '.##..'],
+  'K': ['#...#', '#..#.', '#.#..', '##...', '#.#..', '#..#.', '#...#'],
+  'L': ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
+  'M': ['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'],
+  'N': ['#...#', '#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#'],
+  'O': ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+  'P': ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
+  'Q': ['.###.', '#...#', '#...#', '#...#', '#.#.#', '#..#.', '.##.#'],
+  'R': ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+  'S': ['.###.', '#...#', '#....', '.###.', '....#', '#...#', '.###.'],
+  'T': ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
+  'U': ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+  'V': ['#...#', '#...#', '#...#', '#...#', '#...#', '.#.#.', '..#..'],
+  'W': ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '#.#.#', '.#.#.'],
+  'X': ['#...#', '#...#', '.#.#.', '..#..', '.#.#.', '#...#', '#...#'],
+  'Y': ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
+  'Z': ['#####', '....#', '...#.', '..#..', '.#...', '#....', '#####'],
+  '0': ['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'],
+  '1': ['..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '.###.'],
+  '2': ['.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####'],
+  '3': ['####.', '....#', '....#', '.###.', '....#', '....#', '####.'],
+  '4': ['...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.'],
+  '5': ['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'],
+  '6': ['.###.', '#....', '#....', '####.', '#...#', '#...#', '.###.'],
+  '7': ['#####', '....#', '...#.', '..#..', '.#...', '.#...', '.#...'],
+  '8': ['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'],
+  '9': ['.###.', '#...#', '#...#', '.####', '....#', '....#', '.###.'],
+  '-': ['.....', '.....', '.....', '.###.', '.....', '.....', '.....'],
+  '.': ['.....', '.....', '.....', '.....', '.....', '.....', '..#..'],
+  '<': ['...#.', '..#..', '.#...', '#....', '.#...', '..#..', '...#.'],
+  '>': ['.#...', '..#..', '...#.', '....#', '...#.', '..#..', '.#...'],
+};
+function bitText(g, str, x, y, s, c) { for (const ch of str) { const gl = GL[ch]; if (gl) gl.forEach((row, j) => { for (let i = 0; i < 5; i++) if (row[i] === '#') px(g, x + i * s, y + j * s, c, s, s); }); x += 6 * s; } }
+T.sign = tex(128, 40, (g) => {
+  noise(g, 0, 0, 128, 40, 0xf1ece0, .025);
+  for (let i = 0; i < 128; i++) { px(g, i, 0, col(0x2b2b2b)); px(g, i, 1, col(0x2b2b2b)); px(g, i, 38, col(0x2b2b2b)); px(g, i, 39, col(0x2b2b2b)); }
+  for (let j = 0; j < 40; j++) { px(g, 0, j, col(0x2b2b2b), 2, 1); px(g, 126, j, col(0x2b2b2b), 2, 1); }
+  const name = SPEC.sign.toUpperCase(), big = name.length * 12 - 2 <= 118;   // 2x letters while they fit, else 1x
+  bitText(g, name, Math.round((128 - (big ? name.length * 12 - 2 : name.length * 6 - 1)) / 2), big ? 5 : 9, big ? 2 : 1, col(0x1c1c1c));
+  px(g, 3, 22, col(0x3f8f3c), 122, 4);
+  if (SPEC.prev) bitText(g, '<' + SPEC.prev.toUpperCase(), 6, 29, 1, col(0x2a2a2a));
+  if (SPEC.next) { const n = SPEC.next.toUpperCase() + '>'; bitText(g, n, 128 - 6 - (n.length * 6 - 1), 29, 1, col(0x2a2a2a)); }
+});
+T.poster1 = tex(16, 24, (g) => {                 // generic travel poster: sun over a mountain
+  noise(g, 0, 0, 16, 24, 0xe9dcc0, .03);
+  px(g, 1, 1, col(0x6fa0b8), 14, 14); px(g, 9, 3, col(0xf05a3a), 4, 4);
+  for (let x = 0; x < 14; x++) { const h = 8 - Math.abs(x - 6); if (h > 0) px(g, 1 + x, 15 - h, col(0x3b5a6e), 1, h); }
+  px(g, 5, 9, col(0xf6f2ea), 3, 1); px(g, 2, 17, col(0x8a3a2a), 12, 2); px(g, 3, 20, col(0x5a4a3a), 10, 1);
+});
+T.poster2 = tex(16, 24, (g) => {
+  noise(g, 0, 0, 16, 24, 0xd7473a, .04);
+  px(g, 2, 2, col(0xf3e6c8), 12, 12); px(g, 5, 5, col(0xd7473a), 6, 6); px(g, 2, 16, col(0xf3e6c8), 12, 2); px(g, 2, 19, col(0xf3e6c8), 8, 1); px(g, 2, 21, col(0xf3e6c8), 10, 1);
+});
+
+// --- train textures (Aogaeru-style two-tone green, cut-out windows)
+const TW = 128, TH = 48;
+const WINS = [[4, 20], [45, 63], [65, 83], [108, 124]], DOORS = [[24, 40], [88, 104]];
+function trainSide(inner, opaque) {
+  return tex(TW, TH, (g) => {
+    if (inner) { noise(g, 0, 0, TW, 34, 0xd8d0b0, .03); noise(g, 0, 34, TW, 14, 0x7f9070, .04); }
+    else {
+      px(g, 0, 0, col(0x3a3d3a), TW, 2); noise(g, 0, 2, TW, 32, 0xa4c46a, .035); px(g, 0, 34, col(0xe9e2c4), TW, 1);
+      noise(g, 0, 35, TW, 11, 0x44703c, .04); px(g, 0, 46, col(0x262a26), TW, 2);
+      for (const [a, b] of DOORS) {
+        noise(g, a, 4, b - a + 1, 42, 0x8fb25c, .03); noise(g, a, 35, b - a + 1, 11, 0x3b6334, .03);
+        for (let y = 4; y < 46; y++) { px(g, a, y, col(0x2f4a2a)); px(g, b, y, col(0x2f4a2a)); px(g, (a + b) >> 1, y, col(0x2f4a2a)); }
+        for (let x = a; x <= b; x++) px(g, x, 4, col(0x2f4a2a));
+      }
+      for (const [a, b] of WINS) { for (let x = a - 1; x <= b + 1; x++) { px(g, x, 8, col(0xd6dbc8)); px(g, x, 32, col(0xd6dbc8)); } for (let y = 8; y <= 32; y++) { px(g, a - 1, y, col(0xd6dbc8)); px(g, b + 1, y, col(0xd6dbc8)); } }
+      px(g, 0, 43, col(0x30552c), TW, 1);
+    }
+    // far-side panes are opaque (they mirror the lit carriage), so the train really hides the platform
+    const pane = (x, y, w, h) => {
+      if (!opaque) { g.clearRect(x, y, w, h); return; }
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+        const k = (x + i + y + j) % 13;
+        px(g, x + i, y + j, col(k < 2 ? 0xa9b8b4 : k < 3 ? 0x8c9c99 : 0x5f706f, .96 + .08 * (j / h)));
+      }
+    };
+    for (const [a, b] of WINS) { pane(a, 9, b - a + 1, 23); px(g, (a + b) >> 1, 9, inner ? col(0xb7b098) : col(0xd6dbc8), 1, 23); }
+    for (const [a, b] of DOORS) { pane(a + 3, 9, ((b - a) >> 1) - 4, 16); pane(((a + b) >> 1) + 2, 9, ((b - a) >> 1) - 4, 16); }
+  });
+}
+T.trainOut = trainSide(false); T.trainIn = trainSide(true); T.trainInFar = trainSide(true, true);
+T.trainEnd = tex(48, 48, (g) => {
+  px(g, 0, 0, col(0x3a3d3a), 48, 2); noise(g, 0, 2, 48, 28, 0xa4c46a, .035); px(g, 0, 30, col(0xe9e2c4), 48, 1);
+  noise(g, 0, 31, 48, 15, 0x44703c, .04); px(g, 0, 46, col(0x262a26), 48, 2);
+  px(g, 4, 9, col(0x1d2a30), 17, 15); px(g, 27, 9, col(0x1d2a30), 17, 15);                // windscreens
+  for (let k = 0; k < 6; k++) { px(g, 6 + k, 22 - k * 2, col(0x5a7480)); px(g, 29 + k, 22 - k * 2, col(0x5a7480)); }
+  px(g, 21, 9, col(0x7c9a52), 6, 15); px(g, 16, 3, col(0xefe9d2), 16, 4); px(g, 19, 4, col(0x30302c), 10, 2);
+  px(g, 4, 34, col(0xd8d2b0), 40, 1);
+});
+T.glass = tex(32, 24, (g) => {                  // tinted window glass with two pixel reflection streaks
+  g.fillStyle = 'rgba(120,160,170,0.30)'; g.fillRect(0, 0, 32, 24);
+  for (let y = 0; y < 24; y++) { const x = 30 - y; g.fillStyle = 'rgba(255,255,255,0.42)'; g.fillRect(x, y, 4, 1); g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(x - 9, y, 2, 1); }
+});
+T.endOut = tex(48, 48, (g) => {                  // plain car end (between cars)
+  px(g, 0, 0, col(0x3a3d3a), 48, 2); noise(g, 0, 2, 48, 28, 0xa4c46a, .035); noise(g, 0, 30, 48, 18, 0x44703c, .04);
+  px(g, 16, 6, col(0x2b2f2a), 16, 40);
+});
+T.endIn = tex(48, 48, (g) => {                   // car end seen from inside
+  noise(g, 0, 0, 48, 30, 0xd8d0b0, .03); noise(g, 0, 30, 48, 18, 0x7f9070, .04);
+  px(g, 15, 5, col(0x6d6650), 18, 43); px(g, 17, 7, col(0x8a8268), 14, 39); px(g, 19, 9, col(0x5f7684), 10, 14);
+});
+
+// ------------------------------------------------------------ helpers
+const box = (parent, w, h, d, mat, x, y, z, rx = 0, ry = 0, rz = 0, seg = [1, 1, 1]) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d, ...seg), mat);
+  m.position.set(x, y, z); m.rotation.set(rx, ry, rz); parent.add(m); return m;
+};
+const plane = (parent, w, h, mat, x, y, z, rx = 0, ry = 0, sx = 1, sy = 1, segX = 1, segY = 1) => {
+  const m = new THREE.Mesh(uvs(new THREE.PlaneGeometry(w, h, segX, segY), sx, sy), mat);
+  m.position.set(x, y, z); m.rotation.set(rx, ry, 0); parent.add(m); return m;
+};
+
+// ------------------------------------------------------------ lights
+scene.add(new THREE.HemisphereLight(0xffe2bc, 0x5c3f2c, 1.7));
+const key = new THREE.DirectionalLight(0xffc285, 1.35); key.position.set(4, 6, 7); scene.add(key);
+const fill = new THREE.DirectionalLight(0xb8c4ff, 0.3); fill.position.set(-6, 3, 5); scene.add(fill);
+const lampLight = new THREE.PointLight(0xffc77a, 5, 0, 2); lampLight.position.set(0.2, 2.45, -1.5); scene.add(lampLight);
+
+// ------------------------------------------------------------ station
+const X0 = -40, XL = 80;
+const M = {
+  concrete: lam({ map: T.concrete }), tactile: lam({ map: T.tactile }), face: lam({ map: T.face }), ballast: lam({ map: T.ballast }),
+  wood: lam({ map: T.wood }), woodDark: lam({ map: T.wood, color: 0x8a7766 }), ceiling: lam({ map: T.ceiling }), plaster: lam({ map: T.plaster }),
+  panel: lam({ map: T.panel }), white: lam({ color: 0xf0eadb }), lip: lam({ map: T.concrete, color: 0xcfc7b5 }),
+  steel: lam({ color: 0x8e8981 }), railTop: basic({ color: 0xd9d3c6 }), sleeper: lam({ map: T.wood, color: 0x6a5a50 }),
+  post: lam({ map: T.wood, color: 0xb59c86 }), green: lam({ color: 0x3e5a3c }), sky: basic({ map: T.sky }), frame: lam({ color: 0x4a2f1c }),
+  sign: lam({ map: T.sign }), signEdge: lam({ color: 0x2b2b2b }), bulb: basic({ color: 0xfff0c0 }),
+  poster1: lam({ map: T.poster1 }), poster2: lam({ map: T.poster2 }),
+};
+// platform top, edge lip, strips, face
+plane(scene, XL, 5.7, M.concrete, 0, 0, -3.15, -Math.PI / 2, 0, XL / 1.6, 5.7 / 1.6, 40, 4);
+box(scene, XL, 0.1, 0.33, M.lip, 0, -0.05, -0.135, 0, 0, 0, [40, 1, 1]);
+plane(scene, XL, 0.5, M.tactile, 0, 0.004, -0.6, -Math.PI / 2, 0, XL / 0.5, 1, 40, 1);
+plane(scene, XL, 0.07, M.white, 0, 0.104 - 0.1, -0.06, -Math.PI / 2, 0, 1, 1, 40, 1).position.y = 0.003;
+plane(scene, XL, 1.1, M.face, 0, -0.55, 0.0, 0, 0, XL / 1.6, 1.1 / 1.6 * 1.45, 40, 1);
+// track bed
+plane(scene, XL, 6, M.ballast, 0, -1.05, 3.0, -Math.PI / 2, 0, XL / 1.6, 6 / 1.6, 40, 3);
+{
+  const n = Math.round(XL / 0.7);
+  const sl = new THREE.InstancedMesh(uvs(new THREE.BoxGeometry(0.24, 0.1, 2.3), 1, 0.25), M.sleeper, n);
+  const m4 = new THREE.Matrix4();
+  for (let i = 0; i < n; i++) { m4.makeTranslation(X0 + i * 0.7, -1.0, 1.6); sl.setMatrixAt(i, m4); }
+  scene.add(sl);
+  for (const z of [0.9, 2.3]) { box(scene, XL, 0.13, 0.08, M.steel, 0, -0.925, z, 0, 0, 0, [60, 1, 1]); box(scene, XL, 0.01, 0.05, M.railTop, 0, -0.857, z, 0, 0, 0, [60, 1, 1]); }
+}
+// back wall: wainscot, plaster, windows with evening sky, posters
+plane(scene, XL, 1.0, M.panel, 0, 0.5, -6, 0, 0, XL / 1.6, 1.0 / 1.6 * 1.6, 40, 1);
+plane(scene, XL, 2.25, M.plaster, 0, 2.125, -6, 0, 0, XL / 1.6, 2.25 / 1.6, 40, 2);
+box(scene, XL, 0.08, 0.06, M.frame, 0, 1.02, -5.97, 0, 0, 0, [40, 1, 1]);
+for (const x of [-10.6, -7.4, -4.2, 3.4, 6.6, 9.8]) {
+  plane(scene, 1.5, 1.15, M.sky, x, 1.95, -5.99, 0, 0, 1, 1);
+  box(scene, 1.66, 0.08, 0.08, M.frame, x, 2.565, -5.96); box(scene, 1.66, 0.08, 0.08, M.frame, x, 1.335, -5.96);
+  box(scene, 0.08, 1.3, 0.08, M.frame, x - 0.79, 1.95, -5.96); box(scene, 0.08, 1.3, 0.08, M.frame, x + 0.79, 1.95, -5.96);
+  box(scene, 0.05, 1.15, 0.05, M.frame, x, 1.95, -5.965); box(scene, 1.5, 0.05, 0.05, M.frame, x, 2.15, -5.965);
+}
+plane(scene, 0.7, 1.05, M.poster1, -1.55, 1.75, -5.965); box(scene, 0.78, 1.13, 0.02, M.frame, -1.55, 1.75, -5.99);
+plane(scene, 0.7, 1.05, M.poster2, 1.05, 1.75, -5.965); box(scene, 0.78, 1.13, 0.02, M.frame, 1.05, 1.75, -5.99);
+plane(scene, 0.7, 1.05, M.poster1, -12.6, 1.75, -5.98); plane(scene, 0.7, 1.05, M.poster2, 12.4, 1.75, -5.98);
+// canopy: ceiling tiles, beams, fascia
+plane(scene, XL, 6.6, M.ceiling, 0, 3.25, -2.7, Math.PI / 2, 0, XL / 1.2, 6.6 / 1.2, 40, 4);
+for (let x = -36; x <= 36; x += 2.6) box(scene, 0.14, 0.16, 6.6, M.woodDark, x + 0.9, 3.17, -2.7, 0, 0, 0, [1, 1, 3]);
+box(scene, XL, 0.36, 0.1, M.woodDark, 0, 3.08, 0.62, 0, 0, 0, [40, 1, 1]);
+// posts + brackets
+for (let x = -33.3; x <= 34; x += 5.2) {
+  box(scene, 0.2, 3.25, 0.2, M.post, x, 1.625, -2.8, 0, 0, 0, [1, 3, 1]);
+  box(scene, 0.1, 0.1, 1.3, M.post, x, 2.82, -2.25, -0.62);
+  box(scene, 0.1, 0.1, 1.3, M.post, x, 2.82, -3.35, 0.62);
+}
+// hanging lamps
+for (let x = -30.8; x <= 32; x += 5.2) {
+  box(scene, 0.025, 0.5, 0.025, M.signEdge, x, 3.0, -1.5);
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.16, 6, 1, true), lam({ color: 0x2f4a33, side: THREE.DoubleSide }));
+  shade.position.set(x, 2.7, -1.5); scene.add(shade);
+  const bulb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 0), M.bulb); bulb.position.set(x, 2.6, -1.5); scene.add(bulb);
+}
+// station name board, hanging from the canopy
+{
+  const g = new THREE.Group(); g.position.set(-0.45, 2.18, -2.35); scene.add(g);
+  const mats = [M.signEdge, M.signEdge, M.signEdge, M.signEdge, M.sign, M.sign];
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.75, 0.05), mats));
+  box(g, 0.03, 0.6, 0.03, M.signEdge, -0.95, 0.67, 0); box(g, 0.03, 0.6, 0.03, M.signEdge, 0.95, 0.67, 0);
+}
+// benches
+function bench(x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+  box(g, 1.7, 0.07, 0.42, M.wood, 0, 0.45, 0); box(g, 1.7, 0.3, 0.05, M.wood, 0, 0.72, -0.2, -0.12);
+  for (const dx of [-0.72, 0.72]) { box(g, 0.07, 0.45, 0.36, M.frame, dx, 0.225, 0); box(g, 0.06, 0.38, 0.05, M.frame, dx, 0.66, -0.2, -0.12); }
+}
+bench(1.2, -3.9); bench(-5.0, -3.9); bench(6.4, -3.9); bench(-10.2, -3.9);
+
+// ------------------------------------------------------------ the dog (cream Akita, sitting, facing the tracks = +z)
+const DOG = new THREE.Vector3(0, 0, -1.0);
+const F = {
+  cream: lam({ map: T.fur, color: 0xf7dcaa, emissive: 0x2a1a0c }), tan: lam({ map: T.fur, color: 0xe39f55, emissive: 0x281408 }),
+  white: lam({ map: T.fur, color: 0xfff8ee, emissive: 0x4c4234 }), dark: lam({ color: 0x18110e }), inner: lam({ color: 0xd08a70 }),
+};
+// square frustum (4-sided cylinder): chunky tapered low-poly limbs and bodies
+const frustum = (parent, wt, wb, h, dz, mat, x, y, z, rx = 0) => {
+  const geo = new THREE.CylinderGeometry(wt / Math.SQRT2, wb / Math.SQRT2, h, 4, 1); geo.rotateY(Math.PI / 4); geo.scale(1, 1, dz);
+  const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; parent.add(m); return m;
+};
+const dog = new THREE.Group(); dog.position.copy(DOG); scene.add(dog);
+const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 8), basic({ color: 0x000000, transparent: true, opacity: 0.34, depthWrite: false }));
+shadow.rotation.x = -Math.PI / 2; shadow.position.set(0, 0.006, -0.06); shadow.scale.set(0.95, 1.05, 1); dog.add(shadow);
+// rump + folded back legs
+frustum(dog, 0.5, 0.62, 0.4, 0.92, F.cream, 0, 0.2, -0.2);
+frustum(dog, 0.36, 0.5, 0.08, 0.92, F.tan, 0, 0.44, -0.22);
+for (const s of [-1, 1]) {
+  box(dog, 0.14, 0.28, 0.44, F.cream, s * 0.28, 0.15, -0.1);
+  box(dog, 0.13, 0.06, 0.2, F.white, s * 0.25, 0.03, 0.15);
+}
+// torso leaning forward from the hips, white bib painted on the front
+const torso = new THREE.Group(); torso.position.set(0, 0.3, -0.16); torso.rotation.x = 0.4; dog.add(torso);
+frustum(torso, 0.36, 0.5, 0.66, 0.82, F.cream, 0, 0.3, 0);
+{
+  const bib = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.5), F.white);
+  bib.position.set(0, 0.26, 0.186); bib.rotation.x = -Math.atan((0.5 - 0.36) * 0.82 / 2 / 0.66); torso.add(bib);
+}
+// front legs
+for (const s of [-1, 1]) {
+  frustum(dog, 0.11, 0.12, 0.4, 1.05, F.cream, s * 0.125, 0.36, 0.13);
+  box(dog, 0.125, 0.17, 0.135, F.white, s * 0.125, 0.085, 0.13);
+  box(dog, 0.14, 0.06, 0.18, F.white, s * 0.125, 0.03, 0.17);
+}
+frustum(dog, 0.32, 0.38, 0.3, 0.95, F.cream, 0, 0.84, 0.04, 0.22);
+// head on a neck pivot
+const head = new THREE.Group(); head.position.set(0, 0.93, 0.08); dog.add(head);
+box(head, 0.46, 0.34, 0.38, F.cream, 0, 0.14, 0.03);
+box(head, 0.44, 0.05, 0.3, F.tan, 0, 0.32, -0.01);
+box(head, 0.4, 0.1, 0.28, F.white, 0, 0.02, 0.1);
+frustum(head, 0.2, 0.24, 0.15, 0.85, F.white, 0, 0.045, 0.31, Math.PI / 2 * 0);
+box(head, 0.17, 0.05, 0.18, F.cream, 0, 0.125, 0.28);
+box(head, 0.095, 0.07, 0.05, F.dark, 0, 0.1, 0.42);
+box(head, 0.11, 0.014, 0.01, F.dark, 0, -0.01, 0.411);
+for (const s of [-1, 1]) { box(head, 0.055, 0.045, 0.02, F.dark, s * 0.1, 0.19, 0.225); box(head, 0.09, 0.02, 0.02, F.tan, s * 0.1, 0.235, 0.222); }
+const ears = [];
+for (const s of [-1, 1]) {
+  const e = new THREE.Group(); e.position.set(s * 0.14, 0.3, -0.01); head.add(e);
+  const c = new THREE.Mesh(new THREE.ConeGeometry(0.105, 0.25, 4), F.tan); c.position.y = 0.115; c.rotation.y = Math.PI / 4; e.add(c);
+  const ci = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.15, 3), F.inner); ci.position.set(0, 0.08, 0.042); ci.rotation.y = Math.PI; e.add(ci);
+  e.userData.s = s; ears.push(e);
+}
+// curled tail over the back
+const tail = new THREE.Group(); tail.position.set(0.17, 0.6, -0.36); dog.add(tail);
+{
+  const tor = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.07, 4, 8), F.tan);
+  tor.rotation.y = Math.PI / 2; tor.position.set(0, 0.11, 0); tail.add(tor);
+}
+
+// ------------------------------------------------------------ the train (2 cars, moving -x, head at the -x end)
+const TRK_Z = 1.6, CAR = 6.6, GAP = 0.35, NCAR = 2, L = NCAR * CAR + (NCAR - 1) * GAP, TWID = 2.6;
+const TM = {
+  out: lam({ map: T.trainOut, alphaTest: 0.5 }), in: lam({ map: T.trainIn, alphaTest: 0.5, emissive: 0x2a2416 }), inFar: lam({ map: T.trainInFar, emissive: 0x2a2416 }),
+  cab: lam({ map: T.trainEnd }), endOut: lam({ map: T.endOut }), endIn: lam({ map: T.endIn, emissive: 0x2a2416 }), roof: lam({ color: 0x8c8e86 }), roof2: lam({ color: 0x6f716b }),
+  floor: lam({ color: 0x5b4636, emissive: 0x1a1208 }), seat: lam({ color: 0x6c3a36, emissive: 0x160806 }), ceil: lam({ color: 0xe6dfc6, emissive: 0x4a4430 }),
+  strip: basic({ color: 0xfff6dc }), under: lam({ color: 0x2c2c29 }), wheel: lam({ color: 0x1d1d1c }), gang: lam({ color: 0x30312d }),
+  glassNear: basic({ map: T.glass, transparent: true, opacity: 1, depthWrite: false, color: 0xd8eef0 }),
+  head: basic({ color: 0xfff1bf }), tailL: basic({ color: 0xff3b2a }), dest: basic({ color: 0xf3eedc }),
+};
+const train = new THREE.Group(); train.position.set(40, 0, TRK_Z); scene.add(train);
+const wheels = [];
+for (let c = 0; c < NCAR; c++) {
+  const g = new THREE.Group(); g.position.x = c * (CAR + GAP); train.add(g);
+  for (const s of [-1, 1]) {
+    plane(g, CAR, 2.45, TM.out, CAR / 2, 0.975, s * TWID / 2, 0, s > 0 ? 0 : Math.PI, 1, 1, 12, 2);
+    plane(g, CAR, 2.45, s > 0 ? TM.in : TM.inFar, CAR / 2, 0.975, s * (TWID / 2 - 0.03), 0, s > 0 ? Math.PI : 0, 1, 1, 12, 2);
+    if (s > 0) plane(g, CAR, 1.2, TM.glassNear, CAR / 2, 1.18, s * (TWID / 2 - 0.015), 0, 0, CAR / 1.65, 1, 12, 1);
+    for (const [a, b] of [[0.25, 1.15], [2.15, 4.45], [5.45, 6.35]]) {
+      box(g, b - a, 0.36, 0.46, TM.seat, (a + b) / 2, 0.26, s * 1.03);
+      box(g, b - a, 0.4, 0.08, TM.seat, (a + b) / 2, 0.62, s * 1.22);
+    }
+  }
+  plane(g, TWID, 2.45, c === 0 ? TM.cab : TM.endOut, 0, 0.975, 0, 0, -Math.PI / 2, 1, 1);
+  plane(g, TWID, 2.45, c === NCAR - 1 ? TM.cab : TM.endOut, CAR, 0.975, 0, 0, Math.PI / 2, 1, 1);
+  plane(g, TWID - 0.06, 2.45, TM.endIn, 0.03, 0.975, 0, 0, Math.PI / 2, 1, 1);
+  plane(g, TWID - 0.06, 2.45, TM.endIn, CAR - 0.03, 0.975, 0, 0, -Math.PI / 2, 1, 1);
+  box(g, CAR, 0.1, TWID + 0.08, TM.roof, CAR / 2, 2.25, 0, 0, 0, 0, [12, 1, 1]);
+  box(g, CAR - 0.2, 0.12, 1.9, TM.roof2, CAR / 2, 2.36, 0, 0, 0, 0, [12, 1, 1]);
+  for (const vx of [1.2, 3.3, 5.4]) box(g, 0.5, 0.12, 0.5, TM.roof, vx, 2.48, 0);
+  box(g, CAR, 0.08, TWID - 0.06, TM.floor, CAR / 2, 0.04, 0, 0, 0, 0, [12, 1, 1]);
+  plane(g, CAR, TWID - 0.06, TM.ceil, CAR / 2, 2.19, 0, Math.PI / 2, 0, 1, 1, 12, 1);
+  for (const s of [-1, 1]) box(g, CAR - 1, 0.03, 0.1, TM.strip, CAR / 2, 2.16, s * 0.55);
+  box(g, CAR - 0.6, 0.32, 2.0, TM.under, CAR / 2, -0.41, 0, 0, 0, 0, [8, 1, 1]);
+  for (const bx of [1.0, CAR - 1.0]) {
+    box(g, 1.9, 0.2, 1.7, TM.under, bx, -0.56, 0);
+    for (const dx of [-0.6, 0.6]) for (const s of [-1, 1]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.09, 8), TM.wheel);
+      w.rotation.x = Math.PI / 2; w.position.set(bx + dx, -0.56, s * 0.7); g.add(w); wheels.push(w);
+    }
+  }
+  if (c < NCAR - 1) box(g, GAP + 0.04, 1.95, 1.1, TM.gang, CAR + GAP / 2, 0.95, 0);
+  if (c === 0) {
+    for (const s of [-1, 1]) box(g, 0.04, 0.12, 0.22, TM.head, -0.02, 0.18, s * 0.8);
+    box(g, 0.04, 0.12, 0.6, TM.dest, -0.02, 2.02, 0);
+  }
+  if (c === NCAR - 1) for (const s of [-1, 1]) box(g, 0.04, 0.12, 0.22, TM.tailL, CAR + 0.02, 0.18, s * 0.8);
+}
+const headLight = new THREE.PointLight(0xffe7b0, 22, 0, 1.6); headLight.position.set(-1.2, 0.6, 0); train.add(headLight);
+
+// closed-form train motion (-x): brakes in hard from +x to a crawl at T_M, then pulls away accelerating.
+// The head enters the frame at T_E; the tail clears the camera->dog line at T_CLEAR.
+const X_ENTER = 1.6, T_E = 1.15, T_M = 1.65, V_E = 15, V_M = 1.2, X_LOS = 0.32, T_CLEAR = 2.65;
+const A1 = (V_E - V_M) / (T_M - T_E);
+const D1 = V_M * (T_M - T_E) + 0.5 * A1 * (T_M - T_E) ** 2;
+const XH_S = X_ENTER - D1;
+const D2 = (X_ENTER - (X_LOS - L)) - D1;
+const A2 = 2 * (D2 - V_M * (T_CLEAR - T_M)) / ((T_CLEAR - T_M) ** 2);
+const trainHead = (t) => t < T_M ? XH_S + V_M * (T_M - t) + 0.5 * A1 * (T_M - t) ** 2 : XH_S - V_M * (t - T_M) - 0.5 * A2 * (t - T_M) ** 2;
+
+// ------------------------------------------------------------ petals drifting under the canopy
+const petals = [];
+{
+  const pm = basic({ color: 0xf4b8c8, side: THREE.DoubleSide });
+  const pg = new THREE.PlaneGeometry(0.07, 0.05);
+  for (let i = 0; i < 28; i++) {
+    const m = new THREE.Mesh(pg, pm); scene.add(m);
+    petals.push({ m, x: -2.6 + rnd() * 5.2, z: -3.4 + rnd() * 3.2, ph: rnd(), sp: 0.22 + rnd() * 0.18, w: rnd() * 6.28 });
+  }
+}
+
+// ------------------------------------------------------------ snow: where the train has passed, years have passed
+// Flakes fall over the open track only on the side the tail has already cleared; a little snow sits on the dog.
+const SNOW = !!SPEC.snow;
+const flakes = [];
+{
+  const fm = basic({ color: 0xf4f7ff });
+  const fgs = [new THREE.PlaneGeometry(0.03, 0.03), new THREE.PlaneGeometry(0.045, 0.045)];
+  for (let i = 0; i < 110; i++) {
+    const m = new THREE.Mesh(fgs[i % 2], fm); m.visible = false; scene.add(m);
+    flakes.push({ m, x: -2.6 + rnd() * 6.2, z: 0.35 + rnd() * 1.75, ph: rnd(), sp: 0.42 + rnd() * 0.3, w: rnd() * 6.28 });
+  }
+}
+const snowMat = lam({ color: 0xf6f8fb, emissive: 0x5a5c60 });
+const snowOn = [box(head, 0.36, 0.05, 0.24, snowMat, 0, 0.37, -0.01), box(dog, 0.4, 0.05, 0.34, snowMat, 0, 0.5, -0.23),
+  box(dog, 0.12, 0.03, 0.1, snowMat, 0.125, 0.065, 0.2), box(dog, 0.12, 0.03, 0.1, snowMat, -0.125, 0.065, 0.2)];
+const tailX = (t) => trainHead(t) + L;
+
+// ------------------------------------------------------------ captions
+const cap1 = document.getElementById('cap1'), cap2 = document.getElementById('cap2');
+
+// ------------------------------------------------------------ time
+const CAM0 = new THREE.Vector3(2.1, 1.42, 4.65), CAM1 = new THREE.Vector3(1.35, 1.12, 4.3), CAM2 = new THREE.Vector3(0.95, 0.98, 2.85);
+const TGT0 = new THREE.Vector3(0.0, 0.45, -1.0), TGT2 = new THREE.Vector3(-0.12, 0.36, -1.0);
+const cp = new THREE.Vector3(), ct = new THREE.Vector3();
+function renderAt(t) {
+  // camera: slow settle, then a slow push in after the train has gone (continuous, no pop)
+  const a = smooth(0, 2.6, t), b = smooth(2.35, 4.8, t);   // the reel opens this clip on the dog, after the train
+  cp.lerpVectors(CAM0, CAM1, a).lerp(CAM2, b);
+  ct.lerpVectors(TGT0, TGT2, b);
+  camera.position.copy(cp); camera.lookAt(ct);
+
+  // train
+  const xh = trainHead(t);
+  train.position.x = xh;
+  const wr = -(xh - XH_S) / 0.3;
+  for (const w of wheels) w.rotation.y = wr;
+
+  // dog
+  const yaw = 0.42 * smooth(0.35, 0.72, t) - 0.42 * smooth(1.0, 1.32, t) - 0.92 * smooth(3.45, 3.95, t);
+  const pitch = -0.1 * smooth(1.0, 1.32, t) + 0.1 * smooth(2.55, 2.85, t) + 0.14 * smooth(3.95, 4.45, t);
+  head.rotation.set(pitch + 0.012 * Math.sin(t * 5.1), yaw, 0.03 * Math.sin(t * 2.3) * (1 - smooth(2.6, 3.0, t)));
+  const perk = smooth(0.3, 0.5, t) * (1 - smooth(3.9, 4.4, t));
+  for (const e of ears) e.rotation.set(0.12 - 0.12 * perk - 0.3 * smooth(3.95, 4.45, t), 0, e.userData.s * (-0.16 + 0.06 * perk));
+  torso.scale.y = 1 + 0.014 * Math.sin(t * 2 * Math.PI * 1.1);
+  const wag = 0.24 * (1 - smooth(2.3, 3.0, t)) + 0.02;
+  tail.rotation.set(0, 0, 0.3 + wag * Math.sin(t * 2 * Math.PI * 2.3));
+
+  // petals (spring) until the train has wiped past them, then snow (winter)
+  const tx = tailX(t), passed = (x) => SNOW && t > 2.2 && x > tx + 0.25;
+  for (const p of petals) {
+    const y = 3.1 - (((t * p.sp + p.ph * 3.1) % 3.1) + 3.1) % 3.1;
+    const x = p.x + 0.18 * Math.sin(t * 1.3 + p.w);
+    p.m.position.set(x, y, p.z + 0.1 * Math.cos(t * 1.1 + p.w));
+    p.m.rotation.set(t * 2.1 + p.w, t * 1.7 + p.w * 2, p.w);
+    p.m.visible = !passed(x);
+  }
+  for (const f of flakes) {
+    const y = 3.5 - (((t * f.sp + f.ph * 4.6) % 4.6) + 4.6) % 4.6;
+    const x = f.x + 0.12 * Math.sin(t * 0.9 + f.w);
+    f.m.position.set(x, y, f.z); f.m.lookAt(camera.position);
+    f.m.visible = passed(x) && y > -0.95;
+  }
+  for (const m of snowOn) m.visible = SNOW && t >= 2.62;
+  M.ballast.map = SNOW && t >= 1.7 ? T.ballastSnow : T.ballast;
+
+  camera.updateMatrixWorld();
+  renderer.render(scene, camera);
+
+  cap1.style.visibility = (t >= 0.3 && t < 2.6) ? 'visible' : 'hidden';
+  cap2.style.visibility = (t >= 2.6) ? 'visible' : 'hidden';
+}
+window.addEventListener('hf-seek', (e) => renderAt(e.detail.time));
+renderAt(window.__hfThreeTime || 0);
+</script>
+</div>
+</body></html>

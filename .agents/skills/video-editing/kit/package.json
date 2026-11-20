@@ -1,0 +1,10 @@
+{
+  "name": "animation-skills-kit",
+  "private": true,
+  "description": "Node packages the animation skills render with. Installed by kit/setup.sh.",
+  "dependencies": {
+    "@fontsource/montserrat": "5.1.0",
+    "playwright": "1.49.1",
+    "three": "0.169.0"
+  }
+}
