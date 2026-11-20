@@ -15,6 +15,7 @@ from tools.app.backend.acp import ACPClient, ACPError
 from tools.app.backend.errors import ErrorAggregator, handle_glasser_error
 from tools.loop.viral_analyzer import cache, glasser, normalize, platforms, runtime
 from tools.loop.viral_analyzer.keyword_research import config
+from tools.loop.viral_analyzer.keyword_research import prompt as prompt_lib
 
 
 def _fetch_public_followers(url: str, timeout: float = 4.0, use_db_cache: bool = True) -> int:
@@ -100,6 +101,38 @@ def _enrich_creator_followers(creators: List[Dict[str, Any]]) -> None:
         cache.write_cached_followers(new_entries)
 
 
+def _run_acp_prompt(
+    prompt: str,
+    agent_id: Optional[str] = None,
+    model: Optional[str] = None,
+    cwd: Optional[Path] = None,
+    log: Optional[Callable[[str], None]] = None,
+    ctx: Optional[runtime.EngineContext] = None,
+    timeout_sec: float = 30.0,
+) -> Optional[str]:
+    """Run a single ACP/agent_runner prompt, returning raw text or None when unconfigured."""
+    if ctx is not None and ctx.agent_runner is not None:
+        return ctx.agent_runner(prompt)
+    if agent_id:
+        from tools.app.backend.research_engine.research import _harness_lock, resolve_agent
+
+        with _harness_lock(log or (lambda _msg: None)):
+            preset = resolve_agent(agent_id, model=model)
+            client = ACPClient(preset["command"], cwd=cwd or Path.cwd(), timeout_sec=timeout_sec, log=log)
+            client.initialize()
+            sid = client.new_session()
+            return client.prompt(sid, prompt)
+    return None
+
+
+def _parse_json_object(raw: Optional[str]) -> Optional[Dict[str, Any]]:
+    match = re.search(r"\{[\s\S]*\}", raw or "")
+    if not match:
+        return None
+    parsed = json.loads(match.group(0))
+    return parsed if isinstance(parsed, dict) else None
+
+
 def expand_keyword(
     keyword: str,
     agent_id: Optional[str] = None,
@@ -107,6 +140,7 @@ def expand_keyword(
     cwd: Optional[Path] = None,
     log: Optional[Callable[[str], None]] = None,
     ctx: Optional[runtime.EngineContext] = None,
+    language: Optional[str] = None,
 ) -> List[Dict[str, str]]:
     """Expand keyword into at most 3 queries: [original, abbreviation, vi]."""
     kw = re.sub(r"\s+", " ", (keyword or "")).strip()
@@ -124,46 +158,68 @@ def expand_keyword(
             {"kind": "vi", "text": vi},
         ])
 
-    prompt = (
-        f'Expand the search keyword "{kw}" into JSON with two short search terms:\n'
-        '{"abbreviation": "<medical/slang full form or acronym, or empty>", '
-        '"vi": "<natural Vietnamese translation, or empty>"}\n'
-        "Return ONLY valid JSON."
-    )
+    prompt = prompt_lib.build_expand_keyword_prompt(kw, language=language)
 
-    if ctx is not None and ctx.agent_runner is not None:
-        try:
-            raw = ctx.agent_runner(prompt)
-            match = re.search(r"\{[\s\S]*\}", raw or "")
-            if match:
-                parsed = json.loads(match.group(0))
-                if parsed.get("abbreviation"):
-                    queries.append({"kind": "abbreviation", "text": str(parsed["abbreviation"])})
-                if parsed.get("vi"):
-                    queries.append({"kind": "vi", "text": str(parsed["vi"])})
-        except Exception as exc:
-            _log(f"Bỏ qua mở rộng từ khoá qua agent_runner ({exc}); dùng từ khoá gốc.")
-    elif agent_id:
-        try:
-            from tools.app.backend.research_engine.research import _harness_lock, resolve_agent
-
-            with _harness_lock(_log):
-                preset = resolve_agent(agent_id, model=model)
-                client = ACPClient(preset["command"], cwd=cwd or Path.cwd(), timeout_sec=30.0, log=_log)
-                client.initialize()
-                sid = client.new_session()
-                raw = client.prompt(sid, prompt)
-            match = re.search(r"\{[\s\S]*\}", raw or "")
-            if match:
-                parsed = json.loads(match.group(0))
-                if parsed.get("abbreviation"):
-                    queries.append({"kind": "abbreviation", "text": str(parsed["abbreviation"])})
-                if parsed.get("vi"):
-                    queries.append({"kind": "vi", "text": str(parsed["vi"])})
-        except (ACPError, Exception) as exc:
-            _log(f"Bỏ qua mở rộng từ khoá qua ACP ({exc}); dùng từ khoá gốc.")
+    try:
+        raw = _run_acp_prompt(prompt, agent_id=agent_id, model=model, cwd=cwd, log=_log, ctx=ctx, timeout_sec=30.0)
+        parsed = _parse_json_object(raw)
+        if parsed:
+            if parsed.get("abbreviation"):
+                queries.append({"kind": "abbreviation", "text": str(parsed["abbreviation"])})
+            if parsed.get("vi"):
+                queries.append({"kind": "vi", "text": str(parsed["vi"])})
+    except (ACPError, Exception) as exc:
+        _log(f"Bỏ qua mở rộng từ khoá qua ACP ({exc}); dùng từ khoá gốc.")
 
     return config.dedup_queries(queries, limit=3)
+
+
+def analyze_creator_relevance(
+    keyword: str,
+    creators: List[Dict[str, Any]],
+    reels: List[Dict[str, Any]],
+    agent_id: Optional[str] = None,
+    model: Optional[str] = None,
+    cwd: Optional[Path] = None,
+    log: Optional[Callable[[str], None]] = None,
+    ctx: Optional[runtime.EngineContext] = None,
+    timeout_sec: float = 240.0,
+    language: Optional[str] = None,
+) -> None:
+    """Ask ACP why each creator is relevant to keyword; mutates creators in place."""
+    if not creators:
+        return
+    _log = log or (lambda _msg: None)
+    titles_by_url: Dict[str, List[str]] = {}
+    for r in reels:
+        u = (r.get("author_url") or "").strip()
+        title = re.sub(r"\s+", " ", (r.get("title") or "")).strip()[:160]
+        if u and title:
+            titles_by_url.setdefault(u, []).append(title)
+
+    items = [
+        {
+            "key": c["url"],
+            "name": c.get("name") or c.get("handle") or "",
+            "platform": c.get("platform") or "",
+            "followers": c.get("followers") or 0,
+            "titles": titles_by_url.get(c["url"], [])[:3],
+        }
+        for c in creators
+    ]
+    prompt = prompt_lib.build_creator_relevance_prompt(keyword, items, language=language)
+    try:
+        raw = _run_acp_prompt(prompt, agent_id=agent_id, model=model, cwd=cwd, log=_log, ctx=ctx, timeout_sec=timeout_sec)
+        parsed = _parse_json_object(raw)
+        if not parsed:
+            return
+        for c in creators:
+            entry = parsed.get(c["url"]) or parsed.get(c.get("handle", ""))
+            if isinstance(entry, dict):
+                c["relevance"] = str(entry.get("relevance") or "").strip()
+                c["why_relevant"] = str(entry.get("why_relevant") or "").strip()
+    except (ACPError, Exception) as exc:
+        _log(f"Bỏ qua phân tích độ liên quan qua ACP ({exc}).")
 
 
 def _glasser_run_json(

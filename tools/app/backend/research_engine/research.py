@@ -389,12 +389,14 @@ def _process_sheet_inner(
                 agent_choice = preset["id"]
                 break
 
+    user_language = (actor_profile or {}).get("language") or options.get("language") or "vi"
+
     if job_kind == "keyword":
         log(f"Tìm kiếm video viral đa nền tảng cho từ khoá: '{sheet_name}'")
         kw_res = run_viral_video_search(
             keyword=sheet_name,
             run_dir=run_dir,
-            options={**options, "agent": agent_choice},
+            options={**options, "agent": agent_choice, "language": user_language},
             log=log,
             job_id=job_id,
             aggregator=aggregator,
@@ -454,6 +456,7 @@ def _process_sheet_inner(
                     log=log,
                     cwd=run_dir,
                     timeout_sec=float(options.get("acp_timeout", 180)),
+                    language=user_language,
                 )
                 return res, None
             except Exception as exc:
@@ -521,6 +524,7 @@ def _process_sheet_inner(
                 log=log,
                 model=options.get("agy_model") or options.get("model"),
                 actor_profile=actor_profile,
+                language=user_language,
             )
             if topic_error and not error:
                 acp_err = handle_acp_error(topic_error, agent_id=agent_choice, log=log)

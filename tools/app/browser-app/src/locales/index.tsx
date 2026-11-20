@@ -45,6 +45,14 @@ export const LocaleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch {
       // ignore storage errors
     }
+    if (typeof fetch === 'function') {
+      fetch('/api/user/profile', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: next }),
+      }).catch(() => {});
+    }
   }, []);
 
   const toggleLocale = useCallback(() => {

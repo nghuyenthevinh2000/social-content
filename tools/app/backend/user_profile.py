@@ -17,7 +17,15 @@ DEFAULT_PROFILE: Dict[str, Any] = {
     "age": 28,
     "name": "",
     "voice_tone": "Bắc",
+    "language": "vi",
 }
+
+
+def normalize_language(value: Any) -> str:
+    raw = str(value or "vi").strip().lower()
+    if raw in ("en", "eng", "english") or raw.startswith("en-"):
+        return "en"
+    return "vi"
 
 BRAND_FIELDS = ("identity", "audience", "differentiator", "tone")
 
@@ -75,7 +83,7 @@ class UserProfileStore:
         try:
             with ro() as conn:
                 cur = conn.execute(
-                    "SELECT gender, age, name, voice_tone, brand_json, updated_at FROM user_profiles WHERE user_id = %s",
+                    "SELECT gender, age, name, voice_tone, brand_json, language, updated_at FROM user_profiles WHERE user_id = %s",
                     (user_id,),
                 )
                 row = cur.fetchone()
@@ -87,7 +95,8 @@ class UserProfileStore:
                         "name": row[2] or "",
                         "voice_tone": row[3] or "Bắc",
                         "brand": _parse_brand_json(row[4]),
-                        "updated_at": row[5],
+                        "language": normalize_language(row[5]),
+                        "updated_at": row[6],
                     }
         except Exception:
             pass
@@ -103,6 +112,7 @@ class UserProfileStore:
             "name": "",
             "voice_tone": "Bắc",
             "brand": normalize_brand_profile(None),
+            "language": "vi",
             "updated_at": now_iso(),
         }
 
@@ -120,6 +130,7 @@ class UserProfileStore:
             if isinstance(data.get("brand"), dict)
             else normalize_brand_profile(existing.get("brand"))
         )
+        language = normalize_language(data.get("language", existing.get("language", "vi")))
         updated = now_iso()
         record = {
             "user_id": user_id,
@@ -128,6 +139,7 @@ class UserProfileStore:
             "name": norm["name"],
             "voice_tone": norm["voice_tone"],
             "brand": brand,
+            "language": language,
             "updated_at": updated,
         }
         self._memory_cache[user_id] = record
@@ -136,14 +148,15 @@ class UserProfileStore:
             with tx() as conn:
                 conn.execute(
                     """
-                    INSERT INTO user_profiles (user_id, gender, age, name, voice_tone, brand_json, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO user_profiles (user_id, gender, age, name, voice_tone, brand_json, language, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (user_id) DO UPDATE SET
                         gender = EXCLUDED.gender,
                         age = EXCLUDED.age,
                         name = EXCLUDED.name,
                         voice_tone = EXCLUDED.voice_tone,
                         brand_json = EXCLUDED.brand_json,
+                        language = EXCLUDED.language,
                         updated_at = EXCLUDED.updated_at
                     """,
                     (
@@ -153,6 +166,7 @@ class UserProfileStore:
                         record["name"],
                         record["voice_tone"],
                         json.dumps(brand, ensure_ascii=False),
+                        record["language"],
                         record["updated_at"],
                     ),
                 )

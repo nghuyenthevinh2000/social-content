@@ -31,6 +31,7 @@ from tools.loop.viral_analyzer.video_research.config import (
     _reel_digest,
     build_video_structure_prompt,
     format_director_prompt,
+    get_visual_prompt,
 )
 from tools.loop.viral_analyzer.video_research.transcriber import (
     fetch_reel_transcript,
@@ -240,6 +241,7 @@ def heuristic_video_analyses(
     reels: List[Dict[str, Any]],
     actor_profile: Optional[Dict[str, Any]] = None,
     limit: Optional[int] = None,
+    language: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     if not reels:
         return []
@@ -295,7 +297,7 @@ def heuristic_video_analyses(
             "visual": str(reel.get("visual") or "").strip(),
             "generated_by": "heuristic",
         }
-        entry["prompt"] = format_director_prompt(entry, sheet_name=sheet_name, actor_profile=actor_profile)
+        entry["prompt"] = format_director_prompt(entry, sheet_name=sheet_name, actor_profile=actor_profile, language=language)
         analyses.append(entry)
     return analyses
 
@@ -312,13 +314,14 @@ def analyze_video_structure(
     actor_profile: Optional[Dict[str, Any]] = None,
     ctx: Optional[runtime.EngineContext] = None,
     limit: Optional[int] = None,
+    language: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     if not reels:
         log(f"Không có reel nào cho '{sheet_name}'; bỏ qua phân tích video.")
         return [], None
-    fallback = heuristic_video_analyses(sheet_name, reels, actor_profile=actor_profile, limit=limit)
+    fallback = heuristic_video_analyses(sheet_name, reels, actor_profile=actor_profile, limit=limit, language=language)
     prompt = build_video_structure_prompt(
-        sheet_name, targets, reels, actor_profile=actor_profile
+        sheet_name, targets, reels, actor_profile=actor_profile, language=language
     )
     eng_ctx = ctx or runtime.default_context()
 
@@ -384,6 +387,7 @@ def analyze_video_visuals(
     log: Callable[[str], None],
     model: Optional[str] = None,
     ctx: Optional[runtime.EngineContext] = None,
+    language: Optional[str] = None,
 ) -> str:
     """Describe the downloaded Reel's on-screen visuals with an injected runner or CLI harness."""
     frame_dir = video_path.parent / f"{video_path.stem}_frames"
@@ -394,10 +398,11 @@ def analyze_video_visuals(
 
     eng_ctx = ctx or runtime.default_context()
     client = None
+    visual_prompt = get_visual_prompt(language)
     try:
         images = [(frame.read_bytes(), "image/jpeg") for frame in frames]
         if eng_ctx.agent_runner is not None:
-            return str(eng_ctx.agent_runner(VISUAL_PROMPT, images=images)).strip()
+            return str(eng_ctx.agent_runner(visual_prompt, images=images)).strip()
 
         from tools.app.backend.research_engine.research import _harness_lock, resolve_agent
 
@@ -407,7 +412,7 @@ def analyze_video_visuals(
             client = ACPClient(preset["command"], cwd=cwd, timeout_sec=timeout_sec, log=log)
             client.initialize()
             session_id = client.new_session()
-            return client.prompt(session_id, VISUAL_PROMPT, images=images).strip()
+            return client.prompt(session_id, visual_prompt, images=images).strip()
     except Exception as exc:
         log(f"Phân tích hình ảnh bằng harness thất bại: {exc}")
         return ""
@@ -505,6 +510,7 @@ def research_single_reel(
     cwd: Optional[Path] = None,
     timeout_sec: float = 120.0,
     ctx: Optional[runtime.EngineContext] = None,
+    language: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Execute direct deep research on an individual Reel URL."""
     _log = log or (lambda msg: logger.info(msg))
@@ -536,7 +542,7 @@ def research_single_reel(
                 if not transcript:
                     transcript = _transcribe_local_fallback(video_path, vid, clean_url, _log)
                 visual = analyze_video_visuals(
-                    video_path, agent_id or "", cwd, timeout_sec, _log, model=model, **ctx_kwargs
+                    video_path, agent_id or "", cwd, timeout_sec, _log, model=model, language=language, **ctx_kwargs
                 )
                 if visual:
                     _log(f"Đã phân tích hình ảnh video ({len(visual)} ký tự).")
@@ -582,6 +588,7 @@ def research_single_reel(
                 model=model,
                 actor_profile=actor_profile,
                 limit=1,
+                language=language,
                 **ctx_kwargs,
             )
             topics = topics[:1]

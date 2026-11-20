@@ -86,6 +86,7 @@ def run_viral_video_search(
         "model": opts.get("model"),
         "cwd": Path(run_dir),
         "log": _log,
+        "language": opts.get("language"),
     }
     if ctx is not None:
         expand_kwargs["ctx"] = eng_ctx
@@ -178,6 +179,35 @@ def run_viral_video_search(
     creators = sorted(creators_map.values(), key=lambda c: c["top_views"], reverse=True)
     with profiling.span("keyword", "enrich_followers"):
         _enrich_creator_followers(creators)
+
+    creators = [
+        c for c in creators
+        if (c.get("url") or "").strip().startswith("http") and _safe_int(c.get("followers")) > 0
+    ]
+    followers_by_url = {c["url"]: c["followers"] for c in creators}
+    filtered_reels: List[Dict[str, Any]] = []
+    for r in all_videos:
+        r_url = (r.get("url") or r.get("reel_url") or "").strip()
+        a_url = (r.get("author_url") or "").strip()
+        if r_url.startswith("http") and a_url in followers_by_url:
+            r["author_followers"] = followers_by_url[a_url]
+            filtered_reels.append(r)
+    all_videos = filtered_reels
+
+    with profiling.span("keyword", "analyze_relevance"):
+        collect.analyze_creator_relevance(
+            keyword=keyword,
+            creators=creators,
+            reels=all_videos,
+            agent_id=opts.get("agent"),
+            model=opts.get("agy_model") or opts.get("model"),
+            cwd=Path(run_dir),
+            log=_log,
+            ctx=ctx,
+            timeout_sec=float(opts.get("acp_timeout", 240)),
+            language=opts.get("language"),
+        )
+
     errors = [e.to_dict() for e in agg.all_errors()]
     notice = None if all_videos else f"Không tìm thấy video nào cho từ khoá '{keyword}'."
 
