@@ -208,6 +208,13 @@ def run_viral_video_search(
             language=opts.get("language"),
         )
 
+    off_topic_urls = {
+        c["url"] for c in creators if (c.get("relevance") or "").strip().lower() == "off_topic"
+    }
+    if off_topic_urls:
+        creators = [c for c in creators if c["url"] not in off_topic_urls]
+        all_videos = [r for r in all_videos if (r.get("author_url") or "").strip() not in off_topic_urls]
+
     errors = [e.to_dict() for e in agg.all_errors()]
     notice = None if all_videos else f"Không tìm thấy video nào cho từ khoá '{keyword}'."
 

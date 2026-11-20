@@ -161,7 +161,7 @@ def expand_keyword(
     prompt = prompt_lib.build_expand_keyword_prompt(kw, language=language)
 
     try:
-        raw = _run_acp_prompt(prompt, agent_id=agent_id, model=model, cwd=cwd, log=_log, ctx=ctx, timeout_sec=30.0)
+        raw = _run_acp_prompt(prompt, agent_id=agent_id, model=model, cwd=cwd, log=_log, ctx=ctx, timeout_sec=90.0)
         parsed = _parse_json_object(raw)
         if parsed:
             if parsed.get("abbreviation"):

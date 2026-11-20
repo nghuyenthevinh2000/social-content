@@ -50,10 +50,11 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
     });
   };
 
+  const relevantCreators = creators.filter((c) => (c.relevance || '').toLowerCase() !== 'off_topic');
   const filteredCreators =
     selectedPlatforms.size > 0
-      ? creators.filter((c) => selectedPlatforms.has(c.platform || 'facebook'))
-      : creators;
+      ? relevantCreators.filter((c) => selectedPlatforms.has(c.platform || 'facebook'))
+      : relevantCreators;
   const filteredTopics =
     selectedPlatforms.size > 0
       ? orderedTopics.filter((t) => selectedPlatforms.has(t.platform || inferPlatform(t, getTopicReelUrl(t))))
@@ -136,7 +137,6 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                     <span className="creator-name">{c.name || `@${c.handle}`}</span>
                   )}
                   <span className="pool">{c.platform}</span>
-                  {c.relevance && <span className="pool">{c.relevance}</span>}
                 </div>
                 <div className="creator-row-meta">
                   <span className="muted">

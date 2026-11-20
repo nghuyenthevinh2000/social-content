@@ -246,6 +246,17 @@ describe('Analysis results rendering', () => {
               relevance: 'direct',
               why_relevant: 'Covers gynecomastia directly.',
             },
+            {
+              name: 'Off Topic Creator',
+              handle: 'offtopic',
+              url: 'https://www.youtube.com/@offtopic',
+              platform: 'youtube',
+              followers: 50000,
+              video_count: 1,
+              top_views: 10000,
+              relevance: 'off_topic',
+              why_relevant: 'Unrelated music channel.',
+            },
           ],
           error: null,
           notice: null,
@@ -290,7 +301,8 @@ describe('Analysis results rendering', () => {
     expect(screen.getByText('VI: nữ hóa tuyến vú')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Dr YT/i })).toHaveAttribute('href', 'https://www.youtube.com/@dryt');
     expect(screen.getByText('120K followers')).toBeInTheDocument();
-    expect(screen.getByText('direct')).toBeInTheDocument();
+    expect(screen.queryByText('direct')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Off Topic Creator/)).not.toBeInTheDocument();
     expect(screen.getByText('Covers gynecomastia directly.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Copy cho AI/i })).not.toBeInTheDocument();
 
@@ -348,6 +360,17 @@ describe('Analysis results rendering', () => {
               top_views: 50000,
               relevance: 'direct',
               why_relevant: 'Covers gynecomastia directly.',
+            },
+            {
+              name: 'Off Topic Creator',
+              handle: 'offtopic',
+              url: 'https://www.youtube.com/@offtopic',
+              platform: 'youtube',
+              followers: 50000,
+              video_count: 1,
+              top_views: 10000,
+              relevance: 'off_topic',
+              why_relevant: 'Unrelated music channel.',
             },
             {
               name: 'TT Doc',
