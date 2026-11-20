@@ -1,5 +1,7 @@
 import React from 'react';
 
+import type { LocaleMessages } from '../locales';
+
 import type { AnalysisSection } from './TopicCard';
 import { formatNumber, getTopicReelUrl } from './format';
 import type { JobKind, Sheet, Topic } from './types';
@@ -14,31 +16,29 @@ export type JobRenderer = {
   order: (topics: Topic[]) => Topic[];
 };
 
-function commonSections(topic: Topic): AnalysisSection[] {
+function commonSections(topic: Topic, m: LocaleMessages['analysis']): AnalysisSection[] {
   const sections: AnalysisSection[] = [
     {
-      label: '🎙️ Transcript nội dung:',
+      label: m.transcriptLabel,
       body: (
         <p className="transcript-text">
-          {topic.transcript && topic.transcript.trim()
-            ? topic.transcript
-            : 'Không có lời thoại (video dạng nhạc nền / hình ảnh).'}
+          {topic.transcript && topic.transcript.trim() ? topic.transcript : m.noTranscript}
         </p>
       ),
     },
   ];
   if (topic.why_viral) {
-    sections.push({ label: '🔥 Vì sao viral:', body: <p>{topic.why_viral}</p> });
+    sections.push({ label: m.whyViralLabel, body: <p>{topic.why_viral}</p> });
   }
   if (topic.hook) {
-    sections.push({ label: '🎣 Hook mở đầu (3s):', body: <p className="hook-quote">“{topic.hook}”</p> });
+    sections.push({ label: m.hookLabel, body: <p className="hook-quote">“{topic.hook}”</p> });
   }
   if (topic.angle) {
-    sections.push({ label: '📐 Góc tiếp cận:', body: <p>{topic.angle}</p> });
+    sections.push({ label: m.angleLabel, body: <p>{topic.angle}</p> });
   }
   if (topic.outline && topic.outline.length > 0) {
     sections.push({
-      label: '📋 Dàn ý triển khai:',
+      label: m.outlineLabel,
       body: (
         <ol className="analysis-outline">
           {topic.outline.map((step, i) => (
@@ -51,7 +51,7 @@ function commonSections(topic: Topic): AnalysisSection[] {
   return sections;
 }
 
-function renderProfileMeta(sheet: Sheet): React.ReactNode {
+function renderProfileMeta(sheet: Sheet, m: LocaleMessages['analysis']): React.ReactNode {
   const glasserCount = sheet.source_breakdown?.glasser_api?.length ?? 0;
   const cacheCount = sheet.source_breakdown?.cache?.length ?? 0;
   const poolEntries = Object.entries(sheet.pool_distribution || {});
@@ -70,46 +70,48 @@ function renderProfileMeta(sheet: Sheet): React.ReactNode {
       {(glasserCount > 0 || cacheCount > 0) && (
         <div className="source-breakdown muted">
           {glasserCount > 0 && (
-            <span title={sheet.source_breakdown?.glasser_api?.join(', ')}>⚡ Glasser API: {glasserCount} kênh</span>
+            <span title={sheet.source_breakdown?.glasser_api?.join(', ')}>{m.glasserChannels(glasserCount)}</span>
           )}
           {glasserCount > 0 && cacheCount > 0 && ' · '}
-          {cacheCount > 0 && <span title={sheet.source_breakdown?.cache?.join(', ')}>💾 Cache: {cacheCount} kênh</span>}
+          {cacheCount > 0 && <span title={sheet.source_breakdown?.cache?.join(', ')}>{m.cacheChannels(cacheCount)}</span>}
         </div>
       )}
     </>
   );
 }
 
-export const RENDERERS: Record<JobKind, JobRenderer> = {
-  profile: {
-    meta: renderProfileMeta,
-    sheetTitle: (sheet) => sheet.name,
-    summaryMeta: (sheet) => `${sheet.targets} kênh · ${formatNumber(sheet.reels)} reel`,
-    runningText: 'Đang crawl, phân pool và hỏi agent…',
-    emptyText: 'Không tìm thấy reel mới nào trong 48 giờ qua. Vui lòng cập nhật thêm danh sách kênh.',
-    sections: commonSections,
-    order: (topics) => [...topics].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 10),
-  },
-  reel: {
-    meta: () => null,
-    sheetTitle: (sheet) => {
-      const url = sheet.target_list?.[0]?.url || (sheet.topics[0] ? getTopicReelUrl(sheet.topics[0]) : '') || '';
-      const match = url.match(/\/(?:reel|videos)\/(\d+)/) || url.match(/\/share\/[rv]\/([^/?#]+)/);
-      return sheet.topics[0]?.video_id || match?.[1] || url || sheet.name;
+export function createRenderers(m: LocaleMessages['analysis']): Record<JobKind, JobRenderer> {
+  return {
+    profile: {
+      meta: (sheet) => renderProfileMeta(sheet, m),
+      sheetTitle: (sheet) => sheet.name,
+      summaryMeta: (sheet) => m.profileSummaryMeta(sheet.targets, formatNumber(sheet.reels)),
+      runningText: m.profileRunningText,
+      emptyText: m.profileEmptyText,
+      sections: (topic) => commonSections(topic, m),
+      order: (topics) => [...topics].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 10),
     },
-    summaryMeta: (sheet) => `${sheet.targets} reel`,
-    runningText: 'Đang tải transcript và phân tích Reel…',
-    emptyText: 'Không có kết quả phân tích cho Reel này.',
-    sections: commonSections,
-    order: (topics) => topics,
-  },
-  keyword: {
-    meta: () => null,
-    sheetTitle: (sheet) => sheet.name,
-    summaryMeta: (sheet) => `${sheet.queries?.length || 0} từ khoá · ${formatNumber(sheet.reels)} video`,
-    runningText: 'Đang mở rộng từ khoá và tìm video viral trên 5 nền tảng…',
-    emptyText: 'Không tìm thấy video viral nào cho từ khoá này.',
-    sections: () => [],
-    order: (topics) => [...topics].sort((a, b) => (b.views || 0) - (a.views || 0)),
-  },
-};
+    reel: {
+      meta: () => null,
+      sheetTitle: (sheet) => {
+        const url = sheet.target_list?.[0]?.url || (sheet.topics[0] ? getTopicReelUrl(sheet.topics[0]) : '') || '';
+        const match = url.match(/\/(?:reel|videos)\/(\d+)/) || url.match(/\/share\/[rv]\/([^/?#]+)/);
+        return sheet.topics[0]?.video_id || match?.[1] || url || sheet.name;
+      },
+      summaryMeta: (sheet) => m.reelSummaryMeta(sheet.targets),
+      runningText: m.reelRunningText,
+      emptyText: m.reelEmptyText,
+      sections: (topic) => commonSections(topic, m),
+      order: (topics) => topics,
+    },
+    keyword: {
+      meta: () => null,
+      sheetTitle: (sheet) => sheet.name,
+      summaryMeta: (sheet) => m.keywordSummaryMeta(sheet.queries?.length || 0, formatNumber(sheet.reels)),
+      runningText: m.keywordRunningText,
+      emptyText: m.keywordEmptyText,
+      sections: () => [],
+      order: (topics) => [...topics].sort((a, b) => (b.views || 0) - (a.views || 0)),
+    },
+  };
+}

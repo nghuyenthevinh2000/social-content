@@ -3,6 +3,7 @@ import { IonReactRouter } from '@ionic/react-router';
 import React from 'react';
 import { Route } from 'react-router-dom';
 
+import { getMessages, LocaleProvider } from './locales';
 import Home from './pages/Home';
 
 /* Core CSS required for Ionic components to work properly */
@@ -38,9 +39,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
   render() {
     if (this.state.hasError) {
+      const m = getMessages().errorBoundary;
       return (
         <div className="app-error-boundary">
-          <h2>Đã xảy ra lỗi hiển thị</h2>
+          <h2>{m.title}</h2>
           <p className="app-error-msg">{this.state.error?.message}</p>
           <button
             type="button"
@@ -50,7 +52,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
               window.location.href = '/';
             }}
           >
-            Tải lại ứng dụng
+            {m.reload}
           </button>
         </div>
       );
@@ -61,14 +63,16 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 const App: React.FC = () => (
   <IonApp>
-    <ErrorBoundary>
-      <IonReactRouter>
-        <IonRouterOutlet>
-          <Route path="/home" element={<Home />} />
-          <Route path="/" element={<Home />} />
-        </IonRouterOutlet>
-      </IonReactRouter>
-    </ErrorBoundary>
+    <LocaleProvider>
+      <ErrorBoundary>
+        <IonReactRouter>
+          <IonRouterOutlet>
+            <Route path="/home" element={<Home />} />
+            <Route path="/" element={<Home />} />
+          </IonRouterOutlet>
+        </IonReactRouter>
+      </ErrorBoundary>
+    </LocaleProvider>
   </IonApp>
 );
 

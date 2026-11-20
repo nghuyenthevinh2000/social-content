@@ -7,6 +7,7 @@ import {
   signInWithEmailAndPassword,
   signInWithFacebook,
 } from '../firebase';
+import { useLocale } from '../locales';
 import './AuthModal.css';
 
 interface AuthModalProps {
@@ -16,6 +17,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialError }) => {
+  const { t } = useLocale();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,7 +35,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialEr
       const res = await signInWithFacebook();
       if (res) onClose();
     } catch (err: any) {
-      setError(formatFacebookAuthError(err, 'Đã xảy ra lỗi khi đăng nhập bằng Facebook.'));
+      setError(formatFacebookAuthError(err, t.authModal.errors.fbFallback));
     } finally {
       setLoading(false);
     }
@@ -52,16 +54,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialEr
       }
       onClose();
     } catch (err: any) {
-      let msg = err.message || 'Đã xảy ra lỗi khi xác thực.';
-      if (err.code === 'auth/invalid-email') msg = 'Địa chỉ email không hợp lệ.';
+      let msg = err.message || t.authModal.errors.generic;
+      if (err.code === 'auth/invalid-email') msg = t.authModal.errors.invalidEmail;
       if (
         err.code === 'auth/user-not-found' ||
         err.code === 'auth/wrong-password' ||
         err.code === 'auth/invalid-credential'
       )
-        msg = 'Email hoặc mật khẩu không chính xác.';
-      if (err.code === 'auth/email-already-in-use') msg = 'Email này đã được đăng ký tài khoản.';
-      if (err.code === 'auth/weak-password') msg = 'Mật khẩu phải có ít nhất 6 ký tự.';
+        msg = t.authModal.errors.invalidCredential;
+      if (err.code === 'auth/email-already-in-use') msg = t.authModal.errors.emailInUse;
+      if (err.code === 'auth/weak-password') msg = t.authModal.errors.weakPassword;
       setError(msg);
     } finally {
       setLoading(false);
@@ -72,8 +74,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialEr
     <div className="auth-backdrop" onClick={onClose}>
       <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
         <div className="auth-header">
-          <h3>{isSignUp ? 'Đăng ký tài khoản' : 'Đăng nhập tài khoản'}</h3>
-          <button type="button" className="auth-close-btn" onClick={onClose} aria-label="Đóng">
+          <h3>{isSignUp ? t.authModal.signUpTitle : t.authModal.signInTitle}</h3>
+          <button type="button" className="auth-close-btn" onClick={onClose} aria-label={t.common.close}>
             ✕
           </button>
         </div>
@@ -84,48 +86,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialEr
           <svg className="fb-svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
           </svg>
-          Tiếp tục với Facebook
+          {t.authModal.continueFacebook}
         </button>
 
         <div className="auth-divider">
-          <span>hoặc dùng email</span>
+          <span>{t.authModal.orUseEmail}</span>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <label className="auth-label">
-            Email
+            {t.authModal.emailLabel}
             <input
               type="email"
               className="text-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ten@example.com"
+              placeholder={t.authModal.emailPlaceholder}
               required
               autoFocus
             />
           </label>
 
           <label className="auth-label">
-            Mật khẩu
+            {t.authModal.passwordLabel}
             <input
               type="password"
               className="text-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Tối thiểu 6 ký tự"
+              placeholder={t.authModal.passwordPlaceholder}
               required
             />
           </label>
 
           <button type="submit" className="primary auth-submit-btn" disabled={loading}>
-            {loading ? 'Đang xử lý…' : isSignUp ? 'Đăng ký' : 'Đăng nhập'}
+            {loading ? t.common.processing : isSignUp ? t.authModal.signUpBtn : t.authModal.signInBtn}
           </button>
         </form>
 
         <div className="auth-footer">
           {isSignUp ? (
             <p>
-              Đã có tài khoản?{' '}
+              {t.authModal.hasAccount}{' '}
               <button
                 type="button"
                 className="link-btn"
@@ -134,12 +136,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialEr
                   setError(null);
                 }}
               >
-                Đăng nhập ngay
+                {t.authModal.signInNow}
               </button>
             </p>
           ) : (
             <p>
-              Chưa có tài khoản?{' '}
+              {t.authModal.noAccount}{' '}
               <button
                 type="button"
                 className="link-btn"
@@ -148,7 +150,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialEr
                   setError(null);
                 }}
               >
-                Đăng ký tài khoản mới
+                {t.authModal.signUpNew}
               </button>
             </p>
           )}

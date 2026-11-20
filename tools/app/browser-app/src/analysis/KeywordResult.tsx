@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import { useLocale } from '../locales';
+
 import { ReelPlayerBox } from './TopicCard';
 import { formatCompact, formatNumber, getEmbedUrl, getTopicReelUrl, inferPlatform, PLATFORM_LABELS } from './format';
 import type { Sheet, Topic } from './types';
@@ -27,6 +29,9 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
   onAddCreator,
   onSaveVideo,
 }) => {
+  const { t } = useLocale();
+  const m = t.analysis;
+  const km = m.keywordResult;
   const queries = sheet.queries ?? [];
   const creators = sheet.creators ?? [];
   const counts: Record<string, number> = {};
@@ -96,15 +101,15 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
         <details className="sheet keyword-subpanel">
           <summary>
             <span className="sheet-title">
-              <strong>Kênh (Creators)</strong>
-              <small className="muted">{filteredCreators.length} kênh</small>
+              <strong>{km.creatorsHeading}</strong>
+              <small className="muted">{km.creatorsCount(filteredCreators.length)}</small>
             </span>
             {onAddCreator && creatorsWithUrl.length > 0 && (
               <button
                 type="button"
                 className={`ghost small ${allCreatorsAdded ? 'copied' : ''}`}
-                aria-label={allCreatorsAdded ? 'Đã thêm tất cả kênh' : 'Thêm tất cả kênh'}
-                title="Thêm tất cả kênh vào Thư viện"
+                aria-label={allCreatorsAdded ? km.addedAllCreatorsAria : km.addAllCreatorsAria}
+                title={km.addAllCreatorsTitle}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -134,18 +139,18 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                 </div>
                 <div className="creator-row-meta">
                   <span className="muted">
-                    {c.followers && c.followers > 0 ? `${formatCompact(c.followers)} followers` : '—'}
+                    {c.followers && c.followers > 0 ? km.followers(formatCompact(c.followers)) : '—'}
                   </span>
                   <button
                     type="button"
                     className={`ghost small ${c.url && addedCreatorUrls.has(c.url) ? 'copied' : ''}`}
-                    aria-label={c.url && addedCreatorUrls.has(c.url) ? 'Đã thêm kênh' : 'Thêm kênh'}
+                    aria-label={c.url && addedCreatorUrls.has(c.url) ? km.addedCreatorAria : km.addCreatorAria}
                     title={
                       !c.url
-                        ? 'Không có URL kênh'
+                        ? km.noCreatorUrlTitle
                         : addedCreatorUrls.has(c.url)
-                          ? 'Đã thêm kênh vào Thư viện'
-                          : 'Thêm kênh vào Thư viện'
+                          ? km.addedCreatorTitle
+                          : km.addCreatorTitle
                     }
                     disabled={!onAddCreator || !c.url}
                     onClick={() =>
@@ -165,15 +170,15 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
         <details className="sheet keyword-subpanel">
           <summary>
             <span className="sheet-title">
-              <strong>Video</strong>
-              <small className="muted">{filteredTopics.length} video · vuốt trái/phải</small>
+              <strong>{km.videosHeading}</strong>
+              <small className="muted">{km.videosSwipeHint(filteredTopics.length)}</small>
             </span>
             {onSaveVideo && videosWithUrl.length > 0 && (
               <button
                 type="button"
                 className={`ghost small ${allVideosSaved ? 'copied' : ''}`}
-                aria-label={allVideosSaved ? 'Đã lưu tất cả video' : 'Lưu tất cả video'}
-                title="Lưu tất cả video vào Thư viện"
+                aria-label={allVideosSaved ? km.savedAllVideosAria : km.saveAllVideosAria}
+                title={km.saveAllVideosTitle}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -213,12 +218,12 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
 
                   <div className="reel-badges">
                     {typeof topic.views === 'number' && topic.views > 0 && (
-                      <span className="metric-badge views" title={`${formatNumber(topic.views)} lượt xem`}>
-                        🔥 {formatCompact(topic.views)} views
+                      <span className="metric-badge views" title={m.viewsTitle(formatNumber(topic.views))}>
+                        🔥 {m.viewsShort(formatCompact(topic.views))}
                       </span>
                     )}
                     {topic.matched_query && (
-                      <span className="metric-badge" title="Từ khoá khớp">
+                      <span className="metric-badge" title={m.matchedQueryTitle}>
                         🔎 {topic.matched_query}
                       </span>
                     )}
@@ -243,7 +248,7 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                           className={`ghost small ${isSaved ? 'copied' : ''}`}
                           onClick={() => onSaveVideo(topic)}
                         >
-                          {isSaved ? '✓ Đã lưu' : '+ Lưu Video'}
+                          {isSaved ? km.savedVideoBtn : km.saveVideoBtn}
                         </button>
                       )}
                     </div>

@@ -1,4 +1,5 @@
 import { auth } from './firebase';
+import { getMessages } from './locales';
 
 /**
  * Browser-based API client for backend communication.
@@ -47,11 +48,12 @@ export async function apiJson<T = any>(input: string, init?: RequestInit): Promi
     }
   }
   if (!res.ok) {
+    const { api: apiMsg } = getMessages();
     const message =
       data?.error ||
       (res.status === 502 || res.status === 504
-        ? 'Không thể kết nối đến máy chủ backend (127.0.0.1:8765)'
-        : `Máy chủ phản hồi lỗi (${res.status} ${res.statusText || 'Error'})`.trim());
+        ? apiMsg.backendUnreachable
+        : apiMsg.serverError(res.status, res.statusText));
     throw new Error(message);
   }
   return (data ?? {}) as T;

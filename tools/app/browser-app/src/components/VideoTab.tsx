@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+
 import { apiJson } from '../api';
 import type { User } from '../firebase';
+import { useLocale } from '../locales';
+
 import { mediaUrl, type MediaItem } from './MediaPanel';
 import './VideoTab.css';
 
@@ -51,6 +54,9 @@ export function VideoTab({
   duration: controlledDuration,
   onDurationChange,
 }: VideoTabProps) {
+  const { locale, t } = useLocale();
+  const m = t.video;
+  const dateLocale = locale === 'en' ? 'en-US' : 'vi-VN';
   const [internalPrompt, setInternalPrompt] = useState('');
   const prompt = controlledPrompt !== undefined ? controlledPrompt : internalPrompt;
   const setPrompt = (val: string) => {
@@ -202,11 +208,11 @@ export function VideoTab({
 
   const handleStartGeneration = async () => {
     if (!selectedProfile) {
-      setNotice({ type: 'error', text: 'Vui lòng chọn ảnh chân dung mẫu (tải lên ở tab Hồ sơ).' });
+      setNotice({ type: 'error', text: m.needProfileNotice });
       return;
     }
     if (!prompt.trim()) {
-      setNotice({ type: 'error', text: 'Vui lòng nhập lời thoại / nội dung cho video.' });
+      setNotice({ type: 'error', text: m.needPromptNotice });
       return;
     }
     try {
@@ -226,7 +232,7 @@ export function VideoTab({
         setShowConfirm(false);
         setPrompt('');
         setSelectedContextIds([]);
-        setNotice({ type: 'success', text: `Đã gửi yêu cầu tạo video (${duration}s)! Hệ thống đang xử lý.` });
+        setNotice({ type: 'success', text: m.createdNotice(duration) });
         if (res.job) {
           setJobs((prev) => [res.job, ...prev.filter((j) => j.id !== res.job.id)]);
           setExpandedIds((prev) => ({ ...prev, [res.job.id]: true }));
@@ -235,7 +241,7 @@ export function VideoTab({
         fetchCreditsAndEstimate();
       }
     } catch (err: any) {
-      setNotice({ type: 'error', text: err?.message || 'Không thể tạo video.' });
+      setNotice({ type: 'error', text: err?.message || m.createError });
     } finally {
       setStarting(false);
     }
@@ -247,7 +253,7 @@ export function VideoTab({
       fetchJobs();
       fetchCreditsAndEstimate();
     } catch (err: any) {
-      setNotice({ type: 'error', text: err?.message || 'Không thể huỷ job.' });
+      setNotice({ type: 'error', text: err?.message || m.cancelError });
     }
   };
 
@@ -257,7 +263,7 @@ export function VideoTab({
       await apiJson(`/api/videos/${jobId}/delete`, { method: 'POST' });
       fetchJobs();
     } catch (err: any) {
-      setNotice({ type: 'error', text: err?.message || 'Không thể xoá job.' });
+      setNotice({ type: 'error', text: err?.message || m.deleteError });
       fetchJobs();
     }
   };
@@ -267,10 +273,10 @@ export function VideoTab({
       <section className="panel">
         <div className="empty">
           <span className="gate-icon">🔒</span>
-          <h2>Yêu cầu đăng nhập</h2>
-          <p className="muted">Vui lòng đăng nhập tài khoản để tạo video ngắn bằng AI.</p>
+          <h2>{t.authGate.title}</h2>
+          <p className="muted">{m.authSubtitle}</p>
           <button type="button" className="primary auth-gate-btn" onClick={onOpenAuth}>
-            Đăng nhập / Đăng ký
+            {t.authGate.button}
           </button>
         </div>
       </section>
@@ -284,40 +290,40 @@ export function VideoTab({
       {/* Main Creation Form */}
       <section className="panel">
         <div className="video-header-row">
-          <h2 className="video-section-heading">Tạo video AI Cá Nhân</h2>
+          <h2 className="video-section-heading">{m.heading}</h2>
           {onGoToProfile && (
             <button type="button" className="media-action-btn" onClick={onGoToProfile}>
-              Đi tới Hồ sơ
+              {m.goToProfile}
             </button>
           )}
         </div>
 
         {/* 1. Profile Image Picker (Select from Profile tab uploads only) */}
         <div className="video-form-group">
-          <div className="video-group-label">1. Ảnh chân dung (Bắt buộc — chọn từ Hồ sơ)</div>
+          <div className="video-group-label">{m.step1Label}</div>
           {profileMediaList.length > 0 ? (
             <div className="context-picker-grid context-picker-aligned">
-              {profileMediaList.map((m) => {
-                const isSelected = selectedProfileId === m.id;
+              {profileMediaList.map((mItem) => {
+                const isSelected = selectedProfileId === mItem.id;
                 return (
                   <div
-                    key={m.id}
-                    data-testid={`profile-select-${m.id}`}
+                    key={mItem.id}
+                    data-testid={`profile-select-${mItem.id}`}
                     className={`context-thumb-selectable ${isSelected ? 'selected' : ''}`}
-                    onClick={() => setSelectedProfileId(isSelected ? null : m.id)}
+                    onClick={() => setSelectedProfileId(isSelected ? null : mItem.id)}
                   >
-                    <img src={mediaUrl(m)} alt="Profile" />
+                    <img src={mediaUrl(mItem)} alt="Profile" />
                     {isSelected && <div className="context-check">✓</div>}
                   </div>
                 );
               })}
               <span className="video-step-desc">
-                {selectedProfile ? 'Đã chọn ảnh đại diện mẫu' : 'Nhấn vào ảnh để chọn'}
+                {selectedProfile ? m.profileSelected : m.profileSelectHint}
               </span>
             </div>
           ) : (
             <div className="video-alert-row">
-              <span className="video-alert-warn">⚠️ Chưa có ảnh chân dung mẫu. Vui lòng tải ảnh lên ở tab Hồ sơ.</span>
+              <span className="video-alert-warn">{m.noProfileWarn}</span>
             </div>
           )}
         </div>
@@ -325,40 +331,40 @@ export function VideoTab({
         {/* 2. Context Images Selector (Select from Profile tab uploads only) */}
         <div className="video-form-group">
           <div className="video-group-label">
-            2. Ảnh bối cảnh / Sản phẩm (Tuỳ chọn — đã chọn {selectedContextIds.length}/{contextMediaList.length})
+            {m.step2Label(selectedContextIds.length, contextMediaList.length)}
           </div>
           {contextMediaList.length > 0 ? (
             <div className="context-picker-grid">
-              {contextMediaList.map((m) => {
-                const isSelected = selectedContextIds.includes(m.id);
+              {contextMediaList.map((mItem) => {
+                const isSelected = selectedContextIds.includes(mItem.id);
                 return (
                   <div
-                    key={m.id}
-                    data-testid={`context-select-${m.id}`}
+                    key={mItem.id}
+                    data-testid={`context-select-${mItem.id}`}
                     className={`context-thumb-selectable ${isSelected ? 'selected' : ''}`}
                     onClick={() => {
                       setSelectedContextIds((prev) =>
-                        isSelected ? prev.filter((id) => id !== m.id) : [...prev, m.id],
+                        isSelected ? prev.filter((id) => id !== mItem.id) : [...prev, mItem.id],
                       );
                     }}
                   >
-                    <img src={mediaUrl(m)} alt="Context" />
+                    <img src={mediaUrl(mItem)} alt="Context" />
                     {isSelected && <div className="context-check">✓</div>}
                   </div>
                 );
               })}
             </div>
           ) : (
-            <small className="muted video-duration-hint">Chưa có ảnh bối cảnh (có thể thêm tại tab Hồ sơ).</small>
+            <small className="muted video-duration-hint">{m.noContextHint}</small>
           )}
         </div>
 
         {/* 3. Prompt Input */}
         <div className="video-form-group">
-          <div className="video-group-label">3. Lời thoại & Kịch bản tiếng Việt ({duration} giây)</div>
+          <div className="video-group-label">{m.step3Label(duration)}</div>
           <textarea
             className="prompt-textarea"
-            placeholder="Nhập lời thoại hoặc nội dung bạn muốn nhân vật nói trong video (VD: Chia sẻ 3 bí quyết làm bánh mì giòn tan tại nhà...)"
+            placeholder={m.promptPlaceholder}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
           />
@@ -368,16 +374,12 @@ export function VideoTab({
         <div className="cost-card cost-card-spaced">
           <div>
             <div>
-              Thời lượng: <strong>{duration} giây</strong> (360p)
+              {m.durationLabel} <strong>{m.durationValue(duration)}</strong> (360p)
             </div>
           </div>
         </div>
 
-        {!canAfford && (
-          <div className="video-error-box">
-            ⚠️ Số dư không đủ (${costUsd.toFixed(2)}). Vui lòng nạp thêm để tạo video.
-          </div>
-        )}
+        {!canAfford && <div className="video-error-box">{m.insufficientBalance(costUsd.toFixed(2))}</div>}
 
         <button
           type="button"
@@ -385,7 +387,7 @@ export function VideoTab({
           disabled={!canGenerate || starting}
           onClick={() => setShowConfirm(true)}
         >
-          {starting ? 'Đang gửi...' : `Tạo video ngay ($${costUsd.toFixed(2)})`}
+          {starting ? m.submittingBtn : m.generateBtn(costUsd.toFixed(2))}
         </button>
       </section>
 
@@ -393,41 +395,38 @@ export function VideoTab({
       {showConfirm && (
         <div className="modal-overlay">
           <div className="confirm-dialog">
-            <h3>Xác nhận tạo video AI</h3>
-            <p className="muted dialog-subtext">
-              Hệ thống sẽ giữ <strong>${costUsd.toFixed(2)}</strong> để tạo 1 video ngắn {duration} giây. Nếu thất bại,
-              toàn bộ chi phí sẽ được hoàn lại tự động.
-            </p>
+            <h3>{m.confirmTitle}</h3>
+            <p className="muted dialog-subtext">{m.confirmDesc(costUsd.toFixed(2), duration)}</p>
 
             <div className="confirm-details">
               <div className="confirm-row">
-                <span>Thời lượng:</span>
-                <strong>{duration} giây (360p)</strong>
+                <span>{m.durationLabel}</span>
+                <strong>{m.durationValue(duration)} (360p)</strong>
               </div>
               <div className="confirm-row">
-                <span>Ảnh bối cảnh kèm theo:</span>
-                <strong>{selectedContextIds.length} ảnh</strong>
+                <span>{m.confirmContextImages}</span>
+                <strong>{m.confirmContextCount(selectedContextIds.length)}</strong>
               </div>
               <div className="confirm-row">
-                <span>Chi phí:</span>
+                <span>{m.confirmCost}</span>
                 <strong>${costUsd.toFixed(2)}</strong>
               </div>
               <div className="confirm-row">
-                <span>Số dư hiện tại:</span>
+                <span>{m.confirmBalance}</span>
                 <span>${(balance / 1000000).toFixed(2)}</span>
               </div>
               <div className="confirm-row confirm-row-total">
-                <span>Số dư sau khi trừ:</span>
+                <span>{m.confirmRemaining}</span>
                 <strong>${((balance - costMicro) / 1000000).toFixed(2)}</strong>
               </div>
             </div>
 
             <div className="dialog-actions">
               <button type="button" className="btn-secondary" onClick={() => setShowConfirm(false)} disabled={starting}>
-                Huỷ
+                {t.common.cancel}
               </button>
               <button type="button" className="btn-confirm" onClick={handleStartGeneration} disabled={starting}>
-                {starting ? 'Đang xử lý...' : 'Xác nhận tạo'}
+                {starting ? m.submittingBtn : m.confirmBtn}
               </button>
             </div>
           </div>
@@ -437,16 +436,16 @@ export function VideoTab({
       {/* Video Generation History */}
       <section className="panel">
         <div className="video-header-row">
-          <h2 className="video-section-heading">Lịch sử tạo video ({jobs.length})</h2>
+          <h2 className="video-section-heading">{m.historyHeading(jobs.length)}</h2>
           {jobs.length > 0 && (
             <button type="button" className="media-action-btn" onClick={toggleAllExpanded}>
-              {hasAnyExpanded ? 'Thu gọn tất cả' : 'Mở rộng tất cả'}
+              {hasAnyExpanded ? m.collapseAll : m.expandAll}
             </button>
           )}
         </div>
 
         {jobs.length === 0 ? (
-          <p className="muted history-empty-text">Chưa có video nào. Nhập kịch bản ở trên để tạo video đầu tiên!</p>
+          <p className="muted history-empty-text">{m.historyEmpty}</p>
         ) : (
           <div className="video-history-list">
             {jobs.map((j) => {
@@ -456,22 +455,13 @@ export function VideoTab({
                   <div
                     className="video-card-head"
                     onClick={() => toggleJobExpanded(j.id, expanded)}
-                    title={expanded ? 'Nhấn để thu gọn' : 'Nhấn để mở rộng chi tiết'}
+                    title={expanded ? m.cardCollapseTitle : m.cardExpandTitle}
                   >
                     <div className="video-card-head-left">
-                      <span className={`status-chip ${j.status}`}>
-                        {j.status === 'pending'
-                          ? 'Đang chờ hàng đợi'
-                          : j.status === 'running'
-                            ? 'Đang xử lý...'
-                            : j.status === 'completed'
-                              ? 'Hoàn tất'
-                              : j.status === 'failed'
-                                ? 'Thất bại'
-                                : 'Đã huỷ'}
-                      </span>
+                      <span className={`status-chip ${j.status}`}>{m.status[j.status]}</span>
                       <span className="duration-tag">
-                        {ratePerSecMicro > 0 ? Math.round(j.cost / ratePerSecMicro) : duration}s
+                        {ratePerSecMicro > 0 ? Math.round(j.cost / ratePerSecMicro) : duration}
+                        {t.common.secondsShort}
                       </span>
                       {!expanded && <span className="video-card-preview-prompt">{j.prompt}</span>}
                     </div>
@@ -479,7 +469,7 @@ export function VideoTab({
                     <div className="video-card-head-right">
                       <span className="video-card-time">
                         {j.created_at
-                          ? new Date(j.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                          ? new Date(j.created_at).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })
                           : ''}
                       </span>
 
@@ -492,7 +482,7 @@ export function VideoTab({
                             handleCancelJob(j.id);
                           }}
                         >
-                          Huỷ & Hoàn tiền
+                          {m.cancelAndRefund}
                         </button>
                       )}
 
@@ -501,10 +491,10 @@ export function VideoTab({
                           href={videoDownloadUrl(j)}
                           download={`video-${j.id}.mp4`}
                           className="media-action-btn download-btn"
-                          title="Tải video về máy"
+                          title={m.downloadTitle}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          Tải về
+                          {m.downloadBtn}
                         </a>
                       )}
 
@@ -517,11 +507,11 @@ export function VideoTab({
                             handleDeleteJob(j.id);
                           }}
                         >
-                          Xoá
+                          {t.common.delete}
                         </button>
                       )}
 
-                      <span className="video-collapse-chevron" aria-label={expanded ? 'Thu gọn' : 'Mở rộng'}>
+                      <span className="video-collapse-chevron" aria-label={expanded ? m.collapseAria : m.expandAria}>
                         {expanded ? '▲' : '▼'}
                       </span>
                     </div>
@@ -530,17 +520,17 @@ export function VideoTab({
                   <div className="video-card-body" style={{ display: expanded ? 'flex' : 'none' }}>
                     <div className="video-prompt-box">
                       <div className="video-prompt-label">
-                        <strong>Kịch bản & Lời thoại chi tiết:</strong>
+                        <strong>{m.promptBoxLabel}</strong>
                         <button
                           type="button"
                           className="copy-prompt-btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigator.clipboard?.writeText(j.prompt);
-                            setNotice({ type: 'success', text: 'Đã sao chép kịch bản!' });
+                            setNotice({ type: 'success', text: m.copiedPromptNotice });
                           }}
                         >
-                          Sao chép
+                          {t.common.copy}
                         </button>
                       </div>
                       <div className="video-prompt-text">{j.prompt}</div>
@@ -554,17 +544,18 @@ export function VideoTab({
 
                     {j.status === 'failed' && (
                       <div className="video-error-text">
-                        Lỗi: {j.error || 'Có lỗi xảy ra khi tạo video.'}
+                        {m.errorPrefix} {j.error || m.defaultJobError}
                         <div className="video-success-msg">
-                          ✓ Đã hoàn lại ${j.cost_usd ? `${j.cost_usd}` : `${(j.cost / 1000000).toFixed(2)}`} vào số dư
-                          của bạn.
+                          {m.refundedNotice(j.cost_usd ? `${j.cost_usd}` : `${(j.cost / 1000000).toFixed(2)}`)}
                         </div>
                       </div>
                     )}
 
                     <div className="video-card-footer">
-                      <span>Mã job: {j.id}</span>
-                      <span>{j.created_at ? new Date(j.created_at).toLocaleString('vi-VN') : ''}</span>
+                      <span>
+                        {m.jobIdPrefix} {j.id}
+                      </span>
+                      <span>{j.created_at ? new Date(j.created_at).toLocaleString(dateLocale) : ''}</span>
                     </div>
                   </div>
                 </div>

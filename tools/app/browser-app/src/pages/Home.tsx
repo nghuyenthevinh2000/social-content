@@ -3,18 +3,16 @@ import { analyticsOutline, libraryOutline, personCircleOutline, videocamOutline 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { AnalyzerTab } from '../components/AnalyzerTab';
 import {
-  cleanTopicTitle,
   copyToClipboard,
   formatNumber,
   formatTime,
   formatTopicForAI,
-  STATUS_LABEL,
   TERMINAL,
 } from '../analysis/format';
 import type { Job, JobKind, JobSummary, Topic } from '../analysis/types';
 import { apiFetch, apiJson } from '../api';
+import { AnalyzerTab } from '../components/AnalyzerTab';
 import { AuthModal } from '../components/AuthModal';
 import { BrandPanel } from '../components/BrandPanel';
 import { MediaPanel } from '../components/MediaPanel';
@@ -30,6 +28,7 @@ import {
   signOut,
   type User,
 } from '../firebase';
+import { getMessages, useLocale, type LocaleMessages } from '../locales';
 import './Home.css';
 
 export type TargetItem = { name: string; url: string };
@@ -47,18 +46,11 @@ export type SavedReel = {
 };
 type Tab = 'library' | 'analyzer' | 'video' | 'profile';
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'library', label: 'Thư viện', icon: libraryOutline },
-  { id: 'analyzer', label: 'Phân tích', icon: analyticsOutline },
-  { id: 'video', label: 'Tạo Video', icon: videocamOutline },
-  { id: 'profile', label: 'Hồ sơ', icon: personCircleOutline },
-];
-
-const AUTH_GATE_SUBTITLES: Partial<Record<Tab, string>> = {
-  library: 'Vui lòng đăng nhập tài khoản để xem, quản lý Thư viện kênh.',
-  analyzer: 'Vui lòng đăng nhập tài khoản để bắt đầu chạy phân tích.',
-  video: 'Vui lòng đăng nhập tài khoản để tạo video ngắn bằng AI.',
-  profile: 'Vui lòng đăng nhập tài khoản để quản lý hồ sơ và gói creator.',
+const TAB_ICONS: Record<Tab, string> = {
+  library: libraryOutline,
+  analyzer: analyticsOutline,
+  video: videocamOutline,
+  profile: personCircleOutline,
 };
 
 const DEFAULT_TOPIC = 'sở thích cá nhân';
@@ -66,63 +58,70 @@ const isDefaultTopic = (t: TopicItem) => t.name.toLowerCase() === DEFAULT_TOPIC;
 const TOUR_KEY = 'aibrand-tour-done';
 const TOUR_DEMO_ID = '__tour_demo__';
 const TOUR_DEMO_TOPIC_SLUG = '__tour_demo_topic__';
-const TOUR_DEMO_TOPIC: TopicItem = {
-  name: 'Hướng dẫn',
-  slug: TOUR_DEMO_TOPIC_SLUG,
-  targets: [{ name: 'Kênh Facebook mẫu', url: 'https://www.facebook.com/example' }],
-};
-const TOUR_DEMO_JOB: Job = {
-  id: TOUR_DEMO_ID,
-  job_kind: 'profile',
-  status: 'completed',
-  filename: 'Hướng dẫn',
-  created_at: new Date().toISOString(),
-  current_sheet: null,
-  sheets: [
-    {
-      name: 'Hướng dẫn',
-      slug: 'huong-dan',
-      status: 'completed',
-      targets: 1,
-      reels: 12,
-      pool_distribution: { pool_3: 3, pool_2: 5, pool_1: 4 },
-      topics: [
-        {
-          title: '3 sai lầm khiến video ngắn không có lượt xem',
-          hook: 'Đừng đăng video nếu bạn chưa sửa 3 lỗi này trong 3 giây đầu!',
-          angle: 'Chỉ ra lỗi phổ biến của người mới và cách khắc phục ngay',
-          why_viral: 'Đánh trúng nỗi đau người làm nội dung, giữ chân người xem từ 3 giây đầu.',
-          outline: ['Hook 3s: nêu lỗi thường gặp', 'Giải thích nhanh 3 sai lầm', 'CTA: lưu lại để áp dụng'],
-          format: 'Short talking-head',
-          source_urls: [],
-          generated_by: 'sample',
-          views: 125000,
-          velocity_per_hour: 4200,
-          current_pool: 3,
-          author_handle: '@creator_mau',
-          transcript: 'Đừng đăng video nếu bạn chưa sửa 3 lỗi này trong 3 giây đầu...',
-          prompt:
-            'Đừng đăng video nếu bạn chưa sửa 3 lỗi này trong 3 giây đầu! Hãy kiểm tra ánh sáng, âm thanh và câu mở đầu trước khi bấm đăng.',
-        },
-      ],
-      error: null,
-    },
-  ],
-  logs: [],
-};
 
-const TOUR_DEMO_SUMMARY: JobSummary = {
-  id: TOUR_DEMO_ID,
-  job_kind: 'profile',
-  status: 'completed',
-  filename: 'Hướng dẫn',
-  created_at: TOUR_DEMO_JOB.created_at!,
-  finished_at: TOUR_DEMO_JOB.created_at!,
-  current_sheet: null,
-  total_sheets: 1,
-  completed_sheets: 1,
-  total_topics: 1,
-};
+function buildTourDemoTopic(m: LocaleMessages['tour']): TopicItem {
+  return {
+    name: m.demoTitle,
+    slug: TOUR_DEMO_TOPIC_SLUG,
+    targets: [{ name: m.demoChannelName, url: 'https://www.facebook.com/example' }],
+  };
+}
+
+function buildTourDemoJob(m: LocaleMessages['tour']): Job {
+  return {
+    id: TOUR_DEMO_ID,
+    job_kind: 'profile',
+    status: 'completed',
+    filename: m.demoTitle,
+    created_at: new Date().toISOString(),
+    current_sheet: null,
+    sheets: [
+      {
+        name: m.demoTitle,
+        slug: 'huong-dan',
+        status: 'completed',
+        targets: 1,
+        reels: 12,
+        pool_distribution: { pool_3: 3, pool_2: 5, pool_1: 4 },
+        topics: [
+          {
+            title: m.demoTopicTitle,
+            hook: m.demoTopicHook,
+            angle: m.demoTopicAngle,
+            why_viral: m.demoTopicWhyViral,
+            outline: m.demoTopicOutline,
+            format: 'Short talking-head',
+            source_urls: [],
+            generated_by: 'sample',
+            views: 125000,
+            velocity_per_hour: 4200,
+            current_pool: 3,
+            author_handle: '@creator_mau',
+            transcript: m.demoTopicTranscript,
+            prompt: m.demoTopicPrompt,
+          },
+        ],
+        error: null,
+      },
+    ],
+    logs: [],
+  };
+}
+
+function buildTourDemoSummary(m: LocaleMessages['tour'], createdAt: string): JobSummary {
+  return {
+    id: TOUR_DEMO_ID,
+    job_kind: 'profile',
+    status: 'completed',
+    filename: m.demoTitle,
+    created_at: createdAt,
+    finished_at: createdAt,
+    current_sheet: null,
+    total_sheets: 1,
+    completed_sheets: 1,
+    total_topics: 1,
+  };
+}
 
 const EXCEL_ACCEPT =
   '.xlsx,.xlsm,.xls,.gsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.google-apps.spreadsheet';
@@ -139,6 +138,7 @@ function reportClientLog(message: string, stack?: string, source = 'client') {
 }
 
 const Home: React.FC = () => {
+  const { locale, toggleLocale, t } = useLocale();
   const location = useLocation();
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const initialJobId = query.get('job_id') || localStorage.getItem('aibrand-active-job-id');
@@ -218,20 +218,28 @@ const Home: React.FC = () => {
       const res = await linkWithFacebook(auth.currentUser);
       if (res) setUser(res.user);
     } catch (err: any) {
-      setLinkFbError(formatFacebookAuthError(err, 'Lỗi khi liên kết tài khoản Facebook.'));
+      setLinkFbError(formatFacebookAuthError(err, t.profile.linkFbFallbackError));
     } finally {
       setLinkingFb(false);
     }
   };
 
+  const tourDemoTopic = useMemo(() => buildTourDemoTopic(t.tour), [t.tour]);
+  const tourDemoJob = useMemo(() => buildTourDemoJob(t.tour), [t.tour]);
+  const tourDemoSummary = useMemo(
+    () => buildTourDemoSummary(t.tour, tourDemoJob.created_at!),
+    [t.tour, tourDemoJob.created_at],
+  );
+
   const tourKey = user ? `${TOUR_KEY}-${user.uid}` : '';
   const tourDone = Boolean(tourKey && localStorage.getItem(tourKey));
   const showTour = !!user && !tourDismissed && !tourDone;
-  const visibleHistory = showTour ? [TOUR_DEMO_SUMMARY, ...history] : history;
+  const visibleHistory = showTour ? [tourDemoSummary, ...history] : history;
   const tourSteps = useMemo<TourStep[]>(() => {
+    const s = t.tour.steps;
     const showDemoResult = () => {
       setJobId(TOUR_DEMO_ID);
-      setJob(TOUR_DEMO_JOB);
+      setJob(tourDemoJob);
     };
     const hideDemoResult = () => {
       setJobId((prev) => (prev === TOUR_DEMO_ID ? null : prev));
@@ -241,95 +249,95 @@ const Home: React.FC = () => {
       {
         tab: 'library',
         target: '.tabbar-btn:nth-child(1)',
-        title: 'Thư viện',
-        text: 'Nhập Excel/Google Sheet, quản lý chủ đề, kênh Facebook và Reel đã lưu.',
+        title: s.libraryTitle,
+        text: s.libraryText,
       },
       {
         tab: 'library',
         target: '.new-topic',
-        title: 'Thêm chủ đề mới',
-        text: 'Nhập tên chủ đề mới và (tuỳ chọn) dán link kênh Facebook đầu tiên rồi bấm + Tạo chủ đề.',
+        title: s.newTopicTitle,
+        text: s.newTopicText,
       },
       {
         tab: 'library',
         target: '.topic-accordion:first-of-type',
-        title: 'Quản lý chủ đề & Kênh Facebook',
-        text: 'Mỗi chủ đề chứa danh sách kênh Facebook, ô dán link để thêm kênh mới và nút ▶ Chạy để phân tích riêng chủ đề này.',
+        title: s.topicAccordionTitle,
+        text: s.topicAccordionText,
       },
       {
         tab: 'library',
         target: '.saved-reels-panel',
-        title: 'Reel đã lưu',
-        text: 'Liên kết Facebook Messenger để gửi link Reel từ chat và phân tích trực tiếp từng Reel.',
+        title: s.savedReelsTitle,
+        text: s.savedReelsText,
       },
       {
         tab: 'analyzer',
         target: '.tabbar-btn:nth-child(2)',
-        title: 'Phân tích',
-        text: 'Theo dõi tiến độ, xem lại lịch sử và mở kết quả ý tưởng viral.',
+        title: s.analyzerTitle,
+        text: s.analyzerText,
         onEnter: hideDemoResult,
       },
       {
         tab: 'analyzer',
         target: '.history-list .history-card:first-child',
-        title: 'Lần chạy mẫu "Hướng dẫn"',
-        text: 'Mỗi lần chạy hiển thị trạng thái, số chủ đề và ý tưởng viral tìm được.',
+        title: s.demoHistoryTitle,
+        text: s.demoHistoryText,
         onEnter: hideDemoResult,
       },
       {
         tab: 'analyzer',
         target: '.reel-analysis-details',
-        title: 'Transcript & Phân tích viral',
-        text: 'Mở mục này để xem transcript lời thoại, hook 3 giây đầu, lý do viral và dàn ý triển khai.',
+        title: s.transcriptTitle,
+        text: s.transcriptText,
         onEnter: showDemoResult,
       },
       {
         tab: 'analyzer',
         target: '.copy-topic-btn',
-        title: 'Copy prompt cho AI',
-        text: 'Sao chép nhanh prompt/kịch bản hoàn chỉnh để dán sang tab Tạo Video AI hoặc công cụ AI khác.',
+        title: s.copyPromptTitle,
+        text: s.copyPromptText,
         onEnter: showDemoResult,
       },
       {
         tab: 'video',
         target: '.tabbar-btn:nth-child(3)',
-        title: 'Tạo Video AI',
-        text: 'Tạo video ngắn với khuôn mặt mẫu, bối cảnh và giọng đọc tiếng Việt tự nhiên.',
+        title: s.videoTitle,
+        text: s.videoText,
         onEnter: hideDemoResult,
       },
       {
         tab: 'video',
         target: '.video-tab > section.panel',
-        title: 'Tạo video AI Cá Nhân',
-        text: 'Chọn ảnh khuôn mặt, ảnh bối cảnh và nhập lời thoại/kịch bản tiếng Việt rồi bấm Tạo video ngay.',
+        title: s.videoFormTitle,
+        text: s.videoFormText,
       },
       {
         tab: 'profile',
         target: '.tabbar-btn:nth-child(4)',
-        title: 'Hồ sơ',
-        text: 'Liên kết Facebook, xem số dư Video AI, nạp gói creator và cấu hình hướng dẫn.',
+        title: s.profileTitle,
+        text: s.profileText,
       },
       {
         tab: 'profile',
         target: 'section.panel.profile',
-        title: 'Thông tin tài khoản',
-        text: 'Xem email, liên kết Facebook, kiểm tra số dư Video AI, bật/tắt "Đã rõ hướng dẫn" hoặc đăng xuất.',
+        title: s.accountTitle,
+        text: s.accountText,
       },
       {
         tab: 'profile',
         target: '.media-section .profile-card .profile-info',
-        title: 'Ảnh chân dung mẫu',
-        text: 'Tải lên ảnh chân dung rõ mặt tại đây để AI khớp khuôn mặt của bạn trong các video tạo ra.',
+        title: s.avatarTitle,
+        text: s.avatarText,
         onEnter: () => setMediaCollapsed(false),
       },
       {
         tab: 'profile',
         target: '.creator-store',
-        title: 'Gói mở rộng',
-        text: 'Các gói tiện ích giúp tiết kiệm thời gian, mở rộng thư viện và hỗ trợ cao cấp.',
+        title: s.storeTitle,
+        text: s.storeText,
       },
     ];
-  }, []);
+  }, [t.tour.steps, tourDemoJob]);
   const closeTour = () => {
     setTourDismissed(true);
     if (jobId === TOUR_DEMO_ID) selectJob(null);
@@ -431,7 +439,7 @@ const Home: React.FC = () => {
 
   const handleDeleteSavedReel = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm('Xoá Reel này khỏi danh sách đã lưu?')) return;
+    if (!window.confirm(t.library.deleteReelConfirm)) return;
     try {
       await apiJson('/api/saved-reels/delete', {
         method: 'POST',
@@ -439,7 +447,7 @@ const Home: React.FC = () => {
         body: JSON.stringify({ id }),
       });
       setSavedReels((prev) => prev.filter((r) => r.id !== id));
-      setNotice({ type: 'success', text: 'Đã xoá Reel khỏi danh sách.' });
+      setNotice({ type: 'success', text: t.library.deletedReelNotice });
     } catch (err) {
       setNotice({ type: 'error', text: errorText(err) });
     }
@@ -448,7 +456,7 @@ const Home: React.FC = () => {
   const handleDeleteSavedReelTopic = async (topicName: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!window.confirm(`Xoá toàn bộ reel trong chủ đề "${topicName}"?`)) return;
+    if (!window.confirm(t.library.deleteReelTopicConfirm(topicName))) return;
     try {
       await apiJson('/api/saved-reels/delete', {
         method: 'POST',
@@ -456,7 +464,7 @@ const Home: React.FC = () => {
         body: JSON.stringify({ topic: topicName }),
       });
       setSavedReels((prev) => prev.filter((r) => ((r.topic || '').trim() || 'reels từ facebook') !== topicName));
-      setNotice({ type: 'success', text: `Đã xoá chủ đề "${topicName}".` });
+      setNotice({ type: 'success', text: t.library.deletedReelTopicNotice(topicName) });
     } catch (err) {
       setNotice({ type: 'error', text: errorText(err) });
     }
@@ -481,7 +489,7 @@ const Home: React.FC = () => {
       })
       .catch((err) => {
         if (!active) return;
-        const msg = formatFacebookAuthError(err, 'Lỗi khi xác thực Facebook.');
+        const msg = formatFacebookAuthError(err, getMessages().profile.fbAuthFallbackError);
         if (auth.currentUser) {
           setLinkFbError(msg);
         } else {
@@ -511,7 +519,7 @@ const Home: React.FC = () => {
   function selectJob(id: string | null) {
     setJobId(id);
     if (id === TOUR_DEMO_ID) {
-      setJob(TOUR_DEMO_JOB);
+      setJob(tourDemoJob);
       window.history.replaceState(null, '', `?tab=${tab}`);
       return;
     }
@@ -554,7 +562,7 @@ const Home: React.FC = () => {
         selectJob(null);
       }
     } catch (err) {
-      alert(`Không thể xoá: ${errorText(err)}`);
+      alert(t.analyzer.deleteErrorAlert(errorText(err)));
     }
   }
 
@@ -602,7 +610,7 @@ const Home: React.FC = () => {
         if (!ignore) setTopics(list);
       })
       .catch((err) => {
-        if (!ignore) setNotice({ type: 'error', text: `Không tải được thư viện: ${errorText(err)}` });
+        if (!ignore) setNotice({ type: 'error', text: getMessages().library.loadError(errorText(err)) });
       });
 
     apiJson<{ ok: boolean; jobs: JobSummary[] }>('/api/jobs')
@@ -653,7 +661,7 @@ const Home: React.FC = () => {
   useEffect(() => {
     if (!jobId || !user) return;
     if (jobId === TOUR_DEMO_ID) {
-      setJob(TOUR_DEMO_JOB);
+      setJob(tourDemoJob);
       return;
     }
     let stopped = false;
@@ -687,7 +695,7 @@ const Home: React.FC = () => {
   const runnable = topics.filter((t) => t.targets.length > 0);
   const totalChannels = topics.reduce((acc, t) => acc + t.targets.length, 0);
 
-  const visibleTopics = useMemo(() => (showTour ? [TOUR_DEMO_TOPIC, ...topics] : topics), [showTour, topics]);
+  const visibleTopics = useMemo(() => (showTour ? [tourDemoTopic, ...topics] : topics), [showTour, tourDemoTopic, topics]);
   const filteredTopics = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return visibleTopics;
@@ -752,7 +760,7 @@ const Home: React.FC = () => {
         'Content-Type': isUrl ? 'text/plain' : source.type || 'application/octet-stream',
         'X-Filename': encodeURIComponent(isUrl ? 'sheet_import.xlsx' : source.name),
       },
-      'Đã nạp vào thư viện.',
+      t.library.importSuccess,
     ).then((ok) => ok && isUrl && setSheetUrl(''));
   }
 
@@ -761,7 +769,7 @@ const Home: React.FC = () => {
       setShowAuthModal(true);
       return false;
     }
-    return postJson('/api/sources/topics', { topic, url }, `Đã thêm kênh vào "${topic}".`);
+    return postJson('/api/sources/topics', { topic, url }, t.library.addChannelSuccess(topic));
   }
 
   async function handleAddCreator(creator: { name: string; url: string; platform?: string }) {
@@ -769,11 +777,11 @@ const Home: React.FC = () => {
       setShowAuthModal(true);
       return;
     }
-    const topicName = job?.filename || 'Kênh đã lưu';
+    const topicName = job?.filename || t.library.savedChannelsTopic;
     await postJson(
       '/api/sources/topics',
       { topic: topicName, url: creator.url, channel_name: creator.name },
-      `Đã thêm kênh "${creator.name}" vào "${topicName}".`,
+      t.library.addCreatorSuccess(creator.name, topicName),
     );
   }
 
@@ -788,16 +796,17 @@ const Home: React.FC = () => {
     }
     const url = reelUrl.trim();
     if (!url) return false;
+    const resolvedTopic = topicName.trim() || 'reels từ facebook';
     await apiJson('/api/saved-reels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         reel_url: url,
-        topic: topicName.trim() || 'reels từ facebook',
+        topic: resolvedTopic,
         ...(extra || {}),
       }),
     });
-    setNotice({ type: 'success', text: `Đã lưu reel vào "${topicName.trim() || 'reels từ facebook'}".` });
+    setNotice({ type: 'success', text: t.library.savedReelNotice(resolvedTopic) });
     fetchSavedReels();
     return true;
   }
@@ -861,16 +870,16 @@ const Home: React.FC = () => {
         <div className="ab-page">
           {!authReady ? (
             <div className="empty">
-              <p className="muted">Đang kiểm tra đăng nhập…</p>
+              <p className="muted">{t.authGate.checking}</p>
             </div>
           ) : !user ? (
             <section className="panel" id={tab === 'analyzer' ? 'results' : undefined}>
               <div className="empty">
                 <span className="gate-icon">🔒</span>
-                <h2>Yêu cầu đăng nhập</h2>
-                <p className="muted">{AUTH_GATE_SUBTITLES[tab] ?? 'Vui lòng đăng nhập tài khoản để tiếp tục.'}</p>
+                <h2>{t.authGate.title}</h2>
+                <p className="muted">{t.authGate.subtitles[tab] ?? t.authGate.defaultSubtitle}</p>
                 <button type="button" className="primary auth-gate-btn" onClick={() => setShowAuthModal(true)}>
-                  Đăng nhập / Đăng ký
+                  {t.authGate.button}
                 </button>
               </div>
             </section>
@@ -880,22 +889,32 @@ const Home: React.FC = () => {
                 <div className="profile-head">
                   <span className="avatar">{(user.email || user.uid)[0].toUpperCase()}</span>
                   <div className="sheet-title">
-                    <strong>{user.displayName || user.email || 'Người dùng'}</strong>
+                    <strong>{user.displayName || user.email || t.profile.defaultUser}</strong>
                   </div>
+                  <button
+                    type="button"
+                    className="lang-toggle-btn"
+                    onClick={toggleLocale}
+                    aria-label={t.profile.switchLanguage}
+                    title={t.profile.switchLanguage}
+                  >
+                    <span aria-hidden="true">{locale === 'vi' ? '🇻🇳' : '🇺🇸'}</span>
+                    <span>{locale === 'vi' ? 'VI' : 'EN'}</span>
+                  </button>
                 </div>
                 <dl className="details">
-                  <dt>Email</dt>
+                  <dt>{t.profile.email}</dt>
                   <dd>{user.email ? <code>{user.email}</code> : '—'}</dd>
                   {facebookId ? (
                     <>
-                      <dt>Facebook ID</dt>
+                      <dt>{t.profile.facebookId}</dt>
                       <dd>
                         <code>{facebookId}</code>
                       </dd>
                     </>
                   ) : (
                     <>
-                      <dt>Facebook</dt>
+                      <dt>{t.profile.facebook}</dt>
                       <dd>
                         <button
                           type="button"
@@ -903,7 +922,7 @@ const Home: React.FC = () => {
                           onClick={handleLinkFacebook}
                           disabled={linkingFb}
                         >
-                          {linkingFb ? 'Đang liên kết…' : 'Liên kết tài khoản Facebook'}
+                          {linkingFb ? t.profile.linkingFb : t.profile.linkFbBtn}
                         </button>
                         {linkFbError && <div className="link-fb-error">{linkFbError}</div>}
                       </dd>
@@ -911,7 +930,7 @@ const Home: React.FC = () => {
                   )}
                   {videoBalance !== null && (
                     <>
-                      <dt>Số dư Video AI</dt>
+                      <dt>{t.profile.videoBalance}</dt>
                       <dd>
                         <code>${(videoBalance / 1000000).toFixed(2)}</code>
                       </dd>
@@ -924,7 +943,7 @@ const Home: React.FC = () => {
                   aria-pressed={tourDone}
                   onClick={toggleTourDone}
                 >
-                  {tourDone ? '✓ Đã rõ hướng dẫn' : 'Đã rõ hướng dẫn'}
+                  {tourDone ? t.profile.tourDoneChecked : t.profile.tourDoneUnchecked}
                 </button>
                 <button
                   type="button"
@@ -935,7 +954,7 @@ const Home: React.FC = () => {
                     signOut(auth);
                   }}
                 >
-                  Đăng xuất
+                  {t.profile.signOut}
                 </button>
               </section>
 
@@ -954,10 +973,8 @@ const Home: React.FC = () => {
                   }}
                 >
                   <div>
-                    <h2>Nhân hiệu</h2>
-                    <p className="muted profile-media-desc">
-                      Định hình nhân hiệu bạn muốn xây dựng để mọi kết quả phân tích luôn bám sát bản sắc riêng.
-                    </p>
+                    <h2>{t.profile.brandTitle}</h2>
+                    <p className="muted profile-media-desc">{t.profile.brandDesc}</p>
                   </div>
                   <span className={`store-toggle-icon ${!brandCollapsed ? 'open' : ''}`} aria-hidden="true" />
                 </div>
@@ -983,10 +1000,8 @@ const Home: React.FC = () => {
                     }}
                   >
                     <div>
-                      <h2>Ảnh mẫu khuôn mặt & Bối cảnh</h2>
-                      <p className="muted profile-media-desc">
-                        Tải lên ảnh chân dung rõ mặt để AI giữ nhất quán khuôn mặt của bạn trong các video tạo ra.
-                      </p>
+                      <h2>{t.profile.mediaTitle}</h2>
+                      <p className="muted profile-media-desc">{t.profile.mediaDesc}</p>
                     </div>
                     <span className={`store-toggle-icon ${!mediaCollapsed ? 'open' : ''}`} aria-hidden="true" />
                   </div>
@@ -1001,8 +1016,8 @@ const Home: React.FC = () => {
                   <summary className="store-summary">
                     <div className="store-header-wrap">
                       <div>
-                        <h2>Gói mở rộng</h2>
-                        <p className="muted count">Các gói tiện ích giúp tiết kiệm thời gian, mở rộng thư viện và hỗ trợ cao cấp</p>
+                        <h2>{t.profile.storeTitle}</h2>
+                        <p className="muted count">{t.profile.storeDesc}</p>
                       </div>
                       <span className="store-toggle-icon" aria-hidden="true" />
                     </div>
@@ -1010,7 +1025,8 @@ const Home: React.FC = () => {
 
                   <div className="pack-list">
                     {CREATOR_PACKS.map((pack) => {
-                      const isOwned = topics.some((t) => t.name.toLowerCase() === pack.name.toLowerCase());
+                      const isOwned = topics.some((tItem) => tItem.name.toLowerCase() === pack.name.toLowerCase());
+                      const packLoc = t.creatorPacks[pack.id];
                       return (
                         <div
                           key={pack.id}
@@ -1023,7 +1039,7 @@ const Home: React.FC = () => {
                             <span className="pack-card-title">{pack.name}</span>
                           </div>
 
-                          <p className="pack-card-desc">{pack.description}</p>
+                          <p className="pack-card-desc">{packLoc?.description ?? pack.description}</p>
 
                           <div className="pack-card-bottom">
                             <button
@@ -1038,12 +1054,12 @@ const Home: React.FC = () => {
                               }}
                             >
                               {pack.disabled
-                                ? `${pack.price} · Chưa mở bán`
+                                ? t.profile.packDisabled(pack.price)
                                 : claimingPack === pack.id
-                                  ? 'Đang nạp…'
+                                  ? t.profile.packClaiming
                                   : isOwned
-                                    ? '✓ Đã nhận (Nạp lại)'
-                                    : `Nhận gói (${pack.price})`}
+                                    ? t.profile.packOwned
+                                    : t.profile.packGet(pack.price)}
                             </button>
                           </div>
                         </div>
@@ -1065,7 +1081,7 @@ const Home: React.FC = () => {
           ) : tab === 'library' ? (
             <>
               <section className="panel" id="import">
-                  <h2>Nhập vào thư viện</h2>
+                  <h2>{t.library.importTitle}</h2>
                   <button className="picker" type="button" onClick={() => fileRef.current?.click()} disabled={busy}>
                     <input
                       ref={fileRef}
@@ -1080,8 +1096,8 @@ const Home: React.FC = () => {
                     />
                     <span className="picker-icon">⇪</span>
                     <span>
-                      <strong>{busy ? 'Đang xử lý…' : 'Chọn file Excel'}</strong>
-                      <small className="muted">Mỗi sheet thành một chủ đề · .xlsx / .xlsm</small>
+                      <strong>{busy ? t.common.processing : t.library.chooseExcel}</strong>
+                      <small className="muted">{t.library.excelHint}</small>
                     </span>
                   </button>
                   <form
@@ -1094,13 +1110,13 @@ const Home: React.FC = () => {
                     <input
                       type="url"
                       className="text-input"
-                      placeholder="hoặc dán link Google Sheet"
-                      aria-label="Link Google Sheet"
+                      placeholder={t.library.sheetPlaceholder}
+                      aria-label={t.library.sheetAria}
                       value={sheetUrl}
                       onChange={(e) => setSheetUrl(e.target.value)}
                     />
                     <button type="submit" className="ghost" disabled={busy || !sheetUrl.trim()}>
-                      Nạp
+                      {t.library.importBtn}
                     </button>
                   </form>
                 </section>
@@ -1109,11 +1125,11 @@ const Home: React.FC = () => {
                   <button
                     className="ghost"
                     type="button"
-                    onClick={() => run(runnable, 'Tất cả chủ đề')}
+                    onClick={() => run(runnable, t.library.allTopicsFilename)}
                     disabled={blocked || runnable.length === 0}
                     style={{ width: '100%', marginBottom: 'var(--space-3)' }}
                   >
-                    {running ? 'Đang chạy…' : `▶ Chạy tất cả (${runnable.length} chủ đề)`}
+                    {running ? t.library.runningBtn : t.library.runAllBtn(runnable.length)}
                   </button>
 
                   <div
@@ -1129,10 +1145,8 @@ const Home: React.FC = () => {
                     }}
                   >
                     <div>
-                      <h2>Chủ đề</h2>
-                      <span className="muted count">
-                        {topics.length} chủ đề · {totalChannels} kênh
-                      </span>
+                      <h2>{t.library.topicsTitle}</h2>
+                      <span className="muted count">{t.library.topicsCount(topics.length, totalChannels)}</span>
                     </div>
                     <span className={`store-toggle-icon ${!topicsCollapsed ? 'open' : ''}`} aria-hidden="true" />
                   </div>
@@ -1142,15 +1156,15 @@ const Home: React.FC = () => {
                       <input
                         type="search"
                         className="text-input search-input"
-                        placeholder="Tìm chủ đề, kênh, link…"
-                        aria-label="Tìm trong thư viện"
+                        placeholder={t.library.searchPlaceholder}
+                        aria-label={t.library.searchAria}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                       />
 
                       {filteredTopics.length === 0 ? (
                         <p className="muted empty">
-                          {topics.length ? 'Không có kết quả phù hợp.' : 'Thư viện trống. Nhập file hoặc tạo chủ đề.'}
+                          {topics.length ? t.library.noSearchMatch : t.library.emptyLibrary}
                         </p>
                       ) : (
                         filteredTopics.map((topic) => {
@@ -1160,13 +1174,13 @@ const Home: React.FC = () => {
                             <summary>
                               <span className="sheet-title">
                                 <strong>{topic.name}</strong>
-                                <small className="muted">{topic.targets.length} kênh</small>
+                                <small className="muted">{t.library.channelCount(topic.targets.length)}</small>
                               </span>
                               <button
                                 type="button"
                                 className="topic-run-btn"
-                                aria-label={`Chạy chủ đề ${topic.name}`}
-                                title="Chạy phân tích"
+                                aria-label={t.library.runTopicAria(topic.name)}
+                                title={t.library.runTopicTitle}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1180,8 +1194,8 @@ const Home: React.FC = () => {
                                 <button
                                   type="button"
                                   className="channel-del-btn"
-                                  aria-label={`Xoá chủ đề ${topic.name}`}
-                                  title="Xoá chủ đề"
+                                  aria-label={t.library.deleteTopicAria(topic.name)}
+                                  title={t.library.deleteTopicTitle}
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -1206,7 +1220,7 @@ const Home: React.FC = () => {
                                     <button
                                       type="button"
                                       className="channel-del-btn"
-                                      aria-label={`Xoá kênh ${target.name}`}
+                                      aria-label={t.library.deleteChannelAria(target.name)}
                                       onClick={() =>
                                         postJson('/api/sources/profiles/delete', { slug: topic.slug, url: target.url })
                                       }
@@ -1230,8 +1244,8 @@ const Home: React.FC = () => {
                                 <input
                                   type="url"
                                   className="text-input small"
-                                  placeholder="Dán link kênh…"
-                                  aria-label={`Thêm kênh vào ${topic.name}`}
+                                  placeholder={t.library.addChannelPlaceholder}
+                                  aria-label={t.library.addChannelAria(topic.name)}
                                   value={inlineUrls[topic.slug] || ''}
                                   onChange={(e) => setInlineUrls((prev) => ({ ...prev, [topic.slug]: e.target.value }))}
                                 />
@@ -1240,7 +1254,7 @@ const Home: React.FC = () => {
                                   className="ghost small"
                                   disabled={busy || isDemoTopic || !(inlineUrls[topic.slug] || '').trim()}
                                 >
-                                  + Thêm
+                                  {t.library.addChannelBtn}
                                 </button>
                               </form>
 
@@ -1249,11 +1263,11 @@ const Home: React.FC = () => {
                                   type="button"
                                   className="btn-text-danger"
                                   onClick={() =>
-                                    window.confirm(`Xoá chủ đề "${topic.name}" cùng toàn bộ kênh?`) &&
+                                    window.confirm(t.library.deleteTopicConfirm(topic.name)) &&
                                     postJson('/api/sources/topics/delete', { slug: topic.slug })
                                   }
                                 >
-                                  Xoá chủ đề
+                                  {t.library.deleteTopicTitle}
                                 </button>
                               )}
                             </div>
@@ -1266,21 +1280,21 @@ const Home: React.FC = () => {
                         <input
                           type="text"
                           className="text-input small"
-                          placeholder="Tên chủ đề mới"
-                          aria-label="Tên chủ đề mới"
+                          placeholder={t.library.newTopicPlaceholder}
+                          aria-label={t.library.newTopicAria}
                           value={newTopic.name}
                           onChange={(e) => setNewTopic((v) => ({ ...v, name: e.target.value }))}
                         />
                         <input
                           type="url"
                           className="text-input small"
-                          placeholder="Link kênh đầu tiên (tuỳ chọn)"
-                          aria-label="Link kênh đầu tiên"
+                          placeholder={t.library.firstChannelPlaceholder}
+                          aria-label={t.library.firstChannelAria}
                           value={newTopic.url}
                           onChange={(e) => setNewTopic((v) => ({ ...v, url: e.target.value }))}
                         />
                         <button type="submit" className="ghost small" disabled={busy || !newTopic.name.trim()}>
-                          + Tạo chủ đề
+                          {t.library.createTopicBtn}
                         </button>
                       </form>
                     </>
@@ -1296,7 +1310,7 @@ const Home: React.FC = () => {
                       onClick={handleGenerateLinkCode}
                       disabled={generatingLinkCode}
                     >
-                      {generatingLinkCode ? 'Đang tạo mã…' : 'Liên kết Messenger để đồng bộ Reel'}
+                      {generatingLinkCode ? t.library.linkMessengerLoading : t.library.linkMessengerBtn}
                     </button>
                   )}
 
@@ -1313,8 +1327,8 @@ const Home: React.FC = () => {
                     }}
                   >
                     <div>
-                      <h2>Reel đã lưu</h2>
-                      <span className="muted count">{savedReels.length} reel</span>
+                      <h2>{t.library.savedReelsTitle}</h2>
+                      <span className="muted count">{t.library.reelCount(savedReels.length)}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       <button
@@ -1325,7 +1339,7 @@ const Home: React.FC = () => {
                           fetchSavedReels();
                         }}
                         disabled={loadingReels}
-                        title="Làm mới danh sách Reel"
+                        title={t.library.refreshReelsTitle}
                       >
                         {loadingReels ? '…' : '↻'}
                       </button>
@@ -1347,7 +1361,7 @@ const Home: React.FC = () => {
                             {topicEntries.length === 0 ? (
                               <div className="empty" style={{ padding: 'var(--space-3) 0 0' }}>
                                 <p className="muted" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
-                                  Chưa có Reel nào được lưu.
+                                  {t.library.noSavedReels}
                                 </p>
                               </div>
                             ) : (
@@ -1356,13 +1370,13 @@ const Home: React.FC = () => {
                                   <summary>
                                     <span className="sheet-title">
                                       <strong>{topicName}</strong>
-                                      <small className="muted">{reels.length} reel</small>
+                                      <small className="muted">{t.library.reelCount(reels.length)}</small>
                                     </span>
                                     <button
                                       type="button"
                                       className="channel-del-btn"
-                                      aria-label={`Xoá chủ đề ${topicName}`}
-                                      title="Xoá chủ đề reel"
+                                      aria-label={t.library.deleteTopicAria(topicName)}
+                                      title={t.library.deleteReelTopicTitle}
                                       onClick={(e) => handleDeleteSavedReelTopic(topicName, e)}
                                     >
                                       ✕
@@ -1395,17 +1409,17 @@ const Home: React.FC = () => {
                                             style={{ padding: '4px 8px', fontSize: '12px' }}
                                             onClick={() => handleRunSavedReel(reel)}
                                             disabled={blocked}
-                                            aria-label="Phân tích Reel này"
-                                            title="Phân tích Reel này"
+                                            aria-label={t.library.runReelLabel}
+                                            title={t.library.runReelLabel}
                                           >
                                             ▶
                                           </button>
                                           <button
                                             type="button"
                                             className="channel-del-btn"
-                                            aria-label="Xoá Reel này"
+                                            aria-label={t.library.deleteReelAria}
                                             onClick={(e) => handleDeleteSavedReel(reel.id, e)}
-                                            title="Xoá Reel"
+                                            title={t.library.deleteReelTitle}
                                           >
                                             ✕
                                           </button>
@@ -1427,8 +1441,8 @@ const Home: React.FC = () => {
                                     <input
                                       type="url"
                                       className="text-input small"
-                                      placeholder={`Thêm link reel vào "${topicName}"`}
-                                      aria-label={`Thêm link reel vào ${topicName}`}
+                                      placeholder={t.library.addReelToTopicPlaceholder(topicName)}
+                                      aria-label={t.library.addReelToTopicAria(topicName)}
                                       value={inlineReelUrls[topicName] || ''}
                                       onChange={(e) =>
                                         setInlineReelUrls((prev) => ({ ...prev, [topicName]: e.target.value }))
@@ -1439,7 +1453,7 @@ const Home: React.FC = () => {
                                       className="ghost small"
                                       disabled={busy || !(inlineReelUrls[topicName] || '').trim()}
                                     >
-                                      + Thêm
+                                      {t.library.addChannelBtn}
                                     </button>
                                   </form>
                                 </details>
@@ -1457,21 +1471,21 @@ const Home: React.FC = () => {
                               <input
                                 type="text"
                                 className="text-input small"
-                                placeholder="Chủ đề (mặc định: reels từ facebook)"
-                                aria-label="Chủ đề reel"
+                                placeholder={t.library.newReelTopicPlaceholder}
+                                aria-label={t.library.newReelTopicAria}
                                 value={newReelTopic}
                                 onChange={(e) => setNewReelTopic(e.target.value)}
                               />
                               <input
                                 type="url"
                                 className="text-input small"
-                                placeholder="Dán link Reel để lưu"
-                                aria-label="Link Reel để lưu"
+                                placeholder={t.library.newReelUrlPlaceholder}
+                                aria-label={t.library.newReelUrlAria}
                                 value={newReelUrl}
                                 onChange={(e) => setNewReelUrl(e.target.value)}
                               />
                               <button type="submit" className="ghost small" disabled={busy || !newReelUrl.trim()}>
-                                + Lưu Reel
+                                {t.library.saveReelBtn}
                               </button>
                             </form>
                           </>
@@ -1520,32 +1534,32 @@ const Home: React.FC = () => {
         {running && (
           <div className="actionbar">
             <button className="ghost danger" type="button" onClick={cancel}>
-              Dừng
+              {t.library.stopBtn}
             </button>
           </div>
         )}
         <nav className="tabbar" role="tablist">
-          {TABS.map((t) => (
+          {(['library', 'analyzer', 'video', 'profile'] as Tab[]).map((id) => (
             <button
-              key={t.id}
+              key={id}
               type="button"
               role="tab"
-              aria-selected={tab === t.id}
-              className={`tabbar-btn ${tab === t.id ? 'active' : ''}`}
-              onClick={() => switchTab(t.id)}
+              aria-selected={tab === id}
+              className={`tabbar-btn ${tab === id ? 'active' : ''}`}
+              onClick={() => switchTab(id)}
             >
               <span className="tabbar-icon">
-                <IonIcon icon={t.icon} aria-hidden="true" />
-                {t.id === 'analyzer' && hasActiveJob && <span className="live-dot" aria-label="đang chạy" />}
-                {t.id === 'profile' && user && <span className="live-dot online" aria-label="đã đăng nhập" />}
+                <IonIcon icon={TAB_ICONS[id]} aria-hidden="true" />
+                {id === 'analyzer' && hasActiveJob && <span className="live-dot" aria-label={t.tabs.runningAria} />}
+                {id === 'profile' && user && <span className="live-dot online" aria-label={t.tabs.loggedInAria} />}
               </span>
-              {t.label}
+              {t.tabs[id]}
             </button>
           ))}
         </nav>
       </IonFooter>
 
-      {showTour && authReady && <Tour steps={tourSteps} onTab={(t) => switchTab(t as Tab)} onClose={closeTour} />}
+      {showTour && authReady && <Tour steps={tourSteps} onTab={(tb) => switchTab(tb as Tab)} onClose={closeTour} />}
 
       <AuthModal
         isOpen={showAuthModal}
@@ -1558,25 +1572,23 @@ const Home: React.FC = () => {
 
       {linkCode && (
         <div className="payment-backdrop" onClick={() => setLinkCode(null)}>
-          <div className="payment-sheet" role="dialog" aria-label="Liên kết Messenger" onClick={(e) => e.stopPropagation()}>
+          <div className="payment-sheet" role="dialog" aria-label={t.library.messengerDialogLabel} onClick={(e) => e.stopPropagation()}>
             <div className="payment-sheet-head">
               <div className="payment-sheet-title">
                 <span className="payment-cart-icon">💬</span>
-                <h3>Liên kết Messenger</h3>
+                <h3>{t.library.messengerDialogLabel}</h3>
               </div>
               <button
                 type="button"
                 className="payment-close-btn"
-                aria-label="Đóng"
+                aria-label={t.common.close}
                 onClick={() => setLinkCode(null)}
               >
                 ✕
               </button>
             </div>
 
-            <p className="muted payment-subtext">
-              Gửi mã <strong>{linkCode.command}</strong> tới Page qua Messenger, rồi bấm ↻ để đồng bộ Reel.
-            </p>
+            <p className="muted payment-subtext">{t.library.messengerStepDesc(linkCode.command)}</p>
 
             <div className="payment-sheet-buttons">
               <button
@@ -1584,10 +1596,10 @@ const Home: React.FC = () => {
                 className="ghost"
                 onClick={() => {
                   navigator.clipboard?.writeText(linkCode.command);
-                  setNotice({ type: 'success', text: `Đã sao chép ${linkCode.command}` });
+                  setNotice({ type: 'success', text: t.library.copiedCommand(linkCode.command) });
                 }}
               >
-                Sao chép {linkCode.command}
+                {t.library.copyCommand(linkCode.command)}
               </button>
               <a
                 href={`https://m.me/${linkCode.page_id}?text=${encodeURIComponent(linkCode.command)}`}
@@ -1596,7 +1608,7 @@ const Home: React.FC = () => {
                 className="primary"
                 style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
               >
-                Mở Messenger ↗
+                {t.library.openMessenger}
               </a>
             </div>
           </div>
@@ -1609,46 +1621,45 @@ const Home: React.FC = () => {
             <div className="payment-sheet-head">
               <div className="payment-sheet-title">
                 <span className="payment-cart-icon">🛒</span>
-                <h3>Xác nhận giao dịch In-App (Mock)</h3>
+                <h3>{t.payment.title}</h3>
               </div>
               <button
                 type="button"
                 className="payment-close-btn"
-                aria-label="Đóng"
+                aria-label={t.common.close}
                 onClick={() => setActivePaymentPack(null)}
               >
                 ✕
               </button>
             </div>
 
-            <p className="muted payment-subtext">
-              Mô phỏng thanh toán in-app để nạp gói creator vào Thư viện tài khoản.
-            </p>
+            <p className="muted payment-subtext">{t.payment.subtitle}</p>
 
             <div className="payment-receipt-box">
               <div className="payment-receipt-row">
-                <span className="muted">Tài khoản</span>
-                <strong>{user ? user.displayName || user.email || user.uid : 'Khách'}</strong>
+                <span className="muted">{t.payment.account}</span>
+                <strong>{user ? user.displayName || user.email || user.uid : t.payment.guest}</strong>
               </div>
               <div className="payment-receipt-row">
-                <span className="muted">Gói creator</span>
+                <span className="muted">{t.payment.pack}</span>
                 <strong>{activePaymentPack.name}</strong>
               </div>
               <div className="payment-receipt-row">
-                <span className="muted">Số lượng kênh</span>
+                <span className="muted">{t.payment.channelCount}</span>
                 <strong>
-                  {activePaymentPack.countLabel ||
+                  {t.creatorPacks[activePaymentPack.id]?.countLabel ||
+                    activePaymentPack.countLabel ||
                     (activePaymentPack.count
-                      ? `${formatNumber(activePaymentPack.count)} creator Facebook`
-                      : 'Bảo trì hàng tháng')}
+                      ? t.payment.creatorFacebook(formatNumber(activePaymentPack.count))
+                      : t.payment.monthlyMaintenance)}
                 </strong>
               </div>
               <div className="payment-receipt-row">
-                <span className="muted">Phương thức</span>
-                <span>In-App Mock Purchase</span>
+                <span className="muted">{t.payment.method}</span>
+                <span>{t.payment.methodValue}</span>
               </div>
               <div className="payment-receipt-row total">
-                <span>Tổng thanh toán</span>
+                <span>{t.payment.total}</span>
                 <span className="payment-price-tag">{activePaymentPack.price}</span>
               </div>
             </div>
@@ -1660,7 +1671,7 @@ const Home: React.FC = () => {
                 onClick={() => setActivePaymentPack(null)}
                 disabled={claimingPack === activePaymentPack.id}
               >
-                Huỷ
+                {t.common.cancel}
               </button>
               <button
                 type="button"
@@ -1668,7 +1679,7 @@ const Home: React.FC = () => {
                 onClick={() => handleConfirmMockPayment(activePaymentPack)}
                 disabled={claimingPack === activePaymentPack.id}
               >
-                {claimingPack === activePaymentPack.id ? 'Đang nạp kênh…' : 'Xác nhận nạp gói (0$)'}
+                {claimingPack === activePaymentPack.id ? t.payment.claiming : t.payment.confirmBtn}
               </button>
             </div>
           </div>

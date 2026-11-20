@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import { useLocale } from '../locales';
+
 import { formatCompact, formatNumber, getEmbedUrl, getTopicReelUrl, inferPlatform, PLATFORM_LABELS } from './format';
 import type { Topic } from './types';
 
@@ -55,6 +57,8 @@ export const ReelPlayerBox: React.FC<{
 };
 
 export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sections, onCopy }) => {
+  const { t } = useLocale();
+  const m = t.analysis;
   const reelUrl = getTopicReelUrl(topic);
   const platform = inferPlatform(topic, reelUrl);
   const platformLabel = PLATFORM_LABELS[platform] || 'Facebook';
@@ -70,7 +74,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sect
           )}
         </div>
         <span className={`source-tag ${topic.generated_by}`}>
-          {topic.platform ? platformLabel : topic.generated_by === 'agent' ? 'agent' : 'dự phòng'}
+          {topic.platform ? platformLabel : topic.generated_by === 'agent' ? 'agent' : m.backupTag}
         </span>
       </div>
 
@@ -78,17 +82,17 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sect
 
       <div className="reel-badges">
         {typeof topic.views === 'number' && topic.views > 0 && (
-          <span className="metric-badge views" title={`${formatNumber(topic.views)} lượt xem`}>
-            🔥 {formatCompact(topic.views)} views
+          <span className="metric-badge views" title={m.viewsTitle(formatNumber(topic.views))}>
+            🔥 {m.viewsShort(formatCompact(topic.views))}
           </span>
         )}
         {typeof topic.velocity_per_hour === 'number' && topic.velocity_per_hour > 0 && (
-          <span className="metric-badge velocity" title={`${formatNumber(topic.velocity_per_hour)} lượt xem/giờ`}>
+          <span className="metric-badge velocity" title={m.velocityTitle(formatNumber(topic.velocity_per_hour))}>
             ⚡ {formatCompact(topic.velocity_per_hour)}/h
           </span>
         )}
         {topic.matched_query && (
-          <span className="metric-badge" title="Từ khoá khớp">
+          <span className="metric-badge" title={m.matchedQueryTitle}>
             🔎 {topic.matched_query}
           </span>
         )}
@@ -103,7 +107,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sect
       {sections.length > 0 && (
         <details className="reel-analysis-details">
           <summary className="reel-analysis-summary">
-            <span>💡 Transcript nội dung & Phân tích viral</span>
+            <span>{m.transcriptAndViralSummary}</span>
           </summary>
           <div className="reel-analysis-content">
             {sections.map((sec) => (
@@ -128,10 +132,10 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sect
           type="button"
           className={`copy-topic-btn ${copied ? 'copied' : ''}`}
           onClick={onCopy}
-          title="Sao chép kịch bản và mở tab Tạo Video"
+          title={m.copyBtnTitle}
         >
           {copied ? (
-            <>✓ Đã chép</>
+            <>{m.copiedBtn}</>
           ) : (
             <>
               <svg
@@ -147,7 +151,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sect
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
-              Copy cho AI
+              {m.copyForAI}
             </>
           )}
         </button>

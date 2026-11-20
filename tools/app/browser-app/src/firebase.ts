@@ -16,6 +16,8 @@ import {
   type UserCredential,
 } from 'firebase/auth';
 
+import { getMessages } from './locales';
+
 const configuredAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '';
 const useSameOriginAuthDomain =
   typeof window !== 'undefined' &&
@@ -84,16 +86,9 @@ export async function resolveAuthRedirect(): Promise<UserCredential | null> {
   return getRedirectResult(auth);
 }
 
-const FACEBOOK_AUTH_ERRORS: Record<string, string> = {
-  'auth/popup-closed-by-user': 'Bạn đã đóng cửa sổ đăng nhập.',
-  'auth/cancelled-popup-request': 'Yêu cầu đã bị hủy.',
-  'auth/account-exists-with-different-credential':
-    'Email của tài khoản Facebook này đã tồn tại với một phương thức đăng nhập khác.',
-  'auth/credential-already-in-use': 'Tài khoản Facebook này đã được liên kết với một tài khoản khác.',
-};
-
 export function formatFacebookAuthError(err: any, fallback: string): string {
-  return (err?.code && FACEBOOK_AUTH_ERRORS[err.code]) || err?.message || fallback;
+  const fbErrors = getMessages().fbErrors;
+  return (err?.code && fbErrors[err.code]) || err?.message || fallback;
 }
 
 export {

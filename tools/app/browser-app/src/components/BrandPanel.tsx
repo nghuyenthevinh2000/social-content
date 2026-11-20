@@ -2,6 +2,7 @@ import { IonToast } from '@ionic/react';
 import React, { useEffect, useState } from 'react';
 
 import { apiJson } from '../api';
+import { useLocale } from '../locales';
 import './MediaPanel.css';
 
 export type BrandProfile = {
@@ -19,38 +20,6 @@ const EMPTY_BRAND: BrandProfile = {
   differentiator: '',
   tone: '',
 };
-
-const BRAND_QUESTIONS: {
-  key: keyof BrandProfile;
-  label: string;
-  hint: string;
-  placeholder: string;
-}[] = [
-  {
-    key: 'identity',
-    label: 'Nhân hiệu',
-    hint: 'Khi nhắc tới bạn, mọi người sẽ nhớ tới gì? VD: Chin-su là nước tương, Hảo hảo là mì gói',
-    placeholder: 'VD: Chuyên gia chăm sóc da khoa học dễ hiểu, mẹ bỉm nấu ăn 15 phút...',
-  },
-  {
-    key: 'audience',
-    label: 'Khách hàng mục tiêu',
-    hint: 'Bạn có nhiều mối quan hệ trong nhóm khách hàng này',
-    placeholder: 'VD: Dân văn phòng 25–35 tuổi bận rộn, chủ quán nhỏ...',
-  },
-  {
-    key: 'differentiator',
-    label: 'Điểm khác biệt',
-    hint: 'Điều gì khiến người xem nhớ và chọn bạn thay vì kênh khác?',
-    placeholder: 'VD: Thử nghiệm thực tế, giải thích ngắn gọn không vòng vo...',
-  },
-  {
-    key: 'tone',
-    label: 'Phong cách & Giọng điệu',
-    hint: 'Nếu nhân hiệu là một người, bạn nói chuyện theo phong thái nào?',
-    placeholder: 'VD: Thẳng thắn, gần gũi, hài hước đời thường...',
-  },
-];
 
 function loadCachedBrand(): BrandProfile {
   try {
@@ -71,6 +40,7 @@ function loadCachedBrand(): BrandProfile {
 }
 
 export function BrandPanel(): React.ReactElement {
+  const { t } = useLocale();
   const [brand, setBrand] = useState<BrandProfile>(() => loadCachedBrand());
   const [saving, setSaving] = useState(false);
   const [toastOpen, setToastOpen] = useState(false);
@@ -121,7 +91,7 @@ export function BrandPanel(): React.ReactElement {
         setToastOpen(true);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Không thể lưu thông tin nhân hiệu');
+      setError(err instanceof Error ? err.message : t.brand.saveError);
     } finally {
       setSaving(false);
     }
@@ -130,7 +100,7 @@ export function BrandPanel(): React.ReactElement {
   return (
     <div className="actor-profile-box" style={{ marginTop: 0 }}>
       {error && <div className="alert error">{error}</div>}
-      {BRAND_QUESTIONS.map((q) => (
+      {t.brand.questions.map((q) => (
         <div key={q.key} className="actor-field">
           <div className="actor-field-label">
             <label htmlFor={`brand-${q.key}`}>{q.label}:</label>
@@ -160,12 +130,12 @@ export function BrandPanel(): React.ReactElement {
       ))}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
         <button type="button" className="primary small" onClick={() => saveBrand(brand, true)} disabled={saving}>
-          Cập nhật Brand
+          {t.brand.saveBtn}
         </button>
       </div>
       <IonToast
         isOpen={toastOpen}
-        message="Đã cập nhật Brand"
+        message={t.brand.savedToast}
         color="success"
         duration={2500}
         position="top"

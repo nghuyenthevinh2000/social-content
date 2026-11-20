@@ -1,14 +1,9 @@
 import React, { useState } from 'react';
 
 import { JobResult } from '../analysis/JobResult';
-import { cleanTopicTitle, formatTime, STATUS_LABEL, TERMINAL } from '../analysis/format';
+import { cleanTopicTitle, formatTime, TERMINAL } from '../analysis/format';
 import type { Job, JobKind, JobSummary, Topic } from '../analysis/types';
-
-const KIND_LABEL: Record<JobKind, string> = {
-  profile: 'Kênh',
-  reel: 'Reel',
-  keyword: 'brand',
-};
+import { useLocale } from '../locales';
 
 const BRAND_COLLAPSED_KEY = 'aibrand-results-brand-collapsed';
 const ANALYSIS_COLLAPSED_KEY = 'aibrand-results-analysis-collapsed';
@@ -82,6 +77,8 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
   onAddCreator,
   onSaveVideo,
 }) => {
+  const { t } = useLocale();
+  const m = t.analyzer;
   const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey));
 
   const toggleCollapsed = () => {
@@ -107,7 +104,7 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
           <div className="panel-head collapsible-head" onClick={toggleCollapsed}>
             <div>
               <h2>{title}</h2>
-              <p className="muted count">{items.length > 0 ? `${items.length} lần chạy` : 'Chưa có lần chạy nào'}</p>
+              <p className="muted count">{items.length > 0 ? m.runCount(items.length) : m.noRuns}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexShrink: 0 }}>
               <button
@@ -119,13 +116,13 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
                 }}
                 disabled={loadingHistory}
               >
-                {loadingHistory ? 'Đang tải…' : '↻ Làm mới'}
+                {loadingHistory ? t.common.loading : m.refreshBtn}
               </button>
               <button
                 type="button"
                 className="panel-collapse-btn"
                 aria-expanded={!collapsed}
-                aria-label={collapsed ? `Mở rộng ${title}` : `Thu gọn ${title}`}
+                aria-label={collapsed ? m.expandLabel(title) : m.collapseLabel(title)}
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleCollapsed();
@@ -164,31 +161,29 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
                           {cleanTopicTitle(item.filename)}
                         </span>
                         <div className="history-badges">
-                          <span className={`badge kind-${kind}`}>{KIND_LABEL[kind]}</span>
+                          <span className={`badge kind-${kind}`}>{m.kindLabel[kind]}</span>
                           <span className={`badge ${item.status}`}>
                             {isRunning && <span className="live-dot" />}
-                            {STATUS_LABEL[item.status] || item.status}
+                            {t.analysis.statusLabel[item.status] || item.status}
                           </span>
                         </div>
                       </div>
                       <div className="history-meta muted">
                         <span>{formatTime(item.created_at)}</span>
                         <span>·</span>
-                        <span>{item.total_sheets} chủ đề</span>
+                        <span>{m.topicsCount(item.total_sheets)}</span>
                         {item.total_topics > 0 && (
                           <>
                             <span>·</span>
                             <span className="history-topics">
-                              {item.total_topics} {kind === 'keyword' ? 'video' : 'ý tưởng'}
+                              {item.total_topics} {kind === 'keyword' ? m.videoUnit : m.ideaUnit}
                             </span>
                           </>
                         )}
                         {isRunning && item.total_sheets > 0 && (
                           <>
                             <span>·</span>
-                            <span>
-                              {item.completed_sheets}/{item.total_sheets} xong
-                            </span>
+                            <span>{m.doneProgress(item.completed_sheets, item.total_sheets)}</span>
                           </>
                         )}
                       </div>
@@ -201,14 +196,14 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
                             onSelectJob(item.id);
                           }}
                         >
-                          {isRunning ? '▶ Xem tiến độ' : 'Xem kết quả'}
+                          {isRunning ? m.viewProgress : m.viewResults}
                         </button>
                         {item.id !== tourDemoId && (
                           <button
                             type="button"
                             className="channel-del-btn"
-                            aria-label={`Xoá lần chạy ${cleanTopicTitle(item.filename)}`}
-                            title="Xoá lần chạy"
+                            aria-label={m.deleteRunAria(cleanTopicTitle(item.filename))}
+                            title={m.deleteRunTitle}
                             onClick={(e) => onDeleteJob(item.id, e)}
                           >
                             ✕
@@ -259,6 +254,8 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   onSaveVideo,
   onGoToLibrary,
 }) => {
+  const { t } = useLocale();
+  const m = t.analyzer;
   const brandHistory = visibleHistory.filter((item) => item.job_kind === 'keyword');
   const analysisHistory = visibleHistory.filter((item) => item.job_kind !== 'keyword');
   const activeIsBrand = job?.job_kind === 'keyword';
@@ -266,9 +263,9 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   return (
     <>
       <section className="panel keyword-search-panel">
-        <h2>Nghiên cứu Brand</h2>
+        <h2>{m.brandResearchTitle}</h2>
         <p className="muted count" style={{ marginTop: 'var(--space-1)' }}>
-          Nhập keyword để khám phá các Brand cùng sự quan tâm
+          {m.brandResearchSubtitle}
         </p>
         <form
           className="row"
@@ -281,8 +278,8 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
           <input
             type="text"
             className="text-input"
-            placeholder="Keyword đang quan tâm"
-            aria-label="Keyword đang quan tâm"
+            placeholder={m.keywordPlaceholder}
+            aria-label={m.keywordAria}
             value={keyword}
             onChange={(e) => onKeywordChange(e.target.value)}
           />
@@ -292,7 +289,7 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
             style={{ flex: 'none', width: 'auto', padding: '0 var(--space-4)' }}
             disabled={blocked || !keyword.trim()}
           >
-            Khám phá brand
+            {m.exploreBrandBtn}
           </button>
         </form>
       </section>
@@ -302,24 +299,24 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
         {starting ? (
           <section className="panel">
             <div className="empty">
-              <p className="muted">Đang tạo job…</p>
+              <p className="muted">{m.creatingJob}</p>
             </div>
           </section>
         ) : jobId && !job ? (
           <section className="panel">
             <div className="empty">
-              <p className="muted">Đang tải kết quả phân tích…</p>
+              <p className="muted">{m.loadingResults}</p>
             </div>
           </section>
         ) : (
           <>
             <ResultsSection
               id="results-brand"
-              title="Khám phá brand"
+              title={m.brandResultsTitle}
               storageKey={BRAND_COLLAPSED_KEY}
               items={brandHistory}
               activeJob={job && activeIsBrand ? job : null}
-              emptyText="Chưa có lần khám phá brand nào."
+              emptyText={m.brandResultsEmpty}
               loadingHistory={loadingHistory}
               onFetchHistory={onFetchHistory}
               onSelectJob={onSelectJob}
@@ -332,12 +329,12 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
             />
             <ResultsSection
               id="results-analysis"
-              title="Phân tích creator/video"
+              title={m.analysisResultsTitle}
               storageKey={ANALYSIS_COLLAPSED_KEY}
               items={analysisHistory}
               activeJob={job && !activeIsBrand ? job : null}
-              emptyText="Chưa có lần phân tích creator/video nào."
-              emptyActionLabel="Chọn chủ đề trong Thư viện để chạy"
+              emptyText={m.analysisResultsEmpty}
+              emptyActionLabel={m.goToLibraryBtn}
               onEmptyAction={onGoToLibrary}
               loadingHistory={loadingHistory}
               onFetchHistory={onFetchHistory}

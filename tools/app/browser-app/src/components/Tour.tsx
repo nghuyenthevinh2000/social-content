@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+
+import { useLocale } from '../locales';
 import './Tour.css';
 
 export type TourStep = { target: string; tab: string; title: string; text: string; onEnter?: () => void };
@@ -7,6 +9,7 @@ const PAD = 6;
 
 /** Transparent spotlight box over each target + a tooltip; steps may switch tabs via onTab. */
 export function Tour({ steps, onTab, onClose }: { steps: TourStep[]; onTab: (tab: string) => void; onClose: () => void }): React.ReactElement {
+  const { t } = useLocale();
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const step = steps[i];
@@ -45,7 +48,7 @@ export function Tour({ steps, onTab, onClose }: { steps: TourStep[]; onTab: (tab
     : { top: '35%' };
 
   return (
-    <div className="tour" role="dialog" aria-label="Hướng dẫn sử dụng">
+    <div className="tour" role="dialog" aria-label={t.tour.dialogAria}>
       <div className="tour-blocker" onClick={onClose} />
       {rect && (
         <div
@@ -61,15 +64,15 @@ export function Tour({ steps, onTab, onClose }: { steps: TourStep[]; onTab: (tab
             {i + 1}/{steps.length}
           </small>
           <button type="button" className="ghost small" onClick={onClose}>
-            Bỏ qua
+            {t.tour.skip}
           </button>
           {i > 0 && (
             <button type="button" className="ghost small" onClick={() => setI(i - 1)}>
-              Trước
+              {t.tour.prev}
             </button>
           )}
           <button type="button" className="primary small" onClick={() => (last ? onClose() : setI(i + 1))}>
-            {last ? 'Xong' : 'Tiếp'}
+            {last ? t.tour.done : t.tour.next}
           </button>
         </div>
       </div>

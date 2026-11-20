@@ -1,16 +1,13 @@
+import { getMessages, getStoredLocale } from '../locales';
+
 import type { Job, Topic } from './types';
 
 export const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
 
-export const STATUS_LABEL: Record<Job['status'], string> = {
-  queued: 'Đang chờ',
-  running: 'Đang chạy',
-  completed: 'Hoàn tất',
-  failed: 'Có lỗi',
-  cancelled: 'Đã dừng',
-};
+export const STATUS_LABEL: Record<Job['status'], string> = getMessages('vi').analysis.statusLabel;
 
-export const formatNumber = (value: number): string => new Intl.NumberFormat('vi-VN').format(value);
+export const formatNumber = (value: number): string =>
+  new Intl.NumberFormat(getStoredLocale() === 'en' ? 'en-US' : 'vi-VN').format(value);
 
 export const formatCompact = (val?: number | null): string => {
   if (!val && val !== 0) return '0';
@@ -44,14 +41,15 @@ export function formatTopicForAI(topic: Topic, sheetName?: string): string {
     return topic.prompt.trim();
   }
   // Minimal fallback for legacy topics without generated prompt
+  const p = getMessages().analysis.aiPrompt;
   const lines: string[] = [];
-  lines.push(`### Chủ đề: ${topic.title}`);
-  if (sheetName) lines.push(`- **Nhóm chủ đề**: ${sheetName}`);
-  if (topic.format) lines.push(`- **Định dạng**: ${topic.format}`);
-  if (topic.hook) lines.push(`- **Hook**: "${topic.hook}"`);
-  if (topic.angle) lines.push(`- **Góc tiếp cận**: ${topic.angle}`);
+  lines.push(`### ${p.topic}: ${topic.title}`);
+  if (sheetName) lines.push(`- **${p.sheet}**: ${sheetName}`);
+  if (topic.format) lines.push(`- **${p.format}**: ${topic.format}`);
+  if (topic.hook) lines.push(`- **${p.hook}**: "${topic.hook}"`);
+  if (topic.angle) lines.push(`- **${p.angle}**: ${topic.angle}`);
   if (topic.outline && topic.outline.length > 0) {
-    lines.push(`- **Dàn ý triển khai**:`);
+    lines.push(`- **${p.outline}**:`);
     topic.outline.forEach((step, idx) => lines.push(`  ${idx + 1}. ${step}`));
   }
   return lines.join('\n');
@@ -79,9 +77,10 @@ export function copyToClipboard(text: string): Promise<void> {
 }
 
 export const cleanTopicTitle = (title?: string | null): string => {
-  if (!title) return 'Phân tích';
+  const m = getMessages().analysis;
+  if (!title) return m.defaultTitle;
   const stripped = String(title).replace(/\.(xlsx|json)$/i, '');
-  if (stripped === 'all_topics' || stripped === 'tong-hop') return 'Tất cả chủ đề';
+  if (stripped === 'all_topics' || stripped === 'tong-hop') return m.allTopics;
   return stripped;
 };
 
@@ -125,7 +124,7 @@ export const formatTime = (iso?: string): string => {
   if (!iso) return '';
   try {
     const d = new Date(iso);
-    return new Intl.DateTimeFormat('vi-VN', {
+    return new Intl.DateTimeFormat(getStoredLocale() === 'en' ? 'en-US' : 'vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
       day: '2-digit',

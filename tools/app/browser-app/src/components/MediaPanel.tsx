@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+
 import { apiFetch, apiJson } from '../api';
+import { useLocale } from '../locales';
 import './MediaPanel.css';
 
 export type MediaItem = {
@@ -31,6 +33,8 @@ function loadCachedProfile(): { gender?: 'male' | 'female'; age?: number; name?:
 }
 
 export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
+  const { t } = useLocale();
+  const m = t.media;
   const cached = loadCachedProfile();
   const [profile, setProfile] = useState<MediaItem | null>(null);
   const [contextList, setContextList] = useState<MediaItem[]>([]);
@@ -61,7 +65,7 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
         setContextList(ctx);
       }
     } catch (err: any) {
-      setError(err?.message || 'Không thể tải ảnh');
+      setError(err?.message || m.loadError);
     } finally {
       setLoading(false);
     }
@@ -140,7 +144,7 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
         }),
       });
     } catch (err: any) {
-      setError(err?.message || 'Không thể lưu thông tin diễn viên');
+      setError(err?.message || m.saveActorError);
     } finally {
       setSavingProfile(false);
     }
@@ -167,12 +171,12 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Lỗi khi tải ảnh lên');
+        throw new Error(data.error || m.uploadError);
       }
       await fetchMedia();
       onMediaUpdated?.();
     } catch (err: any) {
-      setError(err?.message || 'Tải ảnh thất bại');
+      setError(err?.message || m.uploadFailed);
     } finally {
       setLoading(false);
     }
@@ -190,7 +194,7 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
       await fetchMedia();
       onMediaUpdated?.();
     } catch (err: any) {
-      setError(err?.message || 'Xoá ảnh thất bại');
+      setError(err?.message || m.deleteFailed);
     } finally {
       setLoading(false);
     }
@@ -202,8 +206,8 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
 
       <div className="media-section">
         <div className="media-section-title">
-          <span>Ảnh chân dung mẫu (Profile)</span>
-          <small className="muted">{profile ? '1/1 ảnh' : 'Chưa có ảnh'}</small>
+          <span>{m.profileSectionTitle}</span>
+          <small className="muted">{profile ? m.profileCountYes : m.profileCountNo}</small>
         </div>
 
         <div className="profile-card">
@@ -214,8 +218,8 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
           )}
 
           <div className="profile-info">
-            <strong>{profile ? 'Ảnh mẫu chính' : 'Chưa có ảnh chân dung'}</strong>
-            <small>{profile ? `${(profile.bytes / 1024).toFixed(0)} KB` : 'Dùng để khớp khuôn mặt trong video'}</small>
+            <strong>{profile ? m.profileHasPhoto : m.profileNoPhoto}</strong>
+            <small>{profile ? `${(profile.bytes / 1024).toFixed(0)} KB` : m.profileHint}</small>
 
             <div className="media-btn-row">
               <input
@@ -235,7 +239,7 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
                 onClick={() => profileInputRef.current?.click()}
                 disabled={loading}
               >
-                {profile ? 'Thay ảnh khác' : 'Tải ảnh mẫu lên'}
+                {profile ? m.replacePhoto : m.uploadPhoto}
               </button>
 
               {profile && (
@@ -245,7 +249,7 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
                   onClick={() => handleDelete(profile.id)}
                   disabled={loading}
                 >
-                  Xoá
+                  {t.common.delete}
                 </button>
               )}
             </div>
@@ -256,19 +260,20 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
           <div className="actor-profile-head">
             <span className="actor-profile-title">
               <span>🎭</span>
-              <span>Thông tin diễn viên & Giọng đọc AI</span>
+              <span>{m.actorSectionTitle}</span>
             </span>
           </div>
 
           <p className="actor-field-hint actor-field-hint-compact">
-            Cung cấp thông tin nhân vật mẫu để AI tự động chọn <strong>giọng đọc chuẩn xác</strong> (nam/nữ, độ tuổi, âm
-            điệu) và phong thái phù hợp với ảnh chân dung, không bị nhầm lẫn giọng.
+            {m.actorHintPrefix}
+            <strong>{m.actorHintStrong}</strong>
+            {m.actorHintSuffix}
           </p>
 
-          {/* 1. Giới tính */}
+          {/* 1. Gender */}
           <div className="actor-field">
             <div className="actor-field-label">
-              <span>Giới tính diễn viên:</span>
+              <span>{m.genderLabel}</span>
             </div>
             <div className="actor-gender-row">
               <button
@@ -276,22 +281,22 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
                 className={`actor-chip actor-chip-gender ${actorGender === 'male' ? 'selected' : ''}`}
                 onClick={() => handleUpdateActorProfile({ gender: 'male' })}
               >
-                👨 Nam
+                {m.male}
               </button>
               <button
                 type="button"
                 className={`actor-chip actor-chip-gender ${actorGender === 'female' ? 'selected' : ''}`}
                 onClick={() => handleUpdateActorProfile({ gender: 'female' })}
               >
-                👩 Nữ
+                {m.female}
               </button>
             </div>
           </div>
 
-          {/* 2. Độ tuổi */}
+          {/* 2. Age */}
           <div className="actor-field">
             <div className="actor-age-row">
-              <span className="actor-field-label actor-age-label">Độ tuổi diễn viên:</span>
+              <span className="actor-field-label actor-age-label">{m.ageLabel}</span>
               <input
                 type="number"
                 min={15}
@@ -310,14 +315,14 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
                   if (!isNaN(val)) handleUpdateActorProfile({ age: val });
                 }}
               />
-              <span className="muted actor-age-unit">tuổi</span>
+              <span className="muted actor-age-unit">{m.ageUnit}</span>
             </div>
           </div>
 
-          {/* 3. Giọng đọc (Vùng miền) */}
+          {/* 3. Voice accent */}
           <div className="actor-field">
             <div className="actor-field-label">
-              <span>Giọng đọc (Bắc - Trung - Nam):</span>
+              <span>{m.regionLabel}</span>
             </div>
             <div className="actor-chips-row">
               {(['Bắc', 'Trung', 'Nam'] as const).map((region) => (
@@ -327,23 +332,24 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
                   className={`actor-chip actor-chip-region ${actorTone === region ? 'selected' : ''}`}
                   onClick={() => handleUpdateActorProfile({ voice_tone: region })}
                 >
-                  {region}
+                  {m.regions[region] || region}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 4. Tên / Danh xưng diễn viên (tùy chọn) */}
+          {/* 4. Actor name (optional) */}
           <div className="actor-field">
             <div className="actor-field-label">
               <span>
-                Tên / Danh xưng người dẫn <span className="muted actor-optional-label">(tùy chọn):</span>
+                {m.actorNameLabel}
+                <span className="muted actor-optional-label">{m.actorNameOptional}</span>
               </span>
             </div>
             <input
               type="text"
               className="actor-text-input"
-              placeholder="Ví dụ: Minh Quân, Thu Hà, MC Nam, Host..."
+              placeholder={m.actorNamePlaceholder}
               value={actorName}
               onChange={(e) => setActorName(e.target.value)}
               onBlur={(e) => handleUpdateActorProfile({ name: e.target.value })}
@@ -357,8 +363,8 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
 
       <div className="media-section">
         <div className="media-section-title">
-          <span>Ảnh bối cảnh / Sản phẩm (Context)</span>
-          <small className="muted">{contextList.length} ảnh</small>
+          <span>{m.contextSectionTitle}</span>
+          <small className="muted">{m.contextCount(contextList.length)}</small>
         </div>
 
         <div className="context-grid">
@@ -368,7 +374,7 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
               <button
                 type="button"
                 className="delete-chip"
-                title="Xoá ảnh này"
+                title={m.deletePhotoTitle}
                 onClick={() => handleDelete(item.id)}
                 disabled={loading}
               >
@@ -390,7 +396,7 @@ export function MediaPanel({ onMediaUpdated }: MediaPanelProps) {
           />
           <div className="context-upload-card" onClick={() => contextInputRef.current?.click()}>
             <span>+</span>
-            <div>Thêm ảnh</div>
+            <div>{m.addPhoto}</div>
           </div>
         </div>
       </div>

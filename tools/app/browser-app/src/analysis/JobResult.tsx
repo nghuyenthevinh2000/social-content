@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 
+import { useLocale } from '../locales';
+
 import { KeywordResult } from './KeywordResult';
 import { TopicCard } from './TopicCard';
 import './analysis.css';
-import { cleanTopicTitle, formatTime, STATUS_LABEL, TERMINAL } from './format';
-import { type JobRenderer, RENDERERS } from './renderers';
+import { cleanTopicTitle, formatTime, TERMINAL } from './format';
+import { createRenderers, type JobRenderer } from './renderers';
 import type { Job, Sheet, Topic } from './types';
 
 type JobResultProps = {
@@ -44,6 +46,7 @@ const SheetSection: React.FC<{
   onAddCreator,
   onSaveVideo,
 }) => {
+  const { t } = useLocale();
   const orderedTopics = useMemo(() => renderer.order(sheet.topics), [renderer, sheet.topics]);
 
   return (
@@ -63,7 +66,7 @@ const SheetSection: React.FC<{
       {sheet.status === 'completed' && sheet.reels === 0 && !sheet.error && !sheet.notice && (
         <div className="alert warn">{renderer.emptyText}</div>
       )}
-      {sheet.status === 'pending' && <p className="muted">Đang chờ tới lượt…</p>}
+      {sheet.status === 'pending' && <p className="muted">{t.analysis.waitingTurn}</p>}
       {sheet.status === 'running' && <p className="muted">{renderer.runningText}</p>}
 
       {isKeyword ? (
@@ -109,10 +112,13 @@ export const JobResult: React.FC<JobResultProps> = ({
   onAddCreator,
   onSaveVideo,
 }) => {
+  const { t } = useLocale();
+  const m = t.analysis;
   const [showLogs, setShowLogs] = useState(false);
   const [savedUrls, setSavedUrls] = useState<Set<string>>(() => new Set());
   const [addedCreatorUrls, setAddedCreatorUrls] = useState<Set<string>>(() => new Set());
-  const renderer = RENDERERS[job.job_kind ?? 'profile'] ?? RENDERERS.profile;
+  const renderers = useMemo(() => createRenderers(m), [m]);
+  const renderer = renderers[job.job_kind ?? 'profile'] ?? renderers.profile;
   const isKeyword = job.job_kind === 'keyword';
 
   const handleSave = onSaveVideo
@@ -151,11 +157,11 @@ export const JobResult: React.FC<JobResultProps> = ({
               onBack();
             }}
           >
-            ← Lịch sử chạy ({historyCount})
+            {m.historyBack(historyCount)}
           </button>
-          <h2>Kết quả</h2>
+          <h2>{m.resultsHeading}</h2>
           <p className="muted count">
-            {cleanTopicTitle(job.filename)} · {progress.done}/{progress.total} · {STATUS_LABEL[job.status]}
+            {cleanTopicTitle(job.filename)} · {progress.done}/{progress.total} · {m.statusLabel[job.status]}
             {job.created_at && ` · ${formatTime(job.created_at)}`}
           </p>
         </div>
@@ -164,7 +170,7 @@ export const JobResult: React.FC<JobResultProps> = ({
             type="button"
             className="panel-collapse-btn"
             aria-expanded={!collapsed}
-            aria-label={collapsed ? 'Mở rộng kết quả' : 'Thu gọn kết quả'}
+            aria-label={collapsed ? m.expandResultsAria : m.collapseResultsAria}
             onClick={(e) => {
               e.stopPropagation();
               onToggleCollapse();
@@ -182,7 +188,7 @@ export const JobResult: React.FC<JobResultProps> = ({
           </div>
           <div className="progress-meta muted">
             <span>{progress.pct}%</span>
-            <span>{job.current_sheet ? `Đang xử lý: ${job.current_sheet}` : ''}</span>
+            <span>{job.current_sheet ? m.processingSheet(job.current_sheet) : ''}</span>
           </div>
 
           {job.sheets.map((sheet, index) => (
@@ -203,7 +209,7 @@ export const JobResult: React.FC<JobResultProps> = ({
           ))}
 
           <button className="ghost logs-toggle" type="button" onClick={() => setShowLogs((v) => !v)}>
-            {showLogs ? 'Ẩn log' : `Xem log (${job.logs.length})`}
+            {showLogs ? m.hideLogs : m.showLogs(job.logs.length)}
           </button>
           {showLogs && (
             <pre className="logs">
