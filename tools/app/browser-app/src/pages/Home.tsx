@@ -308,6 +308,7 @@ const Home: React.FC = () => {
       {
         tab: 'video',
         target: '.video-tab > section.panel',
+        tipTarget: '.video-tab .prompt-textarea',
         title: s.videoFormTitle,
         text: s.videoFormText,
       },
