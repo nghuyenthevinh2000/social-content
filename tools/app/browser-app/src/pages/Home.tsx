@@ -863,6 +863,16 @@ const Home: React.FC = () => {
           <span className="brand">
             <span className="brand-mark">AB</span>AIBrand
           </span>
+          <button
+            type="button"
+            className="lang-toggle-btn"
+            onClick={toggleLocale}
+            aria-label={t.profile.switchLanguage}
+            title={t.profile.switchLanguage}
+          >
+            <span aria-hidden="true">{locale === 'vi' ? '🇻🇳' : '🇺🇸'}</span>
+            <span>{locale === 'vi' ? 'VI' : 'EN'}</span>
+          </button>
         </div>
       </IonHeader>
 
@@ -891,16 +901,6 @@ const Home: React.FC = () => {
                   <div className="sheet-title">
                     <strong>{user.displayName || user.email || t.profile.defaultUser}</strong>
                   </div>
-                  <button
-                    type="button"
-                    className="lang-toggle-btn"
-                    onClick={toggleLocale}
-                    aria-label={t.profile.switchLanguage}
-                    title={t.profile.switchLanguage}
-                  >
-                    <span aria-hidden="true">{locale === 'vi' ? '🇻🇳' : '🇺🇸'}</span>
-                    <span>{locale === 'vi' ? 'VI' : 'EN'}</span>
-                  </button>
                 </div>
                 <dl className="details">
                   <dt>{t.profile.email}</dt>
