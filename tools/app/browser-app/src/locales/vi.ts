@@ -95,6 +95,8 @@ export const vi = {
     packClaiming: 'Đang nạp…',
     packOwned: '✓ Đã nhận (Nạp lại)',
     packGet: (price: string): string => `Nhận gói (${price})`,
+    contributorsTitle: 'Đóng góp',
+    contributorsDesc: 'Cảm ơn những người đã đóng góp cùng xây dựng ứng dụng này.',
   },
   brand: {
     saveError: 'Không thể lưu thông tin nhân hiệu',
@@ -502,10 +504,17 @@ export const vi = {
         'Mỗi chủ đề chứa danh sách kênh Facebook, ô dán link để thêm kênh mới và nút ▶ Chạy để phân tích riêng chủ đề này.',
       savedReelsTitle: 'Reel đã lưu',
       savedReelsText: 'Liên kết Facebook Messenger để gửi link Reel từ chat và phân tích trực tiếp từng Reel.',
-      analyzerTitle: 'Phân tích',
-      analyzerText: 'Theo dõi tiến độ, xem lại lịch sử và mở kết quả ý tưởng viral.',
+      analyzerTitle: 'Phân tích & Trợ lý Brand',
+      analyzerText: 'Định hình nhân hiệu với trợ lý, khám phá từ khoá đối thủ và xem lại lịch sử phân tích.',
+      brandModesTitle: '3 chế độ trong Phân tích',
+      brandModesText:
+        'Chuyển giữa Xây Brand (định hình nhân hiệu), Khám phá Keyword (tìm từ khoá nghiên cứu đối thủ) và Lịch sử phân tích.',
+      brandChatTitle: 'Trò chuyện với trợ lý',
+      brandChatText:
+        'Trả lời câu hỏi để chốt bản nháp nhân hiệu và lưu vào hồ sơ, hoặc nhận 3 từ khoá gợi ý để bấm tìm kiếm ngay.',
       demoHistoryTitle: 'Lần chạy mẫu "Hướng dẫn"',
-      demoHistoryText: 'Mỗi lần chạy hiển thị trạng thái, số chủ đề và ý tưởng viral tìm được.',
+      demoHistoryText:
+        'Trong mục Lịch sử phân tích, mỗi lần chạy hiển thị trạng thái, số chủ đề và ý tưởng viral tìm được.',
       transcriptTitle: 'Transcript & Phân tích viral',
       transcriptText: 'Mở mục này để xem transcript lời thoại, hook 3 giây đầu, lý do viral và dàn ý triển khai.',
       copyPromptTitle: 'Copy prompt cho AI',
@@ -515,9 +524,12 @@ export const vi = {
       videoFormTitle: 'Tạo video AI Cá Nhân',
       videoFormText: 'Chọn ảnh khuôn mặt, ảnh bối cảnh và nhập lời thoại/kịch bản tiếng Việt rồi bấm Tạo video ngay.',
       profileTitle: 'Hồ sơ',
-      profileText: 'Liên kết Facebook, xem số dư Video AI, nạp gói creator và cấu hình hướng dẫn.',
+      profileText: 'Quản lý tài khoản, nhân hiệu, ảnh chân dung mẫu và nạp gói creator.',
       accountTitle: 'Thông tin tài khoản',
       accountText: 'Xem email, liên kết Facebook, kiểm tra số dư Video AI, bật/tắt "Đã rõ hướng dẫn" hoặc đăng xuất.',
+      brandProfileTitle: 'Nhân hiệu & Từ khoá',
+      brandProfileText:
+        'Xem và tinh chỉnh nhân hiệu, khách hàng mục tiêu, điểm khác biệt, giọng điệu cùng từ khoá đã lưu từ cuộc trò chuyện.',
       avatarTitle: 'Ảnh chân dung mẫu',
       avatarText: 'Tải lên ảnh chân dung rõ mặt tại đây để AI khớp khuôn mặt của bạn trong các video tạo ra.',
       storeTitle: 'Gói mở rộng',

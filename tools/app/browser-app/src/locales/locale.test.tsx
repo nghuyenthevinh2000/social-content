@@ -64,6 +64,32 @@ describe('Locale switcher in topbar', () => {
     expect(toggle.textContent).toContain('VI');
     expect(localStorage.getItem('aibrand-locale')).toBe('vi');
     expect(screen.getByText('Đăng xuất')).toBeInTheDocument();
+
+    const contributorsHeading = screen.getByRole('heading', { name: 'Đóng góp' });
+    const details = contributorsHeading.closest('details') as HTMLDetailsElement;
+    expect(details).not.toBeNull();
+    expect(details.open).toBe(false);
+    expect(screen.getByText('Christine Erispe')).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(screen.getByRole('heading', { name: 'Contributors' })).toBeInTheDocument();
+
+    // Collapse #brand-profile and media section, then verify persistence across tab switch & remount
+    const brandHead = container.querySelector('#brand-profile .collapsible-head') as HTMLElement;
+    const mediaHead = container.querySelectorAll('.collapsible-head')[1] as HTMLElement;
+    expect(brandHead.getAttribute('aria-expanded')).toBe('true');
+    expect(mediaHead.getAttribute('aria-expanded')).toBe('true');
+
+    fireEvent.click(brandHead);
+    fireEvent.click(mediaHead);
+    expect(localStorage.getItem('aibrand-profile-brand-collapsed')).toBe('1');
+    expect(localStorage.getItem('aibrand-profile-media-collapsed')).toBe('1');
+
+    // Switch to another tab and back
+    fireEvent.click(screen.getByRole('tab', { name: /Library|Thư viện/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /Profile|Hồ sơ/i }));
+    expect(container.querySelector('#brand-profile .collapsible-head')?.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelectorAll('.collapsible-head')[1]?.getAttribute('aria-expanded')).toBe('false');
   });
 
   test('renders VI/EN toggle in .topbar on the login page when signed out', async () => {

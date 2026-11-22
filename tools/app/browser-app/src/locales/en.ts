@@ -96,6 +96,8 @@ export const en: LocaleMessages = {
     packClaiming: 'Adding…',
     packOwned: '✓ Added (Re-import)',
     packGet: (price: string) => `Get pack (${price})`,
+    contributorsTitle: 'Contributors',
+    contributorsDesc: 'Thank you to the people who contributed to this app.',
   },
   brand: {
     saveError: 'Unable to save brand profile',
@@ -500,10 +502,17 @@ export const en: LocaleMessages = {
         'Each topic holds a list of Facebook channels, a link input to add more, and a ▶ button to analyze just that topic.',
       savedReelsTitle: 'Saved Reels',
       savedReelsText: 'Link Facebook Messenger to send Reel links from chat and analyze individual Reels.',
-      analyzerTitle: 'Analyze',
-      analyzerText: 'Track progress, browse run history, and open viral content ideas.',
+      analyzerTitle: 'Analyze & Brand Assistant',
+      analyzerText:
+        'Shape your brand profile with the assistant, explore competitor keywords, and browse analysis history.',
+      brandModesTitle: '3 Modes in Analyze',
+      brandModesText:
+        'Switch between Build Brand (shape your brand profile), Explore Brand Keyword (discover competitor keywords), and Analysis History.',
+      brandChatTitle: 'Chat with Assistant',
+      brandChatText:
+        'Answer questions to draft and save your brand profile, or get 3 suggested keywords to launch a search right from chat.',
       demoHistoryTitle: 'Sample "Guide" run',
-      demoHistoryText: 'Each run shows its status, topic count, and viral ideas found.',
+      demoHistoryText: 'In Analysis History, each run shows its status, topic count, and viral ideas found.',
       transcriptTitle: 'Transcript & Viral Analysis',
       transcriptText:
         'Expand this section to view the transcript, 3-second hook, why it went viral, and content outline.',
@@ -515,9 +524,12 @@ export const en: LocaleMessages = {
       videoFormText:
         'Select your portrait photo, context photos, and enter your dialogue/script, then click Generate video.',
       profileTitle: 'Profile',
-      profileText: 'Link Facebook, check your AI Video balance, claim creator packs, and manage the tour.',
+      profileText: 'Manage your account, brand identity, reference portrait, and creator packs.',
       accountTitle: 'Account Info',
       accountText: 'View email, link Facebook, check AI Video balance, toggle "Tour completed", or sign out.',
+      brandProfileTitle: 'Brand Identity & Keywords',
+      brandProfileText:
+        'View and refine your brand identity, target audience, differentiator, tone, and on-brand keywords saved from chat.',
       avatarTitle: 'Reference Portrait',
       avatarText: 'Upload a clear portrait here so AI matches your face in generated videos.',
       storeTitle: 'Expansion Packs',

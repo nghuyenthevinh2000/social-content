@@ -39,6 +39,7 @@ type AnalyzerTabProps = {
   onAddCreator: (creator: { name: string; url: string; platform?: string }) => void;
   onSaveVideo: (topic: Topic) => void;
   onGoToLibrary: () => void;
+  forceHistoryView?: boolean;
 };
 
 type ResultsSectionProps = {
@@ -268,13 +269,12 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   onAddCreator,
   onSaveVideo,
   onGoToLibrary,
+  forceHistoryView = false,
 }) => {
   const { t } = useLocale();
   const m = t.analyzer;
-  const [activeView, setActiveView] = useState<'chat' | 'history'>(() =>
-    jobId || starting || visibleHistory.some((item) => item.id === tourDemoId) ? 'history' : 'chat',
-  );
-  const showHistory = activeView === 'history' || starting || Boolean(jobId);
+  const [activeView, setActiveView] = useState<'chat' | 'history'>(() => (jobId || starting ? 'history' : 'chat'));
+  const showHistory = forceHistoryView || activeView === 'history' || starting || Boolean(jobId);
   const [brandCollapsed, setBrandCollapsed] = useState(() => readCollapsed(BRAND_COLLAPSED_KEY));
   const [highlightBrand, setHighlightBrand] = useState(false);
   const highlightTimerRef = useRef<number | null>(null);

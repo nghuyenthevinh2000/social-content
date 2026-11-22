@@ -6,7 +6,7 @@ import { useLocation } from 'react-router-dom';
 import { copyToClipboard, formatNumber, formatTime, formatTopicForAI, TERMINAL } from '../analysis/format';
 import type { Job, JobKind, JobSummary, Topic } from '../analysis/types';
 import { apiFetch, apiJson } from '../api';
-import { setBrandAssistantUser } from '../brandAssistantStore';
+import { setAssistantMode, setBrandAssistantUser } from '../brandAssistantStore';
 import { BRAND_PROFILE_KEY, cacheBrandProfile } from '../brandProfile';
 import { AnalyzerTab } from '../components/AnalyzerTab';
 import { AuthModal } from '../components/AuthModal';
@@ -54,6 +54,25 @@ const isDefaultTopic = (t: TopicItem) => t.name.toLowerCase() === DEFAULT_TOPIC;
 const TOUR_KEY = 'aibrand-tour-done';
 const TOUR_DEMO_ID = '__tour_demo__';
 const TOUR_DEMO_TOPIC_SLUG = '__tour_demo_topic__';
+
+function usePersistedCollapsed(key: string) {
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(key) === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      if (collapsed) localStorage.setItem(key, '1');
+      else localStorage.removeItem(key);
+    } catch {
+      // ignore storage errors
+    }
+  }, [key, collapsed]);
+  return [collapsed, setCollapsed] as const;
+}
 
 function buildTourDemoTopic(m: LocaleMessages['tour']): TopicItem {
   return {
@@ -198,6 +217,7 @@ const Home: React.FC = () => {
   const [authRedirectError, setAuthRedirectError] = useState<string | null>(null);
   // Seen-flag is per account: tour always shows unless the user marks "Đã rõ hướng dẫn" in Profile.
   const [tourDismissed, setTourDismissed] = useState(false);
+  const [tourHistoryView, setTourHistoryView] = useState(false);
   const [, setTourSync] = useState(0);
   const [linkingFb, setLinkingFb] = useState(false);
   const [linkFbError, setLinkFbError] = useState<string | null>(null);
@@ -233,13 +253,21 @@ const Home: React.FC = () => {
   const visibleHistory = showTour ? [tourDemoSummary, ...history] : history;
   const tourSteps = useMemo<TourStep[]>(() => {
     const s = t.tour.steps;
-    const showDemoResult = () => {
-      setJobId(TOUR_DEMO_ID);
-      setJob(tourDemoJob);
-    };
-    const hideDemoResult = () => {
+    const showChat = () => {
+      setTourHistoryView(false);
+      setAssistantMode('brand_setup');
       setJobId(null);
       setJob(null);
+    };
+    const showHistoryList = () => {
+      setTourHistoryView(true);
+      setJobId(null);
+      setJob(null);
+    };
+    const showDemoResult = () => {
+      setTourHistoryView(true);
+      setJobId(TOUR_DEMO_ID);
+      setJob(tourDemoJob);
     };
     return [
       {
@@ -247,14 +275,28 @@ const Home: React.FC = () => {
         target: '.tabbar-btn:nth-child(1)',
         title: s.analyzerTitle,
         text: s.analyzerText,
-        onEnter: hideDemoResult,
+        onEnter: showChat,
+      },
+      {
+        tab: 'analyzer',
+        target: '#brand-assistant .brand-mode-tabs',
+        title: s.brandModesTitle,
+        text: s.brandModesText,
+        onEnter: showChat,
+      },
+      {
+        tab: 'analyzer',
+        target: '#brand-assistant .brand-chat-form',
+        title: s.brandChatTitle,
+        text: s.brandChatText,
+        onEnter: showChat,
       },
       {
         tab: 'analyzer',
         target: '#results-analysis .history-list .history-card:first-child',
         title: s.demoHistoryTitle,
         text: s.demoHistoryText,
-        onEnter: hideDemoResult,
+        onEnter: showHistoryList,
       },
       {
         tab: 'analyzer',
@@ -275,7 +317,7 @@ const Home: React.FC = () => {
         target: '.tabbar-btn:nth-child(2)',
         title: s.libraryTitle,
         text: s.libraryText,
-        onEnter: hideDemoResult,
+        onEnter: showChat,
       },
       {
         tab: 'library',
@@ -322,6 +364,13 @@ const Home: React.FC = () => {
       },
       {
         tab: 'profile',
+        target: '#brand-profile',
+        title: s.brandProfileTitle,
+        text: s.brandProfileText,
+        onEnter: () => setBrandCollapsed(false),
+      },
+      {
+        tab: 'profile',
         target: '.media-section .profile-card .profile-info',
         title: s.avatarTitle,
         text: s.avatarText,
@@ -337,6 +386,7 @@ const Home: React.FC = () => {
   }, [t.tour.steps, tourDemoJob]);
   const closeTour = () => {
     setTourDismissed(true);
+    setTourHistoryView(false);
     if (jobId === TOUR_DEMO_ID) selectJob(null);
   };
   const toggleTourDone = () => {
@@ -373,8 +423,8 @@ const Home: React.FC = () => {
 
   // Collapsible Topics & Saved Reels (dm_service feature)
   const [topicsCollapsed, setTopicsCollapsed] = useState(false);
-  const [brandCollapsed, setBrandCollapsed] = useState(false);
-  const [mediaCollapsed, setMediaCollapsed] = useState(false);
+  const [brandCollapsed, setBrandCollapsed] = usePersistedCollapsed('aibrand-profile-brand-collapsed');
+  const [mediaCollapsed, setMediaCollapsed] = usePersistedCollapsed('aibrand-profile-media-collapsed');
   const [savedReels, setSavedReels] = useState<SavedReel[]>([]);
   const [loadingReels, setLoadingReels] = useState(false);
   const [savedReelsCollapsed, setSavedReelsCollapsed] = useState(false);
@@ -1067,6 +1117,21 @@ const Home: React.FC = () => {
                   })}
                 </div>
               </details>
+
+              <details className="panel creator-store">
+                <summary className="store-summary">
+                  <div className="store-header-wrap">
+                    <div>
+                      <h2>{t.profile.contributorsTitle}</h2>
+                      <p className="muted count">{t.profile.contributorsDesc}</p>
+                    </div>
+                    <span className="store-toggle-icon" aria-hidden="true" />
+                  </div>
+                </summary>
+                <ul style={{ margin: 0, paddingLeft: 'var(--space-5)' }}>
+                  <li>Christine Erispe</li>
+                </ul>
+              </details>
             </>
           ) : tab === 'video' ? (
             <VideoTab
@@ -1520,6 +1585,7 @@ const Home: React.FC = () => {
               onAddCreator={handleAddCreator}
               onSaveVideo={handleSaveVideo}
               onGoToLibrary={() => switchTab('library')}
+              forceHistoryView={showTour && tourHistoryView}
             />
           )}
         </div>

@@ -310,5 +310,24 @@
     "business",
     "thương",
     "hiệu"
+  ],
+  "tab": [
+    "panel",
+    "pane",
+    "view",
+    "thẻ"
+  ],
+  "contribution": [
+    "commit",
+    "activity",
+    "submission",
+    "đóng",
+    "góp"
+  ],
+  "section": [
+    "block",
+    "area",
+    "region",
+    "phần"
   ]
 }
