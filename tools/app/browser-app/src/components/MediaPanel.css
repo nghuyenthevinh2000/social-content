@@ -4,6 +4,28 @@
   gap: var(--space-4);
 }
 
+.brand-points-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.brand-point-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.brand-point-name {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.brand-point-card .actor-text-input {
+  background: var(--color-bg);
+}
+
 .media-section {
   display: flex;
   flex-direction: column;

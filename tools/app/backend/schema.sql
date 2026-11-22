@@ -71,10 +71,12 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     name TEXT,
     voice_tone TEXT DEFAULT 'natural',
     brand_json TEXT,
+    assistant_chat_json TEXT,
     language TEXT NOT NULL DEFAULT 'vi',
     updated_at TEXT NOT NULL
 );
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS brand_json TEXT;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS assistant_chat_json TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'vi';
 
 CREATE TABLE IF NOT EXISTS topics (

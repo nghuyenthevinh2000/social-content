@@ -72,13 +72,13 @@ export function BrandPanel(): React.ReactElement {
   };
 
   return (
-    <div className="actor-profile-box" style={{ marginTop: 0 }}>
+    <div className="brand-points-list">
       {error && <div className="alert error">{error}</div>}
       {t.brand.questions.map((q) => (
-        <div key={q.key} className="actor-field">
-          <div className="actor-field-label">
-            <label htmlFor={`brand-${q.key}`}>{q.label}:</label>
-          </div>
+        <div key={q.key} className="brand-point-card">
+          <label htmlFor={`brand-${q.key}`} className="brand-point-name">
+            {q.label}:
+          </label>
           <p className="actor-field-hint actor-field-hint-compact">{q.hint}</p>
           <input
             id={`brand-${q.key}`}
@@ -102,10 +102,10 @@ export function BrandPanel(): React.ReactElement {
           />
         </div>
       ))}
-      <div className="actor-field">
-        <div className="actor-field-label">
-          <label htmlFor="brand-keywords">{t.brand.keywordsLabel}:</label>
-        </div>
+      <div className="brand-point-card">
+        <label htmlFor="brand-keywords" className="brand-point-name">
+          {t.brand.keywordsLabel}:
+        </label>
         <p className="actor-field-hint actor-field-hint-compact">{t.brand.keywordsHint}</p>
         <input
           id="brand-keywords"

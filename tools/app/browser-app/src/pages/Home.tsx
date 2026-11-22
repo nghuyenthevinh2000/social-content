@@ -3,15 +3,11 @@ import { analyticsOutline, libraryOutline, personCircleOutline, videocamOutline 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import {
-  copyToClipboard,
-  formatNumber,
-  formatTime,
-  formatTopicForAI,
-  TERMINAL,
-} from '../analysis/format';
+import { copyToClipboard, formatNumber, formatTime, formatTopicForAI, TERMINAL } from '../analysis/format';
 import type { Job, JobKind, JobSummary, Topic } from '../analysis/types';
 import { apiFetch, apiJson } from '../api';
+import { setBrandAssistantUser } from '../brandAssistantStore';
+import { BRAND_PROFILE_KEY, cacheBrandProfile } from '../brandProfile';
 import { AnalyzerTab } from '../components/AnalyzerTab';
 import { AuthModal } from '../components/AuthModal';
 import { BrandPanel } from '../components/BrandPanel';
@@ -147,9 +143,9 @@ const Home: React.FC = () => {
       ? 'profile'
       : query.get('tab') === 'video'
         ? 'video'
-        : initialJobId || query.get('tab') === 'analyzer'
-          ? 'analyzer'
-          : 'library',
+        : query.get('tab') === 'library'
+          ? 'library'
+          : 'analyzer',
   );
 
   // Library (backend is the source of truth)
@@ -355,6 +351,10 @@ const Home: React.FC = () => {
   };
 
   useEffect(() => {
+    setBrandAssistantUser(user?.uid ?? null);
+  }, [user?.uid]);
+
+  useEffect(() => {
     if (!user || tab !== 'profile') return;
     let cancelled = false;
     apiJson<{ ok: boolean; balance: number }>('/api/credits')
@@ -402,6 +402,9 @@ const Home: React.FC = () => {
     setActivePaymentPack(null);
     setVideoPrompt('');
     localStorage.removeItem('aibrand-active-job-id');
+    localStorage.removeItem(BRAND_PROFILE_KEY);
+    cacheBrandProfile(null);
+    setBrandAssistantUser(null);
   }
 
   const fetchSavedReels = async () => {
@@ -696,7 +699,10 @@ const Home: React.FC = () => {
   const runnable = topics.filter((t) => t.targets.length > 0);
   const totalChannels = topics.reduce((acc, t) => acc + t.targets.length, 0);
 
-  const visibleTopics = useMemo(() => (showTour ? [tourDemoTopic, ...topics] : topics), [showTour, tourDemoTopic, topics]);
+  const visibleTopics = useMemo(
+    () => (showTour ? [tourDemoTopic, ...topics] : topics),
+    [showTour, tourDemoTopic, topics],
+  );
   const filteredTopics = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return visibleTopics;
@@ -917,12 +923,7 @@ const Home: React.FC = () => {
                     <>
                       <dt>{t.profile.facebook}</dt>
                       <dd>
-                        <button
-                          type="button"
-                          className="link-fb-btn"
-                          onClick={handleLinkFacebook}
-                          disabled={linkingFb}
-                        >
+                        <button type="button" className="link-fb-btn" onClick={handleLinkFacebook} disabled={linkingFb}>
                           {linkingFb ? t.profile.linkingFb : t.profile.linkFbBtn}
                         </button>
                         {linkFbError && <div className="link-fb-error">{linkFbError}</div>}
@@ -987,87 +988,85 @@ const Home: React.FC = () => {
               </section>
 
               <section className="panel">
-                  <div
-                    className="panel-head collapsible-head"
-                    role="button"
-                    tabIndex={0}
-                    aria-expanded={!mediaCollapsed}
-                    onClick={() => setMediaCollapsed((v) => !v)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setMediaCollapsed((v) => !v);
-                      }
-                    }}
-                  >
-                    <div>
-                      <h2>{t.profile.mediaTitle}</h2>
-                      <p className="muted profile-media-desc">{t.profile.mediaDesc}</p>
-                    </div>
-                    <span className={`store-toggle-icon ${!mediaCollapsed ? 'open' : ''}`} aria-hidden="true" />
+                <div
+                  className="panel-head collapsible-head"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!mediaCollapsed}
+                  onClick={() => setMediaCollapsed((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setMediaCollapsed((v) => !v);
+                    }
+                  }}
+                >
+                  <div>
+                    <h2>{t.profile.mediaTitle}</h2>
+                    <p className="muted profile-media-desc">{t.profile.mediaDesc}</p>
                   </div>
-                  {!mediaCollapsed && (
-                    <div style={{ marginTop: 'var(--space-3)' }}>
-                      <MediaPanel />
-                    </div>
-                  )}
-                </section>
+                  <span className={`store-toggle-icon ${!mediaCollapsed ? 'open' : ''}`} aria-hidden="true" />
+                </div>
+                {!mediaCollapsed && (
+                  <div style={{ marginTop: 'var(--space-3)' }}>
+                    <MediaPanel />
+                  </div>
+                )}
+              </section>
 
               <details className="panel creator-store">
-                  <summary className="store-summary">
-                    <div className="store-header-wrap">
-                      <div>
-                        <h2>{t.profile.storeTitle}</h2>
-                        <p className="muted count">{t.profile.storeDesc}</p>
-                      </div>
-                      <span className="store-toggle-icon" aria-hidden="true" />
+                <summary className="store-summary">
+                  <div className="store-header-wrap">
+                    <div>
+                      <h2>{t.profile.storeTitle}</h2>
+                      <p className="muted count">{t.profile.storeDesc}</p>
                     </div>
-                  </summary>
-
-                  <div className="pack-list">
-                    {CREATOR_PACKS.map((pack) => {
-                      const isOwned = topics.some((tItem) => tItem.name.toLowerCase() === pack.name.toLowerCase());
-                      const packLoc = t.creatorPacks[pack.id];
-                      return (
-                        <div
-                          key={pack.id}
-                          className={`pack-card ${pack.disabled ? 'disabled' : 'active'}`}
-                          onClick={() => !pack.disabled && handleSelectPack(pack)}
-                          role={pack.disabled ? undefined : 'button'}
-                          tabIndex={pack.disabled ? undefined : 0}
-                        >
-                          <div className="pack-card-top">
-                            <span className="pack-card-title">{pack.name}</span>
-                          </div>
-
-                          <p className="pack-card-desc">{packLoc?.description ?? pack.description}</p>
-
-                          <div className="pack-card-bottom">
-                            <button
-                              type="button"
-                              className={`pack-action-btn ${
-                                pack.disabled ? 'disabled' : isOwned ? 'owned' : 'primary'
-                              }`}
-                              disabled={pack.disabled || busy || claimingPack === pack.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!pack.disabled) handleSelectPack(pack);
-                              }}
-                            >
-                              {pack.disabled
-                                ? t.profile.packDisabled(pack.price)
-                                : claimingPack === pack.id
-                                  ? t.profile.packClaiming
-                                  : isOwned
-                                    ? t.profile.packOwned
-                                    : t.profile.packGet(pack.price)}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    <span className="store-toggle-icon" aria-hidden="true" />
                   </div>
-                </details>
+                </summary>
+
+                <div className="pack-list">
+                  {CREATOR_PACKS.map((pack) => {
+                    const isOwned = topics.some((tItem) => tItem.name.toLowerCase() === pack.name.toLowerCase());
+                    const packLoc = t.creatorPacks[pack.id];
+                    return (
+                      <div
+                        key={pack.id}
+                        className={`pack-card ${pack.disabled ? 'disabled' : 'active'}`}
+                        onClick={() => !pack.disabled && handleSelectPack(pack)}
+                        role={pack.disabled ? undefined : 'button'}
+                        tabIndex={pack.disabled ? undefined : 0}
+                      >
+                        <div className="pack-card-top">
+                          <span className="pack-card-title">{pack.name}</span>
+                        </div>
+
+                        <p className="pack-card-desc">{packLoc?.description ?? pack.description}</p>
+
+                        <div className="pack-card-bottom">
+                          <button
+                            type="button"
+                            className={`pack-action-btn ${pack.disabled ? 'disabled' : isOwned ? 'owned' : 'primary'}`}
+                            disabled={pack.disabled || busy || claimingPack === pack.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!pack.disabled) handleSelectPack(pack);
+                            }}
+                          >
+                            {pack.disabled
+                              ? t.profile.packDisabled(pack.price)
+                              : claimingPack === pack.id
+                                ? t.profile.packClaiming
+                                : isOwned
+                                  ? t.profile.packOwned
+                                  : t.profile.packGet(pack.price)}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
             </>
           ) : tab === 'video' ? (
             <VideoTab
@@ -1082,95 +1081,93 @@ const Home: React.FC = () => {
           ) : tab === 'library' ? (
             <>
               <section className="panel" id="import">
-                  <h2>{t.library.importTitle}</h2>
-                  <button className="picker" type="button" onClick={() => fileRef.current?.click()} disabled={busy}>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept={EXCEL_ACCEPT}
-                      hidden
-                      onChange={(event) => {
-                        const picked = event.target.files?.[0];
-                        event.target.value = '';
-                        if (picked) importSource(picked);
-                      }}
-                    />
-                    <span className="picker-icon">⇪</span>
-                    <span>
-                      <strong>{busy ? t.common.processing : t.library.chooseExcel}</strong>
-                      <small className="muted">{t.library.excelHint}</small>
-                    </span>
+                <h2>{t.library.importTitle}</h2>
+                <button className="picker" type="button" onClick={() => fileRef.current?.click()} disabled={busy}>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept={EXCEL_ACCEPT}
+                    hidden
+                    onChange={(event) => {
+                      const picked = event.target.files?.[0];
+                      event.target.value = '';
+                      if (picked) importSource(picked);
+                    }}
+                  />
+                  <span className="picker-icon">⇪</span>
+                  <span>
+                    <strong>{busy ? t.common.processing : t.library.chooseExcel}</strong>
+                    <small className="muted">{t.library.excelHint}</small>
+                  </span>
+                </button>
+                <form
+                  className="row"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (sheetUrl.trim()) importSource(sheetUrl.trim());
+                  }}
+                >
+                  <input
+                    type="url"
+                    className="text-input"
+                    placeholder={t.library.sheetPlaceholder}
+                    aria-label={t.library.sheetAria}
+                    value={sheetUrl}
+                    onChange={(e) => setSheetUrl(e.target.value)}
+                  />
+                  <button type="submit" className="ghost" disabled={busy || !sheetUrl.trim()}>
+                    {t.library.importBtn}
                   </button>
-                  <form
-                    className="row"
-                    onSubmit={(e) => {
+                </form>
+              </section>
+
+              <section className="panel topics-panel">
+                <button
+                  className="ghost"
+                  type="button"
+                  onClick={() => run(runnable, t.library.allTopicsFilename)}
+                  disabled={blocked || runnable.length === 0}
+                  style={{ width: '100%', marginBottom: 'var(--space-3)' }}
+                >
+                  {running ? t.library.runningBtn : t.library.runAllBtn(runnable.length)}
+                </button>
+
+                <div
+                  className="panel-head collapsible-head"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setTopicsCollapsed((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      if (sheetUrl.trim()) importSource(sheetUrl.trim());
-                    }}
-                  >
-                    <input
-                      type="url"
-                      className="text-input"
-                      placeholder={t.library.sheetPlaceholder}
-                      aria-label={t.library.sheetAria}
-                      value={sheetUrl}
-                      onChange={(e) => setSheetUrl(e.target.value)}
-                    />
-                    <button type="submit" className="ghost" disabled={busy || !sheetUrl.trim()}>
-                      {t.library.importBtn}
-                    </button>
-                  </form>
-                </section>
-
-                <section className="panel topics-panel">
-                  <button
-                    className="ghost"
-                    type="button"
-                    onClick={() => run(runnable, t.library.allTopicsFilename)}
-                    disabled={blocked || runnable.length === 0}
-                    style={{ width: '100%', marginBottom: 'var(--space-3)' }}
-                  >
-                    {running ? t.library.runningBtn : t.library.runAllBtn(runnable.length)}
-                  </button>
-
-                  <div
-                    className="panel-head collapsible-head"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setTopicsCollapsed((v) => !v)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setTopicsCollapsed((v) => !v);
-                      }
-                    }}
-                  >
-                    <div>
-                      <h2>{t.library.topicsTitle}</h2>
-                      <span className="muted count">{t.library.topicsCount(topics.length, totalChannels)}</span>
-                    </div>
-                    <span className={`store-toggle-icon ${!topicsCollapsed ? 'open' : ''}`} aria-hidden="true" />
+                      setTopicsCollapsed((v) => !v);
+                    }
+                  }}
+                >
+                  <div>
+                    <h2>{t.library.topicsTitle}</h2>
+                    <span className="muted count">{t.library.topicsCount(topics.length, totalChannels)}</span>
                   </div>
+                  <span className={`store-toggle-icon ${!topicsCollapsed ? 'open' : ''}`} aria-hidden="true" />
+                </div>
 
-                  {!topicsCollapsed && (
-                    <>
-                      <input
-                        type="search"
-                        className="text-input search-input"
-                        placeholder={t.library.searchPlaceholder}
-                        aria-label={t.library.searchAria}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
+                {!topicsCollapsed && (
+                  <>
+                    <input
+                      type="search"
+                      className="text-input search-input"
+                      placeholder={t.library.searchPlaceholder}
+                      aria-label={t.library.searchAria}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
 
-                      {filteredTopics.length === 0 ? (
-                        <p className="muted empty">
-                          {topics.length ? t.library.noSearchMatch : t.library.emptyLibrary}
-                        </p>
-                      ) : (
-                        filteredTopics.map((topic) => {
-                          const isDemoTopic = topic.slug === TOUR_DEMO_TOPIC_SLUG;
-                          return (
+                    {filteredTopics.length === 0 ? (
+                      <p className="muted empty">{topics.length ? t.library.noSearchMatch : t.library.emptyLibrary}</p>
+                    ) : (
+                      filteredTopics.map((topic) => {
+                        const isDemoTopic = topic.slug === TOUR_DEMO_TOPIC_SLUG;
+                        return (
                           <details key={topic.slug} className="topic-accordion" open={isDemoTopic ? true : undefined}>
                             <summary>
                               <span className="sheet-title">
@@ -1273,229 +1270,229 @@ const Home: React.FC = () => {
                               )}
                             </div>
                           </details>
-                          );
-                        })
-                      )}
+                        );
+                      })
+                    )}
 
-                      <form className="new-topic" onSubmit={createTopic}>
-                        <input
-                          type="text"
-                          className="text-input small"
-                          placeholder={t.library.newTopicPlaceholder}
-                          aria-label={t.library.newTopicAria}
-                          value={newTopic.name}
-                          onChange={(e) => setNewTopic((v) => ({ ...v, name: e.target.value }))}
-                        />
-                        <input
-                          type="url"
-                          className="text-input small"
-                          placeholder={t.library.firstChannelPlaceholder}
-                          aria-label={t.library.firstChannelAria}
-                          value={newTopic.url}
-                          onChange={(e) => setNewTopic((v) => ({ ...v, url: e.target.value }))}
-                        />
-                        <button type="submit" className="ghost small" disabled={busy || !newTopic.name.trim()}>
-                          {t.library.createTopicBtn}
-                        </button>
-                      </form>
-                    </>
-                  )}
-                </section>
+                    <form className="new-topic" onSubmit={createTopic}>
+                      <input
+                        type="text"
+                        className="text-input small"
+                        placeholder={t.library.newTopicPlaceholder}
+                        aria-label={t.library.newTopicAria}
+                        value={newTopic.name}
+                        onChange={(e) => setNewTopic((v) => ({ ...v, name: e.target.value }))}
+                      />
+                      <input
+                        type="url"
+                        className="text-input small"
+                        placeholder={t.library.firstChannelPlaceholder}
+                        aria-label={t.library.firstChannelAria}
+                        value={newTopic.url}
+                        onChange={(e) => setNewTopic((v) => ({ ...v, url: e.target.value }))}
+                      />
+                      <button type="submit" className="ghost small" disabled={busy || !newTopic.name.trim()}>
+                        {t.library.createTopicBtn}
+                      </button>
+                    </form>
+                  </>
+                )}
+              </section>
 
-                <div className="panel saved-reels-panel">
-                  {fbLinked === false && (
+              <div className="panel saved-reels-panel">
+                {fbLinked === false && (
+                  <button
+                    type="button"
+                    className="ghost"
+                    style={{ width: '100%', marginBottom: 'var(--space-3)' }}
+                    onClick={handleGenerateLinkCode}
+                    disabled={generatingLinkCode}
+                  >
+                    {generatingLinkCode ? t.library.linkMessengerLoading : t.library.linkMessengerBtn}
+                  </button>
+                )}
+
+                <div
+                  className="panel-head collapsible-head"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSavedReelsCollapsed((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSavedReelsCollapsed((v) => !v);
+                    }
+                  }}
+                >
+                  <div>
+                    <h2>{t.library.savedReelsTitle}</h2>
+                    <span className="muted count">{t.library.reelCount(savedReels.length)}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                     <button
                       type="button"
-                      className="ghost"
-                      style={{ width: '100%', marginBottom: 'var(--space-3)' }}
-                      onClick={handleGenerateLinkCode}
-                      disabled={generatingLinkCode}
+                      className="ghost small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fetchSavedReels();
+                      }}
+                      disabled={loadingReels}
+                      title={t.library.refreshReelsTitle}
                     >
-                      {generatingLinkCode ? t.library.linkMessengerLoading : t.library.linkMessengerBtn}
+                      {loadingReels ? '…' : '↻'}
                     </button>
-                  )}
-
-                  <div
-                    className="panel-head collapsible-head"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSavedReelsCollapsed((v) => !v)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSavedReelsCollapsed((v) => !v);
-                      }
-                    }}
-                  >
-                    <div>
-                      <h2>{t.library.savedReelsTitle}</h2>
-                      <span className="muted count">{t.library.reelCount(savedReels.length)}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <button
-                        type="button"
-                        className="ghost small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          fetchSavedReels();
-                        }}
-                        disabled={loadingReels}
-                        title={t.library.refreshReelsTitle}
-                      >
-                        {loadingReels ? '…' : '↻'}
-                      </button>
-                      <span className={`store-toggle-icon ${!savedReelsCollapsed ? 'open' : ''}`} aria-hidden="true" />
-                    </div>
+                    <span className={`store-toggle-icon ${!savedReelsCollapsed ? 'open' : ''}`} aria-hidden="true" />
                   </div>
-
-                  {!savedReelsCollapsed && (
-                    <div className="saved-reels-body" style={{ marginTop: 'var(--space-3)' }}>
-                      {(() => {
-                        const grouped = savedReels.reduce<Record<string, SavedReel[]>>((acc, r) => {
-                          const key = (r.topic || '').trim() || 'reels từ facebook';
-                          (acc[key] = acc[key] || []).push(r);
-                          return acc;
-                        }, {});
-                        const topicEntries = Object.entries(grouped);
-                        return (
-                          <>
-                            {topicEntries.length === 0 ? (
-                              <div className="empty" style={{ padding: 'var(--space-3) 0 0' }}>
-                                <p className="muted" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
-                                  {t.library.noSavedReels}
-                                </p>
-                              </div>
-                            ) : (
-                              topicEntries.map(([topicName, reels]) => (
-                                <details key={topicName} className="sheet" style={{ marginBottom: 'var(--space-2)' }}>
-                                  <summary>
-                                    <span className="sheet-title">
-                                      <strong>{topicName}</strong>
-                                      <small className="muted">{t.library.reelCount(reels.length)}</small>
-                                    </span>
-                                    <button
-                                      type="button"
-                                      className="channel-del-btn"
-                                      aria-label={t.library.deleteTopicAria(topicName)}
-                                      title={t.library.deleteReelTopicTitle}
-                                      onClick={(e) => handleDeleteSavedReelTopic(topicName, e)}
-                                    >
-                                      ✕
-                                    </button>
-                                  </summary>
-                                  <div className="saved-reels-list" style={{ marginTop: 'var(--space-2)' }}>
-                                    {reels.map((reel) => (
-                                      <div key={reel.id} className="channel-card saved-reel-card">
-                                        <div className="channel-info">
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span className="reel-platform-tag">{reel.platform || 'reel'}</span>
-                                            <span className="muted" style={{ fontSize: '11px' }}>
-                                              {formatTime(reel.created_at)}
-                                            </span>
-                                          </div>
-                                          <a
-                                            href={reel.reel_url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="channel-link"
-                                            title={reel.reel_url}
-                                          >
-                                            {shortUrl(reel.reel_url)} ↗
-                                          </a>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                          <button
-                                            type="button"
-                                            className="ghost small"
-                                            style={{ padding: '4px 8px', fontSize: '12px' }}
-                                            onClick={() => handleRunSavedReel(reel)}
-                                            disabled={blocked}
-                                            aria-label={t.library.runReelLabel}
-                                            title={t.library.runReelLabel}
-                                          >
-                                            ▶
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="channel-del-btn"
-                                            aria-label={t.library.deleteReelAria}
-                                            onClick={(e) => handleDeleteSavedReel(reel.id, e)}
-                                            title={t.library.deleteReelTitle}
-                                          >
-                                            ✕
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  <form
-                                    className="inline-add"
-                                    style={{ marginTop: 'var(--space-2)' }}
-                                    onSubmit={async (e) => {
-                                      e.preventDefault();
-                                      const val = (inlineReelUrls[topicName] || '').trim();
-                                      if (!val) return;
-                                      const ok = await saveReelToTopic(val, topicName);
-                                      if (ok) setInlineReelUrls((prev) => ({ ...prev, [topicName]: '' }));
-                                    }}
-                                  >
-                                    <input
-                                      type="url"
-                                      className="text-input small"
-                                      placeholder={t.library.addReelToTopicPlaceholder(topicName)}
-                                      aria-label={t.library.addReelToTopicAria(topicName)}
-                                      value={inlineReelUrls[topicName] || ''}
-                                      onChange={(e) =>
-                                        setInlineReelUrls((prev) => ({ ...prev, [topicName]: e.target.value }))
-                                      }
-                                    />
-                                    <button
-                                      type="submit"
-                                      className="ghost small"
-                                      disabled={busy || !(inlineReelUrls[topicName] || '').trim()}
-                                    >
-                                      {t.library.addChannelBtn}
-                                    </button>
-                                  </form>
-                                </details>
-                              ))
-                            )}
-                            <form
-                              className="new-topic"
-                              style={{ marginTop: 'var(--space-2)' }}
-                              onSubmit={async (e) => {
-                                e.preventDefault();
-                                const ok = await saveReelToTopic(newReelUrl, newReelTopic);
-                                if (ok) setNewReelUrl('');
-                              }}
-                            >
-                              <input
-                                type="text"
-                                className="text-input small"
-                                placeholder={t.library.newReelTopicPlaceholder}
-                                aria-label={t.library.newReelTopicAria}
-                                value={newReelTopic}
-                                onChange={(e) => setNewReelTopic(e.target.value)}
-                              />
-                              <input
-                                type="url"
-                                className="text-input small"
-                                placeholder={t.library.newReelUrlPlaceholder}
-                                aria-label={t.library.newReelUrlAria}
-                                value={newReelUrl}
-                                onChange={(e) => setNewReelUrl(e.target.value)}
-                              />
-                              <button type="submit" className="ghost small" disabled={busy || !newReelUrl.trim()}>
-                                {t.library.saveReelBtn}
-                              </button>
-                            </form>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
                 </div>
-              </>
+
+                {!savedReelsCollapsed && (
+                  <div className="saved-reels-body" style={{ marginTop: 'var(--space-3)' }}>
+                    {(() => {
+                      const grouped = savedReels.reduce<Record<string, SavedReel[]>>((acc, r) => {
+                        const key = (r.topic || '').trim() || 'reels từ facebook';
+                        (acc[key] = acc[key] || []).push(r);
+                        return acc;
+                      }, {});
+                      const topicEntries = Object.entries(grouped);
+                      return (
+                        <>
+                          {topicEntries.length === 0 ? (
+                            <div className="empty" style={{ padding: 'var(--space-3) 0 0' }}>
+                              <p className="muted" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
+                                {t.library.noSavedReels}
+                              </p>
+                            </div>
+                          ) : (
+                            topicEntries.map(([topicName, reels]) => (
+                              <details key={topicName} className="sheet" style={{ marginBottom: 'var(--space-2)' }}>
+                                <summary>
+                                  <span className="sheet-title">
+                                    <strong>{topicName}</strong>
+                                    <small className="muted">{t.library.reelCount(reels.length)}</small>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="channel-del-btn"
+                                    aria-label={t.library.deleteTopicAria(topicName)}
+                                    title={t.library.deleteReelTopicTitle}
+                                    onClick={(e) => handleDeleteSavedReelTopic(topicName, e)}
+                                  >
+                                    ✕
+                                  </button>
+                                </summary>
+                                <div className="saved-reels-list" style={{ marginTop: 'var(--space-2)' }}>
+                                  {reels.map((reel) => (
+                                    <div key={reel.id} className="channel-card saved-reel-card">
+                                      <div className="channel-info">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <span className="reel-platform-tag">{reel.platform || 'reel'}</span>
+                                          <span className="muted" style={{ fontSize: '11px' }}>
+                                            {formatTime(reel.created_at)}
+                                          </span>
+                                        </div>
+                                        <a
+                                          href={reel.reel_url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="channel-link"
+                                          title={reel.reel_url}
+                                        >
+                                          {shortUrl(reel.reel_url)} ↗
+                                        </a>
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <button
+                                          type="button"
+                                          className="ghost small"
+                                          style={{ padding: '4px 8px', fontSize: '12px' }}
+                                          onClick={() => handleRunSavedReel(reel)}
+                                          disabled={blocked}
+                                          aria-label={t.library.runReelLabel}
+                                          title={t.library.runReelLabel}
+                                        >
+                                          ▶
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="channel-del-btn"
+                                          aria-label={t.library.deleteReelAria}
+                                          onClick={(e) => handleDeleteSavedReel(reel.id, e)}
+                                          title={t.library.deleteReelTitle}
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <form
+                                  className="inline-add"
+                                  style={{ marginTop: 'var(--space-2)' }}
+                                  onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const val = (inlineReelUrls[topicName] || '').trim();
+                                    if (!val) return;
+                                    const ok = await saveReelToTopic(val, topicName);
+                                    if (ok) setInlineReelUrls((prev) => ({ ...prev, [topicName]: '' }));
+                                  }}
+                                >
+                                  <input
+                                    type="url"
+                                    className="text-input small"
+                                    placeholder={t.library.addReelToTopicPlaceholder(topicName)}
+                                    aria-label={t.library.addReelToTopicAria(topicName)}
+                                    value={inlineReelUrls[topicName] || ''}
+                                    onChange={(e) =>
+                                      setInlineReelUrls((prev) => ({ ...prev, [topicName]: e.target.value }))
+                                    }
+                                  />
+                                  <button
+                                    type="submit"
+                                    className="ghost small"
+                                    disabled={busy || !(inlineReelUrls[topicName] || '').trim()}
+                                  >
+                                    {t.library.addChannelBtn}
+                                  </button>
+                                </form>
+                              </details>
+                            ))
+                          )}
+                          <form
+                            className="new-topic"
+                            style={{ marginTop: 'var(--space-2)' }}
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const ok = await saveReelToTopic(newReelUrl, newReelTopic);
+                              if (ok) setNewReelUrl('');
+                            }}
+                          >
+                            <input
+                              type="text"
+                              className="text-input small"
+                              placeholder={t.library.newReelTopicPlaceholder}
+                              aria-label={t.library.newReelTopicAria}
+                              value={newReelTopic}
+                              onChange={(e) => setNewReelTopic(e.target.value)}
+                            />
+                            <input
+                              type="url"
+                              className="text-input small"
+                              placeholder={t.library.newReelUrlPlaceholder}
+                              aria-label={t.library.newReelUrlAria}
+                              value={newReelUrl}
+                              onChange={(e) => setNewReelUrl(e.target.value)}
+                            />
+                            <button type="submit" className="ghost small" disabled={busy || !newReelUrl.trim()}>
+                              {t.library.saveReelBtn}
+                            </button>
+                          </form>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <AnalyzerTab
               keyword={keyword}
@@ -1579,7 +1576,12 @@ const Home: React.FC = () => {
 
       {linkCode && (
         <div className="payment-backdrop" onClick={() => setLinkCode(null)}>
-          <div className="payment-sheet" role="dialog" aria-label={t.library.messengerDialogLabel} onClick={(e) => e.stopPropagation()}>
+          <div
+            className="payment-sheet"
+            role="dialog"
+            aria-label={t.library.messengerDialogLabel}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="payment-sheet-head">
               <div className="payment-sheet-title">
                 <span className="payment-cart-icon">💬</span>
@@ -1613,7 +1615,12 @@ const Home: React.FC = () => {
                 target="_blank"
                 rel="noreferrer"
                 className="primary"
-                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textDecoration: 'none',
+                }}
               >
                 {t.library.openMessenger}
               </a>

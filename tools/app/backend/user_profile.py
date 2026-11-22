@@ -73,6 +73,60 @@ def _parse_brand_json(raw: Any) -> Dict[str, Any]:
     return normalize_brand_profile(None)
 
 
+ASSISTANT_CHAT_MODES = ("brand_setup", "keyword_explore")
+MAX_ASSISTANT_MESSAGES = 40
+
+
+def normalize_assistant_chat(data: Any) -> Dict[str, List[Dict[str, Any]]]:
+    raw = data if isinstance(data, dict) else {}
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    for mode in ASSISTANT_CHAT_MODES:
+        items = raw.get(mode)
+        cleaned: List[Dict[str, Any]] = []
+        if isinstance(items, list):
+            for msg in items[-MAX_ASSISTANT_MESSAGES:]:
+                if not isinstance(msg, dict):
+                    continue
+                role = str(msg.get("role") or "").strip().lower()
+                if role not in ("user", "assistant"):
+                    continue
+                content = str(msg.get("content") or "").strip()[:4000]
+                if not content:
+                    continue
+                entry: Dict[str, Any] = {
+                    "id": str(msg.get("id") or "")[:64] or f"{role[0]}-{len(cleaned)}",
+                    "role": role,
+                    "content": content,
+                }
+                if isinstance(msg.get("brandDraft"), dict):
+                    draft = {
+                        f: str(msg["brandDraft"].get(f) or "").strip()[:500]
+                        for f in BRAND_FIELDS
+                        if str(msg["brandDraft"].get(f) or "").strip()
+                    }
+                    if draft:
+                        entry["brandDraft"] = draft
+                kws = normalize_brand_keywords(msg.get("keywords"), limit=10)
+                if kws:
+                    entry["keywords"] = kws
+                if msg.get("saved"):
+                    entry["saved"] = True
+                cleaned.append(entry)
+        out[mode] = cleaned
+    return out
+
+
+def _parse_assistant_chat_json(raw: Any) -> Dict[str, List[Dict[str, Any]]]:
+    if isinstance(raw, dict):
+        return normalize_assistant_chat(raw)
+    if isinstance(raw, str) and raw.strip():
+        try:
+            return normalize_assistant_chat(json.loads(raw))
+        except (ValueError, TypeError):
+            pass
+    return normalize_assistant_chat(None)
+
+
 def normalize_actor_profile(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     raw = dict(data or {})
     raw_gender = str(raw.get("gender") or "male").strip().lower()
@@ -110,7 +164,7 @@ class UserProfileStore:
         try:
             with ro() as conn:
                 cur = conn.execute(
-                    "SELECT gender, age, name, voice_tone, brand_json, language, updated_at FROM user_profiles WHERE user_id = %s",
+                    "SELECT gender, age, name, voice_tone, brand_json, assistant_chat_json, language, updated_at FROM user_profiles WHERE user_id = %s",
                     (user_id,),
                 )
                 row = cur.fetchone()
@@ -122,8 +176,9 @@ class UserProfileStore:
                         "name": row[2] or "",
                         "voice_tone": row[3] or "Bắc",
                         "brand": _parse_brand_json(row[4]),
-                        "language": normalize_language(row[5]),
-                        "updated_at": row[6],
+                        "assistant_chat": _parse_assistant_chat_json(row[5]),
+                        "language": normalize_language(row[6]),
+                        "updated_at": row[7],
                     }
         except Exception:
             pass
@@ -139,6 +194,7 @@ class UserProfileStore:
             "name": "",
             "voice_tone": "Bắc",
             "brand": normalize_brand_profile(None),
+            "assistant_chat": normalize_assistant_chat(None),
             "language": "vi",
             "updated_at": now_iso(),
         }
@@ -157,6 +213,11 @@ class UserProfileStore:
             if isinstance(data.get("brand"), dict)
             else normalize_brand_profile(existing.get("brand"))
         )
+        assistant_chat = (
+            normalize_assistant_chat(data["assistant_chat"])
+            if isinstance(data.get("assistant_chat"), dict)
+            else normalize_assistant_chat(existing.get("assistant_chat"))
+        )
         language = normalize_language(data.get("language", existing.get("language", "vi")))
         updated = now_iso()
         record = {
@@ -166,6 +227,7 @@ class UserProfileStore:
             "name": norm["name"],
             "voice_tone": norm["voice_tone"],
             "brand": brand,
+            "assistant_chat": assistant_chat,
             "language": language,
             "updated_at": updated,
         }
@@ -175,14 +237,15 @@ class UserProfileStore:
             with tx() as conn:
                 conn.execute(
                     """
-                    INSERT INTO user_profiles (user_id, gender, age, name, voice_tone, brand_json, language, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO user_profiles (user_id, gender, age, name, voice_tone, brand_json, assistant_chat_json, language, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (user_id) DO UPDATE SET
                         gender = EXCLUDED.gender,
                         age = EXCLUDED.age,
                         name = EXCLUDED.name,
                         voice_tone = EXCLUDED.voice_tone,
                         brand_json = EXCLUDED.brand_json,
+                        assistant_chat_json = EXCLUDED.assistant_chat_json,
                         language = EXCLUDED.language,
                         updated_at = EXCLUDED.updated_at
                     """,
@@ -193,6 +256,7 @@ class UserProfileStore:
                         record["name"],
                         record["voice_tone"],
                         json.dumps(brand, ensure_ascii=False),
+                        json.dumps(assistant_chat, ensure_ascii=False),
                         record["language"],
                         record["updated_at"],
                     ),

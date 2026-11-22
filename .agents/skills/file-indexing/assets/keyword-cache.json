@@ -75,8 +75,8 @@
   ],
   "app": [
     "application",
-    "webapp",
     "client",
+    "program",
     "ứng",
     "dụng"
   ],
@@ -190,8 +190,8 @@
   ],
   "profile": [
     "account",
-    "creator",
-    "channel"
+    "config",
+    "session"
   ],
   "topic": [
     "subject",
@@ -292,9 +292,23 @@
   ],
   "browser": [
     "web",
-    "frontend",
     "chrome",
+    "chromium",
     "trình",
     "duyệt"
+  ],
+  "analysis": [
+    "audit",
+    "review",
+    "inspection",
+    "phân",
+    "tích"
+  ],
+  "brand": [
+    "identity",
+    "company",
+    "business",
+    "thương",
+    "hiệu"
   ]
 }

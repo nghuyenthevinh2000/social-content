@@ -313,6 +313,7 @@ export const vi = {
     brandAssistant: {
       title: 'Trợ lý Brand',
       resetBtn: 'Làm lại',
+      historyTab: 'Lịch sử phân tích',
       modes: {
         brand_setup: {
           label: 'Xây Brand',
@@ -320,10 +321,12 @@ export const vi = {
             'Chat để định hình nhanh phiên bản đầu tiên của brand, dần dần cải thiện định vị của brand cho khớp với tệp khách hàng.',
           welcome:
             'Chào bạn! Mình sẽ hỏi vài câu ngắn để giúp bạn chốt nhanh phiên bản đầu của Nhân hiệu và từ khoá đúng brand. Bạn đang làm nội dung hoặc bán sản phẩm/dịch vụ gì?',
+          welcomeExisting: (summary: string): string =>
+            `Mình thấy bạn đã có hồ sơ brand hiện tại:\n${summary}\n\nBạn muốn chỉnh sửa hoặc làm rõ điểm nào dựa trên phản hồi gần đây?`,
           placeholder: 'Mô tả lĩnh vực, sản phẩm hoặc trả lời câu hỏi…',
         },
         keyword_explore: {
-          label: 'Khám phá Keyword',
+          label: 'Khám phá Brand',
           subtitle: 'Chế độ tự do: lên ý tưởng và khám phá các từ khoá brand khác nhau.',
           welcome:
             'Bạn muốn khám phá chủ đề hay ngách nào? mình sẽ gợi ý các từ khoá brand để hệ thống nghiên cứu đối thủ.',

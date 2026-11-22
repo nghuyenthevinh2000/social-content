@@ -512,6 +512,7 @@ describe('Analysis results rendering', () => {
     };
 
     const { unmount } = render(<AnalyzerTab {...baseProps} />);
+    screen.getByRole('tab', { name: 'Lịch sử phân tích' }).click();
     expect(screen.getByRole('heading', { name: 'Khám phá brand' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Phân tích creator/video' })).toBeInTheDocument();
 
@@ -538,6 +539,7 @@ describe('Analysis results rendering', () => {
     // Remounting restores collapsed state from localStorage
     unmount();
     const remounted = render(<AnalyzerTab {...baseProps} />);
+    screen.getByRole('tab', { name: 'Lịch sử phân tích' }).click();
     expect(screen.getByRole('button', { name: /Mở rộng Khám phá brand/i })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /Thu gọn Phân tích creator\/video/i })).toHaveAttribute(
       'aria-expanded',

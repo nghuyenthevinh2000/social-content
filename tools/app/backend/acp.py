@@ -263,5 +263,13 @@ class ACPClient:
                 self._proc.kill()
 
     @property
+    def is_alive(self) -> bool:
+        if self._closed:
+            return False
+        if self._proc is not None and self._proc.poll() is not None:
+            return False
+        return True
+
+    @property
     def stderr_tail(self) -> str:
         return "\n".join(self._stderr_lines[-8:])

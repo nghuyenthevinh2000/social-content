@@ -83,3 +83,18 @@ def test_user_profile_store_memory_fallback(monkeypatch):
     assert "ĐỊNH HƯỚNG NHÂN HIỆU" in prompt
     assert "Chuyên gia skincare tối giản" in prompt
     assert "Dân văn phòng" in prompt
+
+    # Assistant chat persistence preserves actor & brand fields
+    saved_chat = store.save_profile("test-user-1", {
+        "assistant_chat": {
+            "brand_setup": [
+                {"id": "u-1", "role": "user", "content": "Hello"},
+                {"id": "a-1", "role": "assistant", "content": "Hi!", "keywords": ["skincare"], "saved": True},
+            ],
+            "keyword_explore": [],
+        },
+    })
+    assert saved_chat["brand"]["identity"] == "Chuyên gia skincare tối giản"
+    assert saved_chat["name"] == "Linh"
+    assert len(saved_chat["assistant_chat"]["brand_setup"]) == 2
+    assert store.get_profile("test-user-1")["assistant_chat"]["brand_setup"][1]["saved"] is True

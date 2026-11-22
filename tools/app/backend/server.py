@@ -859,6 +859,7 @@ class Handler(BaseHTTPRequestHandler):
                     messages=body.get("messages"),
                     brand_profile=merged_brand,
                     language=language,
+                    user_id=user_id,
                 )
                 _json(self, 200, {"ok": True, **result})
             except ValueError as exc:

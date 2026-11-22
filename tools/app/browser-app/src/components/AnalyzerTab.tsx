@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { JobResult } from '../analysis/JobResult';
 import { cleanTopicTitle, formatTime, TERMINAL } from '../analysis/format';
@@ -59,6 +59,9 @@ type ResultsSectionProps = {
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator: (creator: { name: string; url: string; platform?: string }) => void;
   onSaveVideo: (topic: Topic) => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+  highlighted?: boolean;
 };
 
 const ResultsSection: React.FC<ResultsSectionProps> = ({
@@ -79,15 +82,23 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
   onCopyTopic,
   onAddCreator,
   onSaveVideo,
+  collapsed: controlledCollapsed,
+  onToggleCollapsed,
+  highlighted = false,
 }) => {
   const { t } = useLocale();
   const m = t.analyzer;
-  const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey));
+  const [internalCollapsed, setInternalCollapsed] = useState(() => readCollapsed(storageKey));
+  const collapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
   const isTour = items.some((item) => item.id === tourDemoId) || activeJob?.id === tourDemoId;
   const isCollapsed = collapsed && !isTour;
 
   const toggleCollapsed = () => {
-    setCollapsed((prev) => {
+    if (onToggleCollapsed) {
+      onToggleCollapsed();
+      return;
+    }
+    setInternalCollapsed((prev) => {
       const next = !prev;
       try {
         if (next) {
@@ -103,7 +114,7 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
   };
 
   return (
-    <section className="panel results-section" id={id}>
+    <section className={`panel results-section ${highlighted ? 'results-highlight' : ''}`} id={id}>
       {!activeJob ? (
         <>
           <div className="panel-head collapsible-head" onClick={toggleCollapsed}>
@@ -260,69 +271,149 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
 }) => {
   const { t } = useLocale();
   const m = t.analyzer;
+  const [activeView, setActiveView] = useState<'chat' | 'history'>(() =>
+    jobId || starting || visibleHistory.some((item) => item.id === tourDemoId) ? 'history' : 'chat',
+  );
+  const showHistory = activeView === 'history' || starting || Boolean(jobId);
+  const [brandCollapsed, setBrandCollapsed] = useState(() => readCollapsed(BRAND_COLLAPSED_KEY));
+  const [highlightBrand, setHighlightBrand] = useState(false);
+  const highlightTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current !== null) {
+        window.clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!highlightBrand || starting || (jobId && !job)) return;
+    document.getElementById('results-brand')?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+  }, [highlightBrand, starting, jobId, job]);
+
+  const toggleBrandCollapsed = () => {
+    setBrandCollapsed((prev) => {
+      const next = !prev;
+      try {
+        if (next) {
+          localStorage.setItem(BRAND_COLLAPSED_KEY, '1');
+        } else {
+          localStorage.removeItem(BRAND_COLLAPSED_KEY);
+        }
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  };
+
+  const focusBrandResults = () => {
+    setActiveView('history');
+    setBrandCollapsed(false);
+    try {
+      localStorage.removeItem(BRAND_COLLAPSED_KEY);
+    } catch {
+      // ignore storage errors
+    }
+    setHighlightBrand(true);
+    if (highlightTimerRef.current !== null) {
+      window.clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = window.setTimeout(() => {
+      setHighlightBrand(false);
+      highlightTimerRef.current = null;
+    }, 2200);
+  };
+
   const brandHistory = visibleHistory.filter((item) => item.job_kind === 'keyword');
   const analysisHistory = visibleHistory.filter((item) => item.job_kind !== 'keyword');
   const activeIsBrand = job?.job_kind === 'keyword';
 
   return (
     <>
-      <BrandAssistant onSearchKeyword={onSearchKeyword} onSearchKeywords={onSearchKeywords} blocked={blocked} />
+      <BrandAssistant
+        onSearchKeyword={(kw) => {
+          focusBrandResults();
+          onSearchKeyword(kw);
+        }}
+        onSearchKeywords={
+          onSearchKeywords
+            ? (kws) => {
+                focusBrandResults();
+                onSearchKeywords(kws);
+              }
+            : undefined
+        }
+        blocked={blocked}
+        showHistory={showHistory}
+        onSelectHistory={() => setActiveView('history')}
+        onSelectChat={() => {
+          setActiveView('chat');
+          if (jobId) onSelectJob(null);
+        }}
+      />
 
-      <div id="results" style={{ display: 'contents' }}>
-        {error && <div className="alert error">{error}</div>}
-        {starting ? (
-          <section className="panel">
-            <div className="empty">
-              <p className="muted">{m.creatingJob}</p>
-            </div>
-          </section>
-        ) : jobId && !job ? (
-          <section className="panel">
-            <div className="empty">
-              <p className="muted">{m.loadingResults}</p>
-            </div>
-          </section>
-        ) : (
-          <>
-            <ResultsSection
-              id="results-brand"
-              title={m.brandResultsTitle}
-              storageKey={BRAND_COLLAPSED_KEY}
-              items={brandHistory}
-              activeJob={job && activeIsBrand ? job : null}
-              emptyText={m.brandResultsEmpty}
-              loadingHistory={loadingHistory}
-              onFetchHistory={onFetchHistory}
-              onSelectJob={onSelectJob}
-              onDeleteJob={onDeleteJob}
-              tourDemoId={tourDemoId}
-              copiedKey={copiedKey}
-              onCopyTopic={onCopyTopic}
-              onAddCreator={onAddCreator}
-              onSaveVideo={onSaveVideo}
-            />
-            <ResultsSection
-              id="results-analysis"
-              title={m.analysisResultsTitle}
-              storageKey={ANALYSIS_COLLAPSED_KEY}
-              items={analysisHistory}
-              activeJob={job && !activeIsBrand ? job : null}
-              emptyText={m.analysisResultsEmpty}
-              emptyActionLabel={m.goToLibraryBtn}
-              onEmptyAction={onGoToLibrary}
-              loadingHistory={loadingHistory}
-              onFetchHistory={onFetchHistory}
-              onSelectJob={onSelectJob}
-              onDeleteJob={onDeleteJob}
-              tourDemoId={tourDemoId}
-              copiedKey={copiedKey}
-              onCopyTopic={onCopyTopic}
-              onAddCreator={onAddCreator}
-              onSaveVideo={onSaveVideo}
-            />
-          </>
-        )}
-      </div>
+      {showHistory && (
+        <div id="results" style={{ display: 'contents' }}>
+          {error && <div className="alert error">{error}</div>}
+          {starting ? (
+            <section className="panel">
+              <div className="empty">
+                <p className="muted">{m.creatingJob}</p>
+              </div>
+            </section>
+          ) : jobId && !job ? (
+            <section className="panel">
+              <div className="empty">
+                <p className="muted">{m.loadingResults}</p>
+              </div>
+            </section>
+          ) : (
+            <>
+              <ResultsSection
+                id="results-brand"
+                title={m.brandResultsTitle}
+                storageKey={BRAND_COLLAPSED_KEY}
+                items={brandHistory}
+                activeJob={job && activeIsBrand ? job : null}
+                emptyText={m.brandResultsEmpty}
+                loadingHistory={loadingHistory}
+                onFetchHistory={onFetchHistory}
+                onSelectJob={onSelectJob}
+                onDeleteJob={onDeleteJob}
+                tourDemoId={tourDemoId}
+                copiedKey={copiedKey}
+                onCopyTopic={onCopyTopic}
+                onAddCreator={onAddCreator}
+                onSaveVideo={onSaveVideo}
+                collapsed={brandCollapsed}
+                onToggleCollapsed={toggleBrandCollapsed}
+                highlighted={highlightBrand}
+              />
+              <ResultsSection
+                id="results-analysis"
+                title={m.analysisResultsTitle}
+                storageKey={ANALYSIS_COLLAPSED_KEY}
+                items={analysisHistory}
+                activeJob={job && !activeIsBrand ? job : null}
+                emptyText={m.analysisResultsEmpty}
+                emptyActionLabel={m.goToLibraryBtn}
+                onEmptyAction={onGoToLibrary}
+                loadingHistory={loadingHistory}
+                onFetchHistory={onFetchHistory}
+                onSelectJob={onSelectJob}
+                onDeleteJob={onDeleteJob}
+                tourDemoId={tourDemoId}
+                copiedKey={copiedKey}
+                onCopyTopic={onCopyTopic}
+                onAddCreator={onAddCreator}
+                onSaveVideo={onSaveVideo}
+              />
+            </>
+          )}
+        </div>
+      )}
     </>
   );
 };

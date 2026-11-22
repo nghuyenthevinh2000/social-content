@@ -310,6 +310,7 @@ export const en: LocaleMessages = {
     brandAssistant: {
       title: 'Brand Assistant',
       resetBtn: 'Reset',
+      historyTab: 'Analysis History',
       modes: {
         brand_setup: {
           label: 'Build Brand',
@@ -317,10 +318,12 @@ export const en: LocaleMessages = {
             'Chat to determine a quick first version of your brand profile, over-time refine the positioning of your brand to fit with target customers.',
           welcome:
             'Hi! I will ask a few quick questions to help shape version 1 of your brand profile and on-brand keywords. What content, product, or service are you building?',
+          welcomeExisting: (summary: string) =>
+            `I see your current brand profile:\n${summary}\n\nWhat would you like to revise or refine based on recent feedback?`,
           placeholder: 'Describe your niche, offer, or answer the question…',
         },
         keyword_explore: {
-          label: 'Explore Brand Keyword',
+          label: 'Explore Brand',
           subtitle: 'Free-range mode: brainstorm and discover different brand keywords.',
           welcome:
             'What topic or angle would you like to explore? I will suggest search brand keywords for the system to research different brand competitors.',

@@ -10,6 +10,7 @@ export type BrandProfile = {
 
 export const BRAND_PROFILE_KEY = 'aibrand_brand_profile';
 export const BRAND_UPDATED_EVENT = 'aibrand-brand-updated';
+export const BRAND_ASSISTANT_STORAGE_KEY = 'aibrand-brand-assistant-v1';
 
 const EMPTY_BRAND: BrandProfile = {
   identity: '',
@@ -57,6 +58,23 @@ export function loadCachedBrand(): BrandProfile {
     // ignore storage errors
   }
   return { ...EMPTY_BRAND };
+}
+
+export function hasBrandProfile(b: BrandProfile): boolean {
+  return Boolean(
+    b.identity.trim() || b.audience.trim() || b.differentiator.trim() || b.tone.trim() || b.keywords.length > 0,
+  );
+}
+
+export function cacheBrandProfile(raw?: Partial<BrandProfile> | null): BrandProfile {
+  const next = normalizeBrand(raw);
+  try {
+    localStorage.setItem(BRAND_PROFILE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore storage errors
+  }
+  window.dispatchEvent(new CustomEvent<BrandProfile>(BRAND_UPDATED_EVENT, { detail: next }));
+  return next;
 }
 
 export async function saveBrandProfile(
