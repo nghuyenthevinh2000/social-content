@@ -2,46 +2,24 @@ import { IonToast } from '@ionic/react';
 import React, { useEffect, useState } from 'react';
 
 import { apiJson } from '../api';
+import {
+  BRAND_PROFILE_KEY,
+  BRAND_UPDATED_EVENT,
+  type BrandProfile,
+  loadCachedBrand,
+  normalizeBrand,
+  normalizeKeywords,
+  saveBrandProfile,
+} from '../brandProfile';
 import { useLocale } from '../locales';
 import './MediaPanel.css';
 
-export type BrandProfile = {
-  identity: string;
-  audience: string;
-  differentiator: string;
-  tone: string;
-};
-
-const BRAND_PROFILE_KEY = 'aibrand_brand_profile';
-
-const EMPTY_BRAND: BrandProfile = {
-  identity: '',
-  audience: '',
-  differentiator: '',
-  tone: '',
-};
-
-function loadCachedBrand(): BrandProfile {
-  try {
-    const raw = localStorage.getItem(BRAND_PROFILE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        identity: String(parsed?.identity || ''),
-        audience: String(parsed?.audience || ''),
-        differentiator: String(parsed?.differentiator || ''),
-        tone: String(parsed?.tone || ''),
-      };
-    }
-  } catch {
-    // ignore storage errors
-  }
-  return { ...EMPTY_BRAND };
-}
+export type { BrandProfile };
 
 export function BrandPanel(): React.ReactElement {
   const { t } = useLocale();
   const [brand, setBrand] = useState<BrandProfile>(() => loadCachedBrand());
+  const [keywordsText, setKeywordsText] = useState<string>(() => loadCachedBrand().keywords.join(', '));
   const [saving, setSaving] = useState(false);
   const [toastOpen, setToastOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,14 +29,9 @@ export function BrandPanel(): React.ReactElement {
     apiJson<{ ok: boolean; profile?: { brand?: Partial<BrandProfile> } }>('/api/user/profile')
       .then((res) => {
         if (ignore || !res.ok || !res.profile?.brand) return;
-        const b = res.profile.brand;
-        const next: BrandProfile = {
-          identity: String(b.identity || ''),
-          audience: String(b.audience || ''),
-          differentiator: String(b.differentiator || ''),
-          tone: String(b.tone || ''),
-        };
+        const next = normalizeBrand(res.profile.brand);
         setBrand(next);
+        setKeywordsText(next.keywords.join(', '));
         try {
           localStorage.setItem(BRAND_PROFILE_KEY, JSON.stringify(next));
         } catch {
@@ -68,25 +41,26 @@ export function BrandPanel(): React.ReactElement {
       .catch(() => {
         // preserve cached state
       });
+
+    const onUpdated = (e: Event) => {
+      const detail = (e as CustomEvent<BrandProfile>).detail;
+      if (!detail) return;
+      const next = normalizeBrand(detail);
+      setBrand(next);
+      setKeywordsText(next.keywords.join(', '));
+    };
+    window.addEventListener(BRAND_UPDATED_EVENT, onUpdated);
     return () => {
       ignore = true;
+      window.removeEventListener(BRAND_UPDATED_EVENT, onUpdated);
     };
   }, []);
 
   const saveBrand = async (next: BrandProfile, showPopup = false) => {
     try {
-      localStorage.setItem(BRAND_PROFILE_KEY, JSON.stringify(next));
-    } catch {
-      // ignore storage errors
-    }
-    try {
       setSaving(true);
       setError(null);
-      await apiJson('/api/user/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brand: next }),
-      });
+      await saveBrandProfile(next);
       if (showPopup) {
         setToastOpen(true);
       }
@@ -128,6 +102,49 @@ export function BrandPanel(): React.ReactElement {
           />
         </div>
       ))}
+      <div className="actor-field">
+        <div className="actor-field-label">
+          <label htmlFor="brand-keywords">{t.brand.keywordsLabel}:</label>
+        </div>
+        <p className="actor-field-hint actor-field-hint-compact">{t.brand.keywordsHint}</p>
+        <input
+          id="brand-keywords"
+          type="text"
+          className="actor-text-input"
+          placeholder={t.brand.keywordsPlaceholder}
+          value={keywordsText}
+          onChange={(e) => {
+            const val = e.target.value;
+            setKeywordsText(val);
+            setBrand((prev) => ({ ...prev, keywords: normalizeKeywords(val) }));
+          }}
+          onBlur={(e) => {
+            const parsed = normalizeKeywords(e.target.value);
+            const next = { ...brand, keywords: parsed };
+            setBrand(next);
+            setKeywordsText(parsed.join(', '));
+            saveBrand(next);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              const parsed = normalizeKeywords((e.target as HTMLInputElement).value);
+              const next = { ...brand, keywords: parsed };
+              setBrand(next);
+              setKeywordsText(parsed.join(', '));
+              saveBrand(next);
+            }
+          }}
+        />
+        {brand.keywords.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)', marginTop: 'var(--space-1)' }}>
+            {brand.keywords.map((kw) => (
+              <span key={kw} className="badge">
+                {kw}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
         <button type="button" className="primary small" onClick={() => saveBrand(brand, true)} disabled={saving}>
           {t.brand.saveBtn}

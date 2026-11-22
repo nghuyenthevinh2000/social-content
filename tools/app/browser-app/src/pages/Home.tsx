@@ -1501,6 +1501,12 @@ const Home: React.FC = () => {
               keyword={keyword}
               onKeywordChange={setKeyword}
               onSearchKeyword={(kw) => run([{ name: kw, slug: kw, targets: [{ name: kw, url: kw }] }], kw, 'keyword')}
+              onSearchKeywords={(kws) => {
+                const list = kws.map((k) => k.trim()).filter(Boolean);
+                if (!list.length) return;
+                const label = list[0];
+                run([{ name: label, slug: label, targets: list.map((k) => ({ name: k, url: k })) }], label, 'keyword');
+              }}
               blocked={blocked}
               error={error}
               starting={starting}

@@ -101,6 +101,9 @@ export const en: LocaleMessages = {
     saveError: 'Unable to save brand profile',
     saveBtn: 'Update Brand',
     savedToast: 'Brand updated',
+    keywordsLabel: 'On-brand Keywords',
+    keywordsHint: 'Keywords representing your brand (comma-separated), used for aligned content research.',
+    keywordsPlaceholder: 'E.g., minimalist skincare, science-backed routine, 5-min glow',
     questions: [
       {
         key: 'identity',
@@ -304,6 +307,36 @@ export const en: LocaleMessages = {
     analysisResultsTitle: 'Creator / Video Analysis',
     analysisResultsEmpty: 'No creator/video analysis runs yet.',
     goToLibraryBtn: 'Choose a topic in Library to run',
+    brandAssistant: {
+      title: 'Brand Assistant',
+      resetBtn: 'Reset',
+      modes: {
+        brand_setup: {
+          label: 'Build Brand',
+          subtitle:
+            'Chat to determine a quick first version of your brand profile, over-time refine the positioning of your brand to fit with target customers.',
+          welcome:
+            'Hi! I will ask a few quick questions to help shape version 1 of your brand profile and on-brand keywords. What content, product, or service are you building?',
+          placeholder: 'Describe your niche, offer, or answer the question…',
+        },
+        keyword_explore: {
+          label: 'Explore Brand Keyword',
+          subtitle: 'Free-range mode: brainstorm and discover different brand keywords.',
+          welcome:
+            'What topic or angle would you like to explore? I will suggest search brand keywords for the system to research different brand competitors.',
+          placeholder: 'Ask about any topic, niche, or trend…',
+        },
+      },
+      sendBtn: 'Send',
+      thinking: 'Asking assistant...',
+      draftTitle: 'Brand Draft',
+      saveToBrandBtn: 'Save to brand profile',
+      savedToBrandBtn: '✓ Saved to brand profile',
+      keywordsHeading: 'Suggested keywords (click to explore):',
+      exploreKeywordTitle: (kw: string) => `Explore "${kw}"`,
+      searchKeywordsBtn: (count: number) => `Search with ${count} keywords`,
+      errorFallback: 'Unable to reach assistant.',
+    },
   },
   analysis: {
     statusLabel: {
@@ -392,7 +425,8 @@ export const en: LocaleMessages = {
     profileSelected: 'Reference portrait selected',
     profileSelectHint: 'Click a photo to select',
     noProfileWarn: '⚠️ No reference portrait yet. Please upload one in the Profile tab.',
-    step2Label: (selected: number, total: number) => `2. Context / Product Photos (Optional — ${selected}/${total} selected)`,
+    step2Label: (selected: number, total: number) =>
+      `2. Context / Product Photos (Optional — ${selected}/${total} selected)`,
     noContextHint: 'No context photos yet (you can add them in the Profile tab).',
     step3Label: (duration: number) => `3. Dialogue & Script (${duration} seconds)`,
     promptPlaceholder:
@@ -456,7 +490,8 @@ export const en: LocaleMessages = {
       libraryTitle: 'Library',
       libraryText: 'Import Excel/Google Sheets, manage topics, Facebook channels, and saved Reels.',
       newTopicTitle: 'Add new topic',
-      newTopicText: 'Enter a new topic name and (optionally) paste the first Facebook channel link, then click + Create topic.',
+      newTopicText:
+        'Enter a new topic name and (optionally) paste the first Facebook channel link, then click + Create topic.',
       topicAccordionTitle: 'Manage Topics & Facebook Channels',
       topicAccordionText:
         'Each topic holds a list of Facebook channels, a link input to add more, and a ▶ button to analyze just that topic.',
@@ -467,7 +502,8 @@ export const en: LocaleMessages = {
       demoHistoryTitle: 'Sample "Guide" run',
       demoHistoryText: 'Each run shows its status, topic count, and viral ideas found.',
       transcriptTitle: 'Transcript & Viral Analysis',
-      transcriptText: 'Expand this section to view the transcript, 3-second hook, why it went viral, and content outline.',
+      transcriptText:
+        'Expand this section to view the transcript, 3-second hook, why it went viral, and content outline.',
       copyPromptTitle: 'Copy prompt for AI',
       copyPromptText: 'Quickly copy the full prompt/script to paste into Create Video AI or another AI tool.',
       videoTitle: 'Create AI Video',

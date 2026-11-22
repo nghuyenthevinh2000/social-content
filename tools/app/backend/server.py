@@ -37,7 +37,10 @@ WORKSPACE = BACKEND_DIR.parents[2]
 sys.path.insert(0, str(WORKSPACE))
 
 from tools.app.backend import blobs, profiling  # noqa: E402
+from tools.app.backend.acp import ACPError  # noqa: E402
+from tools.app.backend.brand_assistant import run_brand_assistant_chat  # noqa: E402
 from tools.app.backend.db import ro, tx  # noqa: E402
+from tools.app.backend.errors import handle_acp_error  # noqa: E402
 from tools.app.backend.handler import run_worker  # noqa: E402
 from tools.app.backend.media import MEDIA_STORE  # noqa: E402
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate_per_sec_micro  # noqa: E402
@@ -837,6 +840,33 @@ class Handler(BaseHTTPRequestHandler):
                 _json(self, 200, {"ok": True, "profile": prof})
             except Exception as exc:
                 _json(self, 400, {"error": str(exc)})
+            return
+        if parsed.path == "/api/brand-assistant/chat":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                stored = USER_PROFILE_STORE.get_profile(user_id)
+                stored_brand = stored.get("brand") or {}
+                body_brand = body.get("brand")
+                merged_brand = {**stored_brand, **body_brand} if isinstance(body_brand, dict) else stored_brand
+                language = body.get("language") or stored.get("language") or "vi"
+                result = run_brand_assistant_chat(
+                    mode=str(body.get("mode") or "").strip(),
+                    messages=body.get("messages"),
+                    brand_profile=merged_brand,
+                    language=language,
+                )
+                _json(self, 200, {"ok": True, **result})
+            except ValueError as exc:
+                _json(self, 400, {"error": str(exc)})
+            except ACPError as exc:
+                _json(self, 502, {"error": handle_acp_error(exc).message})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
             return
         if parsed.path == "/api/videos":
             user_id = self._user_id()

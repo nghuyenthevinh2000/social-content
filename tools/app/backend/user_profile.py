@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from tools.app.backend.db import ro, tx
 
@@ -28,14 +28,41 @@ def normalize_language(value: Any) -> str:
     return "vi"
 
 BRAND_FIELDS = ("identity", "audience", "differentiator", "tone")
+MAX_BRAND_KEYWORDS = 20
+MAX_BRAND_KEYWORD_LEN = 80
 
 
-def normalize_brand_profile(data: Optional[Dict[str, Any]]) -> Dict[str, str]:
+def normalize_brand_keywords(value: Any, limit: int = MAX_BRAND_KEYWORDS) -> List[str]:
+    if isinstance(value, str):
+        items = [part.strip() for part in value.split(",")]
+    elif isinstance(value, list):
+        items = [str(part or "").strip() for part in value]
+    else:
+        return []
+    seen: set[str] = set()
+    result: List[str] = []
+    for item in items:
+        cleaned = item[:MAX_BRAND_KEYWORD_LEN].strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(cleaned)
+        if len(result) >= limit:
+            break
+    return result
+
+
+def normalize_brand_profile(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     raw = data if isinstance(data, dict) else {}
-    return {field: str(raw.get(field) or "").strip()[:500] for field in BRAND_FIELDS}
+    normalized: Dict[str, Any] = {field: str(raw.get(field) or "").strip()[:500] for field in BRAND_FIELDS}
+    normalized["keywords"] = normalize_brand_keywords(raw.get("keywords"))
+    return normalized
 
 
-def _parse_brand_json(raw: Any) -> Dict[str, str]:
+def _parse_brand_json(raw: Any) -> Dict[str, Any]:
     if isinstance(raw, dict):
         return normalize_brand_profile(raw)
     if isinstance(raw, str) and raw.strip():

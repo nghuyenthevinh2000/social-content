@@ -80,8 +80,8 @@ services:
       - ENABLE_DM_POLLER=${ENABLE_DM_POLLER:-0}
       - VIRAL_APP_AGENT=${VIRAL_APP_AGENT:-agy}
       - VIRAL_APP_AGY_MODEL=${VIRAL_APP_AGY_MODEL:-gemini-4-hydrogen-low}
-      # Needed for macOS: host `agy` (Mach-O + Keychain) cannot run in Linux Docker directly.
-      - AGY_HOST_BRIDGE=${AGY_HOST_BRIDGE:-host.docker.internal:8766}
+      # Reserved for macOS testing only (Mach-O + Keychain cannot run in Linux Docker directly); leave unset on Linux.
+      - AGY_HOST_BRIDGE=${AGY_HOST_BRIDGE:-}
       - OPENCODE_CONFIG_CONTENT=${OPENCODE_CONFIG_CONTENT:-}
       - GLASSER_API_KEY=${GLASSER_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -107,6 +107,7 @@ services:
     volumes:
       - aibrand-hf:/home/app/.cache/huggingface
       - ${HOME:-/home/vinh}/.gemini:/home/app/.gemini
+      - ${AGY_BIN:-${HOME:-/home/vinh}/.local/bin/agy}:/usr/local/bin/agy:ro
       - .:/app/tools/app/backend
       - ../../loop:/app/tools/loop
       - ../../facebook_agent:/app/tools/facebook_agent

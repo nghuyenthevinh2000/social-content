@@ -5,6 +5,8 @@ import { cleanTopicTitle, formatTime, TERMINAL } from '../analysis/format';
 import type { Job, JobKind, JobSummary, Topic } from '../analysis/types';
 import { useLocale } from '../locales';
 
+import { BrandAssistant } from './BrandAssistant';
+
 const BRAND_COLLAPSED_KEY = 'aibrand-results-brand-collapsed';
 const ANALYSIS_COLLAPSED_KEY = 'aibrand-results-analysis-collapsed';
 
@@ -20,6 +22,7 @@ type AnalyzerTabProps = {
   keyword: string;
   onKeywordChange: (value: string) => void;
   onSearchKeyword: (keyword: string) => void;
+  onSearchKeywords?: (keywords: string[]) => void;
   blocked: boolean;
   error: string | null;
   starting: boolean;
@@ -236,9 +239,8 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
 };
 
 export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
-  keyword,
-  onKeywordChange,
   onSearchKeyword,
+  onSearchKeywords,
   blocked,
   error,
   starting,
@@ -264,37 +266,7 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
 
   return (
     <>
-      <section className="panel keyword-search-panel">
-        <h2>{m.brandResearchTitle}</h2>
-        <p className="muted count" style={{ marginTop: 'var(--space-1)' }}>
-          {m.brandResearchSubtitle}
-        </p>
-        <form
-          className="row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const kw = keyword.trim();
-            if (kw) onSearchKeyword(kw);
-          }}
-        >
-          <input
-            type="text"
-            className="text-input"
-            placeholder={m.keywordPlaceholder}
-            aria-label={m.keywordAria}
-            value={keyword}
-            onChange={(e) => onKeywordChange(e.target.value)}
-          />
-          <button
-            type="submit"
-            className="primary"
-            style={{ flex: 'none', width: 'auto', padding: '0 var(--space-4)' }}
-            disabled={blocked || !keyword.trim()}
-          >
-            {m.exploreBrandBtn}
-          </button>
-        </form>
-      </section>
+      <BrandAssistant onSearchKeyword={onSearchKeyword} onSearchKeywords={onSearchKeywords} blocked={blocked} />
 
       <div id="results" style={{ display: 'contents' }}>
         {error && <div className="alert error">{error}</div>}

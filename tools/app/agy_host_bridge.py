@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Host-side TCP-to-stdio bridge so Docker containers can invoke host `agy`."""
+"""Host-side TCP-to-stdio bridge reserved for testing on macOS only.
+
+On macOS, host `agy` (Mach-O + Keychain) cannot run inside a Linux Docker
+container, so tests on macOS can set `AGY_HOST_BRIDGE=host.docker.internal:8766`
+and run this bridge. On Linux, mount the host `agy` binary directly into the
+container and leave `AGY_HOST_BRIDGE` unset.
+"""
 
 from __future__ import annotations
 

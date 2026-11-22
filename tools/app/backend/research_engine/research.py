@@ -393,6 +393,14 @@ def _process_sheet_inner(
 
     if job_kind == "keyword":
         log(f"Tìm kiếm video viral đa nền tảng cho từ khoá: '{sheet_name}'")
+        provided_queries = [
+            {
+                "kind": "original" if idx == 0 else "expanded",
+                "text": (t.get("name") or t.get("url") or "").strip(),
+            }
+            for idx, t in enumerate(targets)
+            if (t.get("name") or t.get("url") or "").strip()
+        ]
         kw_res = run_viral_video_search(
             keyword=sheet_name,
             run_dir=run_dir,
@@ -400,6 +408,7 @@ def _process_sheet_inner(
             log=log,
             job_id=job_id,
             aggregator=aggregator,
+            queries=provided_queries or None,
         )
         queries = kw_res.get("queries", [])
         reels = kw_res.get("reels", [])

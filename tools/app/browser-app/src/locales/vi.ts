@@ -13,7 +13,8 @@ export const vi = {
   },
   api: {
     backendUnreachable: 'Không thể kết nối đến máy chủ backend (127.0.0.1:8765)',
-    serverError: (status: number, statusText: string): string => `Máy chủ phản hồi lỗi (${status} ${statusText || 'Error'})`.trim(),
+    serverError: (status: number, statusText: string): string =>
+      `Máy chủ phản hồi lỗi (${status} ${statusText || 'Error'})`.trim(),
   },
   errorBoundary: {
     title: 'Đã xảy ra lỗi hiển thị',
@@ -99,6 +100,9 @@ export const vi = {
     saveError: 'Không thể lưu thông tin nhân hiệu',
     saveBtn: 'Cập nhật Brand',
     savedToast: 'Đã cập nhật Brand',
+    keywordsLabel: 'Từ khoá đúng brand',
+    keywordsHint: 'Các từ khoá đại diện cho nhân hiệu (cách nhau bởi dấu phẩy), dùng để tìm nội dung đúng định hướng.',
+    keywordsPlaceholder: 'VD: skincare tối giản, chăm da khoa học, routine 5 phút',
     questions: [
       {
         key: 'identity' as const,
@@ -167,7 +171,8 @@ export const vi = {
     'pack-50-free': {
       countLabel: '50 kênh',
       badge: 'Miễn phí',
-      description: '50 nhà sáng tạo nội dung hàng đầu Việt Nam đa dạng ngành nghề (Âm nhạc, Giải trí, F&B, Công nghệ...) tháng 10.',
+      description:
+        '50 nhà sáng tạo nội dung hàng đầu Việt Nam đa dạng ngành nghề (Âm nhạc, Giải trí, F&B, Công nghệ...) tháng 10.',
     },
     'pack-1000-bds': {
       countLabel: '1.000 kênh',
@@ -177,17 +182,20 @@ export const vi = {
     'pack-1000-daotao': {
       countLabel: '1.000 kênh',
       badge: 'Sắp ra mắt',
-      description: '1.000 kênh Chuyên gia, Diễn giả đào tạo kinh doanh, kỹ năng, ngoại ngữ & phát triển bản thân tháng 12.',
+      description:
+        '1.000 kênh Chuyên gia, Diễn giả đào tạo kinh doanh, kỹ năng, ngoại ngữ & phát triển bản thân tháng 12.',
     },
     'pack-10000-tonghop': {
       countLabel: '10.000 kênh',
       badge: 'Sắp ra mắt',
-      description: '10.000 creators đa ngành nghề lớn nhất Việt Nam cho chiến dịch phủ sóng thương hiệu quy mô lớn tháng 12.',
+      description:
+        '10.000 creators đa ngành nghề lớn nhất Việt Nam cho chiến dịch phủ sóng thương hiệu quy mô lớn tháng 12.',
     },
     'pack-maintenance-yearly': {
       countLabel: 'Cập nhật hàng tháng',
       badge: 'Gói năm · Sắp ra mắt',
-      description: 'Tự động bảo trì, cập nhật danh sách creator mới và lọc link lỗi định kỳ hàng tháng trong suốt 1 năm.',
+      description:
+        'Tự động bảo trì, cập nhật danh sách creator mới và lọc link lỗi định kỳ hàng tháng trong suốt 1 năm.',
     },
   } as Record<string, { countLabel: string; badge: string; description: string }>,
   payment: {
@@ -302,6 +310,36 @@ export const vi = {
     analysisResultsTitle: 'Phân tích creator/video',
     analysisResultsEmpty: 'Chưa có lần phân tích creator/video nào.',
     goToLibraryBtn: 'Chọn chủ đề trong Thư viện để chạy',
+    brandAssistant: {
+      title: 'Trợ lý Brand',
+      resetBtn: 'Làm lại',
+      modes: {
+        brand_setup: {
+          label: 'Xây Brand',
+          subtitle:
+            'Chat để định hình nhanh phiên bản đầu tiên của brand, dần dần cải thiện định vị của brand cho khớp với tệp khách hàng.',
+          welcome:
+            'Chào bạn! Mình sẽ hỏi vài câu ngắn để giúp bạn chốt nhanh phiên bản đầu của Nhân hiệu và từ khoá đúng brand. Bạn đang làm nội dung hoặc bán sản phẩm/dịch vụ gì?',
+          placeholder: 'Mô tả lĩnh vực, sản phẩm hoặc trả lời câu hỏi…',
+        },
+        keyword_explore: {
+          label: 'Khám phá Keyword',
+          subtitle: 'Chế độ tự do: lên ý tưởng và khám phá các từ khoá brand khác nhau.',
+          welcome:
+            'Bạn muốn khám phá chủ đề hay ngách nào? mình sẽ gợi ý các từ khoá brand để hệ thống nghiên cứu đối thủ.',
+          placeholder: 'Nhập chủ đề, ý tưởng hoặc câu hỏi bất kỳ…',
+        },
+      },
+      sendBtn: 'Gửi',
+      thinking: 'Đang hỏi trợ lý...',
+      draftTitle: 'Bản nháp Brand',
+      saveToBrandBtn: 'Lưu vào brand profile',
+      savedToBrandBtn: '✓ Đã lưu vào brand profile',
+      keywordsHeading: 'Từ khoá gợi ý (bấm để tìm ngay):',
+      exploreKeywordTitle: (kw: string): string => `Khám phá "${kw}"`,
+      searchKeywordsBtn: (count: number): string => `Tìm kiếm với ${count} từ khoá`,
+      errorFallback: 'Không thể kết nối trợ lý.',
+    },
   },
   analysis: {
     statusLabel: {
@@ -390,7 +428,8 @@ export const vi = {
     profileSelected: 'Đã chọn ảnh đại diện mẫu',
     profileSelectHint: 'Nhấn vào ảnh để chọn',
     noProfileWarn: '⚠️ Chưa có ảnh chân dung mẫu. Vui lòng tải ảnh lên ở tab Hồ sơ.',
-    step2Label: (selected: number, total: number): string => `2. Ảnh bối cảnh / Sản phẩm (Tuỳ chọn — đã chọn ${selected}/${total})`,
+    step2Label: (selected: number, total: number): string =>
+      `2. Ảnh bối cảnh / Sản phẩm (Tuỳ chọn — đã chọn ${selected}/${total})`,
     noContextHint: 'Chưa có ảnh bối cảnh (có thể thêm tại tab Hồ sơ).',
     step3Label: (duration: number): string => `3. Lời thoại & Kịch bản tiếng Việt (${duration} giây)`,
     promptPlaceholder:
@@ -471,13 +510,11 @@ export const vi = {
       videoTitle: 'Tạo Video AI',
       videoText: 'Tạo video ngắn với khuôn mặt mẫu, bối cảnh và giọng đọc tiếng Việt tự nhiên.',
       videoFormTitle: 'Tạo video AI Cá Nhân',
-      videoFormText:
-        'Chọn ảnh khuôn mặt, ảnh bối cảnh và nhập lời thoại/kịch bản tiếng Việt rồi bấm Tạo video ngay.',
+      videoFormText: 'Chọn ảnh khuôn mặt, ảnh bối cảnh và nhập lời thoại/kịch bản tiếng Việt rồi bấm Tạo video ngay.',
       profileTitle: 'Hồ sơ',
       profileText: 'Liên kết Facebook, xem số dư Video AI, nạp gói creator và cấu hình hướng dẫn.',
       accountTitle: 'Thông tin tài khoản',
-      accountText:
-        'Xem email, liên kết Facebook, kiểm tra số dư Video AI, bật/tắt "Đã rõ hướng dẫn" hoặc đăng xuất.',
+      accountText: 'Xem email, liên kết Facebook, kiểm tra số dư Video AI, bật/tắt "Đã rõ hướng dẫn" hoặc đăng xuất.',
       avatarTitle: 'Ảnh chân dung mẫu',
       avatarText: 'Tải lên ảnh chân dung rõ mặt tại đây để AI khớp khuôn mặt của bạn trong các video tạo ra.',
       storeTitle: 'Gói mở rộng',

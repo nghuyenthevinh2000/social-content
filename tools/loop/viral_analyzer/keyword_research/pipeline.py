@@ -74,8 +74,9 @@ def run_viral_video_search(
     job_id: str = "",
     aggregator: Optional[ErrorAggregator] = None,
     ctx: Optional[runtime.EngineContext] = None,
+    queries: Optional[List[Any]] = None,
 ) -> Dict[str, Any]:
-    """Expand keyword (<=3 terms) and search platforms, returning normalized videos + creators."""
+    """Expand keyword (<=3 terms) unless pre-expanded `queries` are given, then search platforms."""
     opts = options or {}
     eng_ctx = ctx or runtime.default_context()
     _log = log or (lambda _msg: None)
@@ -83,17 +84,32 @@ def run_viral_video_search(
     cache_dir = Path(run_dir) / "cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    expand_kwargs: Dict[str, Any] = {
-        "agent_id": opts.get("agent"),
-        "model": opts.get("model"),
-        "cwd": Path(run_dir),
-        "log": _log,
-        "language": opts.get("language"),
-    }
-    if ctx is not None:
-        expand_kwargs["ctx"] = eng_ctx
-    with profiling.span("keyword", "expand"):
-        queries = expand_keyword(keyword, **expand_kwargs)
+    resolved_queries: List[Dict[str, str]] = []
+    if queries:
+        normalized: List[Dict[str, str]] = []
+        for idx, item in enumerate(queries):
+            if isinstance(item, dict):
+                text = str(item.get("text") or "").strip()
+                kind = str(item.get("kind") or ("original" if idx == 0 else "expanded")).strip()
+            else:
+                text = str(item or "").strip()
+                kind = "original" if idx == 0 else "expanded"
+            if text:
+                normalized.append({"kind": kind, "text": text})
+        resolved_queries = _dedup_queries(normalized, limit=3)
+    else:
+        expand_kwargs: Dict[str, Any] = {
+            "agent_id": opts.get("agent"),
+            "model": opts.get("model"),
+            "cwd": Path(run_dir),
+            "log": _log,
+            "language": opts.get("language"),
+        }
+        if ctx is not None:
+            expand_kwargs["ctx"] = eng_ctx
+        with profiling.span("keyword", "expand"):
+            resolved_queries = expand_keyword(keyword, **expand_kwargs)
+    queries = resolved_queries
     if not queries:
         return {
             "queries": [],
