@@ -80,6 +80,8 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
   const { t } = useLocale();
   const m = t.analyzer;
   const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey));
+  const isTour = items.some((item) => item.id === tourDemoId) || activeJob?.id === tourDemoId;
+  const isCollapsed = collapsed && !isTour;
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -121,19 +123,19 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
               <button
                 type="button"
                 className="panel-collapse-btn"
-                aria-expanded={!collapsed}
-                aria-label={collapsed ? m.expandLabel(title) : m.collapseLabel(title)}
+                aria-expanded={!isCollapsed}
+                aria-label={isCollapsed ? m.expandLabel(title) : m.collapseLabel(title)}
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleCollapsed();
                 }}
               >
-                <span className={`store-toggle-icon ${!collapsed ? 'open' : ''}`} aria-hidden="true" />
+                <span className={`store-toggle-icon ${!isCollapsed ? 'open' : ''}`} aria-hidden="true" />
               </button>
             </div>
           </div>
 
-          {!collapsed &&
+          {!isCollapsed &&
             (items.length === 0 ? (
               <div className="empty">
                 <p className="muted">{emptyText}</p>
@@ -221,7 +223,7 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
           job={activeJob}
           historyCount={items.length}
           copiedKey={copiedKey}
-          collapsed={collapsed}
+          collapsed={isCollapsed}
           onToggleCollapse={toggleCollapsed}
           onBack={() => onSelectJob(null)}
           onCopyTopic={onCopyTopic}

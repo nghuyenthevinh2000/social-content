@@ -242,15 +242,44 @@ const Home: React.FC = () => {
       setJob(tourDemoJob);
     };
     const hideDemoResult = () => {
-      setJobId((prev) => (prev === TOUR_DEMO_ID ? null : prev));
-      setJob((prev) => (prev?.id === TOUR_DEMO_ID ? null : prev));
+      setJobId(null);
+      setJob(null);
     };
     return [
       {
-        tab: 'library',
+        tab: 'analyzer',
         target: '.tabbar-btn:nth-child(1)',
+        title: s.analyzerTitle,
+        text: s.analyzerText,
+        onEnter: hideDemoResult,
+      },
+      {
+        tab: 'analyzer',
+        target: '#results-analysis .history-list .history-card:first-child',
+        title: s.demoHistoryTitle,
+        text: s.demoHistoryText,
+        onEnter: hideDemoResult,
+      },
+      {
+        tab: 'analyzer',
+        target: '.reel-analysis-details',
+        title: s.transcriptTitle,
+        text: s.transcriptText,
+        onEnter: showDemoResult,
+      },
+      {
+        tab: 'analyzer',
+        target: '.copy-topic-btn',
+        title: s.copyPromptTitle,
+        text: s.copyPromptText,
+        onEnter: showDemoResult,
+      },
+      {
+        tab: 'library',
+        target: '.tabbar-btn:nth-child(2)',
         title: s.libraryTitle,
         text: s.libraryText,
+        onEnter: hideDemoResult,
       },
       {
         tab: 'library',
@@ -271,39 +300,10 @@ const Home: React.FC = () => {
         text: s.savedReelsText,
       },
       {
-        tab: 'analyzer',
-        target: '.tabbar-btn:nth-child(2)',
-        title: s.analyzerTitle,
-        text: s.analyzerText,
-        onEnter: hideDemoResult,
-      },
-      {
-        tab: 'analyzer',
-        target: '.history-list .history-card:first-child',
-        title: s.demoHistoryTitle,
-        text: s.demoHistoryText,
-        onEnter: hideDemoResult,
-      },
-      {
-        tab: 'analyzer',
-        target: '.reel-analysis-details',
-        title: s.transcriptTitle,
-        text: s.transcriptText,
-        onEnter: showDemoResult,
-      },
-      {
-        tab: 'analyzer',
-        target: '.copy-topic-btn',
-        title: s.copyPromptTitle,
-        text: s.copyPromptText,
-        onEnter: showDemoResult,
-      },
-      {
         tab: 'video',
         target: '.tabbar-btn:nth-child(3)',
         title: s.videoTitle,
         text: s.videoText,
-        onEnter: hideDemoResult,
       },
       {
         tab: 'video',
@@ -622,7 +622,7 @@ const Home: React.FC = () => {
         const activeRunning = jobs.find((j) => !TERMINAL.has(j.status));
         const storedId = query.get('job_id') || localStorage.getItem('aibrand-active-job-id');
         const targetId = storedId || activeRunning?.id;
-        if (targetId) {
+        if (targetId && !showTour) {
           selectJob(targetId);
         }
       })
@@ -1540,7 +1540,7 @@ const Home: React.FC = () => {
           </div>
         )}
         <nav className="tabbar" role="tablist">
-          {(['library', 'analyzer', 'video', 'profile'] as Tab[]).map((id) => (
+          {(['analyzer', 'library', 'video', 'profile'] as Tab[]).map((id) => (
             <button
               key={id}
               type="button"
