@@ -1343,6 +1343,10 @@ class BackendTests(unittest.TestCase):
                 return {"videos": [{"id": "yt1", "title": "YT Gyno", "url": "https://www.youtube.com/watch?v=yt1", "viewCountInt": 12000, "channel": {"title": "Dr YT", "url": "https://www.youtube.com/@dryt"}}]}, "glasser_api", None
             if provider == "serper" and endpoint == "/videos" and "site:facebook.com" in str(payload.get("q", "")):
                 return {"videos": [{"title": "FB Gyno", "link": "https://www.facebook.com/reel/999", "channel": "FB Page"}]}, "glasser_api", None
+            if provider == "serper" and endpoint == "/search" and "site:facebook.com" in str(payload.get("q", "")):
+                return {"organic": [{"title": "FB Page Gyno Post", "link": "https://www.facebook.com/fbpage/posts/12345"}]}, "glasser_api", None
+            if provider == "scrapecreators" and endpoint == "/v1/facebook/adLibrary/search/ads":
+                return {"results": [{"ad_archive_id": "ad1", "page_name": "FB Ad Page", "snapshot": {"page_name": "FB Ad Page", "page_profile_uri": "https://www.facebook.com/fbadpage", "body": {"text": "Gyno post"}}}]}, "glasser_api", None
             if provider == "serper" and endpoint == "/videos":
                 return {"videos": [{"title": "Google Gyno", "link": "https://www.youtube.com/watch?v=yt1", "channel": "Dr YT"}]}, "glasser_api", None
             if provider == "scrapecreators" and endpoint == "/v1/tiktok/search/keyword":
@@ -1361,6 +1365,8 @@ class BackendTests(unittest.TestCase):
                 "https://www.youtube.com/@dryt": {"relevance": "direct", "why_relevant": "Covers gyno directly"},
                 "https://www.tiktok.com/@ttdoc": {"relevance": "direct", "why_relevant": "TikTok gyno video"},
                 "https://www.instagram.com/igdoc/": {"relevance": "adjacent", "why_relevant": "IG health clip"},
+                "https://www.facebook.com/fbpage": {"relevance": "direct", "why_relevant": "FB page post"},
+                "https://www.facebook.com/fbadpage": {"relevance": "adjacent", "why_relevant": "FB ad page"},
             })
 
         from tools.loop.viral_analyzer import runtime
@@ -1371,7 +1377,7 @@ class BackendTests(unittest.TestCase):
              mock.patch.object(keyword_search, "_enrich_creator_followers", side_effect=fake_enrich):
             res = run_viral_video_search("gyno conditions", Path(tmpdir), ctx=ctx)
 
-        self.assertLessEqual(len(calls), 15)
+        self.assertLessEqual(len(calls), 28)
         self.assertEqual(len(res["queries"]), 3)
         # yt1 appears in both YouTube and Google results -> deduplicated
         urls = [r["url"] for r in res["reels"]]
@@ -1379,7 +1385,7 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(res["reels"][0]["platform"], "tiktok")
         self.assertEqual(res["reels"][0]["views"], 50000)
         creator_platforms = {c["platform"] for c in res["creators"]}
-        self.assertEqual(creator_platforms, {"youtube", "tiktok", "instagram"})
+        self.assertEqual(creator_platforms, {"youtube", "tiktok", "instagram", "facebook"})
         for c in res["creators"]:
             self.assertTrue(c["url"].startswith("http"))
             self.assertGreater(c["followers"], 0)

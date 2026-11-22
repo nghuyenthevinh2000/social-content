@@ -50,6 +50,7 @@ def search_platform(
     aggregator: Optional[ErrorAggregator] = None,
     glasser_fn: Optional[Callable[..., Any]] = None,
     ctx: Optional[runtime.EngineContext] = None,
+    include_pages: bool = True,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     """Search one platform using this module's patchable Glasser runner."""
     return collect.search_platform(
@@ -61,6 +62,7 @@ def search_platform(
         aggregator=aggregator,
         glasser_fn=glasser_fn or _glasser_run_json,
         ctx=ctx,
+        include_pages=include_pages,
     )
 
 
@@ -112,7 +114,10 @@ def run_viral_video_search(
     source_breakdown: Dict[str, List[str]] = {"glasser_api": [], "cache": [], "empty": []}
 
     tasks = [(q_obj["text"], platform) for q_obj in queries for platform in target_platforms]
-    search_kwargs_extra: Dict[str, Any] = {"ctx": eng_ctx} if ctx is not None else {}
+    include_pages = bool(opts.get("include_pages", True))
+    search_kwargs_extra: Dict[str, Any] = {"include_pages": include_pages}
+    if ctx is not None:
+        search_kwargs_extra["ctx"] = eng_ctx
     with profiling.span("keyword", "search_fanout"):
         with ThreadPoolExecutor(max_workers=min(eng_ctx.max_workers, len(tasks) or 1)) as pool:
             futures = [
@@ -238,6 +243,7 @@ def _run_search_cli(args) -> Tuple[Dict[str, Any], Any]:
             "platforms": platform_list or None,
             "agent": args.agent,
             "model": args.model,
+            "include_pages": args.include_pages,
         },
         log=lambda msg: print(msg, flush=True),
     )
@@ -259,6 +265,7 @@ def register_search_subparser(commands):
     search.add_argument("--platforms", help="Comma-separated platforms (default: all 5)")
     search.add_argument("--agent", help="Optional ACP agent ID for keyword expansion")
     search.add_argument("--model", help="Optional ACP model ID")
+    search.add_argument("--no-pages", action="store_false", dest="include_pages", default=True, help="Skip Google/Facebook page search")
     search.add_argument("--output", help="Optional JSON output path")
     search.set_defaults(command="search", command_func=_run_search_cli)
     return search

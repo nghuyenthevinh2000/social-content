@@ -129,8 +129,8 @@ def social_handle(url: str) -> Tuple[str, str]:
 
 
 def resolve_short_url(url: str, timeout: float = 3.0) -> str:
-    """Resolve short share URLs (fb.watch, facebook.com/share/*, vm.tiktok.com) to target URL."""
-    if not url or not any(x in url for x in ("facebook.com/share/", "fb.watch/", "tiktok.com/")):
+    """Resolve short/redirect URLs (fb.watch, facebook.com/share/*, vm.tiktok.com, google.com/goto) to target URL."""
+    if not url or not any(x in url for x in ("facebook.com/share/", "fb.watch/", "tiktok.com/", "google.com/goto")):
         return url
     try:
         req = urllib.request.Request(
@@ -369,7 +369,9 @@ register_platform(PlatformSpec(
     profile_query_fn=_fb_profile_query,
     search_queries_fn=lambda q: [
         ("serper", "/videos", 2, {"q": f'site:facebook.com "{q}"', "gl": "vn", "hl": "vi"}, "facebook_serper"),
-        ("scrapecreators", "/v1/facebook/adLibrary/search/ads", 4, {"query": q, "media_type": "VIDEO", "search_type": "keyword_exact_phrase"}, "facebook_ads"),
+        ("serper", "/search", 2, {"q": f'site:facebook.com "{q}"', "gl": "vn", "hl": "vi", "num": 20}, "facebook_serper"),
+        ("serper", "/images", 2, {"q": f'site:facebook.com "{q}"', "gl": "vn", "hl": "vi", "num": 20}, "facebook_serper"),
+        ("scrapecreators", "/v1/facebook/adLibrary/search/ads", 4, {"query": q, "media_type": "ALL", "search_type": "keyword_exact_phrase"}, "facebook_ads"),
     ],
     transcript_endpoint=("/v1/facebook/post/transcript", 4),
     transcript_url_re=re.compile(
@@ -394,5 +396,6 @@ register_platform(PlatformSpec(
     fallback_url_fn=lambda vid, _h="": vid,
     search_queries_fn=lambda q: [
         ("serper", "/videos", 2, {"q": f'"{q}"', "gl": "vn", "hl": "vi"}, "google"),
+        ("serper", "/search", 2, {"q": f'site:facebook.com "{q}"', "gl": "vn", "hl": "vi", "num": 20}, "google"),
     ],
 ))

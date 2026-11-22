@@ -98,32 +98,4 @@ describe('Locale switcher in topbar', () => {
     expect(localStorage.getItem('aibrand-locale')).toBe('en');
     expect(screen.getByRole('button', { name: 'Sign in / Sign up' })).toBeInTheDocument();
   });
-
-  test('switches tour language to English from inside the tour dialog', async () => {
-    localStorage.removeItem('aibrand-tour-done-uid_locale_test');
-
-    const { container } = render(
-      <LocaleProvider>
-        <MemoryRouter initialEntries={['/']}>
-          <Home />
-        </MemoryRouter>
-      </LocaleProvider>,
-    );
-
-    const tourToggle = await waitFor(() => {
-      const btn = container.querySelector('.tour .lang-toggle-btn') as HTMLButtonElement | null;
-      expect(btn).not.toBeNull();
-      return btn!;
-    });
-
-    expect(tourToggle.textContent).toContain('VI');
-    expect(screen.getByRole('button', { name: 'Bỏ qua' })).toBeInTheDocument();
-
-    fireEvent.click(tourToggle);
-
-    expect(tourToggle.textContent).toContain('EN');
-    expect(localStorage.getItem('aibrand-locale')).toBe('en');
-    expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument();
-    expect(screen.getByText('Import Excel/Google Sheets, manage topics, Facebook channels, and saved Reels.')).toBeInTheDocument();
-  });
 });

@@ -343,6 +343,69 @@ class TestViralAnalyzerPipeline(unittest.TestCase):
 
         self.assertEqual(items[0]["transcript"], "local transcript text")
 
+    def test_keyword_search_includes_facebook_page_search_on_google_and_facebook(self):
+        from tools.loop.viral_analyzer.keyword_research import collect as kw_collect
+
+        calls = []
+
+        def fake_glasser(provider, endpoint, version, payload, cache_dir, task_id=None):
+            calls.append((provider, endpoint, payload))
+            if provider == "serper" and endpoint == "/videos":
+                return {"videos": [{"title": "FB Video", "link": "https://www.facebook.com/reel/999", "channel": "FB"}]}, "glasser_api", None
+            if provider == "serper" and endpoint == "/search":
+                return {
+                    "organic": [
+                        {"title": "Page Post", "link": "https://www.facebook.com/mypage/posts/123"},
+                        {"title": "Permalink Post", "link": "https://www.facebook.com/permalink.php?story_fbid=11&id=22"},
+                        {"title": "Goto Page", "link": "https://www.google.com/goto?url=abc"},
+                    ]
+                }, "glasser_api", None
+            if provider == "serper" and endpoint == "/images":
+                return {
+                    "images": [
+                        {"title": "Image Page", "link": "https://www.facebook.com/imgpage/videos/789"},
+                    ]
+                }, "glasser_api", None
+            if provider == "scrapecreators" and endpoint == "/v1/facebook/adLibrary/search/ads":
+                return {
+                    "results": [
+                        {
+                            "ad_archive_id": "ad99",
+                            "page_name": "Ad Page",
+                            "snapshot": {"page_name": "Ad Page", "page_profile_uri": "https://www.facebook.com/adpage"},
+                        }
+                    ]
+                }, "glasser_api", None
+            return {}, "glasser_api", None
+
+        with mock.patch.object(platforms, "resolve_short_url", return_value="https://www.facebook.com/gotopage/posts/456"):
+            fb_items, _ = kw_collect.search_platform("facebook", "acne", glasser_fn=fake_glasser)
+        self.assertEqual(
+            [c[1] for c in calls],
+            ["/videos", "/search", "/images", "/v1/facebook/adLibrary/search/ads"],
+        )
+        self.assertEqual(
+            [i["author_url"] for i in fb_items],
+            [
+                "",
+                "https://www.facebook.com/mypage",
+                "https://www.facebook.com/profile.php?id=22",
+                "https://www.facebook.com/gotopage",
+                "https://www.facebook.com/imgpage",
+                "https://www.facebook.com/adpage",
+            ],
+        )
+
+        calls.clear()
+        with mock.patch.object(platforms, "resolve_short_url", return_value="https://www.facebook.com/gotopage/posts/456"):
+            google_items, _ = kw_collect.search_platform("google", "acne", glasser_fn=fake_glasser)
+        self.assertEqual([c[1] for c in calls], ["/videos", "/search"])
+        self.assertTrue(any(i["author_url"] == "https://www.facebook.com/mypage" for i in google_items))
+
+        calls.clear()
+        kw_collect.search_platform("facebook", "acne", glasser_fn=fake_glasser, include_pages=False)
+        self.assertEqual([c[1] for c in calls], ["/videos"])
+
 
 if __name__ == "__main__":
     unittest.main()

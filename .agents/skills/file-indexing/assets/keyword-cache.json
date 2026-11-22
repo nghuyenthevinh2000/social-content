@@ -76,7 +76,7 @@
   "app": [
     "application",
     "webapp",
-    "dashboard",
+    "client",
     "ứng",
     "dụng"
   ],
@@ -231,5 +231,70 @@
     "client",
     "protocol",
     "rpc"
+  ],
+  "ion-content": [
+    "ionic",
+    "content",
+    "container",
+    "vùng",
+    "nội",
+    "dung"
+  ],
+  "panel": [
+    "sidebar",
+    "drawer",
+    "bảng",
+    "điều",
+    "khiển",
+    "khung"
+  ],
+  "login": [
+    "sign",
+    "authentication",
+    "đăng",
+    "nhập",
+    "xác",
+    "thực"
+  ],
+  "page": [
+    "screen",
+    "view",
+    "trang",
+    "màn",
+    "hình"
+  ],
+  "button": [
+    "btn",
+    "action",
+    "nút",
+    "bấm"
+  ],
+  "tour": [
+    "onboard",
+    "walkthrough",
+    "guide",
+    "hướng",
+    "dẫn"
+  ],
+  "language": [
+    "locale",
+    "i18n",
+    "translation",
+    "ngôn",
+    "ngữ"
+  ],
+  "switch": [
+    "toggle",
+    "change",
+    "select",
+    "chuyển",
+    "đổi"
+  ],
+  "browser": [
+    "web",
+    "frontend",
+    "chrome",
+    "trình",
+    "duyệt"
   ]
 }

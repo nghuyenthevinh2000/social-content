@@ -51,7 +51,7 @@ TRANSCRIPT_ENDPOINTS = frozenset({
 })
 
 ACTION_BUDGETS: Dict[str, Dict[str, int]] = {
-    "keyword_search": {"max_calls": 18, "max_cost_micro": 35_000},
+    "keyword_search": {"max_calls": 28, "max_cost_micro": 45_000},
     "profile_research": {"max_transcript_calls": 3, "max_cost_micro": 100_000},
     "reel_research": {"max_transcript_calls": 1, "max_cost_micro": 10_000},
     "video_generation": {"max_calls": 2},

@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
-from urllib.parse import quote, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 import urllib.request
 
 from tools.app.backend.acp import ACPClient, ACPError
@@ -255,6 +255,10 @@ def _infer_serper_author(url: str, real_platform: str, fallback_name: str) -> Tu
     if real_platform == "facebook" and parts:
         if parts[0] == "groups" and len(parts) >= 2:
             return fallback_name or f"group_{parts[1]}", f"https://www.facebook.com/groups/{parts[1]}"
+        if parts[0] in {"permalink.php", "story.php"}:
+            page_id = (parse_qs(parsed.query).get("id") or [""])[0]
+            if page_id:
+                return fallback_name or f"profile_{page_id}", f"https://www.facebook.com/profile.php?id={page_id}"
         if parts[0] not in {
             "reel", "reels", "watch", "share", "groups", "ads", "events", "permalink.php", "story.php", "video.php",
         }:
@@ -275,6 +279,31 @@ def _infer_serper_author(url: str, real_platform: str, fallback_name: str) -> Tu
     return fallback_name, ""
 
 
+def _resolve_serper_redirects(data: Any) -> Any:
+    if not isinstance(data, dict):
+        return data
+    items_key = "videos" if isinstance(data.get("videos"), list) else ("organic" if isinstance(data.get("organic"), list) else None)
+    if not items_key:
+        return data
+    items = data[items_key]
+    goto_indices = [
+        i for i, item in enumerate(items)
+        if isinstance(item, dict) and "google.com/goto" in str(item.get("link") or item.get("url") or "")
+    ]
+    if not goto_indices:
+        return data
+    new_items = [dict(item) if isinstance(item, dict) else item for item in items]
+    with ThreadPoolExecutor(max_workers=min(8, len(goto_indices))) as pool:
+        resolved = list(pool.map(
+            lambda idx: platforms.resolve_short_url(str(new_items[idx].get("link") or new_items[idx].get("url") or "")),
+            goto_indices,
+        ))
+    for idx, target in zip(goto_indices, resolved):
+        if target and target != (new_items[idx].get("link") or new_items[idx].get("url")):
+            new_items[idx]["link"] = target
+    return {**data, items_key: new_items}
+
+
 def _normalize_search_result(parser_kind: str, data: Any, query: str, platform: str) -> List[Dict[str, Any]]:
     if data is None:
         return []
@@ -282,7 +311,7 @@ def _normalize_search_result(parser_kind: str, data: Any, query: str, platform: 
         return normalize.normalize_search_youtube(data, query)
     if parser_kind in ("google", "facebook_serper"):
         return normalize.normalize_search_serper(
-            data,
+            _resolve_serper_redirects(data),
             query,
             platform,
             detect_platform_fn=platforms.detect_platform,
@@ -309,6 +338,7 @@ def search_platform(
     aggregator: Optional[ErrorAggregator] = None,
     glasser_fn: Optional[Callable[..., Any]] = None,
     ctx: Optional[runtime.EngineContext] = None,
+    include_pages: bool = True,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     """Search a single platform for a query via PlatformSpec + Glasser."""
     spec = platforms.get_platform(platform)
@@ -325,22 +355,29 @@ def search_platform(
             return run_json(provider, endpoint, version, payload, cache_dir, task_id=task_id, ctx=ctx)
         return run_json(provider, endpoint, version, payload, cache_dir, task_id=task_id)
 
-    provider, endpoint, version, payload, parser_kind = query_specs[0]
-    data, src, err = _call(provider, endpoint, version, payload)
-    videos = _normalize_search_result(parser_kind, data, query, platform)
+    videos: List[Dict[str, Any]] = []
+    seen_urls = set()
+    src: Optional[str] = None
+    err: Optional[Exception] = None
 
-    for fb_provider, fb_endpoint, fb_version, fb_payload, fb_parser in query_specs[1:]:
-        if videos or err is not None:
+    for idx, (provider, endpoint, version, payload, parser_kind) in enumerate(query_specs):
+        if idx > 0 and not include_pages and (videos or err is not None):
             break
-        fb_data, fb_src, fb_err = _call(fb_provider, fb_endpoint, fb_version, fb_payload)
-        if fb_data is not None:
-            videos = _normalize_search_result(fb_parser, fb_data, query, platform)
-            src = fb_src or src
-        elif fb_err is not None:
-            err = fb_err
+        q_data, q_src, q_err = _call(provider, endpoint, version, payload)
+        if q_data is not None:
+            for item in _normalize_search_result(parser_kind, q_data, query, platform):
+                u = (item.get("url") or "").strip()
+                if u and u not in seen_urls:
+                    seen_urls.add(u)
+                    videos.append(item)
+            if q_src == "glasser_api" or src is None:
+                src = q_src
+        if q_err is not None:
+            err = q_err
 
-    if err is not None and aggregator is not None:
-        aggregator.add(handle_glasser_error(err, log=log))
-    elif err is not None and log:
-        log(f"[{platform}] {err}")
+    if err is not None and not videos:
+        if aggregator is not None:
+            aggregator.add(handle_glasser_error(err, log=log))
+        elif log:
+            log(f"[{platform}] {err}")
     return videos, src

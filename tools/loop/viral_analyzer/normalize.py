@@ -432,7 +432,7 @@ def normalize_search_serper(
 ) -> List[Dict[str, Any]]:
     if detect_platform_fn is None:
         from tools.loop.viral_analyzer.platforms import detect_platform as detect_platform_fn
-    items = data.get("videos") or data.get("organic") or (data if isinstance(data, list) else [])
+    items = data.get("videos") or data.get("organic") or data.get("images") or (data if isinstance(data, list) else [])
     out: List[Dict[str, Any]] = []
     for v in items:
         if not isinstance(v, dict):
