@@ -17,7 +17,7 @@ from tools.app.backend.research_engine.research import WORKSPACE, configured_age
 from tools.app.backend.user_profile import BRAND_FIELDS, normalize_brand_keywords, normalize_language
 from tools.loop.viral_analyzer.keyword_research.prompt import resolve_language
 
-ALLOWED_MODES = ("brand_setup", "keyword_explore")
+ALLOWED_MODES = ("brand_setup",)
 MAX_HISTORY_MESSAGES = 12
 MAX_MESSAGE_CHARS = 2000
 MAX_RESPONSE_KEYWORDS = 3
@@ -124,49 +124,35 @@ def build_brand_assistant_prompt(
         history_lines.append(f"{speaker}: {msg['content']}")
     transcript = "\n".join(history_lines)
 
-    if mode == "brand_setup":
-        current_brand = {
-            "identity": str(brand.get("identity") or ""),
-            "audience": str(brand.get("audience") or ""),
-            "differentiator": str(brand.get("differentiator") or ""),
-            "tone": str(brand.get("tone") or ""),
-            "keywords": normalize_brand_keywords(brand.get("keywords")),
-        }
-        return (
-            "You are a focused Brand Setup Assistant.\n"
-            f"{lang_instruction}\n"
-            "STRICT SCOPE: Your ONLY purpose is to continuously build and refine a workable brand profile through an iterative loop:\n"
-            "  determine a workable brand version -> learn from user feedback -> determine a sharper brand version.\n"
-            "Brand profile fields (keep every field concise and grounded ONLY in what the user said — NEVER invent, pad, or embellish extra claims):\n"
-            "1. identity: Short, punchy, and easy to say aloud (3-8 words, max ~60 chars; e.g. 'Nike = athletic performance' or 'Chin-su = nước tương').\n"
-            "2. audience: One concise, concrete phrase for the target customer group.\n"
-            "3. differentiator: One short phrase for why viewers remember and choose them.\n"
-            "4. tone: 2-4 words describing how the brand speaks.\n"
-            "5. keywords: 3 focused on-brand search keywords for viral content research.\n"
-            "If the user asks for anything outside building or refining this brand profile and its on-brand keywords, politely refuse and redirect back to the brand profile loop.\n"
-            "How the loop works:\n"
-            "- If details are missing, ask 1-2 concise, practical questions first. As soon as there is enough signal (or an existing saved brand profile), propose a concrete, workable `brand_draft` + 3 focused `keywords` and set `ready` to true.\n"
-            "- Treat every user reply, critique, or market/audience observation as feedback: preserve what already works, revise what feels off, explain briefly what changed in this version, and ask 1-2 targeted feedback questions to guide the next iteration.\n\n"
-            f"Current saved brand profile:\n{json.dumps(current_brand, ensure_ascii=False)}\n\n"
-            f"Conversation so far:\n{transcript}\n\n"
-            "Reply ONLY with a valid JSON object matching this exact schema (no markdown outside the JSON):\n"
-            '{"reply": "your conversational response", '
-            '"brand_draft": {"identity": "...", "audience": "...", "differentiator": "...", "tone": "..."}, '
-            '"keywords": ["kw1", "kw2", "kw3"], '
-            '"ready": false}'
-        )
-
+    current_brand = {
+        "identity": str(brand.get("identity") or ""),
+        "audience": str(brand.get("audience") or ""),
+        "differentiator": str(brand.get("differentiator") or ""),
+        "tone": str(brand.get("tone") or ""),
+        "keywords": normalize_brand_keywords(brand.get("keywords")),
+    }
     return (
-        "You are a focused Brand Keyword Explorer.\n"
+        "You are a focused Brand Setup Assistant.\n"
         f"{lang_instruction}\n"
-        "STRICT SCOPE: Your ONLY purpose is to act as the keyword-expansion step before cross-platform brand/competitor research—expanding the user's query into concrete search keywords so they can launch the search directly from the chat.\n"
-        "Allow free-range exploration — the user may freely explore niches or angles even if they are off-brand. Do NOT edit or draft a brand profile.\n"
-        "Include helpful expansions such as abbreviations/full forms (e.g. medical or slang terms) and natural Vietnamese/English equivalents alongside specific 2-5 word search queries.\n"
-        "If the user asks for anything unrelated to keyword discovery or exploring topics/brands, politely refuse and redirect back to keyword exploration.\n"
-        "Provide 3 specific, actionable search keywords in `keywords`.\n\n"
+        "STRICT SCOPE: Your ONLY purpose is to continuously build and refine a workable brand profile through an iterative loop:\n"
+        "  determine a workable brand version -> learn from user feedback -> determine a sharper brand version.\n"
+        "Brand profile fields (keep every field concise and grounded ONLY in what the user said — NEVER invent, pad, or embellish extra claims):\n"
+        "1. identity: Short, punchy, and easy to say aloud (3-8 words, max ~60 chars; e.g. 'Nike = athletic performance' or 'Chin-su = nước tương').\n"
+        "2. audience: One concise, concrete phrase for the target customer group.\n"
+        "3. differentiator: One short phrase for why viewers remember and choose them.\n"
+        "4. tone: 2-4 words describing how the brand speaks.\n"
+        "5. keywords: 3 focused on-brand search keywords for viral content research.\n"
+        "If the user asks for anything outside building or refining this brand profile and its on-brand keywords, politely refuse and redirect back to the brand profile loop.\n"
+        "How the loop works:\n"
+        "- If details are missing, ask 1-2 concise, practical questions first. As soon as there is enough signal (or an existing saved brand profile), propose a concrete, workable `brand_draft` + 3 focused `keywords` and set `ready` to true.\n"
+        "- Treat every user reply, critique, or market/audience observation as feedback: preserve what already works, revise what feels off, explain briefly what changed in this version, and ask 1-2 targeted feedback questions to guide the next iteration.\n\n"
+        f"Current saved brand profile:\n{json.dumps(current_brand, ensure_ascii=False)}\n\n"
         f"Conversation so far:\n{transcript}\n\n"
         "Reply ONLY with a valid JSON object matching this exact schema (no markdown outside the JSON):\n"
-        '{"reply": "your concise explanation of the keyword angles", "keywords": ["kw1", "kw2", "kw3"]}'
+        '{"reply": "your conversational response", '
+        '"brand_draft": {"identity": "...", "audience": "...", "differentiator": "...", "tone": "..."}, '
+        '"keywords": ["kw1", "kw2", "kw3"], '
+        '"ready": false}'
     )
 
 
@@ -206,14 +192,6 @@ def parse_assistant_response(raw_text: str, mode: str) -> Dict[str, Any]:
     reply = str(parsed.get("reply") or "").strip() or (raw_text or "").strip()
     keywords = normalize_brand_keywords(parsed.get("keywords"), limit=MAX_RESPONSE_KEYWORDS)
 
-    if mode == "keyword_explore":
-        return {
-            "reply": reply,
-            "brand_draft": {},
-            "keywords": keywords,
-            "ready": False,
-        }
-
     raw_draft = parsed.get("brand_draft")
     brand_draft: Dict[str, str] = {}
     if isinstance(raw_draft, dict):
@@ -242,30 +220,21 @@ def build_brand_assistant_followup_prompt(
     lang_instruction = "Respond in Vietnamese." if lang == "vi" else "Respond in English."
     brand = brand_profile if isinstance(brand_profile, dict) else {}
 
-    if mode == "brand_setup":
-        current_brand = {
-            "identity": str(brand.get("identity") or ""),
-            "audience": str(brand.get("audience") or ""),
-            "differentiator": str(brand.get("differentiator") or ""),
-            "tone": str(brand.get("tone") or ""),
-            "keywords": normalize_brand_keywords(brand.get("keywords")),
-        }
-        return (
-            f"{lang_instruction}\n"
-            f"Current saved brand profile:\n{json.dumps(current_brand, ensure_ascii=False)}\n\n"
-            f"User: {latest_user_message}\n\n"
-            "Stay strictly in Brand Setup Assistant scope (short, grounded fields; never invent claims). "
-            "Reply ONLY with valid JSON:\n"
-            '{"reply": "...", "brand_draft": {"identity": "...", "audience": "...", "differentiator": "...", "tone": "..."}, '
-            '"keywords": ["kw1", "kw2", "kw3"], "ready": false}'
-        )
-
+    current_brand = {
+        "identity": str(brand.get("identity") or ""),
+        "audience": str(brand.get("audience") or ""),
+        "differentiator": str(brand.get("differentiator") or ""),
+        "tone": str(brand.get("tone") or ""),
+        "keywords": normalize_brand_keywords(brand.get("keywords")),
+    }
     return (
         f"{lang_instruction}\n"
+        f"Current saved brand profile:\n{json.dumps(current_brand, ensure_ascii=False)}\n\n"
         f"User: {latest_user_message}\n\n"
-        "Stay strictly in Brand Keyword Explorer scope (3 actionable search keywords). "
+        "Stay strictly in Brand Setup Assistant scope (short, grounded fields; never invent claims). "
         "Reply ONLY with valid JSON:\n"
-        '{"reply": "...", "keywords": ["kw1", "kw2", "kw3"]}'
+        '{"reply": "...", "brand_draft": {"identity": "...", "audience": "...", "differentiator": "...", "tone": "..."}, '
+        '"keywords": ["kw1", "kw2", "kw3"], "ready": false}'
     )
 
 

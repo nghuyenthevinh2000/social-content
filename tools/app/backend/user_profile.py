@@ -73,7 +73,7 @@ def _parse_brand_json(raw: Any) -> Dict[str, Any]:
     return normalize_brand_profile(None)
 
 
-ASSISTANT_CHAT_MODES = ("brand_setup", "keyword_explore")
+ASSISTANT_CHAT_MODES = ("brand_setup",)
 MAX_ASSISTANT_MESSAGES = 40
 
 

@@ -91,7 +91,6 @@ def test_user_profile_store_memory_fallback(monkeypatch):
                 {"id": "u-1", "role": "user", "content": "Hello"},
                 {"id": "a-1", "role": "assistant", "content": "Hi!", "keywords": ["skincare"], "saved": True},
             ],
-            "keyword_explore": [],
         },
     })
     assert saved_chat["brand"]["identity"] == "Chuyên gia skincare tối giản"

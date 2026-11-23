@@ -113,7 +113,7 @@ export const BrandAssistant: React.FC<BrandAssistantProps> = ({
   return (
     <section className={`panel keyword-search-panel ${showHistory ? '' : 'brand-assistant-full'}`} id="brand-assistant">
       <div className="brand-mode-tabs" role="tablist">
-        {(['brand_setup', 'keyword_explore'] as AssistantMode[]).map((id) => (
+        {(['brand_setup'] as AssistantMode[]).map((id) => (
           <button
             key={id}
             type="button"

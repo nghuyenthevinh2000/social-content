@@ -35,13 +35,8 @@ def test_parse_assistant_response_enforces_mode_boundaries():
         '"ready": true}\n'
         '```'
     )
-    explore = brand_assistant.parse_assistant_response(raw_fenced, "keyword_explore")
-    assert explore["reply"] == "Try these angles"
-    assert explore["brand_draft"] == {}
-    assert explore["ready"] is False
-    assert explore["keywords"] == ["viral skincare", "morning routine"]
-
     setup = brand_assistant.parse_assistant_response(raw_fenced, "brand_setup")
+    assert setup["reply"] == "Try these angles"
     assert setup["brand_draft"] == {"identity": "Should be stripped", "tone": "Direct"}
     assert setup["ready"] is True
     assert setup["keywords"] == ["viral skincare", "morning routine"]
@@ -51,7 +46,7 @@ def test_parse_assistant_response_enforces_mode_boundaries():
 
     capped = brand_assistant.parse_assistant_response(
         '{"reply": "ok", "keywords": ["k1", "k2", "k3", "k4", "k5"]}',
-        "keyword_explore",
+        "brand_setup",
     )
     assert capped["keywords"] == ["k1", "k2", "k3"]
 

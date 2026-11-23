@@ -7,7 +7,7 @@ import {
   saveBrandProfile,
 } from './brandProfile';
 
-export type AssistantMode = 'brand_setup' | 'keyword_explore';
+export type AssistantMode = 'brand_setup';
 
 export type ChatMessage = {
   id: string;
@@ -47,15 +47,11 @@ function loadStoredState(userId: string | null): Pick<BrandAssistantState, 'mode
     const raw = localStorage.getItem(storageKeyFor(userId));
     if (raw) {
       const parsed = JSON.parse(raw);
-      const mode: AssistantMode = parsed?.mode === 'keyword_explore' ? 'keyword_explore' : 'brand_setup';
       return {
-        mode,
+        mode: 'brand_setup',
         histories: {
           brand_setup: Array.isArray(parsed?.histories?.brand_setup)
             ? parsed.histories.brand_setup.slice(-MAX_STORED_MESSAGES)
-            : [],
-          keyword_explore: Array.isArray(parsed?.histories?.keyword_explore)
-            ? parsed.histories.keyword_explore.slice(-MAX_STORED_MESSAGES)
             : [],
         },
       };
@@ -63,7 +59,7 @@ function loadStoredState(userId: string | null): Pick<BrandAssistantState, 'mode
   } catch {
     // ignore storage errors
   }
-  return { mode: 'brand_setup', histories: { brand_setup: [], keyword_explore: [] } };
+  return { mode: 'brand_setup', histories: { brand_setup: [] } };
 }
 
 function persistState(s: Pick<BrandAssistantState, 'mode' | 'histories'>, userId: string | null = activeUserId): void {
@@ -74,7 +70,6 @@ function persistState(s: Pick<BrandAssistantState, 'mode' | 'histories'>, userId
         mode: s.mode,
         histories: {
           brand_setup: s.histories.brand_setup.slice(-MAX_STORED_MESSAGES),
-          keyword_explore: s.histories.keyword_explore.slice(-MAX_STORED_MESSAGES),
         },
       }),
     );
@@ -97,15 +92,15 @@ function createInitialState(): BrandAssistantState {
   return {
     mode: stored.mode,
     histories: stored.histories,
-    pending: { brand_setup: false, keyword_explore: false },
-    errors: { brand_setup: null, keyword_explore: null },
+    pending: { brand_setup: false },
+    errors: { brand_setup: null },
     savingMsgId: null,
   };
 }
 
 let state: BrandAssistantState = createInitialState();
-const draftInputs: Record<AssistantMode, string> = { brand_setup: '', keyword_explore: '' };
-const epochs: Record<AssistantMode, number> = { brand_setup: 0, keyword_explore: 0 };
+const draftInputs: Record<AssistantMode, string> = { brand_setup: '' };
+const epochs: Record<AssistantMode, number> = { brand_setup: 0 };
 let userEpoch = 0;
 const listeners = new Set<() => void>();
 
@@ -133,16 +128,14 @@ export function setBrandAssistantUser(userId: string | null): void {
   activeUserId = userId;
   userEpoch += 1;
   epochs.brand_setup += 1;
-  epochs.keyword_explore += 1;
   draftInputs.brand_setup = '';
-  draftInputs.keyword_explore = '';
 
   if (!userId) {
     state = {
       mode: 'brand_setup',
-      histories: { brand_setup: [], keyword_explore: [] },
-      pending: { brand_setup: false, keyword_explore: false },
-      errors: { brand_setup: null, keyword_explore: null },
+      histories: { brand_setup: [] },
+      pending: { brand_setup: false },
+      errors: { brand_setup: null },
       savingMsgId: null,
     };
     listeners.forEach((listener) => listener());
@@ -153,15 +146,14 @@ export function setBrandAssistantUser(userId: string | null): void {
   state = {
     mode: stored.mode,
     histories: stored.histories,
-    pending: { brand_setup: false, keyword_explore: false },
-    errors: { brand_setup: null, keyword_explore: null },
+    pending: { brand_setup: false },
+    errors: { brand_setup: null },
     savingMsgId: null,
   };
   listeners.forEach((listener) => listener());
 
   const capturedUserEpoch = userEpoch;
   const capturedSetupEpoch = epochs.brand_setup;
-  const capturedExploreEpoch = epochs.keyword_explore;
   apiJson<{
     ok?: boolean;
     profile?: {
@@ -176,27 +168,16 @@ export function setBrandAssistantUser(userId: string | null): void {
       if (res.profile.brand) {
         cacheBrandProfile(res.profile.brand);
       }
-      if (
-        epochs.brand_setup !== capturedSetupEpoch ||
-        epochs.keyword_explore !== capturedExploreEpoch ||
-        !res.profile.assistant_chat
-      ) {
+      if (epochs.brand_setup !== capturedSetupEpoch || !res.profile.assistant_chat) {
         return;
       }
       const remote = res.profile.assistant_chat;
       const remoteSetup = Array.isArray(remote.brand_setup) ? remote.brand_setup.slice(-MAX_STORED_MESSAGES) : [];
-      const remoteExplore = Array.isArray(remote.keyword_explore)
-        ? remote.keyword_explore.slice(-MAX_STORED_MESSAGES)
-        : [];
-      if (remoteSetup.length === 0 && remoteExplore.length === 0) return;
+      if (remoteSetup.length === 0) return;
 
       const nextHistories: Record<AssistantMode, ChatMessage[]> = {
         brand_setup:
           remoteSetup.length >= state.histories.brand_setup.length ? remoteSetup : state.histories.brand_setup,
-        keyword_explore:
-          remoteExplore.length >= state.histories.keyword_explore.length
-            ? remoteExplore
-            : state.histories.keyword_explore,
       };
       updateState({ histories: nextHistories }, true);
     })
@@ -239,9 +220,7 @@ export function resetBrandAssistantStore(): void {
   activeUserId = null;
   userEpoch += 1;
   epochs.brand_setup += 1;
-  epochs.keyword_explore += 1;
   draftInputs.brand_setup = '';
-  draftInputs.keyword_explore = '';
   try {
     localStorage.removeItem(BRAND_ASSISTANT_STORAGE_KEY);
   } catch {
@@ -249,9 +228,9 @@ export function resetBrandAssistantStore(): void {
   }
   state = {
     mode: 'brand_setup',
-    histories: { brand_setup: [], keyword_explore: [] },
-    pending: { brand_setup: false, keyword_explore: false },
-    errors: { brand_setup: null, keyword_explore: null },
+    histories: { brand_setup: [] },
+    pending: { brand_setup: false },
+    errors: { brand_setup: null },
     savingMsgId: null,
   };
   listeners.forEach((listener) => listener());
