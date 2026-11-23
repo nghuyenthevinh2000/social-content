@@ -7,8 +7,10 @@ import type { Sheet } from './types';
 
 type KeywordResultProps = {
   sheet: Sheet;
+  blocked?: boolean;
   addedCreatorUrls: Set<string>;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
+  onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
 };
 
 const KIND_LABELS: Record<string, string> = {
@@ -19,8 +21,10 @@ const KIND_LABELS: Record<string, string> = {
 
 export const KeywordResult: React.FC<KeywordResultProps> = ({
   sheet,
+  blocked = false,
   addedCreatorUrls,
   onAddCreator,
+  onAnalyzeCreators,
 }) => {
   const { t } = useLocale();
   const m = t.analysis;
@@ -50,8 +54,7 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
       : relevantCreators;
 
   const creatorsWithUrl = filteredCreators.filter((c) => !!c.url);
-  const allCreatorsAdded =
-    creatorsWithUrl.length > 0 && creatorsWithUrl.every((c) => addedCreatorUrls.has(c.url));
+  const allCreatorsAdded = creatorsWithUrl.length > 0 && creatorsWithUrl.every((c) => addedCreatorUrls.has(c.url));
 
   return (
     <div className="keyword-meta">
@@ -91,6 +94,29 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
               <strong>{km.creatorsHeading}</strong>
               <small className="muted">{km.creatorsCount(filteredCreators.length)}</small>
             </span>
+            {onAnalyzeCreators && creatorsWithUrl.length > 0 && (
+              <button
+                type="button"
+                className="topic-run-btn"
+                disabled={blocked}
+                aria-label={km.analyzeCreatorsAria}
+                title={km.analyzeCreatorsTitle}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAnalyzeCreators(
+                    creatorsWithUrl.map((c) => ({
+                      name: c.name || c.handle,
+                      url: c.url,
+                      platform: c.platform,
+                    })),
+                    sheet.name,
+                  );
+                }}
+              >
+                ▶
+              </button>
+            )}
             {onAddCreator && creatorsWithUrl.length > 0 && (
               <button
                 type="button"

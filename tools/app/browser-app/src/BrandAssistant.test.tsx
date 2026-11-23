@@ -21,8 +21,9 @@ describe('BrandAssistant', () => {
     vi.restoreAllMocks();
   });
 
-  test('renders strictly 2 modes, saves brand v1 draft + keywords, and launches keyword search', async () => {
+  test('renders Build Brand mode, saves brand v1 draft + keywords, and launches keyword search', async () => {
     const onSearchKeyword = vi.fn();
+    const onSearchKeywords = vi.fn();
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/brand-assistant/chat')) {
@@ -56,16 +57,15 @@ describe('BrandAssistant', () => {
 
     render(
       <LocaleProvider>
-        <BrandAssistant onSearchKeyword={onSearchKeyword} blocked={false} />
+        <BrandAssistant onSearchKeyword={onSearchKeyword} onSearchKeywords={onSearchKeywords} blocked={false} />
       </LocaleProvider>,
     );
 
     expect(document.querySelector('form.brand-direct-search')).toBeNull();
 
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(2);
+    expect(tabs).toHaveLength(1);
     expect(tabs[0]).toHaveTextContent('Build Brand');
-    expect(tabs[1]).toHaveTextContent('Explore Brand');
 
     const input = screen.getByPlaceholderText('Describe your niche, offer, or answer the question…');
     fireEvent.change(input, { target: { value: 'I teach 5-minute skincare for office workers' } });
@@ -93,50 +93,9 @@ describe('BrandAssistant', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'minimalist skincare ↗' }));
     expect(onSearchKeyword).toHaveBeenCalledWith('minimalist skincare');
-  });
-
-  test('switches to free keyword_explore mode without brand save controls', async () => {
-    const onSearchKeyword = vi.fn();
-    const onSearchKeywords = vi.fn();
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          ok: true,
-          mode: 'keyword_explore',
-          reply: 'Explore these off-brand queries freely:',
-          keywords: ['street food saigon', 'night market vlog'],
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      ),
-    );
-
-    render(
-      <LocaleProvider>
-        <BrandAssistant onSearchKeyword={onSearchKeyword} onSearchKeywords={onSearchKeywords} blocked={false} />
-      </LocaleProvider>,
-    );
-
-    expect(document.querySelector('form.brand-direct-search')).toBeNull();
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Explore Brand' }));
-    expect(document.querySelector('form.brand-direct-search')).toBeNull();
-
-    const input = screen.getByPlaceholderText('Ask about any topic, niche, or trend…');
-    fireEvent.change(input, { target: { value: 'night food trends' } });
-    fireEvent.submit(input.closest('form')!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Explore these off-brand queries freely:')).toBeInTheDocument();
-    });
-
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).mode).toBe('keyword_explore');
-    expect(screen.queryByRole('button', { name: 'Save to brand profile' })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'street food saigon ↗' }));
-    expect(onSearchKeyword).toHaveBeenCalledWith('street food saigon');
 
     fireEvent.click(screen.getByRole('button', { name: 'Search with 2 keywords' }));
-    expect(onSearchKeywords).toHaveBeenCalledWith(['street food saigon', 'night market vlog']);
+    expect(onSearchKeywords).toHaveBeenCalledWith(['minimalist skincare', '5-min routine']);
   });
 
   test('updates welcome message dynamically when locale switches between VI and EN', () => {
@@ -171,7 +130,7 @@ describe('BrandAssistant', () => {
       new Response(
         JSON.stringify({
           ok: true,
-          mode: 'keyword_explore',
+          mode: 'brand_setup',
           reply: 'Saved reply across tabs',
           keywords: ['persisted kw'],
         }),
@@ -185,8 +144,7 @@ describe('BrandAssistant', () => {
       </LocaleProvider>,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Explore Brand' }));
-    const input = screen.getByPlaceholderText('Ask about any topic, niche, or trend…');
+    const input = screen.getByPlaceholderText('Describe your niche, offer, or answer the question…');
     fireEvent.change(input, { target: { value: 'hello across tabs' } });
     fireEvent.submit(input.closest('form')!);
 
@@ -202,7 +160,7 @@ describe('BrandAssistant', () => {
       </LocaleProvider>,
     );
 
-    expect(screen.getByRole('tab', { name: 'Explore Brand' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Build Brand' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('hello across tabs')).toBeInTheDocument();
     expect(screen.getByText('Saved reply across tabs')).toBeInTheDocument();
   });
@@ -259,14 +217,13 @@ describe('BrandAssistant', () => {
     });
   });
 
-  test('expands and highlights #results-brand when clicking search CTA in AnalyzerTab', async () => {
-    localStorage.setItem('aibrand-results-brand-collapsed', '1');
+  test('highlights #results-analysis when clicking search CTA in AnalyzerTab', async () => {
     const onSearchKeywords = vi.fn();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
           ok: true,
-          mode: 'keyword_explore',
+          mode: 'brand_setup',
           reply: 'Ready to search:',
           keywords: ['mc song ngu', 'mc su kien'],
         }),
@@ -293,7 +250,6 @@ describe('BrandAssistant', () => {
           copiedKey={null}
           onCopyTopic={vi.fn()}
           onAddCreator={vi.fn()}
-          onSaveVideo={vi.fn()}
           onGoToLibrary={vi.fn()}
         />
       </LocaleProvider>,
@@ -304,8 +260,7 @@ describe('BrandAssistant', () => {
     expect(container.querySelector('#results')).toBeNull();
     expect(screen.getByRole('tab', { name: 'Analysis History' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Explore Brand' }));
-    const input = screen.getByPlaceholderText('Ask about any topic, niche, or trend…');
+    const input = screen.getByPlaceholderText('Describe your niche, offer, or answer the question…');
     fireEvent.change(input, { target: { value: 'mc' } });
     fireEvent.submit(input.closest('form')!);
 
@@ -316,9 +271,8 @@ describe('BrandAssistant', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Search with 2 keywords' }));
 
     expect(onSearchKeywords).toHaveBeenCalledWith(['mc song ngu', 'mc su kien']);
-    const resultsBrand = container.querySelector('#results-brand')!;
-    expect(resultsBrand.querySelector('[aria-expanded]')).toHaveAttribute('aria-expanded', 'true');
-    expect(resultsBrand).toHaveClass('results-highlight');
+    const resultsSection = container.querySelector('#results-analysis')!;
+    expect(resultsSection).toHaveClass('results-highlight');
     expect(assistantSection).not.toHaveClass('brand-assistant-full');
   });
 

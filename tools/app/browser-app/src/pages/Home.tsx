@@ -15,12 +15,7 @@ import { MediaPanel } from '../components/MediaPanel';
 import { Tour, type TourStep } from '../components/Tour';
 import { VideoTab } from '../components/VideoTab';
 import { CREATOR_PACKS, type CreatorPack } from '../data/creatorPacks';
-import {
-  auth,
-  onAuthStateChanged,
-  signOut,
-  type User,
-} from '../firebase';
+import { auth, onAuthStateChanged, signOut, type User } from '../firebase';
 import { getMessages, useLocale, type LocaleMessages } from '../locales';
 import './Home.css';
 
@@ -839,16 +834,6 @@ const Home: React.FC = () => {
     return true;
   }
 
-  async function handleSaveVideo(topic: Topic) {
-    const reelUrl = topic.reel_url || topic.source_urls?.[0] || '';
-    if (!reelUrl) return;
-    await saveReelToTopic(reelUrl, job?.filename || 'reels từ facebook', {
-      platform: topic.platform || 'facebook',
-      title: topic.title,
-      sender_name: topic.author_name || topic.author_handle || topic.title,
-    });
-  }
-
   async function createTopic(e: React.FormEvent) {
     e.preventDefault();
     if (!user) {
@@ -1541,7 +1526,11 @@ const Home: React.FC = () => {
               copiedKey={copiedKey}
               onCopyTopic={handleCopyTopic}
               onAddCreator={handleAddCreator}
-              onSaveVideo={handleSaveVideo}
+              onAnalyzeCreators={(creators, sheetName) => {
+                const targets = creators.map((c) => ({ name: c.name, url: c.url }));
+                if (!targets.length) return;
+                run([{ name: sheetName, slug: sheetName, targets }], sheetName, 'profile');
+              }}
               onGoToLibrary={() => switchTab('library')}
               forceHistoryView={showTour && tourHistoryView}
             />
@@ -1589,10 +1578,7 @@ const Home: React.FC = () => {
 
       {showTour && authReady && <Tour steps={tourSteps} onTab={(tb) => switchTab(tb as Tab)} onClose={closeTour} />}
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {linkCode && (
         <div className="payment-backdrop" onClick={() => setLinkCode(null)}>

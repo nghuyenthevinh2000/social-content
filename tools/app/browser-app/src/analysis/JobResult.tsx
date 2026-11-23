@@ -13,12 +13,11 @@ type JobResultProps = {
   job: Job;
   historyCount: number;
   copiedKey: string | null;
-  collapsed?: boolean;
-  onToggleCollapse?: () => void;
+  blocked?: boolean;
   onBack: () => void;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
-  onSaveVideo?: (topic: Topic) => void;
+  onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
 };
 
 const SheetSection: React.FC<{
@@ -27,20 +26,24 @@ const SheetSection: React.FC<{
   totalSheets: number;
   renderer: JobRenderer;
   copiedKey: string | null;
+  blocked: boolean;
   isKeyword: boolean;
   addedCreatorUrls: Set<string>;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
+  onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
 }> = ({
   sheet,
   index,
   totalSheets,
   renderer,
   copiedKey,
+  blocked,
   isKeyword,
   addedCreatorUrls,
   onCopyTopic,
   onAddCreator,
+  onAnalyzeCreators,
 }) => {
   const { t } = useLocale();
   const orderedTopics = useMemo(() => renderer.order(sheet.topics), [renderer, sheet.topics]);
@@ -68,8 +71,10 @@ const SheetSection: React.FC<{
       {isKeyword ? (
         <KeywordResult
           sheet={sheet}
+          blocked={blocked}
           addedCreatorUrls={addedCreatorUrls}
           onAddCreator={onAddCreator}
+          onAnalyzeCreators={onAnalyzeCreators}
         />
       ) : (
         orderedTopics.length > 0 && (
@@ -98,11 +103,11 @@ export const JobResult: React.FC<JobResultProps> = ({
   job,
   historyCount,
   copiedKey,
-  collapsed = false,
-  onToggleCollapse,
+  blocked = false,
   onBack,
   onCopyTopic,
   onAddCreator,
+  onAnalyzeCreators,
 }) => {
   const { t } = useLocale();
   const m = t.analysis;
@@ -128,74 +133,51 @@ export const JobResult: React.FC<JobResultProps> = ({
 
   return (
     <>
-      <div className={`panel-head${onToggleCollapse ? ' collapsible-head' : ''}`} onClick={onToggleCollapse}>
+      <div className="panel-head">
         <div>
-          <button
-            type="button"
-            className="history-back-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              onBack();
-            }}
-          >
+          <button type="button" className="history-back-btn" onClick={onBack}>
             {m.historyBack(historyCount)}
           </button>
           <h2>{m.resultsHeading}</h2>
           {job.created_at && <p className="muted count">{formatTime(job.created_at)}</p>}
         </div>
-        {onToggleCollapse && (
-          <button
-            type="button"
-            className="panel-collapse-btn"
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? m.expandResultsAria : m.collapseResultsAria}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleCollapse();
-            }}
-          >
-            <span className={`store-toggle-icon ${!collapsed ? 'open' : ''}`} aria-hidden="true" />
-          </button>
-        )}
       </div>
 
-      {!collapsed && (
-        <>
-          <div className="bar">
-            <span style={{ width: `${progress.pct}%` }} />
-          </div>
-          <div className="progress-meta muted">
-            <span>{progress.pct}%</span>
-            <span>{job.current_sheet ? m.processingSheet(job.current_sheet) : ''}</span>
-          </div>
+      <div className="bar">
+        <span style={{ width: `${progress.pct}%` }} />
+      </div>
+      <div className="progress-meta muted">
+        <span>{progress.pct}%</span>
+        <span>{job.current_sheet ? m.processingSheet(job.current_sheet) : ''}</span>
+      </div>
 
-          {job.sheets.map((sheet, index) => (
-            <SheetSection
-              key={sheet.slug}
-              sheet={sheet}
-              index={index}
-              totalSheets={job.sheets.length}
-              renderer={renderer}
-              copiedKey={copiedKey}
-              isKeyword={isKeyword}
-              addedCreatorUrls={addedCreatorUrls}
-              onCopyTopic={onCopyTopic}
-              onAddCreator={handleAddCreator}
-            />
-          ))}
+      {job.sheets.map((sheet, index) => (
+        <SheetSection
+          key={sheet.slug}
+          sheet={sheet}
+          index={index}
+          totalSheets={job.sheets.length}
+          renderer={renderer}
+          copiedKey={copiedKey}
+          blocked={blocked}
+          isKeyword={isKeyword}
+          addedCreatorUrls={addedCreatorUrls}
+          onCopyTopic={onCopyTopic}
+          onAddCreator={handleAddCreator}
+          onAnalyzeCreators={onAnalyzeCreators}
+        />
+      ))}
 
-          <button className="ghost logs-toggle" type="button" onClick={() => setShowLogs((v) => !v)}>
-            {showLogs ? m.hideLogs : m.showLogs(job.logs.length)}
-          </button>
-          {showLogs && (
-            <pre className="logs">
-              {job.logs
-                .slice(-120)
-                .map((e) => `${e.at.slice(11, 19)} ${e.sheet ? `[${e.sheet}] ` : ''}${e.message}`)
-                .join('\n')}
-            </pre>
-          )}
-        </>
+      <button className="ghost logs-toggle" type="button" onClick={() => setShowLogs((v) => !v)}>
+        {showLogs ? m.hideLogs : m.showLogs(job.logs.length)}
+      </button>
+      {showLogs && (
+        <pre className="logs">
+          {job.logs
+            .slice(-120)
+            .map((e) => `${e.at.slice(11, 19)} ${e.sheet ? `[${e.sheet}] ` : ''}${e.message}`)
+            .join('\n')}
+        </pre>
       )}
     </>
   );

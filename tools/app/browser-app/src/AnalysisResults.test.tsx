@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -190,7 +190,7 @@ describe('Analysis results rendering', () => {
     expect(screen.getByText('Transcript high')).toBeInTheDocument();
   });
 
-  test('renders saved-reel job without profile hints, preserving order, and showing visual', async () => {
+  test('renders saved-reel job without profile hints, preserving order', async () => {
     setupMockFetch({ job_reel_1: savedReelJobFixture });
 
     render(
@@ -207,7 +207,6 @@ describe('Analysis results rendering', () => {
     expect(titles).toEqual(['First saved reel', 'Second saved reel']);
     expect(screen.getByText('333')).toBeInTheDocument();
     expect(screen.getByText('2 reel')).toBeInTheDocument();
-    expect(screen.getByText('Close-up cooking shots')).toBeInTheDocument();
     expect(screen.getByText('Reel transcript 1')).toBeInTheDocument();
     expect(screen.queryByText(/P1 ·/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Glasser API:/)).not.toBeInTheDocument();
@@ -311,6 +310,7 @@ describe('Analysis results rendering', () => {
     expect(document.querySelector('.topics-carousel')).not.toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: 'Thêm tất cả kênh' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Phân tích các kênh' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Lưu tất cả video' })).not.toBeInTheDocument();
 
     const addCreatorBtns = screen.getAllByRole('button', { name: 'Thêm kênh' });
@@ -323,6 +323,19 @@ describe('Analysis results rendering', () => {
       expect(postUrls.some((u) => u.includes('/api/sources/topics'))).toBe(true);
       expect(screen.getByRole('button', { name: 'Đã thêm kênh' })).toHaveTextContent('✓');
       expect(screen.getByRole('button', { name: 'Đã thêm tất cả kênh' })).toHaveTextContent('✓');
+    });
+
+    // Clicking Analyze starts a profile analysis job directly on the discovered creators
+    fireEvent.click(screen.getByRole('button', { name: 'Phân tích các kênh' }));
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(([, init]) => init?.method === 'POST');
+      expect(
+        postCalls.some(([input]) =>
+          (typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)).includes(
+            'job_kind=profile',
+          ),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -451,7 +464,7 @@ describe('Analysis results rendering', () => {
     });
   });
 
-  test('collapses and expands #results panel in history and job result views', async () => {
+  test('merges history into flat #results-analysis with job kind filter', async () => {
     const onSelectJob = vi.fn();
     const baseProps = {
       keyword: '',
@@ -494,57 +507,33 @@ describe('Analysis results rendering', () => {
       copiedKey: null,
       onCopyTopic: vi.fn(),
       onAddCreator: vi.fn(),
-      onSaveVideo: vi.fn(),
       onGoToLibrary: vi.fn(),
     };
 
-    const { unmount } = render(<AnalyzerTab {...baseProps} />);
-    screen.getByRole('tab', { name: 'Lịch sử phân tích' }).click();
-    expect(screen.getByRole('heading', { name: 'Khám phá brand' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Phân tích creator/video' })).toBeInTheDocument();
-
-    const brandToggle = screen.getByRole('button', { name: /Thu gọn Khám phá brand/i });
-    const analysisToggle = screen.getByRole('button', { name: /Thu gọn Phân tích creator\/video/i });
-    expect(brandToggle).toHaveAttribute('aria-expanded', 'true');
-    expect(analysisToggle).toHaveAttribute('aria-expanded', 'true');
+    const { rerender } = render(<AnalyzerTab {...baseProps} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Lịch sử phân tích' }));
+    expect(screen.queryByRole('heading', { name: 'Khám phá brand' })).not.toBeInTheDocument();
+    expect(document.querySelector('#results-analysis > .panel-head')).not.toBeInTheDocument();
     expect(screen.getAllByText('Xem kết quả')).toHaveLength(2);
 
-    // Collapsing Khám phá brand persists to localStorage independently
-    brandToggle.click();
+    // Filter by job kind
+    fireEvent.click(screen.getByRole('button', { name: 'brand (1)' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Mở rộng Khám phá brand/i })).toHaveAttribute('aria-expanded', 'false');
-      expect(screen.getAllByText('Xem kết quả')).toHaveLength(1);
-      expect(localStorage.getItem('aibrand-results-brand-collapsed')).toBe('1');
-      expect(localStorage.getItem('aibrand-results-analysis-collapsed')).toBeNull();
+      expect(screen.getByText('skincare')).toBeInTheDocument();
+      expect(screen.queryByText('all_topics.json')).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Tất cả (2)' }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Xem kết quả')).toHaveLength(2);
     });
 
-    // Remounting restores collapsed state from localStorage
-    unmount();
-    const remounted = render(<AnalyzerTab {...baseProps} />);
-    screen.getByRole('tab', { name: 'Lịch sử phân tích' }).click();
-    expect(screen.getByRole('button', { name: /Mở rộng Khám phá brand/i })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('button', { name: /Thu gọn Phân tích creator\/video/i })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
-
-    // JobResult view for profile job renders in Phân tích creator/video and is collapsible
-    remounted.rerender(<AnalyzerTab {...baseProps} jobId="job_profile_1" job={profileJobFixture as never} />);
-    const resultToggle = screen.getByRole('button', { name: /Thu gọn kết quả/i });
-    expect(resultToggle).toHaveAttribute('aria-expanded', 'true');
+    // JobResult view renders flat inside #results-analysis without outer collapse button
+    rerender(<AnalyzerTab {...baseProps} jobId="job_profile_1" job={profileJobFixture as never} />);
+    expect(document.querySelector('#results-analysis .panel-collapse-btn')).not.toBeInTheDocument();
     expect(screen.getByText('100%')).toBeInTheDocument();
 
-    resultToggle.click();
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Mở rộng kết quả/i })).toHaveAttribute('aria-expanded', 'false');
-      expect(screen.queryByText('100%')).not.toBeInTheDocument();
-      expect(localStorage.getItem('aibrand-results-analysis-collapsed')).toBe('1');
-    });
-
-    // Back button does not toggle collapse
-    screen.getByRole('button', { name: /Lịch sử chạy/i }).click();
+    fireEvent.click(screen.getByRole('button', { name: /Lịch sử chạy/i }));
     expect(onSelectJob).toHaveBeenCalledWith(null);
-    expect(screen.getByRole('button', { name: /Mở rộng kết quả/i })).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('renders BrandPanel with Nhân hiệu question and saves to /api/user/profile', async () => {

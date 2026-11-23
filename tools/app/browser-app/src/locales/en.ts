@@ -304,10 +304,9 @@ export const en: LocaleMessages = {
     exploreBrandBtn: 'Explore brand',
     creatingJob: 'Creating job…',
     loadingResults: 'Loading analysis results…',
-    brandResultsTitle: 'Brand Discovery',
-    brandResultsEmpty: 'No brand discovery runs yet.',
-    analysisResultsTitle: 'Creator / Video Analysis',
-    analysisResultsEmpty: 'No creator/video analysis runs yet.',
+    allKindsFilter: 'All',
+    historyEmpty: 'No runs yet.',
+    historyFilteredEmpty: 'No matching runs.',
     goToLibraryBtn: 'Choose a topic in Library to run',
     brandAssistant: {
       title: 'Brand Assistant',
@@ -323,13 +322,6 @@ export const en: LocaleMessages = {
           welcomeExisting: (summary: string) =>
             `I see your current brand profile:\n${summary}\n\nWhat would you like to revise or refine based on recent feedback?`,
           placeholder: 'Describe your niche, offer, or answer the question…',
-        },
-        keyword_explore: {
-          label: 'Explore Brand',
-          subtitle: 'Free-range mode: brainstorm and discover different brand keywords.',
-          welcome:
-            'What topic or angle would you like to explore? I will suggest search brand keywords for the system to research different brand competitors.',
-          placeholder: 'Ask about any topic, niche, or trend…',
         },
       },
       sendBtn: 'Send',
@@ -355,8 +347,6 @@ export const en: LocaleMessages = {
     allTopics: 'All topics',
     historyBack: (count: number) => `← Run history (${count})`,
     resultsHeading: 'Results',
-    expandResultsAria: 'Expand results',
-    collapseResultsAria: 'Collapse results',
     processingSheet: (sheet: string) => `Processing: ${sheet}`,
     waitingTurn: 'Waiting in queue…',
     hideLogs: 'Hide logs',
@@ -407,13 +397,8 @@ export const en: LocaleMessages = {
       noCreatorUrlTitle: 'No channel URL',
       addedCreatorTitle: 'Added creator to Library',
       addCreatorTitle: 'Add creator to Library',
-      videosHeading: 'Videos',
-      videosSwipeHint: (count: number) => `${count} videos · swipe left/right`,
-      savedAllVideosAria: 'All videos saved',
-      saveAllVideosAria: 'Save all videos',
-      saveAllVideosTitle: 'Save all videos to Library',
-      savedVideoBtn: '✓ Saved',
-      saveVideoBtn: '+ Save Video',
+      analyzeCreatorsAria: 'Analyze creators',
+      analyzeCreatorsTitle: 'Analyze creators & videos',
     },
   },
   video: {
@@ -505,9 +490,8 @@ export const en: LocaleMessages = {
       analyzerTitle: 'Analyze & Brand Assistant',
       analyzerText:
         'Shape your brand profile with the assistant, explore competitor keywords, and browse analysis history.',
-      brandModesTitle: '3 Modes in Analyze',
-      brandModesText:
-        'Switch between Build Brand (shape your brand profile), Explore Brand Keyword (discover competitor keywords), and Analysis History.',
+      brandModesTitle: '2 Modes in Analyze',
+      brandModesText: 'Switch between Build Brand (shape your brand profile) and Analysis History.',
       brandChatTitle: 'Chat with Assistant',
       brandChatText:
         'Answer questions to draft and save your brand profile, or get 3 suggested keywords to launch a search right from chat.',

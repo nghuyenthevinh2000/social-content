@@ -7,17 +7,6 @@ import { useLocale } from '../locales';
 
 import { BrandAssistant } from './BrandAssistant';
 
-const BRAND_COLLAPSED_KEY = 'aibrand-results-brand-collapsed';
-const ANALYSIS_COLLAPSED_KEY = 'aibrand-results-analysis-collapsed';
-
-function readCollapsed(key: string): boolean {
-  try {
-    return localStorage.getItem(key) === '1';
-  } catch {
-    return false;
-  }
-}
-
 type AnalyzerTabProps = {
   keyword: string;
   onKeywordChange: (value: string) => void;
@@ -35,7 +24,7 @@ type AnalyzerTabProps = {
   copiedKey: string | null;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator: (creator: { name: string; url: string; platform?: string }) => void;
-  onSaveVideo: (topic: Topic) => void;
+  onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
   onGoToLibrary: () => void;
   forceHistoryView?: boolean;
 };
@@ -43,9 +32,9 @@ type AnalyzerTabProps = {
 type ResultsSectionProps = {
   id: string;
   title: string;
-  storageKey: string;
   items: JobSummary[];
   activeJob: Job | null;
+  blocked: boolean;
   emptyText: string;
   emptyActionLabel?: string;
   onEmptyAction?: () => void;
@@ -55,18 +44,18 @@ type ResultsSectionProps = {
   copiedKey: string | null;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator: (creator: { name: string; url: string; platform?: string }) => void;
-  onSaveVideo: (topic: Topic) => void;
-  collapsed?: boolean;
-  onToggleCollapsed?: () => void;
+  onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
   highlighted?: boolean;
 };
+
+const JOB_KINDS: JobKind[] = ['keyword', 'profile', 'reel'];
 
 const ResultsSection: React.FC<ResultsSectionProps> = ({
   id,
   title,
-  storageKey,
   items,
   activeJob,
+  blocked,
   emptyText,
   emptyActionLabel,
   onEmptyAction,
@@ -76,76 +65,59 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
   copiedKey,
   onCopyTopic,
   onAddCreator,
-  onSaveVideo,
-  collapsed: controlledCollapsed,
-  onToggleCollapsed,
+  onAnalyzeCreators,
   highlighted = false,
 }) => {
   const { t } = useLocale();
   const m = t.analyzer;
-  const [internalCollapsed, setInternalCollapsed] = useState(() => readCollapsed(storageKey));
-  const collapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
-  const isTour = items.some((item) => item.id === tourDemoId) || activeJob?.id === tourDemoId;
-  const isCollapsed = collapsed && !isTour;
-
-  const toggleCollapsed = () => {
-    if (onToggleCollapsed) {
-      onToggleCollapsed();
-      return;
-    }
-    setInternalCollapsed((prev) => {
-      const next = !prev;
-      try {
-        if (next) {
-          localStorage.setItem(storageKey, '1');
-        } else {
-          localStorage.removeItem(storageKey);
-        }
-      } catch {
-        // ignore storage errors
-      }
-      return next;
-    });
-  };
+  const [filterKind, setFilterKind] = useState<'all' | JobKind>('all');
+  const filteredItems =
+    filterKind === 'all' ? items : items.filter((item) => (item.job_kind ?? 'profile') === filterKind);
 
   return (
     <section className={`panel results-section ${highlighted ? 'results-highlight' : ''}`} id={id}>
       {!activeJob ? (
-        <>
-          <div className="panel-head collapsible-head" onClick={toggleCollapsed}>
-            <div>
-              <h2>{title}</h2>
-              <p className="muted count">{items.length > 0 ? m.runCount(items.length) : m.noRuns}</p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexShrink: 0 }}>
+        items.length === 0 ? (
+          <div className="empty">
+            <p className="muted">{emptyText}</p>
+            {emptyActionLabel && onEmptyAction && (
+              <button type="button" className="ghost" onClick={onEmptyAction}>
+                {emptyActionLabel}
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="source-breakdown" role="group" aria-label={title}>
               <button
                 type="button"
-                className="panel-collapse-btn"
-                aria-expanded={!isCollapsed}
-                aria-label={isCollapsed ? m.expandLabel(title) : m.collapseLabel(title)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleCollapsed();
-                }}
+                className={`platform-filter-btn ${filterKind === 'all' ? 'active' : ''}`}
+                aria-pressed={filterKind === 'all'}
+                onClick={() => setFilterKind('all')}
               >
-                <span className={`store-toggle-icon ${!isCollapsed ? 'open' : ''}`} aria-hidden="true" />
+                {m.allKindsFilter} ({items.length})
               </button>
-            </div>
-          </div>
-
-          {!isCollapsed &&
-            (items.length === 0 ? (
-              <div className="empty">
-                <p className="muted">{emptyText}</p>
-                {emptyActionLabel && onEmptyAction && (
-                  <button type="button" className="ghost" onClick={onEmptyAction}>
-                    {emptyActionLabel}
+              {JOB_KINDS.map((kind) => {
+                const count = items.filter((item) => (item.job_kind ?? 'profile') === kind).length;
+                const active = filterKind === kind;
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    className={`platform-filter-btn ${active ? 'active' : ''}`}
+                    aria-pressed={active}
+                    onClick={() => setFilterKind(active ? 'all' : kind)}
+                  >
+                    {m.kindLabel[kind]} ({count})
                   </button>
-                )}
-              </div>
+                );
+              })}
+            </div>
+            {filteredItems.length === 0 ? (
+              <p className="muted empty">{m.historyFilteredEmpty}</p>
             ) : (
               <div className="history-list">
-                {items.map((item) => {
+                {filteredItems.map((item) => {
                   const isRunning = !TERMINAL.has(item.status);
                   const kind: JobKind = item.job_kind ?? 'profile';
                   return (
@@ -214,19 +186,19 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
                   );
                 })}
               </div>
-            ))}
-        </>
+            )}
+          </>
+        )
       ) : (
         <JobResult
           job={activeJob}
           historyCount={items.length}
           copiedKey={copiedKey}
-          collapsed={isCollapsed}
-          onToggleCollapse={toggleCollapsed}
+          blocked={blocked}
           onBack={() => onSelectJob(null)}
           onCopyTopic={onCopyTopic}
           onAddCreator={onAddCreator}
-          onSaveVideo={onSaveVideo}
+          onAnalyzeCreators={onAnalyzeCreators}
         />
       )}
     </section>
@@ -248,7 +220,7 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   copiedKey,
   onCopyTopic,
   onAddCreator,
-  onSaveVideo,
+  onAnalyzeCreators,
   onGoToLibrary,
   forceHistoryView = false,
 }) => {
@@ -256,8 +228,7 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   const m = t.analyzer;
   const [activeView, setActiveView] = useState<'chat' | 'history'>(() => (jobId || starting ? 'history' : 'chat'));
   const showHistory = forceHistoryView || activeView === 'history' || starting || Boolean(jobId);
-  const [brandCollapsed, setBrandCollapsed] = useState(() => readCollapsed(BRAND_COLLAPSED_KEY));
-  const [highlightBrand, setHighlightBrand] = useState(false);
+  const [highlightResults, setHighlightResults] = useState(false);
   const highlightTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -269,47 +240,21 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!highlightBrand || starting || (jobId && !job)) return;
-    document.getElementById('results-brand')?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
-  }, [highlightBrand, starting, jobId, job]);
-
-  const toggleBrandCollapsed = () => {
-    setBrandCollapsed((prev) => {
-      const next = !prev;
-      try {
-        if (next) {
-          localStorage.setItem(BRAND_COLLAPSED_KEY, '1');
-        } else {
-          localStorage.removeItem(BRAND_COLLAPSED_KEY);
-        }
-      } catch {
-        // ignore storage errors
-      }
-      return next;
-    });
-  };
+    if (!highlightResults || starting || (jobId && !job)) return;
+    document.getElementById('results-analysis')?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+  }, [highlightResults, starting, jobId, job]);
 
   const focusBrandResults = () => {
     setActiveView('history');
-    setBrandCollapsed(false);
-    try {
-      localStorage.removeItem(BRAND_COLLAPSED_KEY);
-    } catch {
-      // ignore storage errors
-    }
-    setHighlightBrand(true);
+    setHighlightResults(true);
     if (highlightTimerRef.current !== null) {
       window.clearTimeout(highlightTimerRef.current);
     }
     highlightTimerRef.current = window.setTimeout(() => {
-      setHighlightBrand(false);
+      setHighlightResults(false);
       highlightTimerRef.current = null;
     }, 2200);
   };
-
-  const brandHistory = visibleHistory.filter((item) => item.job_kind === 'keyword');
-  const analysisHistory = visibleHistory.filter((item) => item.job_kind !== 'keyword');
-  const activeIsBrand = job?.job_kind === 'keyword';
 
   return (
     <>
@@ -353,30 +298,12 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
           ) : (
             <>
               <ResultsSection
-                id="results-brand"
-                title={m.brandResultsTitle}
-                storageKey={BRAND_COLLAPSED_KEY}
-                items={brandHistory}
-                activeJob={job && activeIsBrand ? job : null}
-                emptyText={m.brandResultsEmpty}
-                onSelectJob={onSelectJob}
-                onDeleteJob={onDeleteJob}
-                tourDemoId={tourDemoId}
-                copiedKey={copiedKey}
-                onCopyTopic={onCopyTopic}
-                onAddCreator={onAddCreator}
-                onSaveVideo={onSaveVideo}
-                collapsed={brandCollapsed}
-                onToggleCollapsed={toggleBrandCollapsed}
-                highlighted={highlightBrand}
-              />
-              <ResultsSection
                 id="results-analysis"
-                title={m.analysisResultsTitle}
-                storageKey={ANALYSIS_COLLAPSED_KEY}
-                items={analysisHistory}
-                activeJob={job && !activeIsBrand ? job : null}
-                emptyText={m.analysisResultsEmpty}
+                title={m.brandAssistant.historyTab}
+                items={visibleHistory}
+                activeJob={job}
+                blocked={blocked}
+                emptyText={m.historyEmpty}
                 emptyActionLabel={m.goToLibraryBtn}
                 onEmptyAction={onGoToLibrary}
                 onSelectJob={onSelectJob}
@@ -385,7 +312,8 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
                 copiedKey={copiedKey}
                 onCopyTopic={onCopyTopic}
                 onAddCreator={onAddCreator}
-                onSaveVideo={onSaveVideo}
+                onAnalyzeCreators={onAnalyzeCreators}
+                highlighted={highlightResults}
               />
             </>
           )}
