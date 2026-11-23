@@ -110,6 +110,40 @@ class DmServiceTests(unittest.TestCase):
         self.assertEqual(token2, "token_xyz")
         self.assertIsNone(expires_in2)
 
+    @patch("tools.app.backend.services.dm_service.send_messenger_reply")
+    def test_unreadable_share_replies_to_user(self, mock_reply):
+        service = DmPollerService(page_id="1216806404853891", access_token="tok", reply_user=True)
+        msg = {
+            "id": "m_expired_1",
+            "message": "",
+            "from": {"id": "29470887129205743", "name": "Xuân Hiếu Nguyễn"},
+            "shares": {"data": [{"id": "m_expired_1", "name": "Message expired"}]},
+        }
+        service.process_message(msg, "1216806404853891", "tok")
+        mock_reply.assert_called_once()
+        self.assertIn("link Reel", mock_reply.call_args[0][3])
+
+    @patch("tools.app.backend.services.dm_service.send_messenger_reply")
+    @patch("tools.app.backend.services.dm_service.find_user_by_psid", return_value="u_1")
+    @patch("tools.app.backend.services.dm_service.tx")
+    def test_already_saved_reel_does_not_re_reply(self, mock_tx, _mock_find, mock_reply):
+        mock_conn = MagicMock()
+        mock_tx.return_value.__enter__.return_value = mock_conn
+        service = DmPollerService(page_id="1216806404853891", access_token="tok", reply_user=True)
+        msg = {
+            "id": "m_dup_1",
+            "message": "https://www.facebook.com/reel/38767988132845953/",
+            "from": {"id": "29217110351307149", "name": "Nguyễn Thế Vinh"},
+        }
+        mock_conn.execute.return_value.fetchone.return_value = None
+        service.process_message(msg, "1216806404853891", "tok")
+        mock_reply.assert_not_called()
+
+        mock_conn.execute.return_value.fetchone.return_value = ("reel_123",)
+        msg["id"] = "m_new_1"
+        service.process_message(msg, "1216806404853891", "tok")
+        mock_reply.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

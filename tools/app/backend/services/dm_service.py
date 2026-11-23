@@ -162,6 +162,7 @@ class DmPollerService:
         self.last_renewed_at = time.time()
         self._profile_store: Optional[SocialProfileStore] = None
         self.seen_message_ids: set[str] = set()
+        self.started_at = datetime.now(timezone.utc)
         self._running = False
 
     @property
@@ -234,6 +235,20 @@ class DmPollerService:
                 })
 
         if not reels_to_save:
+            if self.reply_user and msg.get("shares", {}).get("data"):
+                created_raw = msg.get("created_time")
+                is_recent = True
+                if created_raw:
+                    try:
+                        is_recent = datetime.fromisoformat(created_raw) >= (self.started_at - timedelta(minutes=2))
+                    except ValueError:
+                        is_recent = False
+                if is_recent:
+                    logger.info("Unreadable share from sender ID %s (%s) (no link in shares)", sender_id, sender_name)
+                    send_messenger_reply(
+                        page_id, token, sender_id,
+                        "⚠️ Không thể đọc được link Reel từ tin nhắn chia sẻ này (có thể do quyền riêng tư). Vui lòng copy và dán trực tiếp đường link Reel vào đây nhé!",
+                    )
             return
 
         # 2. Determine the target user
@@ -241,8 +256,9 @@ class DmPollerService:
         target_user = user_id or sender_id
 
         # 3. Always save into User Library and database
+        newly_saved = 0
         for item in reels_to_save:
-            self._save_to_user_library(
+            if self._save_to_user_library(
                 user_id=target_user,
                 reel_url=item["reel_url"],
                 original_url=item["original_url"],
@@ -251,15 +267,16 @@ class DmPollerService:
                 sender_psid=sender_id,
                 sender_name=sender_name,
                 message_text=msg_text,
-            )
+            ):
+                newly_saved += 1
 
         if not user_id:
-            logger.info("Saved Reel from unlinked sender ID %s (%s) under sender PSID", sender_id, sender_name)
+            if newly_saved:
+                logger.info("Saved Reel from unlinked sender ID %s (%s) under sender PSID", sender_id, sender_name)
             return
 
-        if self.reply_user:
-            count = len(reels_to_save)
-            msg_ack = f"🎬 Đã lưu thành công {count} Reel vào Thư viện của bạn trên website!"
+        if self.reply_user and newly_saved > 0:
+            msg_ack = f"🎬 Đã lưu thành công {newly_saved} Reel vào Thư viện của bạn trên website!"
             send_messenger_reply(page_id, token, sender_id, msg_ack)
 
     def _save_to_user_library(
@@ -272,29 +289,32 @@ class DmPollerService:
         sender_psid: str,
         sender_name: str,
         message_text: str,
-    ) -> None:
-        """Persist Reel into database: saved_reels table and profiles Library topic."""
+    ) -> bool:
+        """Persist Reel into database: saved_reels table and profiles Library topic. Returns True if newly inserted."""
         reel_id = f"reel_{hashlib.md5(f'{user_id}:{reel_url}'.encode('utf-8')).hexdigest()[:16]}"
         now = now_iso()
 
         # Insert into saved_reels table
         with tx() as conn:
-            conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO saved_reels (
                     id, user_id, reel_url, original_url, platform, share_type,
                     sender_psid, sender_name, message_text, created_at
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (user_id, reel_url) DO NOTHING
+                RETURNING id
                 """,
                 (
                     reel_id, user_id, reel_url, original_url, platform, share_type,
                     sender_psid, sender_name, message_text, now,
                 ),
             )
+            inserted = cur.fetchone() is not None
 
-        # Log success
-        logger.info("Saved reel %s to database for user_id %s", reel_url, user_id)
+        if inserted:
+            logger.info("Saved reel %s to database for user_id %s", reel_url, user_id)
+        return inserted
 
     def poll_once(self) -> int:
         """Perform a single poll against Graph API v27.0. Returns number of messages processed."""
