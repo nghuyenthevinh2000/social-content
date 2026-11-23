@@ -1,5 +1,5 @@
 import { IonContent, IonFooter, IonHeader, IonIcon, IonPage, IonToast } from '@ionic/react';
-import { analyticsOutline, libraryOutline, personCircleOutline, videocamOutline } from 'ionicons/icons';
+import { analyticsOutline, libraryOutline, personCircleOutline, refreshOutline, videocamOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -17,10 +17,7 @@ import { VideoTab } from '../components/VideoTab';
 import { CREATOR_PACKS, type CreatorPack } from '../data/creatorPacks';
 import {
   auth,
-  formatFacebookAuthError,
-  linkWithFacebook,
   onAuthStateChanged,
-  resolveAuthRedirect,
   signOut,
   type User,
 } from '../firebase';
@@ -186,7 +183,7 @@ const Home: React.FC = () => {
   const [job, setJob] = useState<Job | null>(null);
   const [jobId, setJobId] = useState<string | null>(initialJobId);
   const [history, setHistory] = useState<JobSummary[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -214,31 +211,11 @@ const Home: React.FC = () => {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [authReady, setAuthReady] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authRedirectError, setAuthRedirectError] = useState<string | null>(null);
   // Seen-flag is per account: tour always shows unless the user marks "Đã rõ hướng dẫn" in Profile.
   const [tourDismissed, setTourDismissed] = useState(false);
   const [tourHistoryView, setTourHistoryView] = useState(false);
   const [, setTourSync] = useState(0);
-  const [linkingFb, setLinkingFb] = useState(false);
-  const [linkFbError, setLinkFbError] = useState<string | null>(null);
   const [videoBalance, setVideoBalance] = useState<number | null>(null);
-
-  const fbAccount = user?.providerData?.find((p) => p.providerId === 'facebook.com');
-  const facebookId = fbAccount?.uid;
-
-  const handleLinkFacebook = async () => {
-    if (!auth.currentUser) return;
-    setLinkingFb(true);
-    setLinkFbError(null);
-    try {
-      const res = await linkWithFacebook(auth.currentUser);
-      if (res) setUser(res.user);
-    } catch (err: any) {
-      setLinkFbError(formatFacebookAuthError(err, t.profile.linkFbFallbackError));
-    } finally {
-      setLinkingFb(false);
-    }
-  };
 
   const tourDemoTopic = useMemo(() => buildTourDemoTopic(t.tour), [t.tour]);
   const tourDemoJob = useMemo(() => buildTourDemoJob(t.tour), [t.tour]);
@@ -426,9 +403,9 @@ const Home: React.FC = () => {
   const [brandCollapsed, setBrandCollapsed] = usePersistedCollapsed('aibrand-profile-brand-collapsed');
   const [mediaCollapsed, setMediaCollapsed] = usePersistedCollapsed('aibrand-profile-media-collapsed');
   const [savedReels, setSavedReels] = useState<SavedReel[]>([]);
-  const [loadingReels, setLoadingReels] = useState(false);
   const [savedReelsCollapsed, setSavedReelsCollapsed] = useState(false);
   const [fbLinked, setFbLinked] = useState<boolean | null>(null);
+  const [fbName, setFbName] = useState<string | null>(null);
   const [linkCode, setLinkCode] = useState<{ command: string; page_id: string } | null>(null);
   const [generatingLinkCode, setGeneratingLinkCode] = useState(false);
 
@@ -438,7 +415,6 @@ const Home: React.FC = () => {
     setTopics([]);
     setTopicsCollapsed(false);
     setSavedReels([]);
-    setLoadingReels(false);
     setSavedReelsCollapsed(false);
     setNotice(null);
     setError(null);
@@ -459,21 +435,19 @@ const Home: React.FC = () => {
 
   const fetchSavedReels = async () => {
     if (!user) return;
-    setLoadingReels(true);
     try {
       const [reelsRes, statusRes] = await Promise.all([
         apiJson<{ ok: boolean; reels: SavedReel[] }>('/api/saved-reels'),
-        apiJson<{ ok: boolean; linked: boolean }>('/api/facebook/status').catch(() => null),
+        apiJson<{ ok: boolean; linked: boolean; fb_name?: string }>('/api/facebook/status').catch(() => null),
       ]);
       setSavedReels(reelsRes.reels || []);
       if (statusRes) {
         setFbLinked(Boolean(statusRes.linked));
+        setFbName(statusRes.fb_name || null);
         if (statusRes.linked) setLinkCode(null);
       }
     } catch (err) {
       console.error('Failed to load saved reels:', err);
-    } finally {
-      setLoadingReels(false);
     }
   };
 
@@ -534,29 +508,6 @@ const Home: React.FC = () => {
   };
 
   useEffect(() => {
-    let active = true;
-    resolveAuthRedirect()
-      .then((res) => {
-        if (active && res?.user) {
-          setUser(res.user);
-        }
-      })
-      .catch((err) => {
-        if (!active) return;
-        const msg = formatFacebookAuthError(err, getMessages().profile.fbAuthFallbackError);
-        if (auth.currentUser) {
-          setLinkFbError(msg);
-        } else {
-          setAuthRedirectError(msg);
-          setShowAuthModal(true);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
     let lastUid = auth.currentUser?.uid ?? null;
     const unsubscribe = onAuthStateChanged(auth, (currentUser: User | null) => {
       const nextUid = currentUser?.uid ?? null;
@@ -594,7 +545,6 @@ const Home: React.FC = () => {
 
   async function fetchHistory() {
     if (!user) return [];
-    setLoadingHistory(true);
     try {
       const data = await apiJson<{ ok: boolean; jobs: JobSummary[] }>('/api/jobs');
       const jobs = data.jobs || [];
@@ -602,8 +552,29 @@ const Home: React.FC = () => {
       return jobs;
     } catch {
       return [];
+    }
+  }
+
+  async function syncAll() {
+    if (!user || syncing) return;
+    setSyncing(true);
+    try {
+      const reloadTopics = apiJson<{ topics?: TopicItem[] }>('/api/sources/topics')
+        .then(async (data) => {
+          let list = data.topics || [];
+          if (!list.some(isDefaultTopic)) list = (await postTopic(DEFAULT_TOPIC)).topics || list;
+          setTopics(list);
+        })
+        .catch(() => {});
+      const reloadActiveJob =
+        jobId && jobId !== TOUR_DEMO_ID
+          ? apiJson<{ ok: boolean; job: Job }>(`/api/jobs/${jobId}`)
+              .then((data) => setJob(data.job))
+              .catch(() => {})
+          : Promise.resolve();
+      await Promise.all([reloadTopics, fetchHistory(), fetchSavedReels(), reloadActiveJob]);
     } finally {
-      setLoadingHistory(false);
+      setSyncing(false);
     }
   }
 
@@ -920,16 +891,30 @@ const Home: React.FC = () => {
           <span className="brand">
             <span className="brand-mark">AB</span>AIBrand
           </span>
-          <button
-            type="button"
-            className="lang-toggle-btn"
-            onClick={toggleLocale}
-            aria-label={t.profile.switchLanguage}
-            title={t.profile.switchLanguage}
-          >
-            <span aria-hidden="true">{locale === 'vi' ? '🇻🇳' : '🇺🇸'}</span>
-            <span>{locale === 'vi' ? 'VI' : 'EN'}</span>
-          </button>
+          <div className="topbar-actions">
+            {user && (
+              <button
+                type="button"
+                className="ghost small topbar-reload-btn"
+                onClick={() => void syncAll()}
+                disabled={syncing}
+                aria-label={t.common.refresh}
+                title={t.common.refresh}
+              >
+                <IonIcon icon={refreshOutline} className={syncing ? 'spin' : undefined} aria-hidden="true" />
+              </button>
+            )}
+            <button
+              type="button"
+              className="lang-toggle-btn"
+              onClick={toggleLocale}
+              aria-label={t.profile.switchLanguage}
+              title={t.profile.switchLanguage}
+            >
+              <span aria-hidden="true">{locale === 'vi' ? '🇻🇳' : '🇺🇸'}</span>
+              <span>{locale === 'vi' ? 'VI' : 'EN'}</span>
+            </button>
+          </div>
         </div>
       </IonHeader>
 
@@ -962,24 +947,21 @@ const Home: React.FC = () => {
                 <dl className="details">
                   <dt>{t.profile.email}</dt>
                   <dd>{user.email ? <code>{user.email}</code> : '—'}</dd>
-                  {facebookId ? (
-                    <>
-                      <dt>{t.profile.facebookId}</dt>
-                      <dd>
-                        <code>{facebookId}</code>
-                      </dd>
-                    </>
-                  ) : (
-                    <>
-                      <dt>{t.profile.facebook}</dt>
-                      <dd>
-                        <button type="button" className="link-fb-btn" onClick={handleLinkFacebook} disabled={linkingFb}>
-                          {linkingFb ? t.profile.linkingFb : t.profile.linkFbBtn}
-                        </button>
-                        {linkFbError && <div className="link-fb-error">{linkFbError}</div>}
-                      </dd>
-                    </>
-                  )}
+                  <dt>{t.profile.facebook}</dt>
+                  <dd>
+                    {fbLinked ? (
+                      <code>{fbName || 'Messenger'}</code>
+                    ) : (
+                      <button
+                        type="button"
+                        className="link-fb-btn"
+                        onClick={handleGenerateLinkCode}
+                        disabled={generatingLinkCode}
+                      >
+                        {generatingLinkCode ? t.library.linkMessengerLoading : t.library.linkMessengerBtn}
+                      </button>
+                    )}
+                  </dd>
                   {videoBalance !== null && (
                     <>
                       <dt>{t.profile.videoBalance}</dt>
@@ -1365,18 +1347,6 @@ const Home: React.FC = () => {
               </section>
 
               <div className="panel saved-reels-panel">
-                {fbLinked === false && (
-                  <button
-                    type="button"
-                    className="ghost"
-                    style={{ width: '100%', marginBottom: 'var(--space-3)' }}
-                    onClick={handleGenerateLinkCode}
-                    disabled={generatingLinkCode}
-                  >
-                    {generatingLinkCode ? t.library.linkMessengerLoading : t.library.linkMessengerBtn}
-                  </button>
-                )}
-
                 <div
                   className="panel-head collapsible-head"
                   role="button"
@@ -1394,18 +1364,6 @@ const Home: React.FC = () => {
                     <span className="muted count">{t.library.reelCount(savedReels.length)}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        fetchSavedReels();
-                      }}
-                      disabled={loadingReels}
-                      title={t.library.refreshReelsTitle}
-                    >
-                      {loadingReels ? '…' : '↻'}
-                    </button>
                     <span className={`store-toggle-icon ${!savedReelsCollapsed ? 'open' : ''}`} aria-hidden="true" />
                   </div>
                 </div>
@@ -1575,8 +1533,6 @@ const Home: React.FC = () => {
               jobId={jobId}
               job={job}
               visibleHistory={visibleHistory}
-              loadingHistory={loadingHistory}
-              onFetchHistory={fetchHistory}
               onSelectJob={selectJob}
               onDeleteJob={deleteJob}
               tourDemoId={TOUR_DEMO_ID}
@@ -1633,11 +1589,7 @@ const Home: React.FC = () => {
 
       <AuthModal
         isOpen={showAuthModal}
-        initialError={authRedirectError}
-        onClose={() => {
-          setShowAuthModal(false);
-          setAuthRedirectError(null);
-        }}
+        onClose={() => setShowAuthModal(false)}
       />
 
       {linkCode && (
