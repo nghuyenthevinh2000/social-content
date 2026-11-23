@@ -950,11 +950,8 @@ const Home: React.FC = () => {
                   <dt>{t.profile.facebook}</dt>
                   <dd>
                     {fbLinked ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                        <span className="badge completed">
-                          ✓ {locale === 'vi' ? 'Đã liên kết' : 'Linked'}
-                        </span>
-                        {fbName && <span>{fbName}</span>}
+                      <span className="badge completed">
+                        ✓ {fbName || (locale === 'vi' ? 'Đã liên kết' : 'Linked')}
                       </span>
                     ) : (
                       <button
