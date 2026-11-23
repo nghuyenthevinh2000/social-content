@@ -658,9 +658,12 @@ const Home: React.FC = () => {
       })
       .catch(() => {});
 
-    apiJson<{ ok: boolean; linked: boolean }>('/api/facebook/status')
+    apiJson<{ ok: boolean; linked: boolean; fb_name?: string }>('/api/facebook/status')
       .then((data) => {
-        if (!ignore) setFbLinked(Boolean(data.linked));
+        if (!ignore) {
+          setFbLinked(Boolean(data.linked));
+          setFbName(data.fb_name || null);
+        }
       })
       .catch(() => {});
 
@@ -949,7 +952,9 @@ const Home: React.FC = () => {
                   <dd>{user.email ? <code>{user.email}</code> : '—'}</dd>
                   <dt>{t.profile.facebook}</dt>
                   <dd>
-                    {fbLinked ? (
+                    {fbLinked === null ? (
+                      '—'
+                    ) : fbLinked ? (
                       <span className="badge completed">
                         ✓ {fbName || (locale === 'vi' ? 'Đã liên kết' : 'Linked')}
                       </span>
