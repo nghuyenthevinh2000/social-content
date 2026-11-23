@@ -416,31 +416,7 @@ def _process_sheet_inner(
         source_breakdown = kw_res.get("source_breakdown", {})
         error = kw_res.get("error")
         notice = kw_res.get("notice")
-        topics = [
-            {
-                "title": r.get("title") or r.get("reel_url") or "Video",
-                "hook": "",
-                "angle": "",
-                "why_viral": "",
-                "outline": [],
-                "format": r.get("platform") or "video",
-                "source_urls": [r["reel_url"]] if r.get("reel_url") else [],
-                "generated_by": "glasser",
-                "platform": r.get("platform") or "facebook",
-                "matched_query": r.get("matched_query") or "",
-                "author_name": r.get("author_name") or "",
-                "author_handle": r.get("author_handle") or "",
-                "author_url": r.get("author_url") or "",
-                "reel_url": r.get("reel_url") or r.get("url") or "",
-                "video_url": r.get("video_url") or "",
-                "video_id": r.get("video_id") or "",
-                "views": int(r.get("views") or 0),
-                "likes": int(r.get("likes") or 0),
-                "comments": int(r.get("comments") or 0),
-                "shares": int(r.get("shares") or 0),
-            }
-            for r in reels
-        ]
+        topics = []
     elif job_kind == "reel":
         log(f"Phát hiện {len(targets)} Reel đơn lẻ; chạy Reel Research trực tiếp (bỏ qua profile scraper).")
         reel_targets = []
@@ -581,7 +557,7 @@ def _process_sheet_inner(
         cost_summary=cost_summary,
         finished_at=now_iso(),
     )
-    if topics:
+    if topics or creators:
         STORE.log(job_id, f"Xong sheet '{sheet_name}': {len(reels)} reel, {len(topics)} chủ đề.", sheet_name)
     else:
         STORE.log(job_id, f"Xong sheet '{sheet_name}': 0 reel. {notice or error or ''}".strip(), sheet_name)

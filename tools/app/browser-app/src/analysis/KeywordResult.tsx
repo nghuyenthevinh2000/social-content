@@ -2,17 +2,13 @@ import React, { useState } from 'react';
 
 import { useLocale } from '../locales';
 
-import { ReelPlayerBox } from './TopicCard';
-import { formatCompact, formatNumber, getEmbedUrl, getTopicReelUrl, inferPlatform, PLATFORM_LABELS } from './format';
-import type { Sheet, Topic } from './types';
+import { formatCompact } from './format';
+import type { Sheet } from './types';
 
 type KeywordResultProps = {
   sheet: Sheet;
-  orderedTopics: Topic[];
-  savedUrls: Set<string>;
   addedCreatorUrls: Set<string>;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
-  onSaveVideo?: (topic: Topic) => void;
 };
 
 const KIND_LABELS: Record<string, string> = {
@@ -23,20 +19,18 @@ const KIND_LABELS: Record<string, string> = {
 
 export const KeywordResult: React.FC<KeywordResultProps> = ({
   sheet,
-  orderedTopics,
-  savedUrls,
   addedCreatorUrls,
   onAddCreator,
-  onSaveVideo,
 }) => {
   const { t } = useLocale();
   const m = t.analysis;
   const km = m.keywordResult;
   const queries = sheet.queries ?? [];
   const creators = sheet.creators ?? [];
+  const relevantCreators = creators.filter((c) => (c.relevance || '').toLowerCase() !== 'off_topic');
   const counts: Record<string, number> = {};
-  sheet.topics.forEach((t) => {
-    const p = t.platform || 'facebook';
+  relevantCreators.forEach((c) => {
+    const p = c.platform || 'facebook';
     counts[p] = (counts[p] || 0) + 1;
   });
 
@@ -50,22 +44,14 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
     });
   };
 
-  const relevantCreators = creators.filter((c) => (c.relevance || '').toLowerCase() !== 'off_topic');
   const filteredCreators =
     selectedPlatforms.size > 0
       ? relevantCreators.filter((c) => selectedPlatforms.has(c.platform || 'facebook'))
       : relevantCreators;
-  const filteredTopics =
-    selectedPlatforms.size > 0
-      ? orderedTopics.filter((t) => selectedPlatforms.has(t.platform || inferPlatform(t, getTopicReelUrl(t))))
-      : orderedTopics;
 
   const creatorsWithUrl = filteredCreators.filter((c) => !!c.url);
   const allCreatorsAdded =
     creatorsWithUrl.length > 0 && creatorsWithUrl.every((c) => addedCreatorUrls.has(c.url));
-  const videosWithUrl = filteredTopics.filter((t) => !!getTopicReelUrl(t));
-  const allVideosSaved =
-    videosWithUrl.length > 0 && videosWithUrl.every((t) => savedUrls.has(getTopicReelUrl(t)));
 
   return (
     <div className="keyword-meta">
@@ -164,100 +150,6 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                 {c.why_relevant && <div className="creator-why muted">{c.why_relevant}</div>}
               </div>
             ))}
-          </div>
-        </details>
-      )}
-
-      {filteredTopics.length > 0 && (
-        <details className="sheet keyword-subpanel">
-          <summary>
-            <span className="sheet-title">
-              <strong>{km.videosHeading}</strong>
-              <small className="muted">{km.videosSwipeHint(filteredTopics.length)}</small>
-            </span>
-            {onSaveVideo && videosWithUrl.length > 0 && (
-              <button
-                type="button"
-                className={`ghost small ${allVideosSaved ? 'copied' : ''}`}
-                aria-label={allVideosSaved ? km.savedAllVideosAria : km.saveAllVideosAria}
-                title={km.saveAllVideosTitle}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  videosWithUrl.forEach((t) => {
-                    const u = getTopicReelUrl(t);
-                    if (u && !savedUrls.has(u)) {
-                      onSaveVideo(t);
-                    }
-                  });
-                }}
-              >
-                {allVideosSaved ? '✓' : '+'}
-              </button>
-            )}
-          </summary>
-          <div className="topics topics-carousel">
-            {filteredTopics.map((topic, idx) => {
-              const reelUrl = getTopicReelUrl(topic);
-              const platform = inferPlatform(topic, reelUrl);
-              const platformLabel = PLATFORM_LABELS[platform] || 'Facebook';
-              const embedUrl = getEmbedUrl(reelUrl, platform);
-              const isSaved = !!reelUrl && savedUrls.has(reelUrl);
-
-              return (
-                <article key={idx} className="topic reel-card">
-                  <div className="topic-top">
-                    <div className="reel-meta-left">
-                      <span className="topic-num">#{idx + 1}</span>
-                      {(topic.author_handle || topic.author_name) && (
-                        <span className="reel-author">@{topic.author_handle || topic.author_name}</span>
-                      )}
-                    </div>
-                    <span className="source-tag glasser">{platformLabel}</span>
-                  </div>
-
-                  <h3 className="reel-title">{topic.title}</h3>
-
-                  <div className="reel-badges">
-                    {typeof topic.views === 'number' && topic.views > 0 && (
-                      <span className="metric-badge views" title={m.viewsTitle(formatNumber(topic.views))}>
-                        🔥 {m.viewsShort(formatCompact(topic.views))}
-                      </span>
-                    )}
-                    {topic.matched_query && (
-                      <span className="metric-badge" title={m.matchedQueryTitle}>
-                        🔎 {topic.matched_query}
-                      </span>
-                    )}
-                  </div>
-
-                  <ReelPlayerBox
-                    videoUrl={topic.video_url}
-                    embedUrl={embedUrl}
-                    title={topic.title || `Video ${idx + 1}`}
-                  />
-
-                  <div className="reel-card-foot">
-                    <div className="reel-card-foot-left">
-                      {reelUrl && (
-                        <a href={reelUrl} target="_blank" rel="noreferrer" className="reel-ext-link">
-                          {platformLabel} ↗
-                        </a>
-                      )}
-                      {onSaveVideo && reelUrl && (
-                        <button
-                          type="button"
-                          className={`ghost small ${isSaved ? 'copied' : ''}`}
-                          onClick={() => onSaveVideo(topic)}
-                        >
-                          {isSaved ? km.savedVideoBtn : km.saveVideoBtn}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
           </div>
         </details>
       )}

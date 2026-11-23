@@ -895,7 +895,7 @@ const Home: React.FC = () => {
             {user && (
               <button
                 type="button"
-                className="ghost small topbar-reload-btn"
+                className="topbar-reload-btn"
                 onClick={() => void syncAll()}
                 disabled={syncing}
                 aria-label={t.common.refresh}

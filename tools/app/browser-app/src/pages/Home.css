@@ -46,6 +46,22 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.topbar-reload-btn .spin {
+  animation: topbar-spin 0.8s linear infinite;
+}
+
+@keyframes topbar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -377,10 +393,11 @@
   gap: var(--space-3);
 }
 
+.topbar-reload-btn,
 .lang-toggle-btn {
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-pill);
@@ -395,8 +412,14 @@
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
+.topbar-reload-btn:hover,
 .lang-toggle-btn:hover {
   border-color: var(--color-text-muted);
+}
+
+.topbar-reload-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .avatar {

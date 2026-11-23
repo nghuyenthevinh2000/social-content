@@ -293,10 +293,9 @@ describe('Analysis results rendering', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Gynecomastia Explained')).toBeInTheDocument();
+      expect(screen.getByText('Original: gyno conditions')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Original: gyno conditions')).toBeInTheDocument();
     expect(screen.getByText('Abbr: gynecomastia')).toBeInTheDocument();
     expect(screen.getByText('VI: nữ hóa tuyến vú')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Dr YT/i })).toHaveAttribute('href', 'https://www.youtube.com/@dryt');
@@ -307,28 +306,23 @@ describe('Analysis results rendering', () => {
     expect(screen.queryByRole('button', { name: /Copy cho AI/i })).not.toBeInTheDocument();
 
     const subpanels = document.querySelectorAll('details.keyword-subpanel');
-    expect(subpanels).toHaveLength(2);
+    expect(subpanels).toHaveLength(1);
     subpanels.forEach((el) => expect((el as HTMLDetailsElement).open).toBe(false));
-    expect(document.querySelector('.topics-carousel')).toBeInTheDocument();
+    expect(document.querySelector('.topics-carousel')).not.toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: 'Thêm tất cả kênh' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Lưu tất cả video' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Lưu tất cả video' })).not.toBeInTheDocument();
 
     const addCreatorBtns = screen.getAllByRole('button', { name: 'Thêm kênh' });
     addCreatorBtns[0].click();
-    const saveVideoBtn = screen.getByRole('button', { name: '+ Lưu Video' });
-    saveVideoBtn.click();
 
     await waitFor(() => {
       const postUrls = fetchSpy.mock.calls
         .filter(([, init]) => init?.method === 'POST')
         .map(([input]) => (typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)));
       expect(postUrls.some((u) => u.includes('/api/sources/topics'))).toBe(true);
-      expect(postUrls.some((u) => u.includes('/api/saved-reels'))).toBe(true);
       expect(screen.getByRole('button', { name: 'Đã thêm kênh' })).toHaveTextContent('✓');
       expect(screen.getByRole('button', { name: 'Đã thêm tất cả kênh' })).toHaveTextContent('✓');
-      expect(screen.getByRole('button', { name: '✓ Đã lưu' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Đã lưu tất cả video' })).toHaveTextContent('✓');
     });
   });
 
@@ -430,15 +424,13 @@ describe('Analysis results rendering', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('TT Gyno Video')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Dr YT/i })).toBeInTheDocument();
     });
 
     const ytBtn = screen.getByRole('button', { name: 'youtube: 1' });
     const ttBtn = screen.getByRole('button', { name: 'tiktok: 1' });
     expect(ytBtn).toHaveAttribute('aria-pressed', 'false');
     expect(ttBtn).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByText('YT Gyno Video')).toBeInTheDocument();
-    expect(screen.getByText('TT Gyno Video')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Dr YT/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /TT Doc/i })).toBeInTheDocument();
 
@@ -446,8 +438,6 @@ describe('Analysis results rendering', () => {
     ytBtn.click();
     await waitFor(() => {
       expect(ytBtn).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByText('YT Gyno Video')).toBeInTheDocument();
-      expect(screen.queryByText('TT Gyno Video')).not.toBeInTheDocument();
       expect(screen.getByRole('link', { name: /Dr YT/i })).toBeInTheDocument();
       expect(screen.queryByRole('link', { name: /TT Doc/i })).not.toBeInTheDocument();
     });
@@ -456,13 +446,12 @@ describe('Analysis results rendering', () => {
     ytBtn.click();
     await waitFor(() => {
       expect(ytBtn).toHaveAttribute('aria-pressed', 'false');
-      expect(screen.getByText('YT Gyno Video')).toBeInTheDocument();
-      expect(screen.getByText('TT Gyno Video')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Dr YT/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /TT Doc/i })).toBeInTheDocument();
     });
   });
 
   test('collapses and expands #results panel in history and job result views', async () => {
-    const onFetchHistory = vi.fn();
     const onSelectJob = vi.fn();
     const baseProps = {
       keyword: '',
@@ -499,8 +488,6 @@ describe('Analysis results rendering', () => {
           total_topics: 2,
         },
       ],
-      loadingHistory: false,
-      onFetchHistory,
       onSelectJob,
       onDeleteJob: vi.fn(),
       tourDemoId: '',
@@ -521,11 +508,6 @@ describe('Analysis results rendering', () => {
     expect(brandToggle).toHaveAttribute('aria-expanded', 'true');
     expect(analysisToggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getAllByText('Xem kết quả')).toHaveLength(2);
-
-    // Refresh button does not collapse
-    screen.getAllByRole('button', { name: '↻ Làm mới' })[0].click();
-    expect(onFetchHistory).toHaveBeenCalledTimes(1);
-    expect(brandToggle).toHaveAttribute('aria-expanded', 'true');
 
     // Collapsing Khám phá brand persists to localStorage independently
     brandToggle.click();

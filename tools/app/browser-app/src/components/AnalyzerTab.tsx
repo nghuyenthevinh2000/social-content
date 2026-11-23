@@ -29,8 +29,6 @@ type AnalyzerTabProps = {
   jobId: string | null;
   job: Job | null;
   visibleHistory: JobSummary[];
-  loadingHistory: boolean;
-  onFetchHistory: () => void;
   onSelectJob: (id: string | null) => void;
   onDeleteJob: (id: string, e: React.MouseEvent) => void;
   tourDemoId: string;
@@ -51,8 +49,6 @@ type ResultsSectionProps = {
   emptyText: string;
   emptyActionLabel?: string;
   onEmptyAction?: () => void;
-  loadingHistory: boolean;
-  onFetchHistory: () => void;
   onSelectJob: (id: string | null) => void;
   onDeleteJob: (id: string, e: React.MouseEvent) => void;
   tourDemoId: string;
@@ -74,8 +70,6 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
   emptyText,
   emptyActionLabel,
   onEmptyAction,
-  loadingHistory,
-  onFetchHistory,
   onSelectJob,
   onDeleteJob,
   tourDemoId,
@@ -124,17 +118,6 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
               <p className="muted count">{items.length > 0 ? m.runCount(items.length) : m.noRuns}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexShrink: 0 }}>
-              <button
-                type="button"
-                className="ghost small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFetchHistory();
-                }}
-                disabled={loadingHistory}
-              >
-                {loadingHistory ? t.common.loading : m.refreshBtn}
-              </button>
               <button
                 type="button"
                 className="panel-collapse-btn"
@@ -259,8 +242,6 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   jobId,
   job,
   visibleHistory,
-  loadingHistory,
-  onFetchHistory,
   onSelectJob,
   onDeleteJob,
   tourDemoId,
@@ -378,8 +359,6 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
                 items={brandHistory}
                 activeJob={job && activeIsBrand ? job : null}
                 emptyText={m.brandResultsEmpty}
-                loadingHistory={loadingHistory}
-                onFetchHistory={onFetchHistory}
                 onSelectJob={onSelectJob}
                 onDeleteJob={onDeleteJob}
                 tourDemoId={tourDemoId}
@@ -400,8 +379,6 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
                 emptyText={m.analysisResultsEmpty}
                 emptyActionLabel={m.goToLibraryBtn}
                 onEmptyAction={onGoToLibrary}
-                loadingHistory={loadingHistory}
-                onFetchHistory={onFetchHistory}
                 onSelectJob={onSelectJob}
                 onDeleteJob={onDeleteJob}
                 tourDemoId={tourDemoId}

@@ -5,7 +5,7 @@ import { useLocale } from '../locales';
 import { KeywordResult } from './KeywordResult';
 import { TopicCard } from './TopicCard';
 import './analysis.css';
-import { cleanTopicTitle, formatTime, TERMINAL } from './format';
+import { formatTime, TERMINAL } from './format';
 import { createRenderers, type JobRenderer } from './renderers';
 import type { Job, Sheet, Topic } from './types';
 
@@ -28,11 +28,9 @@ const SheetSection: React.FC<{
   renderer: JobRenderer;
   copiedKey: string | null;
   isKeyword: boolean;
-  savedUrls: Set<string>;
   addedCreatorUrls: Set<string>;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
-  onSaveVideo?: (topic: Topic) => void;
 }> = ({
   sheet,
   index,
@@ -40,11 +38,9 @@ const SheetSection: React.FC<{
   renderer,
   copiedKey,
   isKeyword,
-  savedUrls,
   addedCreatorUrls,
   onCopyTopic,
   onAddCreator,
-  onSaveVideo,
 }) => {
   const { t } = useLocale();
   const orderedTopics = useMemo(() => renderer.order(sheet.topics), [renderer, sheet.topics]);
@@ -72,11 +68,8 @@ const SheetSection: React.FC<{
       {isKeyword ? (
         <KeywordResult
           sheet={sheet}
-          orderedTopics={orderedTopics}
-          savedUrls={savedUrls}
           addedCreatorUrls={addedCreatorUrls}
           onAddCreator={onAddCreator}
-          onSaveVideo={onSaveVideo}
         />
       ) : (
         orderedTopics.length > 0 && (
@@ -110,26 +103,14 @@ export const JobResult: React.FC<JobResultProps> = ({
   onBack,
   onCopyTopic,
   onAddCreator,
-  onSaveVideo,
 }) => {
   const { t } = useLocale();
   const m = t.analysis;
   const [showLogs, setShowLogs] = useState(false);
-  const [savedUrls, setSavedUrls] = useState<Set<string>>(() => new Set());
   const [addedCreatorUrls, setAddedCreatorUrls] = useState<Set<string>>(() => new Set());
   const renderers = useMemo(() => createRenderers(m), [m]);
   const renderer = renderers[job.job_kind ?? 'profile'] ?? renderers.profile;
   const isKeyword = job.job_kind === 'keyword';
-
-  const handleSave = onSaveVideo
-    ? (topic: Topic) => {
-        const url = topic.reel_url || topic.source_urls?.[0] || '';
-        if (url) {
-          setSavedUrls((prev) => new Set(prev).add(url));
-        }
-        onSaveVideo(topic);
-      }
-    : undefined;
 
   const handleAddCreator = onAddCreator
     ? (creator: { name: string; url: string; platform?: string }) => {
@@ -160,10 +141,7 @@ export const JobResult: React.FC<JobResultProps> = ({
             {m.historyBack(historyCount)}
           </button>
           <h2>{m.resultsHeading}</h2>
-          <p className="muted count">
-            {cleanTopicTitle(job.filename)} · {progress.done}/{progress.total} · {m.statusLabel[job.status]}
-            {job.created_at && ` · ${formatTime(job.created_at)}`}
-          </p>
+          {job.created_at && <p className="muted count">{formatTime(job.created_at)}</p>}
         </div>
         {onToggleCollapse && (
           <button
@@ -200,11 +178,9 @@ export const JobResult: React.FC<JobResultProps> = ({
               renderer={renderer}
               copiedKey={copiedKey}
               isKeyword={isKeyword}
-              savedUrls={savedUrls}
               addedCreatorUrls={addedCreatorUrls}
               onCopyTopic={onCopyTopic}
               onAddCreator={handleAddCreator}
-              onSaveVideo={handleSave}
             />
           ))}
 
