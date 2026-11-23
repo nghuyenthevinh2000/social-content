@@ -404,8 +404,7 @@ const Home: React.FC = () => {
   const [mediaCollapsed, setMediaCollapsed] = usePersistedCollapsed('aibrand-profile-media-collapsed');
   const [savedReels, setSavedReels] = useState<SavedReel[]>([]);
   const [savedReelsCollapsed, setSavedReelsCollapsed] = useState(false);
-  const [fbLinked, setFbLinked] = useState<boolean | null>(null);
-  const [fbName, setFbName] = useState<string | null>(null);
+  const [fbName, setFbName] = useState<string | null | undefined>(undefined);
   const [linkCode, setLinkCode] = useState<{ command: string; page_id: string } | null>(null);
   const [generatingLinkCode, setGeneratingLinkCode] = useState(false);
 
@@ -442,8 +441,7 @@ const Home: React.FC = () => {
       ]);
       setSavedReels(reelsRes.reels || []);
       if (statusRes) {
-        setFbLinked(Boolean(statusRes.linked));
-        setFbName(statusRes.fb_name || null);
+        setFbName(statusRes.linked ? statusRes.fb_name || 'Messenger' : null);
         if (statusRes.linked) setLinkCode(null);
       }
     } catch (err) {
@@ -661,8 +659,7 @@ const Home: React.FC = () => {
     apiJson<{ ok: boolean; linked: boolean; fb_name?: string }>('/api/facebook/status')
       .then((data) => {
         if (!ignore) {
-          setFbLinked(Boolean(data.linked));
-          setFbName(data.fb_name || null);
+          setFbName(data.linked ? data.fb_name || 'Messenger' : null);
         }
       })
       .catch(() => {});
@@ -952,12 +949,10 @@ const Home: React.FC = () => {
                   <dd>{user.email ? <code>{user.email}</code> : '—'}</dd>
                   <dt>{t.profile.facebook}</dt>
                   <dd>
-                    {fbLinked === null ? (
+                    {fbName === undefined ? (
                       '—'
-                    ) : fbLinked ? (
-                      <span className="badge completed">
-                        ✓ {fbName || (locale === 'vi' ? 'Đã liên kết' : 'Linked')}
-                      </span>
+                    ) : fbName ? (
+                      <span className="badge completed">✓ {fbName}</span>
                     ) : (
                       <button
                         type="button"
