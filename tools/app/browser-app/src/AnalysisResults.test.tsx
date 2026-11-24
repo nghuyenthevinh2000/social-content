@@ -181,10 +181,13 @@ describe('Analysis results rendering', () => {
     });
 
     expect(screen.getByText(/2 kênh · 5 reel/)).toBeInTheDocument();
-    expect(document.querySelector('#results-analysis > details > div.pools')).toBeNull();
+    expect(document.querySelector('#results-analysis details')).toBeNull();
+    expect(document.querySelector('#results-analysis > .sheet > div.pools')).toBeNull();
     const fbFilter = screen.getByRole('button', { name: 'facebook: 2' });
     expect(fbFilter).toHaveAttribute('aria-pressed', 'false');
-    expect(document.querySelector('#results-analysis > details > div.source-breakdown.muted')).toContainElement(fbFilter);
+    expect(document.querySelector('#results-analysis > .sheet > div.source-breakdown.muted')).toContainElement(
+      fbFilter,
+    );
 
     const titles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
     expect(titles).toEqual(['High views topic', 'Low views topic']);
@@ -367,9 +370,10 @@ describe('Analysis results rendering', () => {
     expect(screen.getByText('333')).toBeInTheDocument();
     expect(screen.getByText('2 reel')).toBeInTheDocument();
     expect(screen.getByText('Reel transcript 1')).toBeInTheDocument();
-    expect(document.querySelector('#results-analysis .reel-analysis-details')).not.toBeNull();
+    expect(document.querySelector('#results-analysis > details')).toBeNull();
+    expect(document.querySelector('#results-analysis details.reel-analysis-details')).not.toBeNull();
     expect(document.querySelector('#results-analysis .copy-topic-btn')).not.toBeNull();
-    expect(document.querySelector('#results-analysis > details > div.source-breakdown')).toBeNull();
+    expect(document.querySelector('#results-analysis > .sheet > div.source-breakdown')).toBeNull();
     expect(screen.queryByText(/P1 ·/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Glasser API:/)).not.toBeInTheDocument();
   });
@@ -466,9 +470,11 @@ describe('Analysis results rendering', () => {
     expect(screen.getByText('Covers gynecomastia directly.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Copy cho AI/i })).not.toBeInTheDocument();
 
-    const subpanels = document.querySelectorAll('details.keyword-subpanel');
+    expect(document.querySelector('#results-analysis > details > div > details > summary')).toBeNull();
+    expect(document.querySelector('details.keyword-subpanel')).toBeNull();
+    const subpanels = document.querySelectorAll('.keyword-subpanel');
     expect(subpanels).toHaveLength(1);
-    subpanels.forEach((el) => expect((el as HTMLDetailsElement).open).toBe(false));
+    expect(document.querySelector('.keyword-subpanel .creator-list')).toBeInTheDocument();
     expect(document.querySelector('.topics-carousel')).not.toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: 'Thêm tất cả kênh' })).toBeInTheDocument();

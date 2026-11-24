@@ -108,11 +108,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         )}
       </div>
 
-      <ReelPlayerBox
-        videoUrl={topic.video_url}
-        embedUrl={embedUrl}
-        title={topic.title || `Reel ${index + 1}`}
-      />
+      <ReelPlayerBox videoUrl={topic.video_url} embedUrl={embedUrl} title={topic.title || `Reel ${index + 1}`} />
 
       {sections.length > 0 && (
         <details className="reel-analysis-details">

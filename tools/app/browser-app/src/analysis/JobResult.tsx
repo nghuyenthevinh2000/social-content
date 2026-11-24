@@ -6,7 +6,15 @@ import { useLocale } from '../locales';
 import { KeywordResult } from './KeywordResult';
 import { TopicCard } from './TopicCard';
 import './analysis.css';
-import { formatTime, getPlatformIcon, getTopicReelUrl, inferPlatform, PLATFORM_LABELS, sortPlatformCounts, TERMINAL } from './format';
+import {
+  formatTime,
+  getPlatformIcon,
+  getTopicReelUrl,
+  inferPlatform,
+  PLATFORM_LABELS,
+  sortPlatformCounts,
+  TERMINAL,
+} from './format';
 import { createRenderers, type JobRenderer } from './renderers';
 import type { Job, Sheet, Topic } from './types';
 
@@ -25,7 +33,6 @@ type JobResultProps = {
 const SheetSection: React.FC<{
   sheet: Sheet;
   index: number;
-  totalSheets: number;
   renderer: JobRenderer;
   copiedKey: string | null;
   blocked: boolean;
@@ -38,7 +45,6 @@ const SheetSection: React.FC<{
 }> = ({
   sheet,
   index,
-  totalSheets,
   renderer,
   copiedKey,
   blocked,
@@ -77,15 +83,15 @@ const SheetSection: React.FC<{
   }, [orderedTopics, selectedPlatforms]);
 
   return (
-    <details className="sheet" open={sheet.status === 'running' || totalSheets === 1 ? true : undefined}>
-      <summary>
+    <div className="sheet">
+      <div className="sheet-head">
         <span className="sheet-index">{String(index + 1).padStart(2, '0')}</span>
         <span className="sheet-title">
           <strong>{renderer.sheetTitle(sheet)}</strong>
           <small className="muted">{renderer.summaryMeta(sheet)}</small>
         </span>
         <span className={`badge ${sheet.status}`}>{sheet.status}</span>
-      </summary>
+      </div>
 
       {!isKeyword && renderer.meta(sheet)}
       {sheet.error && <div className="alert error">{sheet.error}</div>}
@@ -147,7 +153,7 @@ const SheetSection: React.FC<{
           </>
         )
       )}
-    </details>
+    </div>
   );
 };
 
@@ -155,8 +161,7 @@ type RunningStage = 'collect' | 'transcript' | 'acp';
 
 const ACP_STAGE_RE =
   /\bACP\b|harness|Phân tích hình ảnh|Đã phân tích hình ảnh|Đã trích xuất transcript|Không tìm thấy transcript|Hoàn tất:\s*\d+\s*reel/i;
-const TRANSCRIPT_STAGE_RE =
-  /transcript|phụ đề|Đang xử lý|Tải video để phân tích|Đang phân tích Reel/i;
+const TRANSCRIPT_STAGE_RE = /transcript|phụ đề|Đang xử lý|Tải video để phân tích|Đang phân tích Reel/i;
 
 function getSheetLogs(sheet: Sheet, job: Job) {
   return job.logs.filter(
@@ -189,11 +194,11 @@ function estimateRunningSheetFraction(
   const logCount = sheetLogs.length || job.logs.length;
 
   if (stage === 'collect') {
-    let signal = 0.05 + 0.10 * (1 - Math.exp(-logCount / 6));
+    let signal = 0.05 + 0.1 * (1 - Math.exp(-logCount / 6));
     if (sheet.queries && sheet.queries.length > 0) {
       signal = Math.max(signal, 0.14);
     }
-    return Math.min(0.20, signal + (0.20 - signal) * (1 - Math.exp(-ticksInStage / 18)));
+    return Math.min(0.2, signal + (0.2 - signal) * (1 - Math.exp(-ticksInStage / 18)));
   }
 
   if (stage === 'transcript') {
@@ -205,7 +210,7 @@ function estimateRunningSheetFraction(
         const idx = Number(m[1]);
         const total = Number(m[2]);
         if (total > 0) {
-          ratioSignal = 0.20 + 0.26 * Math.min(1, idx / total);
+          ratioSignal = 0.2 + 0.26 * Math.min(1, idx / total);
           break;
         }
       }
@@ -324,7 +329,6 @@ export const JobResult: React.FC<JobResultProps> = ({
           key={sheet.slug}
           sheet={sheet}
           index={index}
-          totalSheets={job.sheets.length}
           renderer={renderer}
           copiedKey={copiedKey}
           blocked={blocked}

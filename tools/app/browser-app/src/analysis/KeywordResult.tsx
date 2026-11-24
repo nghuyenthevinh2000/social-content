@@ -89,8 +89,8 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
       )}
 
       {filteredCreators.length > 0 && (
-        <details className="sheet keyword-subpanel">
-          <summary>
+        <div className="sheet keyword-subpanel">
+          <div className="keyword-subpanel-head">
             <span className="sheet-title">
               <strong>{km.creatorsHeading}</strong>
               <small className="muted">{km.creatorsCount(filteredCreators.length)}</small>
@@ -135,7 +135,7 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                 +
               </button>
             )}
-          </summary>
+          </div>
           <div className="creator-list">
             {filteredCreators.map((c) => (
               <div key={c.url || `${c.platform}:${c.handle}`} className="creator-row">
@@ -170,7 +170,7 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
               </div>
             ))}
           </div>
-        </details>
+        </div>
       )}
     </div>
   );
