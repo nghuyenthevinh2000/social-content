@@ -110,8 +110,9 @@ class DmServiceTests(unittest.TestCase):
         self.assertEqual(token2, "token_xyz")
         self.assertIsNone(expires_in2)
 
+    @patch("tools.app.backend.services.dm_service.claim_processed_message", return_value=True)
     @patch("tools.app.backend.services.dm_service.send_messenger_reply")
-    def test_unreadable_share_replies_to_user(self, mock_reply):
+    def test_unreadable_share_replies_to_user(self, mock_reply, _mock_claim):
         service = DmPollerService(page_id="1216806404853891", access_token="tok", reply_user=True)
         msg = {
             "id": "m_expired_1",
@@ -123,10 +124,11 @@ class DmServiceTests(unittest.TestCase):
         mock_reply.assert_called_once()
         self.assertIn("link Reel", mock_reply.call_args[0][3])
 
+    @patch("tools.app.backend.services.dm_service.claim_processed_message", return_value=True)
     @patch("tools.app.backend.services.dm_service.send_messenger_reply")
     @patch("tools.app.backend.services.dm_service.find_user_by_psid", return_value="u_1")
     @patch("tools.app.backend.services.dm_service.tx")
-    def test_already_saved_reel_does_not_re_reply(self, mock_tx, _mock_find, mock_reply):
+    def test_already_saved_reel_does_not_re_reply(self, mock_tx, _mock_find, mock_reply, _mock_claim):
         mock_conn = MagicMock()
         mock_tx.return_value.__enter__.return_value = mock_conn
         service = DmPollerService(page_id="1216806404853891", access_token="tok", reply_user=True)
@@ -143,6 +145,71 @@ class DmServiceTests(unittest.TestCase):
         msg["id"] = "m_new_1"
         service.process_message(msg, "1216806404853891", "tok")
         mock_reply.assert_called_once()
+
+    @patch("tools.app.backend.services.dm_service.consume_link_code", return_value=None)
+    @patch("tools.app.backend.services.dm_service.send_messenger_reply")
+    @patch("tools.app.backend.services.dm_service.find_user_by_psid", return_value="u_1")
+    @patch("tools.app.backend.services.dm_service.tx")
+    def test_persisted_message_id_skips_reprocessing_after_restart(
+        self, mock_tx, _mock_find, mock_reply, _mock_consume
+    ):
+        claimed: set[str] = set()
+
+        def fake_claim(mid: str) -> bool:
+            if mid in claimed:
+                return False
+            claimed.add(mid)
+            return True
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.return_value = ("reel_1",)
+        mock_tx.return_value.__enter__.return_value = mock_conn
+
+        reel_msg = {
+            "id": "m_persist_reel",
+            "message": "https://www.facebook.com/reel/38767988132845953/",
+            "from": {"id": "psid_1", "name": "Tester"},
+        }
+        link_msg = {
+            "id": "m_persist_link",
+            "message": "LINK-ABC123",
+            "from": {"id": "psid_1", "name": "Tester"},
+        }
+
+        with patch("tools.app.backend.services.dm_service.claim_processed_message", side_effect=fake_claim):
+            first = DmPollerService(page_id="1216806404853891", access_token="tok", reply_user=True)
+            first.process_message(reel_msg, "1216806404853891", "tok")
+            first.process_message(link_msg, "1216806404853891", "tok")
+            self.assertEqual(mock_reply.call_count, 2)
+
+            mock_reply.reset_mock()
+            mock_conn.execute.reset_mock()
+
+            # Simulate container restart with a fresh DmPollerService instance
+            restarted = DmPollerService(page_id="1216806404853891", access_token="tok", reply_user=True)
+            restarted.process_message(reel_msg, "1216806404853891", "tok")
+            restarted.process_message(link_msg, "1216806404853891", "tok")
+            mock_reply.assert_not_called()
+            mock_conn.execute.assert_not_called()
+
+    @patch("tools.app.backend.services.dm_service.send_messenger_reply")
+    @patch("tools.app.backend.services.dm_service.claim_processed_message", return_value=True)
+    def test_stale_historical_message_is_claimed_without_replying(self, mock_claim, mock_reply):
+        from datetime import datetime, timedelta, timezone
+
+        service = DmPollerService(page_id="1216806404853891", access_token="tok", reply_user=True)
+        stale_time = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        stale_msg = {
+            "id": "m_stale_1",
+            "created_time": stale_time,
+            "message": "https://www.facebook.com/reel/38767988132845953/",
+            "from": {"id": "psid_1", "name": "Tester"},
+        }
+        with patch.object(service, "_save_to_user_library") as mock_save:
+            service.process_message(stale_msg, "1216806404853891", "tok")
+            mock_claim.assert_called_once_with("m_stale_1")
+            mock_save.assert_not_called()
+            mock_reply.assert_not_called()
 
 
 if __name__ == "__main__":

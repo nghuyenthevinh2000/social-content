@@ -200,3 +200,8 @@ CREATE TABLE IF NOT EXISTS cost_events (
 CREATE INDEX IF NOT EXISTS idx_cost_events_user_created ON cost_events (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_cost_events_action_created ON cost_events (action, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_cost_events_job_id ON cost_events (job_id);
+
+CREATE TABLE IF NOT EXISTS dm_processed_messages (
+    message_id TEXT PRIMARY KEY,
+    processed_at TEXT NOT NULL
+);

@@ -35,7 +35,7 @@ from tools.facebook_agent.dm_crawl.crawler import (
     extract_reels_from_text,
     _resolve_page_token,
 )
-from tools.app.backend.db import tx, ro
+from tools.app.backend.db import init_schema, tx, ro
 from tools.app.backend.profiles import SocialProfileStore
 
 logger = logging.getLogger("dm_service")
@@ -104,6 +104,17 @@ def find_user_by_psid(psid: str) -> Optional[str]:
         cur = conn.execute("SELECT user_id FROM facebook_user_mappings WHERE psid = %s", (psid,))
         row = cur.fetchone()
         return row[0] if row else None
+
+
+def claim_processed_message(message_id: str) -> bool:
+    """Atomically record a Messenger message_id in Postgres. Returns True if newly claimed."""
+    with tx() as conn:
+        cur = conn.execute(
+            "INSERT INTO dm_processed_messages (message_id, processed_at) "
+            "VALUES (%s, %s) ON CONFLICT (message_id) DO NOTHING RETURNING message_id",
+            (message_id, now_iso()),
+        )
+        return cur.fetchone() is not None
 
 
 def link_psid_to_user(psid: str, user_id: str, fb_name: Optional[str] = None) -> None:
@@ -181,6 +192,19 @@ class DmPollerService:
         if not msg_id or msg_id in self.seen_message_ids:
             return
         self.seen_message_ids.add(msg_id)
+        if not claim_processed_message(msg_id):
+            return
+
+        created_raw = msg.get("created_time")
+        if created_raw:
+            try:
+                created_dt = datetime.fromisoformat(created_raw)
+                if created_dt.tzinfo is None:
+                    created_dt = created_dt.replace(tzinfo=timezone.utc)
+                if created_dt < (self.started_at - timedelta(minutes=5)):
+                    return
+            except ValueError:
+                pass
 
         sender = msg.get("from", {})
         sender_id = str(sender.get("id", ""))
@@ -236,19 +260,11 @@ class DmPollerService:
 
         if not reels_to_save:
             if self.reply_user and msg.get("shares", {}).get("data"):
-                created_raw = msg.get("created_time")
-                is_recent = True
-                if created_raw:
-                    try:
-                        is_recent = datetime.fromisoformat(created_raw) >= (self.started_at - timedelta(minutes=2))
-                    except ValueError:
-                        is_recent = False
-                if is_recent:
-                    logger.info("Unreadable share from sender ID %s (%s) (no link in shares)", sender_id, sender_name)
-                    send_messenger_reply(
-                        page_id, token, sender_id,
-                        "⚠️ Không thể đọc được link Reel từ tin nhắn chia sẻ này (có thể do quyền riêng tư). Vui lòng copy và dán trực tiếp đường link Reel vào đây nhé!",
-                    )
+                logger.info("Unreadable share from sender ID %s (%s) (no link in shares)", sender_id, sender_name)
+                send_messenger_reply(
+                    page_id, token, sender_id,
+                    "⚠️ Không thể đọc được link Reel từ tin nhắn chia sẻ này (có thể do quyền riêng tư). Vui lòng copy và dán trực tiếp đường link Reel vào đây nhé!",
+                )
             return
 
         # 2. Determine the target user
@@ -393,6 +409,7 @@ class DmPollerService:
     def run_forever(self) -> None:
         """Main service loop running 24/7."""
         self._running = True
+        init_schema()
         self.init_credentials()
         logger.info(
             "Starting 24/7 DM Poller Service for Page ID: %s (Interval: %ds, Renew: %ds)",
@@ -441,6 +458,7 @@ def main():
 
     svc = DmPollerService(poll_interval_sec=args.interval)
     if args.once:
+        init_schema()
         count = svc.poll_once()
         print(f"Polled once successfully. Processed {count} messages.")
         return 0
