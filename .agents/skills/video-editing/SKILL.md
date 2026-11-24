@@ -21,6 +21,7 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 | Long-form multi-clip UGC editing & seam masking | For masking jump lag, stitch seams, and pose resets across multi-clip generative UGC avatar sequences, follow `references/long-form-video.md` and run `.agents/skills/video-editing/scripts/new_system/effect_editor.py <effects_config.json>` per `workflows/ugc-effect-editing-workflow.md`. |
 | App feature showcase reel | For turning app screenshots (e.g. `features-update/<feature>/images/`) into a vertical hook → steps → CTA promo reel, follow `workflows/app-feature-showcase-reel.md`. |
 | Code-generated animation reels | For 2D/3D code-generated vertical animation reels (from `claude-animation-skills`, using shared `kit/`), follow `workflows/<name>/SKILL.md` (`breakdown`, `dan-koe`, `graph`, `kurzgesagt`, `low-poly`, `map-route`, `minecraft`, `minimalistic-graphics`, `stick-figure`, `zach-3d-films`, `zach-d-films`). One-time setup: `bash .agents/skills/video-editing/kit/setup.sh` (add `--voice` for Kokoro TTS + Parakeet timing). |
+| Reference video reverse-engineering | For shot-by-shot reverse-engineering of reference videos (visual medium, pacing, captions, audio stems, remake blueprint) using the `tools/rea-video` submodule, follow `workflows/rea-video-reverse-engineering.md`. |
 | Fallback | For unsupported operations, read `references/ffmpeg-compositing.md` relative to this skill. Keep its face helper at the skill-root path `scripts/detect_face_crop.py`. Use a repository-local or approved temporary workspace instead of the reference's legacy `/tmp` examples. |
 
 ## Commands
@@ -49,6 +50,10 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 | Harmonize lighting across scenes | `.venv/bin/python .agents/skills/video-editing/scripts/new_system/match_lighting.py --config <CONFIG.json>` (or `--scenes <S1.mp4> <S2.mp4> ...`, `--check`) |
 | Normalize video for social (BT.709) | `.venv/bin/python .agents/skills/video-editing/scripts/new_system/normalize_video.py <INPUT.mp4> <OUTPUT.mp4>` |
 | Apply kinetic captions & SFX effects | `.venv/bin/python .agents/skills/video-editing/scripts/new_system/effect_editor.py <EFFECTS_CONFIG.json>` (`--check` for self-test) |
+| Install `rea-video` (one-time) | `uv venv --python 3.12 local/rea-video/.venv && uv pip install --python local/rea-video/.venv/bin/python -e "tools/rea-video[ocr,asr]"` |
+| Reverse-engineer reference video | `local/rea-video/.venv/bin/rea-video decompose local/rea-video-runs/<id>/source.mp4 -o local/rea-video-runs/<id>/out --lang en` |
+| Visual review & merge | `local/rea-video/.venv/bin/rea-video review <OUT_DIR>` → fill `review_answers.json` → `local/rea-video/.venv/bin/rea-video apply-review <OUT_DIR> --by <agent> --lang en` |
+| Print breakdown summary | `local/rea-video/.venv/bin/rea-video summary <OUT_DIR>/breakdown.json` |
 
 ## Workflow
 

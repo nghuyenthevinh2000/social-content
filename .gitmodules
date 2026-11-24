@@ -22,3 +22,7 @@
 [submodule "projects/nirvana"]
 	path = projects/nirvana
 	url = https://github.com/nghuyenthevinh2000/nirvana.git
+[submodule "tools/rea-video"]
+	path = tools/rea-video
+	url = https://github.com/JuneYaooo/rea-video.git
+	ignore = untracked
