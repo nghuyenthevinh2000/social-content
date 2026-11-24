@@ -46,6 +46,10 @@ const isDefaultTopic = (t: TopicItem) => t.name.toLowerCase() === DEFAULT_TOPIC;
 const MAX_CONCURRENT_JOBS = 5;
 const TOUR_KEY = 'aibrand-tour-done';
 const TOUR_DEMO_ID = '__tour_demo__';
+const TOUR_DEMO_KEYWORD_ID = '__tour_demo_keyword__';
+const TOUR_DEMO_PROFILE_ID = '__tour_demo_profile__';
+const isTourDemoId = (id?: string | null) =>
+  id === TOUR_DEMO_ID || id === TOUR_DEMO_KEYWORD_ID || id === TOUR_DEMO_PROFILE_ID;
 const TOUR_DEMO_TOPIC_SLUG = '__tour_demo_topic__';
 
 function usePersistedCollapsed(key: string) {
@@ -76,6 +80,7 @@ function buildTourDemoTopic(m: LocaleMessages['tour']): TopicItem {
 }
 
 function buildTourDemoJob(m: LocaleMessages['tour']): Job {
+  const reelUrl = 'https://www.facebook.com/reel/1234567890';
   return {
     id: TOUR_DEMO_ID,
     job_kind: 'reel',
@@ -89,8 +94,8 @@ function buildTourDemoJob(m: LocaleMessages['tour']): Job {
         slug: 'huong-dan',
         status: 'completed',
         targets: 1,
-        reels: 12,
-        pool_distribution: { pool_3: 3, pool_2: 5, pool_1: 4 },
+        reels: 1,
+        pool_distribution: {},
         topics: [
           {
             title: m.demoTopicTitle,
@@ -99,14 +104,112 @@ function buildTourDemoJob(m: LocaleMessages['tour']): Job {
             why_viral: m.demoTopicWhyViral,
             outline: m.demoTopicOutline,
             format: 'Short talking-head',
-            source_urls: [],
-            generated_by: 'sample',
+            source_urls: [reelUrl],
+            reel_url: reelUrl,
+            video_id: m.demoTitle,
+            platform: 'facebook',
+            generated_by: 'agent',
             views: 125000,
             velocity_per_hour: 4200,
-            current_pool: 3,
-            author_handle: '@creator_mau',
+            author_handle: 'creator_mau',
             transcript: m.demoTopicTranscript,
             prompt: m.demoTopicPrompt,
+          },
+        ],
+        error: null,
+      },
+    ],
+    logs: [],
+  };
+}
+
+function buildTourDemoKeywordJob(m: LocaleMessages['tour']): Job {
+  return {
+    id: TOUR_DEMO_KEYWORD_ID,
+    job_kind: 'keyword',
+    status: 'completed',
+    filename: m.demoKeywordTitle,
+    created_at: new Date().toISOString(),
+    current_sheet: null,
+    sheets: [
+      {
+        name: m.demoKeywordTitle,
+        slug: 'mau-tim-brand',
+        status: 'completed',
+        targets: 3,
+        reels: 24,
+        pool_distribution: {},
+        queries: [
+          { kind: 'original', text: m.demoKeywordOriginal },
+          { kind: 'abbreviation', text: m.demoKeywordAbbr },
+          { kind: 'vi', text: m.demoKeywordVi },
+        ],
+        creators: [
+          {
+            name: m.demoCreator1Name,
+            handle: 'bs_dalieu_mau',
+            url: 'https://www.youtube.com/@bs_dalieu_mau',
+            platform: 'youtube',
+            followers: 185000,
+            video_count: 12,
+            top_views: 140000,
+            relevance: 'direct',
+            why_relevant: m.demoCreator1Why,
+          },
+          {
+            name: m.demoCreator2Name,
+            handle: 'goc_skincare_mau',
+            url: 'https://www.tiktok.com/@goc_skincare_mau',
+            platform: 'tiktok',
+            followers: 92000,
+            video_count: 12,
+            top_views: 88000,
+            relevance: 'direct',
+            why_relevant: m.demoCreator2Why,
+          },
+        ],
+        topics: [],
+        error: null,
+      },
+    ],
+    logs: [],
+  };
+}
+
+function buildTourDemoProfileJob(m: LocaleMessages['tour']): Job {
+  const reelUrl = 'https://www.facebook.com/reel/9876543210';
+  return {
+    id: TOUR_DEMO_PROFILE_ID,
+    job_kind: 'profile',
+    status: 'completed',
+    filename: m.demoProfileTitle,
+    created_at: new Date().toISOString(),
+    current_sheet: null,
+    sheets: [
+      {
+        name: m.demoProfileTitle,
+        slug: 'mau-quet-kenh',
+        status: 'completed',
+        targets: 2,
+        reels: 8,
+        pool_distribution: {},
+        topics: [
+          {
+            title: m.demoProfileVideoTitle,
+            hook: '',
+            angle: '',
+            why_viral: '',
+            outline: [],
+            format: '',
+            source_urls: [reelUrl],
+            reel_url: reelUrl,
+            video_id: '9876543210',
+            platform: 'facebook',
+            generated_by: 'profile',
+            views: 95000,
+            velocity_per_hour: 3100,
+            author_handle: 'kenh_doi_thu',
+            transcript: '',
           },
         ],
         error: null,
@@ -122,6 +225,36 @@ function buildTourDemoSummary(m: LocaleMessages['tour'], createdAt: string): Job
     job_kind: 'reel',
     status: 'completed',
     filename: m.demoTitle,
+    created_at: createdAt,
+    finished_at: createdAt,
+    current_sheet: null,
+    total_sheets: 1,
+    completed_sheets: 1,
+    total_topics: 1,
+  };
+}
+
+function buildTourDemoKeywordSummary(m: LocaleMessages['tour'], createdAt: string): JobSummary {
+  return {
+    id: TOUR_DEMO_KEYWORD_ID,
+    job_kind: 'keyword',
+    status: 'completed',
+    filename: m.demoKeywordTitle,
+    created_at: createdAt,
+    finished_at: createdAt,
+    current_sheet: null,
+    total_sheets: 1,
+    completed_sheets: 1,
+    total_topics: 24,
+  };
+}
+
+function buildTourDemoProfileSummary(m: LocaleMessages['tour'], createdAt: string): JobSummary {
+  return {
+    id: TOUR_DEMO_PROFILE_ID,
+    job_kind: 'profile',
+    status: 'completed',
+    filename: m.demoProfileTitle,
     created_at: createdAt,
     finished_at: createdAt,
     current_sheet: null,
@@ -209,36 +342,66 @@ const Home: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   // Seen-flag is per account: tour always shows unless the user marks "Đã rõ hướng dẫn" in Profile.
   const [tourDismissed, setTourDismissed] = useState(false);
-  const [tourHistoryView, setTourHistoryView] = useState(false);
+  const [tourView, setTourView] = useState<'chat' | 'history' | null>(null);
   const [, setTourSync] = useState(0);
   const [videoBalance, setVideoBalance] = useState<number | null>(null);
 
   const tourDemoTopic = useMemo(() => buildTourDemoTopic(t.tour), [t.tour]);
   const tourDemoJob = useMemo(() => buildTourDemoJob(t.tour), [t.tour]);
+  const tourDemoKeywordJob = useMemo(() => buildTourDemoKeywordJob(t.tour), [t.tour]);
+  const tourDemoProfileJob = useMemo(() => buildTourDemoProfileJob(t.tour), [t.tour]);
+  const tourDemoJobs = useMemo<Record<string, Job>>(
+    () => ({
+      [TOUR_DEMO_ID]: tourDemoJob,
+      [TOUR_DEMO_KEYWORD_ID]: tourDemoKeywordJob,
+      [TOUR_DEMO_PROFILE_ID]: tourDemoProfileJob,
+    }),
+    [tourDemoJob, tourDemoKeywordJob, tourDemoProfileJob],
+  );
   const tourDemoSummary = useMemo(
     () => buildTourDemoSummary(t.tour, tourDemoJob.created_at!),
     [t.tour, tourDemoJob.created_at],
+  );
+  const tourDemoKeywordSummary = useMemo(
+    () => buildTourDemoKeywordSummary(t.tour, tourDemoKeywordJob.created_at!),
+    [t.tour, tourDemoKeywordJob.created_at],
+  );
+  const tourDemoProfileSummary = useMemo(
+    () => buildTourDemoProfileSummary(t.tour, tourDemoProfileJob.created_at!),
+    [t.tour, tourDemoProfileJob.created_at],
   );
 
   const tourKey = user ? `${TOUR_KEY}-${user.uid}` : '';
   const tourDone = Boolean(tourKey && localStorage.getItem(tourKey));
   const showTour = !!user && !tourDismissed && !tourDone;
-  const visibleHistory = showTour ? [tourDemoSummary, ...history] : history;
+  const visibleHistory = showTour
+    ? [tourDemoSummary, tourDemoKeywordSummary, tourDemoProfileSummary, ...history]
+    : history;
   const tourSteps = useMemo<TourStep[]>(() => {
     const s = t.tour.steps;
     const showChat = () => {
-      setTourHistoryView(false);
+      setTourView('chat');
       setAssistantMode('brand_setup');
       setJobId(null);
       setJob(null);
     };
     const showHistoryList = () => {
-      setTourHistoryView(true);
+      setTourView('history');
       setJobId(null);
       setJob(null);
     };
+    const showDemoKeywordResult = () => {
+      setTourView('history');
+      setJobId(TOUR_DEMO_KEYWORD_ID);
+      setJob(tourDemoKeywordJob);
+    };
+    const showDemoProfileResult = () => {
+      setTourView('history');
+      setJobId(TOUR_DEMO_PROFILE_ID);
+      setJob(tourDemoProfileJob);
+    };
     const showDemoResult = () => {
-      setTourHistoryView(true);
+      setTourView('history');
       setJobId(TOUR_DEMO_ID);
       setJob(tourDemoJob);
     };
@@ -266,10 +429,32 @@ const Home: React.FC = () => {
       },
       {
         tab: 'analyzer',
+        target: '#results-analysis > div.source-breakdown',
+        title: s.analysisKindsTitle,
+        text: s.analysisKindsText,
+        onEnter: showHistoryList,
+      },
+      {
+        tab: 'analyzer',
         target: '#results-analysis .history-list .history-card:first-child',
         title: s.demoHistoryTitle,
         text: s.demoHistoryText,
         onEnter: showHistoryList,
+      },
+      {
+        tab: 'analyzer',
+        target: '#results-analysis .keyword-meta',
+        tipTarget: '#results-analysis .keyword-subpanel-head',
+        title: s.demoKeywordTitle,
+        text: s.demoKeywordText,
+        onEnter: showDemoKeywordResult,
+      },
+      {
+        tab: 'analyzer',
+        target: '#results-analysis .reel-card-foot',
+        title: s.demoProfileTitle,
+        text: s.demoProfileText,
+        onEnter: showDemoProfileResult,
       },
       {
         tab: 'analyzer',
@@ -294,21 +479,24 @@ const Home: React.FC = () => {
       },
       {
         tab: 'library',
-        target: '.new-topic',
+        target: '.topics-panel .new-topic',
         title: s.newTopicTitle,
         text: s.newTopicText,
+        onEnter: () => setTopicsCollapsed(false),
       },
       {
         tab: 'library',
         target: '.topic-accordion:first-of-type',
         title: s.topicAccordionTitle,
         text: s.topicAccordionText,
+        onEnter: () => setTopicsCollapsed(false),
       },
       {
         tab: 'library',
         target: '.saved-reels-panel',
         title: s.savedReelsTitle,
         text: s.savedReelsText,
+        onEnter: () => setSavedReelsCollapsed(false),
       },
       {
         tab: 'video',
@@ -355,12 +543,18 @@ const Home: React.FC = () => {
         title: s.storeTitle,
         text: s.storeText,
       },
+      {
+        tab: 'profile',
+        target: 'section.panel.profile > button.profile-btn[aria-pressed]',
+        title: s.disableTourTitle,
+        text: s.disableTourText,
+      },
     ];
-  }, [t.tour.steps, tourDemoJob]);
+  }, [t.tour.steps, tourDemoJob, tourDemoKeywordJob, tourDemoProfileJob]);
   const closeTour = () => {
     setTourDismissed(true);
-    setTourHistoryView(false);
-    if (jobId === TOUR_DEMO_ID) selectJob(null);
+    setTourView(null);
+    if (isTourDemoId(jobId)) selectJob(null);
   };
   const toggleTourDone = () => {
     if (!tourKey) return;
@@ -517,8 +711,8 @@ const Home: React.FC = () => {
 
   function selectJob(id: string | null) {
     setJobId(id);
-    if (id === TOUR_DEMO_ID) {
-      setJob(tourDemoJob);
+    if (id && tourDemoJobs[id]) {
+      setJob(tourDemoJobs[id]);
       window.history.replaceState(null, '', `?tab=${tab}`);
       return;
     }
@@ -561,7 +755,7 @@ const Home: React.FC = () => {
         })
         .catch(() => {});
       const reloadActiveJob =
-        jobId && jobId !== TOUR_DEMO_ID
+        jobId && !isTourDemoId(jobId)
           ? apiJson<{ ok: boolean; job: Job }>(`/api/jobs/${jobId}`)
               .then((data) => setJob(data.job))
               .catch(() => {})
@@ -681,8 +875,8 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     if (!jobId || !user) return;
-    if (jobId === TOUR_DEMO_ID) {
-      setJob(tourDemoJob);
+    if (tourDemoJobs[jobId]) {
+      setJob(tourDemoJobs[jobId]);
       return;
     }
     let stopped = false;
@@ -713,10 +907,8 @@ const Home: React.FC = () => {
   const hasRunningInHistory = useMemo(() => history.some((j) => !TERMINAL.has(j.status)), [history]);
   const hasActiveJob = running || hasRunningInHistory;
   const activeJobCount = useMemo(() => {
-    const activeIds = new Set(
-      history.filter((j) => j.id !== TOUR_DEMO_ID && !TERMINAL.has(j.status)).map((j) => j.id),
-    );
-    if (job && job.id !== TOUR_DEMO_ID && !TERMINAL.has(job.status)) {
+    const activeIds = new Set(history.filter((j) => !isTourDemoId(j.id) && !TERMINAL.has(j.status)).map((j) => j.id));
+    if (job && !isTourDemoId(job.id) && !TERMINAL.has(job.status)) {
       activeIds.add(job.id);
     }
     return activeIds.size;
@@ -1599,7 +1791,7 @@ const Home: React.FC = () => {
                 );
               }}
               onGoToLibrary={() => switchTab('library')}
-              forceHistoryView={showTour && tourHistoryView}
+              forceView={showTour ? tourView : null}
             />
           )}
         </div>

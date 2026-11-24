@@ -27,7 +27,7 @@ type AnalyzerTabProps = {
   onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
   onAnalyzeVideo?: (topic: Topic) => void;
   onGoToLibrary: () => void;
-  forceHistoryView?: boolean;
+  forceView?: 'chat' | 'history' | null;
 };
 
 type ResultsSectionProps = {
@@ -165,7 +165,7 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
                         >
                           {isRunning ? m.viewProgress : m.viewResults}
                         </button>
-                        {item.id !== tourDemoId && (
+                        {item.id !== tourDemoId && !item.id.startsWith('__tour_demo__') && (
                           <button
                             type="button"
                             className="channel-del-btn"
@@ -219,12 +219,13 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   onAnalyzeCreators,
   onAnalyzeVideo,
   onGoToLibrary,
-  forceHistoryView = false,
+  forceView = null,
 }) => {
   const { t } = useLocale();
   const m = t.analyzer;
   const [activeView, setActiveView] = useState<'chat' | 'history'>(() => (jobId || starting ? 'history' : 'chat'));
-  const showHistory = forceHistoryView || activeView === 'history' || starting || Boolean(jobId);
+  const showHistory =
+    forceView === 'chat' ? false : forceView === 'history' || activeView === 'history' || starting || Boolean(jobId);
   const [highlightResults, setHighlightResults] = useState(false);
   const highlightTimerRef = useRef<number | null>(null);
 

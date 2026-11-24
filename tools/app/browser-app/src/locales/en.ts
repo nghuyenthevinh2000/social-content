@@ -479,41 +479,62 @@ export const en: LocaleMessages = {
     demoTopicTranscript: "Don't post your video until you fix these 3 mistakes in the first 3 seconds...",
     demoTopicPrompt:
       "Don't post your video until you fix these 3 mistakes in the first 3 seconds! Check lighting, audio, and your opening line before hitting publish.",
+    demoKeywordTitle: 'Sample Brand Search',
+    demoKeywordOriginal: 'skincare routine',
+    demoKeywordAbbr: 'skincare',
+    demoKeywordVi: 'chăm sóc da',
+    demoCreator1Name: 'Sample Derm Channel',
+    demoCreator1Why: 'Shares science-backed skincare tips with strong engagement.',
+    demoCreator2Name: 'Sample Skincare Lab',
+    demoCreator2Why: 'Short product reviews aligned with the target audience.',
+    demoProfileTitle: 'Sample Channel Scan',
+    demoProfileVideoTitle: '5 steps to optimize your first 3 seconds for retention',
     steps: {
       libraryTitle: 'Library',
-      libraryText: 'Import Excel/Google Sheets, manage topics, Facebook channels, and saved Reels.',
+      libraryText: 'Import Excel/Google Sheets, manage topics, multi-platform creator channels, and saved Reels.',
       newTopicTitle: 'Add new topic',
-      newTopicText:
-        'Enter a new topic name and (optionally) paste the first Facebook channel link, then click + Create topic.',
-      topicAccordionTitle: 'Manage Topics & Facebook Channels',
+      newTopicText: 'Enter a new topic name and (optionally) paste the first channel link, then click + Create topic.',
+      topicAccordionTitle: 'Manage Topics & Channels',
       topicAccordionText:
-        'Each topic holds a list of Facebook channels, a link input to add more, and a ▶ button to analyze just that topic.',
+        'Each topic holds a list of channels, a link input to add more, and a ▶ button to scan recent videos from that topic.',
       savedReelsTitle: 'Saved Reels',
-      savedReelsText: 'Link Facebook Messenger to send Reel links from chat and analyze individual Reels.',
+      savedReelsText:
+        'Paste Reel links to save by topic, view Reels synced from Messenger (linked in Profile), and click ▶ to analyze any individual video.',
       analyzerTitle: 'Analyze & Brand Assistant',
       analyzerText:
-        'Shape your brand profile with the assistant, explore competitor keywords, and browse analysis history.',
+        'Shape your brand profile with the assistant, discover competitor channels by keyword, and browse analysis history.',
       brandModesTitle: '2 Modes in Analyze',
       brandModesText: 'Switch between Build Brand (shape your brand profile) and Analysis History.',
       brandChatTitle: 'Chat with Assistant',
       brandChatText:
-        'Answer questions to draft and save your brand profile, or get 3 suggested keywords to launch a search right from chat.',
+        'Answer questions to draft and save your brand profile, then search the 3 suggested keywords to find and analyze creator channels.',
+      analysisKindsTitle: '3 Analysis Modes',
+      analysisKindsText:
+        'Filter history across 3 modes: Brand (discover competitor channels by keyword), Channel (scan recent videos from channels), and Reel (deep-dive analysis of a single video).',
       demoHistoryTitle: 'Sample "Guide" run',
-      demoHistoryText: 'In Analysis History, each run shows its status, topic count, and viral ideas found.',
+      demoHistoryText:
+        'Each card shows status, topic count, and ideas found — you can run multiple jobs concurrently and click any card to view results immediately.',
+      demoKeywordTitle: 'Brand (Keyword) Results',
+      demoKeywordText:
+        'Expands keywords and lists relevant multi-platform creators with why they match. Click ▶ to scan all channels or + to save them to Library.',
+      demoProfileTitle: 'Channel Scan Results',
+      demoProfileText:
+        'Surfaces recent top-performing videos sorted by views, with platform filters and a ▶ button on each video for deep analysis.',
       transcriptTitle: 'Transcript & Viral Analysis',
       transcriptText:
-        'Expand this section to view the transcript, 3-second hook, why it went viral, and content outline.',
+        'For single-video analyses (from Saved Reels or clicking ▶ on a channel video), expand this section to view the transcript, 3-second hook, why it went viral, and outline.',
       copyPromptTitle: 'Copy prompt for AI',
-      copyPromptText: 'Quickly copy the full prompt/script to paste into Create Video AI or another AI tool.',
+      copyPromptText: 'Copy the full script and auto-fill it into Create AI Video (or paste into another AI tool).',
       videoTitle: 'Create AI Video',
       videoText: 'Generate short videos with your reference face, context photos, and natural AI voice.',
       videoFormTitle: 'Create Personal AI Video',
       videoFormText:
         'Select your portrait photo, context photos, and enter your dialogue/script, then click Generate video.',
       profileTitle: 'Profile',
-      profileText: 'Manage your account, brand identity, reference portrait, and creator packs.',
+      profileText: 'Manage your account, Messenger link, brand identity, reference portrait, and creator packs.',
       accountTitle: 'Account Info',
-      accountText: 'View email, link Facebook, check AI Video balance, toggle "Tour completed", or sign out.',
+      accountText:
+        'View email, link Facebook Messenger to sync Reels, check AI Video balance, toggle "Tour completed", or sign out.',
       brandProfileTitle: 'Brand Identity & Keywords',
       brandProfileText:
         'View and refine your brand identity, target audience, differentiator, tone, and on-brand keywords saved from chat.',
@@ -521,6 +542,9 @@ export const en: LocaleMessages = {
       avatarText: 'Upload a clear portrait here so AI matches your face in generated videos.',
       storeTitle: 'Expansion Packs',
       storeText: 'Utility packs to save time, expand your library, and unlock premium support.',
+      disableTourTitle: 'Disable tour',
+      disableTourText:
+        'Click "Mark tour as read" here to hide this guide on future visits (you can turn it back on anytime).',
     },
   },
 };

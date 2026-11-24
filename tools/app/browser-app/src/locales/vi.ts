@@ -482,38 +482,61 @@ export const vi = {
     demoTopicTranscript: 'Đừng đăng video nếu bạn chưa sửa 3 lỗi này trong 3 giây đầu...',
     demoTopicPrompt:
       'Đừng đăng video nếu bạn chưa sửa 3 lỗi này trong 3 giây đầu! Hãy kiểm tra ánh sáng, âm thanh và câu mở đầu trước khi bấm đăng.',
+    demoKeywordTitle: 'Mẫu tìm Brand',
+    demoKeywordOriginal: 'chăm sóc da',
+    demoKeywordAbbr: 'skincare',
+    demoKeywordVi: 'dưỡng da hàng ngày',
+    demoCreator1Name: 'BS Da Liễu Mẫu',
+    demoCreator1Why: 'Chia sẻ kiến thức chăm sóc da khoa học, tương tác cao.',
+    demoCreator2Name: 'Góc Skincare Mẫu',
+    demoCreator2Why: 'Review sản phẩm ngắn gọn, đúng tệp khách hàng mục tiêu.',
+    demoProfileTitle: 'Mẫu quét Kênh',
+    demoProfileVideoTitle: '5 bước tối ưu 3 giây đầu để giữ chân người xem',
     steps: {
       libraryTitle: 'Thư viện',
-      libraryText: 'Nhập Excel/Google Sheet, quản lý chủ đề, kênh Facebook và Reel đã lưu.',
+      libraryText: 'Nhập Excel/Google Sheet, quản lý chủ đề, kênh đối thủ đa nền tảng và Reel đã lưu.',
       newTopicTitle: 'Thêm chủ đề mới',
-      newTopicText: 'Nhập tên chủ đề mới và (tuỳ chọn) dán link kênh Facebook đầu tiên rồi bấm + Tạo chủ đề.',
-      topicAccordionTitle: 'Quản lý chủ đề & Kênh Facebook',
+      newTopicText: 'Nhập tên chủ đề mới và (tuỳ chọn) dán link kênh đầu tiên rồi bấm + Tạo chủ đề.',
+      topicAccordionTitle: 'Quản lý chủ đề & Kênh đối thủ',
       topicAccordionText:
-        'Mỗi chủ đề chứa danh sách kênh Facebook, ô dán link để thêm kênh mới và nút ▶ Chạy để phân tích riêng chủ đề này.',
+        'Mỗi chủ đề chứa danh sách kênh, ô dán link để thêm kênh mới và nút ▶ để quét video nổi bật của chủ đề này.',
       savedReelsTitle: 'Reel đã lưu',
-      savedReelsText: 'Liên kết Facebook Messenger để gửi link Reel từ chat và phân tích trực tiếp từng Reel.',
+      savedReelsText:
+        'Dán link Reel để lưu theo chủ đề, xem Reel đồng bộ từ Messenger (liên kết ở mục Hồ sơ) và bấm ▶ để phân tích chi tiết từng video.',
       analyzerTitle: 'Phân tích & Trợ lý Brand',
-      analyzerText: 'Định hình nhân hiệu với trợ lý, khám phá từ khoá đối thủ và xem lại lịch sử phân tích.',
+      analyzerText: 'Định hình nhân hiệu với trợ lý, tìm kênh đối thủ theo từ khoá và theo dõi lịch sử phân tích.',
       brandModesTitle: '2 chế độ trong Phân tích',
       brandModesText: 'Chuyển giữa Xây Brand (định hình nhân hiệu) và Lịch sử phân tích.',
       brandChatTitle: 'Trò chuyện với trợ lý',
       brandChatText:
-        'Trả lời câu hỏi để chốt bản nháp nhân hiệu và lưu vào hồ sơ, hoặc nhận 3 từ khoá gợi ý để bấm tìm kiếm ngay.',
+        'Trả lời câu hỏi để lưu bản nháp nhân hiệu vào hồ sơ, rồi tìm kênh đối thủ theo 3 từ khoá gợi ý để lưu hoặc phân tích ngay.',
+      analysisKindsTitle: '3 chế độ phân tích',
+      analysisKindsText:
+        'Lọc lịch sử theo 3 chế độ: Brand (tìm kênh đối thủ theo từ khoá), Kênh (quét video nổi bật của các kênh) và Reel (phân tích chi tiết từng video).',
       demoHistoryTitle: 'Lần chạy mẫu "Hướng dẫn"',
       demoHistoryText:
-        'Trong mục Lịch sử phân tích, mỗi lần chạy hiển thị trạng thái, số chủ đề và ý tưởng viral tìm được.',
+        'Mỗi thẻ hiển thị trạng thái, số chủ đề và ý tưởng tìm được — có thể chạy song song nhiều lượt và bấm vào thẻ để xem kết quả ngay.',
+      demoKeywordTitle: 'Kết quả tìm Brand (Từ khoá)',
+      demoKeywordText:
+        'Mở rộng từ khoá và liệt kê kênh đối thủ đa nền tảng kèm lý do phù hợp. Bấm ▶ để quét ngay các kênh hoặc + để lưu vào Thư viện.',
+      demoProfileTitle: 'Kết quả quét Kênh',
+      demoProfileText:
+        'Tổng hợp video nổi bật gần đây của các kênh theo lượt xem, có bộ lọc nền tảng và nút ▶ trên từng video để phân tích chi tiết.',
       transcriptTitle: 'Transcript & Phân tích viral',
-      transcriptText: 'Mở mục này để xem transcript lời thoại, hook 3 giây đầu, lý do viral và dàn ý triển khai.',
+      transcriptText:
+        'Khi phân tích từng video (từ Reel đã lưu hoặc bấm ▶ trên video của kênh), mở mục này để xem transcript, hook 3 giây đầu, lý do viral và dàn ý.',
       copyPromptTitle: 'Copy prompt cho AI',
-      copyPromptText: 'Sao chép nhanh prompt/kịch bản hoàn chỉnh để dán sang tab Tạo Video AI hoặc công cụ AI khác.',
+      copyPromptText:
+        'Sao chép kịch bản hoàn chỉnh và tự động điền sẵn sang tab Tạo Video AI (hoặc dán sang công cụ AI khác).',
       videoTitle: 'Tạo Video AI',
       videoText: 'Tạo video ngắn với khuôn mặt mẫu, bối cảnh và giọng đọc tiếng Việt tự nhiên.',
       videoFormTitle: 'Tạo video AI Cá Nhân',
       videoFormText: 'Chọn ảnh khuôn mặt, ảnh bối cảnh và nhập lời thoại/kịch bản tiếng Việt rồi bấm Tạo video ngay.',
       profileTitle: 'Hồ sơ',
-      profileText: 'Quản lý tài khoản, nhân hiệu, ảnh chân dung mẫu và nạp gói creator.',
+      profileText: 'Quản lý tài khoản, liên kết Messenger, nhân hiệu, ảnh chân dung mẫu và nạp gói creator.',
       accountTitle: 'Thông tin tài khoản',
-      accountText: 'Xem email, liên kết Facebook, kiểm tra số dư Video AI, bật/tắt "Đã rõ hướng dẫn" hoặc đăng xuất.',
+      accountText:
+        'Xem email, liên kết Facebook Messenger để đồng bộ Reel, kiểm tra số dư Video AI, bật/tắt "Đã rõ hướng dẫn" hoặc đăng xuất.',
       brandProfileTitle: 'Nhân hiệu & Từ khoá',
       brandProfileText:
         'Xem và tinh chỉnh nhân hiệu, khách hàng mục tiêu, điểm khác biệt, giọng điệu cùng từ khoá đã lưu từ cuộc trò chuyện.',
@@ -521,6 +544,9 @@ export const vi = {
       avatarText: 'Tải lên ảnh chân dung rõ mặt tại đây để AI khớp khuôn mặt của bạn trong các video tạo ra.',
       storeTitle: 'Gói mở rộng',
       storeText: 'Các gói tiện ích giúp tiết kiệm thời gian, mở rộng thư viện và hỗ trợ cao cấp.',
+      disableTourTitle: 'Tắt hướng dẫn',
+      disableTourText:
+        'Bấm "Đã rõ hướng dẫn" tại đây để tắt hướng dẫn tự động cho các lần mở sau (có thể bật lại bất cứ lúc nào).',
     },
   },
 };

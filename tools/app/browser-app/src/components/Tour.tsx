@@ -3,14 +3,29 @@ import { useEffect, useState } from 'react';
 import { useLocale } from '../locales';
 import './Tour.css';
 
-export type TourStep = { target: string; tipTarget?: string; tab: string; title: string; text: string; onEnter?: () => void };
+export type TourStep = {
+  target: string;
+  tipTarget?: string;
+  tab: string;
+  title: string;
+  text: string;
+  onEnter?: () => void;
+};
 
 const PAD = 6;
 const sameRect = (a: DOMRect | null, b: DOMRect | null) =>
   a === b || (!!a && !!b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height);
 
 /** Transparent spotlight box over each target + a tooltip; steps may switch tabs via onTab. */
-export function Tour({ steps, onTab, onClose }: { steps: TourStep[]; onTab: (tab: string) => void; onClose: () => void }): React.ReactElement {
+export function Tour({
+  steps,
+  onTab,
+  onClose,
+}: {
+  steps: TourStep[];
+  onTab: (tab: string) => void;
+  onClose: () => void;
+}): React.ReactElement {
   const { t } = useLocale();
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -28,7 +43,10 @@ export function Tour({ steps, onTab, onClose }: { steps: TourStep[]; onTab: (tab
       const scrollEl = tipEl ?? el;
       if (!scrolled && scrollEl) {
         scrolled = true;
-        scrollEl.scrollIntoView?.({ block: 'center' });
+        const r = scrollEl.getBoundingClientRect();
+        if (r.top < 0 || r.bottom > window.innerHeight) {
+          scrollEl.scrollIntoView?.({ block: 'center' });
+        }
       }
       const nextRect = el ? el.getBoundingClientRect() : null;
       const nextTipRect = tipEl ? tipEl.getBoundingClientRect() : nextRect;
@@ -57,7 +75,12 @@ export function Tour({ steps, onTab, onClose }: { steps: TourStep[]; onTab: (tab
       {rect && (
         <div
           className="tour-spot"
-          style={{ top: rect.top - PAD, left: rect.left - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }}
+          style={{
+            top: rect.top - PAD,
+            left: rect.left - PAD,
+            width: rect.width + PAD * 2,
+            height: rect.height + PAD * 2,
+          }}
         />
       )}
       <div className="tour-tip" style={tipStyle}>
