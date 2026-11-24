@@ -1,0 +1,4 @@
+[submodule "scripts/rea-video"]
+	path = scripts/rea-video
+	url = https://github.com/JuneYaooo/rea-video.git
+	ignore = untracked
