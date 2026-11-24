@@ -25,6 +25,7 @@ type AnalyzerTabProps = {
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator: (creator: { name: string; url: string; platform?: string }) => void;
   onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
+  onAnalyzeVideo?: (topic: Topic) => void;
   onGoToLibrary: () => void;
   forceHistoryView?: boolean;
 };
@@ -45,6 +46,7 @@ type ResultsSectionProps = {
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator: (creator: { name: string; url: string; platform?: string }) => void;
   onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
+  onAnalyzeVideo?: (topic: Topic) => void;
   highlighted?: boolean;
 };
 
@@ -66,6 +68,7 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
   onCopyTopic,
   onAddCreator,
   onAnalyzeCreators,
+  onAnalyzeVideo,
   highlighted = false,
 }) => {
   const { t } = useLocale();
@@ -89,14 +92,6 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
         ) : (
           <>
             <div className="source-breakdown" role="group" aria-label={title}>
-              <button
-                type="button"
-                className={`platform-filter-btn ${filterKind === 'all' ? 'active' : ''}`}
-                aria-pressed={filterKind === 'all'}
-                onClick={() => setFilterKind('all')}
-              >
-                {m.allKindsFilter} ({items.length})
-              </button>
               {JOB_KINDS.map((kind) => {
                 const count = items.filter((item) => (item.job_kind ?? 'profile') === kind).length;
                 const active = filterKind === kind;
@@ -199,6 +194,7 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
           onCopyTopic={onCopyTopic}
           onAddCreator={onAddCreator}
           onAnalyzeCreators={onAnalyzeCreators}
+          onAnalyzeVideo={onAnalyzeVideo}
         />
       )}
     </section>
@@ -221,6 +217,7 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   onCopyTopic,
   onAddCreator,
   onAnalyzeCreators,
+  onAnalyzeVideo,
   onGoToLibrary,
   forceHistoryView = false,
 }) => {
@@ -313,6 +310,7 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
                 onCopyTopic={onCopyTopic}
                 onAddCreator={onAddCreator}
                 onAnalyzeCreators={onAnalyzeCreators}
+                onAnalyzeVideo={onAnalyzeVideo}
                 highlighted={highlightResults}
               />
             </>

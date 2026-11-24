@@ -14,8 +14,10 @@ type TopicCardProps = {
   topic: Topic;
   index: number;
   copied: boolean;
+  blocked?: boolean;
   sections: AnalysisSection[];
   onCopy: () => void;
+  onAnalyzeVideo?: () => void;
 };
 
 export const ReelPlayerBox: React.FC<{
@@ -56,7 +58,15 @@ export const ReelPlayerBox: React.FC<{
   );
 };
 
-export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sections, onCopy }) => {
+export const TopicCard: React.FC<TopicCardProps> = ({
+  topic,
+  index,
+  copied,
+  blocked = false,
+  sections,
+  onCopy,
+  onAnalyzeVideo,
+}) => {
   const { t } = useLocale();
   const m = t.analysis;
   const reelUrl = getTopicReelUrl(topic);
@@ -128,33 +138,47 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, index, copied, sect
             </a>
           )}
         </div>
-        <button
-          type="button"
-          className={`copy-topic-btn ${copied ? 'copied' : ''}`}
-          onClick={onCopy}
-          title={m.copyBtnTitle}
-        >
-          {copied ? (
-            <>{m.copiedBtn}</>
-          ) : (
-            <>
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-              {m.copyForAI}
-            </>
-          )}
-        </button>
+        {onAnalyzeVideo && reelUrl && (
+          <button
+            type="button"
+            className="topic-run-btn"
+            disabled={blocked}
+            onClick={onAnalyzeVideo}
+            aria-label={m.analyzeVideoBtn}
+            title={m.analyzeVideoTitle}
+          >
+            ▶
+          </button>
+        )}
+        {sections.length > 0 && (
+          <button
+            type="button"
+            className={`copy-topic-btn ${copied ? 'copied' : ''}`}
+            onClick={onCopy}
+            title={m.copyBtnTitle}
+          >
+            {copied ? (
+              <>{m.copiedBtn}</>
+            ) : (
+              <>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                {m.copyForAI}
+              </>
+            )}
+          </button>
+        )}
       </div>
     </article>
   );

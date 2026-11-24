@@ -181,13 +181,172 @@ describe('Analysis results rendering', () => {
     });
 
     expect(screen.getByText(/2 kênh · 5 reel/)).toBeInTheDocument();
-    expect(screen.getByText('P1 · 3')).toBeInTheDocument();
-    expect(screen.getByText('⚡ Glasser API: 1 kênh')).toBeInTheDocument();
-    expect(screen.getByText('💾 Cache: 1 kênh')).toBeInTheDocument();
+    expect(document.querySelector('#results-analysis > details > div.pools')).toBeNull();
+    const fbFilter = screen.getByRole('button', { name: 'facebook: 2' });
+    expect(fbFilter).toHaveAttribute('aria-pressed', 'false');
+    expect(document.querySelector('#results-analysis > details > div.source-breakdown.muted')).toContainElement(fbFilter);
 
     const titles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
     expect(titles).toEqual(['High views topic', 'Low views topic']);
-    expect(screen.getByText('Transcript high')).toBeInTheDocument();
+    expect(screen.queryByText('Transcript high')).not.toBeInTheDocument();
+    expect(document.querySelector('#results-analysis .reel-analysis-details')).toBeNull();
+    expect(document.querySelector('#results-analysis .copy-topic-btn')).toBeNull();
+  });
+
+  test('surfaces unanalyzed 48h profile videos with Analyze video button that starts a reel job', async () => {
+    const surfaceOnlyJob = {
+      id: 'job_profile_surface',
+      job_kind: 'profile',
+      status: 'completed',
+      filename: 'all_topics.json',
+      created_at: '2026-11-12T10:00:00Z',
+      current_sheet: null,
+      sheets: [
+        {
+          name: 'Ẩm thực',
+          slug: 'am-thuc',
+          status: 'completed',
+          targets: 1,
+          reels: 1,
+          pool_distribution: { pool_2: 1 },
+          error: null,
+          notice: null,
+          topics: [
+            {
+              title: '48h Viral Reel',
+              hook: '',
+              angle: '',
+              why_viral: '',
+              outline: [],
+              format: '',
+              source_urls: ['https://www.facebook.com/reel/555'],
+              reel_url: 'https://www.facebook.com/reel/555',
+              video_id: '555',
+              platform: 'facebook',
+              generated_by: 'profile',
+              views: 25000,
+              author_handle: 'chef_c',
+              transcript: '',
+            },
+          ],
+        },
+      ],
+      logs: [],
+    };
+    const fetchSpy = setupMockFetch({ job_profile_surface: surfaceOnlyJob });
+
+    render(
+      <MemoryRouter initialEntries={['/?tab=analyzer&job_id=job_profile_surface']}>
+        <Home />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('48h Viral Reel')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('💡 Transcript nội dung & Phân tích viral')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Copy cho AI/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '▶ Phân tích video' }));
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(([, init]) => init?.method === 'POST');
+      expect(
+        postCalls.some(([input]) =>
+          (typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)).includes(
+            'job_kind=reel',
+          ),
+        ),
+      ).toBe(true);
+      expect(document.querySelector('ion-toast')).toHaveAttribute(
+        'message',
+        'Đã nhận yêu cầu phân tích "48h Viral Reel". Đang chạy nền…',
+      );
+    });
+    expect(screen.getByText('48h Viral Reel')).toBeInTheDocument();
+  });
+
+  test('allows launching up to 5 concurrent jobs and disables Analyze video at 5 running jobs', async () => {
+    const baseJob = {
+      id: 'job_active_0',
+      job_kind: 'profile',
+      status: 'running',
+      filename: 'all_topics.json',
+      created_at: '2026-11-12T10:00:00Z',
+      current_sheet: 'Ẩm thực',
+      sheets: [
+        {
+          name: 'Ẩm thực',
+          slug: 'am-thuc',
+          status: 'completed',
+          targets: 1,
+          reels: 1,
+          pool_distribution: {},
+          error: null,
+          notice: null,
+          topics: [
+            {
+              title: 'Concurrent Reel',
+              hook: '',
+              angle: '',
+              why_viral: '',
+              outline: [],
+              format: '',
+              source_urls: ['https://www.facebook.com/reel/777'],
+              reel_url: 'https://www.facebook.com/reel/777',
+              video_id: '777',
+              platform: 'facebook',
+              generated_by: 'profile',
+              views: 10000,
+              author_handle: 'chef_d',
+              transcript: '',
+            },
+          ],
+        },
+      ],
+      logs: [],
+    };
+    const fiveRunningJobs = Array.from({ length: 5 }, (_, i) => ({
+      id: `job_active_${i}`,
+      job_kind: 'reel',
+      status: 'running',
+      filename: `Reel ${i}`,
+      created_at: '2026-11-12T10:00:00Z',
+      finished_at: null,
+      current_sheet: null,
+      total_sheets: 1,
+      completed_sheets: 0,
+      total_topics: 0,
+    }));
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+      const path = new URL(url, 'http://localhost').pathname;
+      if (path === '/api/jobs/job_active_0') {
+        return new Response(JSON.stringify(baseJob), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (path === '/api/jobs') {
+        return new Response(JSON.stringify({ ok: true, jobs: fiveRunningJobs }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true, topics: [], reels: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/?tab=analyzer&job_id=job_active_0']}>
+        <Home />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Concurrent Reel')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '▶ Phân tích video' })).toBeDisabled();
+    });
   });
 
   test('renders saved-reel job without profile hints, preserving order', async () => {
@@ -208,6 +367,9 @@ describe('Analysis results rendering', () => {
     expect(screen.getByText('333')).toBeInTheDocument();
     expect(screen.getByText('2 reel')).toBeInTheDocument();
     expect(screen.getByText('Reel transcript 1')).toBeInTheDocument();
+    expect(document.querySelector('#results-analysis .reel-analysis-details')).not.toBeNull();
+    expect(document.querySelector('#results-analysis .copy-topic-btn')).not.toBeNull();
+    expect(document.querySelector('#results-analysis > details > div.source-breakdown')).toBeNull();
     expect(screen.queryByText(/P1 ·/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Glasser API:/)).not.toBeInTheDocument();
   });
@@ -321,8 +483,9 @@ describe('Analysis results rendering', () => {
         .filter(([, init]) => init?.method === 'POST')
         .map(([input]) => (typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)));
       expect(postUrls.some((u) => u.includes('/api/sources/topics'))).toBe(true);
-      expect(screen.getByRole('button', { name: 'Đã thêm kênh' })).toHaveTextContent('✓');
-      expect(screen.getByRole('button', { name: 'Đã thêm tất cả kênh' })).toHaveTextContent('✓');
+      expect(screen.getByRole('button', { name: 'Thêm kênh' })).toHaveTextContent('+');
+      expect(screen.getByRole('button', { name: 'Thêm tất cả kênh' })).toHaveTextContent('+');
+      expect(screen.getByRole('button', { name: 'Thêm tất cả kênh' })).not.toHaveClass('copied');
     });
 
     // Clicking Analyze starts a profile analysis job directly on the discovered creators
@@ -516,13 +679,14 @@ describe('Analysis results rendering', () => {
     expect(document.querySelector('#results-analysis > .panel-head')).not.toBeInTheDocument();
     expect(screen.getAllByText('Xem kết quả')).toHaveLength(2);
 
+    expect(screen.queryByRole('button', { name: /^Tất cả \(/i })).toBeNull();
     // Filter by job kind
-    fireEvent.click(screen.getByRole('button', { name: 'brand (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: /^brand \(1\)$/i }));
     await waitFor(() => {
       expect(screen.getByText('skincare')).toBeInTheDocument();
       expect(screen.queryByText('all_topics.json')).not.toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Tất cả (2)' }));
+    fireEvent.click(screen.getByRole('button', { name: /^brand \(1\)$/i }));
     await waitFor(() => {
       expect(screen.getAllByText('Xem kết quả')).toHaveLength(2);
     });
@@ -534,6 +698,126 @@ describe('Analysis results rendering', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Lịch sử chạy/i }));
     expect(onSelectJob).toHaveBeenCalledWith(null);
+  });
+
+  test('advances #results-analysis > div.bar with ongoing progress and reaches 100% on completion', () => {
+    const runningJob = {
+      id: 'job_progress_1',
+      job_kind: 'profile' as const,
+      status: 'running' as const,
+      filename: 'progress_test.json',
+      created_at: '2026-11-12T10:00:00Z',
+      current_sheet: 'Topic A',
+      sheets: [
+        {
+          name: 'Topic A',
+          slug: 'topic-a',
+          status: 'running' as const,
+          targets: 2,
+          reels: 0,
+          pool_distribution: {},
+          topics: [],
+          error: null,
+          notice: null,
+        },
+      ],
+      logs: [{ at: '2026-11-12T10:00:01Z', sheet: 'Topic A', message: '[1/1] Bắt đầu sheet Topic A' }],
+    };
+
+    const baseProps = {
+      keyword: '',
+      onKeywordChange: vi.fn(),
+      onSearchKeyword: vi.fn(),
+      blocked: false,
+      error: null,
+      starting: false,
+      jobId: 'job_progress_1',
+      job: runningJob,
+      visibleHistory: [],
+      onSelectJob: vi.fn(),
+      onDeleteJob: vi.fn(),
+      tourDemoId: '',
+      copiedKey: null,
+      onCopyTopic: vi.fn(),
+      onAddCreator: vi.fn(),
+      onGoToLibrary: vi.fn(),
+    };
+
+    const { rerender } = render(<AnalyzerTab {...baseProps} />);
+    const bar = document.querySelector('#results-analysis > div.bar')!;
+    expect(bar).toHaveClass('running');
+
+    // Stage 1: Collect/scrape logs stay within <= 20%
+    rerender(
+      <AnalyzerTab
+        {...baseProps}
+        job={{
+          ...runningJob,
+          logs: [
+            ...runningJob.logs,
+            { at: '2026-11-12T10:00:02Z', sheet: 'Topic A', message: '[1/2] Querying chan1...' },
+            { at: '2026-11-12T10:00:03Z', sheet: 'Topic A', message: '[cache] Dùng cache (5 reel) cho chan1' },
+            { at: '2026-11-12T10:00:04Z', sheet: 'Topic A', message: '[2/2] Querying chan2...' },
+          ],
+        }}
+      />,
+    );
+    const collectPct = Number(bar.getAttribute('aria-valuenow'));
+    expect(collectPct).toBeGreaterThan(0);
+    expect(collectPct).toBeLessThanOrEqual(20);
+
+    // Stage 2: Transcript logs advance into 20%..55%
+    const transcriptLogs = [
+      ...runningJob.logs,
+      { at: '2026-11-12T10:00:05Z', sheet: 'Topic A', message: '[*] Đang tải transcript từ Glasser cho 4 video...' },
+      { at: '2026-11-12T10:00:07Z', sheet: 'Topic A', message: '[2/4] Đang xử lý @creator: reel title' },
+    ];
+    rerender(
+      <AnalyzerTab
+        {...baseProps}
+        job={{
+          ...runningJob,
+          logs: transcriptLogs,
+        }}
+      />,
+    );
+    const transcriptPct = Number(bar.getAttribute('aria-valuenow'));
+    expect(transcriptPct).toBeGreaterThan(20);
+    expect(transcriptPct).toBeLessThanOrEqual(55);
+
+    // Stage 3: ACP analyze / reels advance into 55%..95%
+    rerender(
+      <AnalyzerTab
+        {...baseProps}
+        job={{
+          ...runningJob,
+          sheets: [{ ...runningJob.sheets[0], reels: 4 }],
+          logs: [
+            ...transcriptLogs,
+            { at: '2026-11-12T10:00:10Z', sheet: 'Topic A', message: 'Gọi harness Agy qua ACP...' },
+          ],
+        }}
+      />,
+    );
+    const acpPct = Number(bar.getAttribute('aria-valuenow'));
+    expect(acpPct).toBeGreaterThan(55);
+    expect(acpPct).toBeLessThanOrEqual(95);
+
+    // Stage 4: Completion reaches 100%
+    rerender(
+      <AnalyzerTab
+        {...baseProps}
+        job={{
+          ...runningJob,
+          status: 'completed',
+          current_sheet: null,
+          sheets: [{ ...runningJob.sheets[0], status: 'completed', reels: 4 }],
+        }}
+      />,
+    );
+    expect(bar).not.toHaveClass('running');
+    expect(Number(bar.getAttribute('aria-valuenow'))).toBe(100);
+    expect(screen.getByText('100%')).toBeInTheDocument();
   });
 
   test('renders BrandPanel with Nhân hiệu question and saves to /api/user/profile', async () => {

@@ -1,14 +1,14 @@
+import { IonIcon } from '@ionic/react';
 import React, { useState } from 'react';
 
 import { useLocale } from '../locales';
 
-import { formatCompact } from './format';
+import { formatCompact, getPlatformIcon, PLATFORM_LABELS, sortPlatformCounts } from './format';
 import type { Sheet } from './types';
 
 type KeywordResultProps = {
   sheet: Sheet;
   blocked?: boolean;
-  addedCreatorUrls: Set<string>;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
   onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
 };
@@ -22,7 +22,6 @@ const KIND_LABELS: Record<string, string> = {
 export const KeywordResult: React.FC<KeywordResultProps> = ({
   sheet,
   blocked = false,
-  addedCreatorUrls,
   onAddCreator,
   onAnalyzeCreators,
 }) => {
@@ -54,7 +53,6 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
       : relevantCreators;
 
   const creatorsWithUrl = filteredCreators.filter((c) => !!c.url);
-  const allCreatorsAdded = creatorsWithUrl.length > 0 && creatorsWithUrl.every((c) => addedCreatorUrls.has(c.url));
 
   return (
     <div className="keyword-meta">
@@ -70,7 +68,7 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
 
       {Object.keys(counts).length > 0 && (
         <div className="source-breakdown muted">
-          {Object.entries(counts).map(([p, c]) => {
+          {sortPlatformCounts(counts).map(([p, c]) => {
             const active = selectedPlatforms.has(p);
             return (
               <button
@@ -78,9 +76,12 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                 type="button"
                 className={`platform-filter-btn ${active ? 'active' : ''}`}
                 aria-pressed={active}
+                aria-label={`${p}: ${c}`}
+                title={`${PLATFORM_LABELS[p] || p}: ${c}`}
                 onClick={() => togglePlatform(p)}
               >
-                {p}: {c}
+                <IonIcon icon={getPlatformIcon(p)} aria-hidden="true" />
+                <span>{c}</span>
               </button>
             );
           })}
@@ -120,20 +121,18 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
             {onAddCreator && creatorsWithUrl.length > 0 && (
               <button
                 type="button"
-                className={`ghost small ${allCreatorsAdded ? 'copied' : ''}`}
-                aria-label={allCreatorsAdded ? km.addedAllCreatorsAria : km.addAllCreatorsAria}
+                className="ghost small"
+                aria-label={km.addAllCreatorsAria}
                 title={km.addAllCreatorsTitle}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   creatorsWithUrl.forEach((c) => {
-                    if (!addedCreatorUrls.has(c.url)) {
-                      onAddCreator({ name: c.name || c.handle, url: c.url, platform: c.platform });
-                    }
+                    onAddCreator({ name: c.name || c.handle, url: c.url, platform: c.platform });
                   });
                 }}
               >
-                {allCreatorsAdded ? '✓' : '+'}
+                +
               </button>
             )}
           </summary>
@@ -156,21 +155,15 @@ export const KeywordResult: React.FC<KeywordResultProps> = ({
                   </span>
                   <button
                     type="button"
-                    className={`ghost small ${c.url && addedCreatorUrls.has(c.url) ? 'copied' : ''}`}
-                    aria-label={c.url && addedCreatorUrls.has(c.url) ? km.addedCreatorAria : km.addCreatorAria}
-                    title={
-                      !c.url
-                        ? km.noCreatorUrlTitle
-                        : addedCreatorUrls.has(c.url)
-                          ? km.addedCreatorTitle
-                          : km.addCreatorTitle
-                    }
+                    className="ghost small"
+                    aria-label={km.addCreatorAria}
+                    title={!c.url ? km.noCreatorUrlTitle : km.addCreatorTitle}
                     disabled={!onAddCreator || !c.url}
                     onClick={() =>
                       c.url && onAddCreator?.({ name: c.name || c.handle, url: c.url, platform: c.platform })
                     }
                   >
-                    {c.url && addedCreatorUrls.has(c.url) ? '✓' : '+'}
+                    +
                   </button>
                 </div>
                 {c.why_relevant && <div className="creator-why muted">{c.why_relevant}</div>}

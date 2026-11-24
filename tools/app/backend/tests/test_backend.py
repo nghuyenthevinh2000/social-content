@@ -661,6 +661,76 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(target_sheet["topics"], [])
             self.assertIn("Chưa có kênh đối thủ nào", target_sheet["notice"])
 
+    def test_process_sheet_profile_surfaces_48h_reels_without_auto_research(self):
+        from tools.app.backend.research_engine.research import _process_sheet
+        import uuid
+
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            job_id = uuid.uuid4().hex[:12]
+            sheet = {
+                "name": "Ẩm thực",
+                "slug": "am-thuc",
+                "targets": [{"name": "k1", "url": "https://facebook.com/k1", "handle": "k1"}],
+            }
+            self._store.put({
+                "id": job_id,
+                "job_kind": "profile",
+                "status": "running",
+                "created_at": "2026-01-01",
+                "sheets": [{
+                    "name": sheet["name"],
+                    "slug": sheet["slug"],
+                    "status": "pending",
+                    "targets": 1,
+                    "reels": 0,
+                    "topics": [],
+                    "error": None,
+                    "notice": None,
+                }],
+                "logs": [],
+            })
+            harvested = [
+                {
+                    "video_id": "v1",
+                    "url": "https://www.facebook.com/reel/111",
+                    "title": "Low views reel",
+                    "views": 1000,
+                    "velocity_per_hour": 50.0,
+                    "current_pool": 1,
+                    "pool_name": "P1",
+                    "author_handle": "chef_a",
+                    "platform": "facebook",
+                },
+                {
+                    "video_id": "v2",
+                    "url": "https://www.facebook.com/reel/222",
+                    "title": "High views reel",
+                    "views": 50000,
+                    "velocity_per_hour": 2500.0,
+                    "current_pool": 3,
+                    "pool_name": "P3",
+                    "author_handle": "chef_b",
+                    "platform": "facebook",
+                },
+            ]
+            with mock.patch(
+                "tools.app.backend.research_engine.research.run_analyzer_pipeline",
+                return_value={"all_reels": harvested, "metadata": {"pool_distribution": {"pool_1": 1, "pool_3": 1}}},
+            ) as mock_pipeline, mock.patch(
+                "tools.app.backend.research_engine.research.analyze_video_structure",
+            ) as mock_analyze:
+                _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy", "window_hours": 48}, job_kind="profile")
+
+            mock_analyze.assert_not_called()
+            self.assertFalse(mock_pipeline.call_args.kwargs.get("transcribe"))
+            snap = self._store.snapshot(job_id)
+            target_sheet = snap["sheets"][0]
+            self.assertEqual(target_sheet["status"], "completed")
+            self.assertEqual(target_sheet["reels"], 2)
+            self.assertEqual([t["video_id"] for t in target_sheet["topics"]], ["v2", "v1"])
+            self.assertTrue(all(t["generated_by"] == "profile" and t["transcript"] == "" for t in target_sheet["topics"]))
+
     def test_install_binaries_script_content(self):
         script_path = Path(__file__).resolve().parents[1] / "install_binaries.sh"
         self.assertTrue(script_path.exists())
@@ -1306,6 +1376,137 @@ class BackendTests(unittest.TestCase):
                 _process_sheet(job_id, 1, 1, sheet, run_dir, {"agent": "agy"}, job_kind="reel")
             mock_reel.assert_called_once()
             mock_profile.assert_not_called()
+
+    def test_reel_job_limits_to_single_video_and_five_concurrent_claims_per_user(self):
+        from tools.app.backend.research_engine.research import _process_sheet, create_job
+        from tools.app.backend.store import JobStore
+
+        payload = json.dumps({
+            "sheets": [{
+                "name": "Multi reel",
+                "targets": [
+                    {"name": "R1", "url": "https://www.facebook.com/reel/111"},
+                    {"name": "R2", "url": "https://www.facebook.com/reel/222"},
+                    {"name": "R3", "url": "https://www.facebook.com/reel/333"},
+                ],
+            }],
+        }).encode("utf-8")
+        created = create_job(payload, "multi.json", {"agent": "agy"}, "c1", user_id="u_five", job_kind="reel")
+        self.assertEqual(created["sheets"][0]["targets"], 1)
+        self.assertEqual(len(created["sheets"][0]["target_list"]), 1)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sheet = {
+                "name": "Multi reel",
+                "slug": "multi-reel",
+                "targets": [
+                    {"name": "R1", "url": "https://www.facebook.com/reel/111"},
+                    {"name": "R2", "url": "https://www.facebook.com/reel/222"},
+                ],
+            }
+            with mock.patch(
+                "tools.app.backend.research_engine.research.research_single_reel",
+                return_value={"topics": [{"title": "T1", "source_urls": ["https://www.facebook.com/reel/111"]}], "reel_url": "https://www.facebook.com/reel/111", "video_id": "111"},
+            ) as mock_reel:
+                _process_sheet(created["id"], 1, 1, sheet, Path(tmpdir), {"agent": "agy"}, job_kind="reel")
+            mock_reel.assert_called_once()
+
+        store = JobStore()
+        for i in range(6):
+            store.put({
+                "id": f"u5_job_{i}",
+                "client_id": f"c_{i}",
+                "user_id": "u_five",
+                "status": "queued",
+                "created_at": f"2026-01-01T00:00:0{i}Z",
+                "sheets": [],
+            })
+        claimed = [store.claim(5) for _ in range(5)]
+        self.assertTrue(all(c is not None for c in claimed))
+        self.assertIsNone(store.claim(5))
+        store.update("u5_job_0", status="completed")
+        self.assertEqual(store.claim(5)["id"], "u5_job_5")
+
+    def test_persist_to_database_handles_existing_url_with_different_id(self):
+        from tools.app.backend.db import tx
+        from tools.loop.viral_analyzer.cache import persist_to_database
+
+        dup_url = "https://www.facebook.com/reel/1638767047082365"
+        with tx() as conn:
+            conn.execute("DELETE FROM videos WHERE url = %s OR id IN ('legacy:1638767047082365', 'facebook:1638767047082365')", (dup_url,))
+            conn.execute(
+                "INSERT INTO videos (id, platform, video_id, url, author_handle, title) "
+                "VALUES ('legacy:1638767047082365', 'facebook', 'legacy_id', %s, 'chef', 'Old')",
+                (dup_url,),
+            )
+
+        reel = {
+            "platform": "facebook",
+            "video_id": "1638767047082365",
+            "url": dup_url,
+            "author_handle": "chef",
+            "title": "Updated",
+            "current_pool": 2,
+            "published_at": "2026-11-24T00:00:00Z",
+            "views": 1000,
+            "likes": 10,
+            "comments": 2,
+            "shares": 1,
+            "velocity_per_hour": 50.0,
+        }
+        persist_to_database([reel, reel])
+
+        with tx() as conn:
+            row = conn.execute("SELECT title, current_pool FROM videos WHERE url = %s", (dup_url,)).fetchone()
+        self.assertEqual(row[0], "Updated")
+        self.assertEqual(row[1], 2)
+
+    def test_run_job_marks_job_failed_when_all_sheets_fail_and_list_jobs_reflects_it(self):
+        from tools.app.backend.research_engine.research import create_job, run_job
+        from tools.app.backend.store import JobStore
+
+        payload = json.dumps({
+            "sheets": [{"name": "Fail Sheet", "targets": [{"name": "A", "url": "https://facebook.com/a"}]}],
+        }).encode("utf-8")
+        created = create_job(payload, "fail.json", {"agent": "agy"}, "c_fail", user_id="u_fail_status", job_kind="profile")
+
+        with mock.patch(
+            "tools.app.backend.research_engine.research.run_analyzer_pipeline",
+            return_value={
+                "all_reels": [],
+                "errors": [{"error_type": "GlasserMissingKeyError", "message": "Missing key", "handle": "a"}],
+                "metadata": {},
+            },
+        ):
+            run_job(created)
+
+        store = JobStore()
+        snap = store.snapshot(created["id"])
+        self.assertEqual(snap["status"], "failed")
+        self.assertEqual(snap["sheets"][0]["status"], "failed")
+
+        # Legacy completed job whose sheets all failed should also show as failed in list_jobs
+        store.update(created["id"], status="completed")
+        listed = [j for j in store.list_jobs(user_id="u_fail_status") if j["id"] == created["id"]]
+        self.assertEqual(len(listed), 1)
+        self.assertEqual(listed[0]["status"], "failed")
+
+    def test_research_single_reel_resolves_real_author_handle(self):
+        from tools.loop.viral_analyzer.video_research import pipeline as reel_research
+
+        with mock.patch.object(reel_research, "fetch_reel_transcript", return_value="Transcript"):
+            res_explicit = reel_research.research_single_reel(
+                "https://www.facebook.com/reel/123",
+                author_handle="chef_nam",
+                author_name="Chef Nam",
+            )
+            res_tiktok = reel_research.research_single_reel("https://www.tiktok.com/@doc_yt/video/999")
+            res_unknown = reel_research.research_single_reel("https://www.facebook.com/reel/999888777")
+
+        self.assertEqual(res_explicit["topics"][0]["author_handle"], "chef_nam")
+        self.assertEqual(res_explicit["topics"][0]["author_name"], "Chef Nam")
+        self.assertEqual(res_tiktok["topics"][0]["author_handle"], "doc_yt")
+        self.assertEqual(res_unknown["topics"][0]["author_handle"], "")
 
     def test_research_single_reel_falls_back_to_local_asr_when_glasser_returns_none(self):
         from tools.loop.viral_analyzer.video_research import pipeline as reel_research

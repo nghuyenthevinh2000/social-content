@@ -213,6 +213,10 @@ def create_job(
 ) -> Dict[str, Any]:
     job_id = uuid.uuid4().hex[:12]
     sheets = parse_sheets_input(source_bytes)
+    if job_kind == "reel" and sheets:
+        first = dict(sheets[0])
+        first["targets"] = list(first.get("targets") or [])[:1]
+        sheets = [first]
     if len(sheets) == 1 and sheets[0].get("name"):
         filename = sheets[0]["name"]
     elif filename:
@@ -245,7 +249,12 @@ def create_job(
                 "status": "pending",
                 "targets": len(sheet["targets"]),
                 "target_list": [
-                    {"name": t.get("name") or t.get("handle") or "", "url": t.get("url") or ""}
+                    {
+                        "name": t.get("name") or t.get("handle") or "",
+                        "url": t.get("url") or "",
+                        **({"author_handle": t["author_handle"]} if t.get("author_handle") else {}),
+                        **({"author_name": t["author_name"]} if t.get("author_name") else {}),
+                    }
                     for t in sheet["targets"]
                 ],
                 "reels": 0,
@@ -283,7 +292,11 @@ def run_job(job: Dict[str, Any]) -> None:
                     "slug": s["slug"],
                     "is_aggregate": s["slug"] == "tong-hop",
                     "targets": [
-                        _normalize_target(t.get("url", ""), name=t.get("name", ""), category=s["name"])
+                        {
+                            **_normalize_target(t.get("url", ""), name=t.get("name", ""), category=s["name"]),
+                            **({"author_handle": t["author_handle"]} if t.get("author_handle") else {}),
+                            **({"author_name": t["author_name"]} if t.get("author_name") else {}),
+                        }
                         for t in s.get("target_list", [])
                         if t.get("url")
                     ],
@@ -307,8 +320,12 @@ def run_job(job: Dict[str, Any]) -> None:
                     job_kind=job.get("job_kind") or "profile",
                     user_id=job.get("user_id") or "default",
                 )
-            STORE.update(job_id, status="completed", current_sheet=None, finished_at=now_iso())
-            STORE.log(job_id, "Hoàn tất toàn bộ sheet.")
+            final_snap = STORE.snapshot(job_id) or {}
+            final_sheets = final_snap.get("sheets") or []
+            all_failed = bool(final_sheets) and all(s.get("status") == "failed" for s in final_sheets)
+            final_status = "failed" if all_failed else "completed"
+            STORE.update(job_id, status=final_status, current_sheet=None, finished_at=now_iso())
+            STORE.log(job_id, "Job thất bại." if all_failed else "Hoàn tất toàn bộ sheet.")
         except Exception as exc:  # keep the job inspectable on unexpected failure
             STORE.update(job_id, status="failed", finished_at=now_iso(), current_sheet=None)
             STORE.log(job_id, f"Lỗi job: {exc}")
@@ -418,17 +435,23 @@ def _process_sheet_inner(
         notice = kw_res.get("notice")
         topics = []
     elif job_kind == "reel":
-        log(f"Phát hiện {len(targets)} Reel đơn lẻ; chạy Reel Research trực tiếp (bỏ qua profile scraper).")
+        log("Chạy Reel Research trực tiếp cho 1 video (bỏ qua profile scraper).")
         reel_targets = []
         for t in targets:
             t_url = t.get("url", "")
             if is_reel_url(t_url):
-                reel_targets.append((t_url, t.get("name") or sheet_name))
+                reel_targets.append((
+                    t_url,
+                    t.get("name") or sheet_name,
+                    t.get("author_handle") or "",
+                    t.get("author_name") or "",
+                ))
+                break
             else:
                 log(f"Bỏ qua URL không phải bài viết/video/Reel trực tiếp: {t_url}")
 
         def _analyze_one_reel(
-            t_idx: int, t_url: str, t_name: str
+            t_idx: int, t_url: str, t_name: str, t_author_handle: str = "", t_author_name: str = ""
         ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
             log(f"[{t_idx}/{len(reel_targets)}] Đang phân tích Reel: {t_url}")
             try:
@@ -442,24 +465,18 @@ def _process_sheet_inner(
                     cwd=run_dir,
                     timeout_sec=float(options.get("acp_timeout", 180)),
                     language=user_language,
+                    author_handle=t_author_handle or None,
+                    author_name=t_author_name or None,
                 )
                 return res, None
             except Exception as exc:
                 log(f"Lỗi khi phân tích Reel {t_url}: {exc}")
                 return None, str(exc)
 
-        if len(reel_targets) > 1:
-            with ThreadPoolExecutor(max_workers=min(5, len(reel_targets))) as pool:
-                futures = [
-                    (t_url, t_name, submit_with_context(pool, _analyze_one_reel, idx, t_url, t_name))
-                    for idx, (t_url, t_name) in enumerate(reel_targets, 1)
-                ]
-                outcomes = [(t_url, t_name, fut.result()) for t_url, t_name, fut in futures]
-        else:
-            outcomes = [
-                (t_url, t_name, _analyze_one_reel(idx, t_url, t_name))
-                for idx, (t_url, t_name) in enumerate(reel_targets, 1)
-            ]
+        outcomes = [
+            (t_url, t_name, _analyze_one_reel(1, t_url, t_name, t_author_handle, t_author_name))
+            for t_url, t_name, t_author_handle, t_author_name in reel_targets
+        ]
 
         for t_url, t_name, (res, err) in outcomes:
             if err is not None:
@@ -481,11 +498,11 @@ def _process_sheet_inner(
         if not topics and not error:
             notice = "Không trích xuất được chủ đề nào từ danh sách Reel này."
     else:
-        # Standard Profile Research across creator/competitor pages
+        # Standard Profile Research across creator/competitor pages: surface 48h viral reels only
         prof_res = run_profile_research(
             targets=targets,
             run_dir=run_dir,
-            options=options,
+            options={**options, "transcribe": False},
             log=log,
             job_id=job_id,
             sheet_slug=sheet["slug"],
@@ -498,23 +515,46 @@ def _process_sheet_inner(
         error = prof_res.get("error")
         notice = prof_res.get("notice")
 
-        if reels:
-            topics, topic_error = analyze_video_structure(
-                agent_id=agent_choice,
-                sheet_name=sheet_name,
-                targets=targets,
-                reels=reels,
-                cwd=run_dir,
-                timeout_sec=float(options.get("acp_timeout", 240)),
-                log=log,
-                model=options.get("agy_model") or options.get("model"),
-                actor_profile=actor_profile,
-                language=user_language,
-            )
-            if topic_error and not error:
-                acp_err = handle_acp_error(topic_error, agent_id=agent_choice, log=log)
-                aggregator.add(acp_err)
-                error = acp_err.message
+        ranked_reels = sorted(
+            reels,
+            key=lambda r: (
+                int(r.get("views") or 0),
+                float(r.get("velocity_per_hour") or 0),
+                int(r.get("current_pool") or 0),
+            ),
+            reverse=True,
+        )
+        topics = []
+        for r in ranked_reels:
+            r_url = str(r.get("url") or r.get("reel_url") or "").strip()
+            r_plat = str(r.get("platform") or "facebook").strip() or "facebook"
+            r_handle = str(r.get("author_handle") or "").strip()
+            r_title = str(r.get("title") or "").strip() or f"Video từ @{r_handle or 'reel'}"
+            topics.append({
+                "title": r_title[:90],
+                "hook": "",
+                "angle": "",
+                "why_viral": "",
+                "outline": [],
+                "format": "",
+                "source_urls": [r_url] if r_url else [],
+                "reel_url": r_url,
+                "platform": r_plat,
+                "video_url": r.get("video_url"),
+                "video_id": str(r.get("video_id") or ""),
+                "views": int(r.get("views") or 0),
+                "velocity_per_hour": float(r.get("velocity_per_hour") or 0),
+                "current_pool": r.get("current_pool", 0),
+                "pool_name": str(r.get("pool_name") or ""),
+                "likes": int(r.get("likes") or 0),
+                "comments": int(r.get("comments") or 0),
+                "shares": int(r.get("shares") or 0),
+                "author_handle": r_handle,
+                "author_name": str(r.get("author_name") or ""),
+                "transcript": "",
+                "visual": "",
+                "generated_by": "profile",
+            })
 
     STORE.patch_sheet(
         job_id,

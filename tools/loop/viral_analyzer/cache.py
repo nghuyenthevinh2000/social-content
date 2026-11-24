@@ -387,32 +387,62 @@ def persist_to_database(reels: List[Dict[str, Any]], **_kwargs: Any) -> None:
 
     now_ts = now_iso()
     prepared: List[Tuple[str, str, Dict[str, Any]]] = []
-    video_rows: List[Tuple[Any, ...]] = []
+    seen_ids: set[str] = set()
+    seen_urls: set[str] = set()
     for r in reels:
+        url = str(r.get("url") or "").strip()
+        vid = str(r.get("video_id") or "").strip()
+        if not url or not vid:
+            continue
         platform = str(r.get("platform") or "facebook").strip().lower()
         if platform not in {"facebook", "youtube", "tiktok", "instagram"}:
             platform = "facebook"
-        primary_id = f"{platform}:{r['video_id']}"
+        primary_id = f"{platform}:{vid}"
+        if primary_id in seen_ids or url in seen_urls:
+            continue
+        seen_ids.add(primary_id)
+        seen_urls.add(url)
         prepared.append((primary_id, platform, r))
-        video_rows.append((
-            primary_id,
-            platform,
-            r["video_id"],
-            r["url"],
-            r["author_handle"],
-            r["title"],
-            r["current_pool"],
-            r["published_at"],
-            now_ts,
-            now_ts,
-            r.get("transcript"),
-            now_ts if r.get("transcript") else None,
-        ))
 
-    primary_ids = list({pid for pid, _, _ in prepared})
+    if not prepared:
+        return
+
     with profiling.span("cache", "persist_to_database"):
         with tx() as conn:
             with conn.cursor() as cur:
+                existing_by_url = dict(
+                    cur.execute(
+                        "SELECT url, id FROM videos WHERE url = ANY(%s)",
+                        ([str(r["url"]).strip() for _, _, r in prepared],),
+                    ).fetchall()
+                )
+                resolved: List[Tuple[str, str, Dict[str, Any]]] = []
+                resolved_ids: set[str] = set()
+                for primary_id, platform, r in prepared:
+                    eff_id = existing_by_url.get(str(r["url"]).strip(), primary_id)
+                    if eff_id in resolved_ids:
+                        continue
+                    resolved_ids.add(eff_id)
+                    resolved.append((eff_id, platform, r))
+
+                video_rows: List[Tuple[Any, ...]] = [
+                    (
+                        eff_id,
+                        platform,
+                        r["video_id"],
+                        str(r["url"]).strip(),
+                        r["author_handle"],
+                        r["title"],
+                        r["current_pool"],
+                        r["published_at"],
+                        now_ts,
+                        now_ts,
+                        r.get("transcript"),
+                        now_ts if r.get("transcript") else None,
+                    )
+                    for eff_id, platform, r in resolved
+                ]
+                primary_ids = [eff_id for eff_id, _, _ in resolved]
                 cur.executemany(
                     """
                     INSERT INTO videos (
@@ -438,7 +468,7 @@ def persist_to_database(reels: List[Dict[str, Any]], **_kwargs: Any) -> None:
                 prev_vel: Dict[str, float] = {row[0]: float(row[1] or 0.0) for row in prev_rows}
 
                 snap_rows: List[Tuple[Any, ...]] = []
-                for primary_id, _platform, r in prepared:
+                for primary_id, _platform, r in resolved:
                     velocity = float(r.get("velocity_per_hour") or 0.0)
                     acceleration = round(velocity - prev_vel[primary_id], 2) if primary_id in prev_vel else 0.0
                     prev_vel[primary_id] = velocity

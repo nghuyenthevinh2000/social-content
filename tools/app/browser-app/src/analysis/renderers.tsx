@@ -51,45 +51,16 @@ function commonSections(topic: Topic, m: LocaleMessages['analysis']): AnalysisSe
   return sections;
 }
 
-function renderProfileMeta(sheet: Sheet, m: LocaleMessages['analysis']): React.ReactNode {
-  const glasserCount = sheet.source_breakdown?.glasser_api?.length ?? 0;
-  const cacheCount = sheet.source_breakdown?.cache?.length ?? 0;
-  const poolEntries = Object.entries(sheet.pool_distribution || {});
-
-  return (
-    <>
-      {poolEntries.length > 0 && (
-        <div className="pools">
-          {poolEntries.map(([pool, count]) => (
-            <span key={pool} className="pool">
-              {pool.replace('pool_', 'P')} · {count}
-            </span>
-          ))}
-        </div>
-      )}
-      {(glasserCount > 0 || cacheCount > 0) && (
-        <div className="source-breakdown muted">
-          {glasserCount > 0 && (
-            <span title={sheet.source_breakdown?.glasser_api?.join(', ')}>{m.glasserChannels(glasserCount)}</span>
-          )}
-          {glasserCount > 0 && cacheCount > 0 && ' · '}
-          {cacheCount > 0 && <span title={sheet.source_breakdown?.cache?.join(', ')}>{m.cacheChannels(cacheCount)}</span>}
-        </div>
-      )}
-    </>
-  );
-}
-
 export function createRenderers(m: LocaleMessages['analysis']): Record<JobKind, JobRenderer> {
   return {
     profile: {
-      meta: (sheet) => renderProfileMeta(sheet, m),
+      meta: () => null,
       sheetTitle: (sheet) => sheet.name,
       summaryMeta: (sheet) => m.profileSummaryMeta(sheet.targets, formatNumber(sheet.reels)),
       runningText: m.profileRunningText,
       emptyText: m.profileEmptyText,
-      sections: (topic) => commonSections(topic, m),
-      order: (topics) => [...topics].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 10),
+      sections: () => [],
+      order: (topics) => [...topics].sort((a, b) => (b.views || 0) - (a.views || 0)),
     },
     reel: {
       meta: () => null,

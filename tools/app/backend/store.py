@@ -87,15 +87,18 @@ class JobStore:
         with tx() as conn:
             conn.execute("UPDATE jobs SET user_id = %s WHERE user_id IS NULL OR user_id = 'default'", (user_id,))
 
-    def claim(self, max_per_client: int) -> Optional[Dict[str, Any]]:
-        """Atomically take the oldest queued job whose client is under its running limit, and mark it running."""
+    def claim(self, max_per_client: int = 5) -> Optional[Dict[str, Any]]:
+        """Atomically take the oldest queued job whose user/client is under its running limit, and mark it running."""
         with tx() as conn:
             conn.execute("SELECT pg_advisory_xact_lock(hashtext('claim_job'))")
             cur = conn.execute(
                 """
                 SELECT id, data FROM jobs AS q
                 WHERE status = 'queued' AND (
-                    SELECT COUNT(*) FROM jobs AS r WHERE r.status = 'running' AND r.client_id IS NOT DISTINCT FROM q.client_id
+                    SELECT COUNT(*) FROM jobs AS r
+                    WHERE r.status = 'running'
+                      AND COALESCE(NULLIF(r.user_id, ''), r.client_id)
+                          IS NOT DISTINCT FROM COALESCE(NULLIF(q.user_id, ''), q.client_id)
                 ) < %s
                 ORDER BY created_at ASC
                 FOR UPDATE SKIP LOCKED
@@ -207,6 +210,9 @@ class JobStore:
                 total_sheets = len(sheets)
                 completed_sheets = sum(1 for s in sheets if s.get("status") in ("completed", "failed"))
                 total_topics = sum(int(s.get("topic_count") or 0) for s in sheets)
+                effective_status = status
+                if status == "completed" and sheets and all(s.get("status") == "failed" for s in sheets):
+                    effective_status = "failed"
                 fn = fn_raw or ""
                 if len(sheets) == 1 and sheets[0].get("name"):
                     fn = sheets[0]["name"]
@@ -221,7 +227,7 @@ class JobStore:
                 jobs.append({
                     "id": jid,
                     "job_kind": job_kind or "profile",
-                    "status": status,
+                    "status": effective_status,
                     "filename": fn,
                     "created_at": created_at,
                     "finished_at": finished_at,

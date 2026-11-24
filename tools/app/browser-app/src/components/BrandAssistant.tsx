@@ -189,16 +189,9 @@ export const BrandAssistant: React.FC<BrandAssistantProps> = ({
                       <span className="brand-kw-heading">{m.keywordsHeading}</span>
                       <div className="brand-kw-list">
                         {msg.keywords!.map((kw) => (
-                          <button
-                            key={kw}
-                            type="button"
-                            className="brand-kw-chip"
-                            disabled={blocked}
-                            title={m.exploreKeywordTitle(kw)}
-                            onClick={() => onSearchKeyword(kw)}
-                          >
-                            {kw} ↗
-                          </button>
+                          <span key={kw} className="brand-kw-chip">
+                            {kw}
+                          </span>
                         ))}
                       </div>
                       <button

@@ -19,7 +19,7 @@ import { auth, onAuthStateChanged, signOut, type User } from '../firebase';
 import { getMessages, useLocale, type LocaleMessages } from '../locales';
 import './Home.css';
 
-export type TargetItem = { name: string; url: string };
+export type TargetItem = { name: string; url: string; author_handle?: string; author_name?: string };
 export type TopicItem = { name: string; slug: string; targets: TargetItem[] };
 export type SavedReel = {
   id: string;
@@ -43,6 +43,7 @@ const TAB_ICONS: Record<Tab, string> = {
 
 const DEFAULT_TOPIC = 'sở thích cá nhân';
 const isDefaultTopic = (t: TopicItem) => t.name.toLowerCase() === DEFAULT_TOPIC;
+const MAX_CONCURRENT_JOBS = 5;
 const TOUR_KEY = 'aibrand-tour-done';
 const TOUR_DEMO_ID = '__tour_demo__';
 const TOUR_DEMO_TOPIC_SLUG = '__tour_demo_topic__';
@@ -77,7 +78,7 @@ function buildTourDemoTopic(m: LocaleMessages['tour']): TopicItem {
 function buildTourDemoJob(m: LocaleMessages['tour']): Job {
   return {
     id: TOUR_DEMO_ID,
-    job_kind: 'profile',
+    job_kind: 'reel',
     status: 'completed',
     filename: m.demoTitle,
     created_at: new Date().toISOString(),
@@ -118,7 +119,7 @@ function buildTourDemoJob(m: LocaleMessages['tour']): Job {
 function buildTourDemoSummary(m: LocaleMessages['tour'], createdAt: string): JobSummary {
   return {
     id: TOUR_DEMO_ID,
-    job_kind: 'profile',
+    job_kind: 'reel',
     status: 'completed',
     filename: m.demoTitle,
     created_at: createdAt,
@@ -709,9 +710,26 @@ const Home: React.FC = () => {
   }, [jobId, user?.uid]);
 
   const running = job ? !TERMINAL.has(job.status) : false;
-  const hasActiveJob = useMemo(() => {
-    return running || history.some((j) => !TERMINAL.has(j.status));
-  }, [running, history]);
+  const hasRunningInHistory = useMemo(() => history.some((j) => !TERMINAL.has(j.status)), [history]);
+  const hasActiveJob = running || hasRunningInHistory;
+  const activeJobCount = useMemo(() => {
+    const activeIds = new Set(
+      history.filter((j) => j.id !== TOUR_DEMO_ID && !TERMINAL.has(j.status)).map((j) => j.id),
+    );
+    if (job && job.id !== TOUR_DEMO_ID && !TERMINAL.has(job.status)) {
+      activeIds.add(job.id);
+    }
+    return activeIds.size;
+  }, [history, job]);
+
+  useEffect(() => {
+    if (!user || !hasRunningInHistory) return;
+    const timer = window.setInterval(() => {
+      fetchHistory();
+    }, 2000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, hasRunningInHistory]);
   const runnable = topics.filter((t) => t.targets.length > 0);
   const totalChannels = topics.reduce((acc, t) => acc + t.targets.length, 0);
 
@@ -729,15 +747,23 @@ const Home: React.FC = () => {
     );
   }, [visibleTopics, search]);
 
-  async function run(selected: TopicItem[], filename: string, kind: JobKind = 'profile') {
+  async function run(
+    selected: TopicItem[],
+    filename: string,
+    kind: JobKind = 'profile',
+    opts?: { background?: boolean; label?: string },
+  ) {
     if (!user) {
       setShowAuthModal(true);
       return;
     }
-    setError(null);
-    setStarting(true);
-    setJob(null);
-    switchTab('analyzer');
+    const background = Boolean(opts?.background);
+    if (!background) {
+      setError(null);
+      setStarting(true);
+      setJob(null);
+      switchTab('analyzer');
+    }
     try {
       const params = new URLSearchParams({ job_kind: kind });
       if (isTranscribe) params.set('transcribe', '1');
@@ -748,14 +774,24 @@ const Home: React.FC = () => {
         headers: { 'Content-Type': 'application/json', 'X-Filename': encodeURIComponent(filename) },
         body: JSON.stringify(payload),
       });
-      setJob(data);
-      selectJob(data.id);
+      if (background) {
+        setNotice({ type: 'success', text: t.analysis.analyzeVideoQueued(opts?.label || filename) });
+      } else {
+        setJob(data);
+        selectJob(data.id);
+      }
       fetchHistory();
     } catch (err) {
-      setError(errorText(err));
+      if (background) {
+        setNotice({ type: 'error', text: errorText(err) });
+      } else {
+        setError(errorText(err));
+      }
       reportClientLog(errorText(err), err instanceof Error ? err.stack : undefined, 'start-job');
     } finally {
-      setStarting(false);
+      if (!background) {
+        setStarting(false);
+      }
     }
   }
 
@@ -867,7 +903,7 @@ const Home: React.FC = () => {
     }
   }
 
-  const blocked = starting || running;
+  const blocked = starting || activeJobCount >= MAX_CONCURRENT_JOBS;
 
   return (
     <IonPage className="ab">
@@ -1284,9 +1320,11 @@ const Home: React.FC = () => {
                                 <button
                                   type="submit"
                                   className="ghost small"
+                                  aria-label={t.library.addChannelBtn}
+                                  title={t.library.addChannelBtn}
                                   disabled={busy || isDemoTopic || !(inlineUrls[topic.slug] || '').trim()}
                                 >
-                                  {t.library.addChannelBtn}
+                                  +
                                 </button>
                               </form>
 
@@ -1413,8 +1451,7 @@ const Home: React.FC = () => {
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         <button
                                           type="button"
-                                          className="ghost small"
-                                          style={{ padding: '4px 8px', fontSize: '12px' }}
+                                          className="topic-run-btn"
                                           onClick={() => handleRunSavedReel(reel)}
                                           disabled={blocked}
                                           aria-label={t.library.runReelLabel}
@@ -1459,9 +1496,11 @@ const Home: React.FC = () => {
                                   <button
                                     type="submit"
                                     className="ghost small"
+                                    aria-label={t.library.addChannelBtn}
+                                    title={t.library.addChannelBtn}
                                     disabled={busy || !(inlineReelUrls[topicName] || '').trim()}
                                   >
-                                    {t.library.addChannelBtn}
+                                    +
                                   </button>
                                 </form>
                               </details>
@@ -1530,6 +1569,34 @@ const Home: React.FC = () => {
                 const targets = creators.map((c) => ({ name: c.name, url: c.url }));
                 if (!targets.length) return;
                 run([{ name: sheetName, slug: sheetName, targets }], sheetName, 'profile');
+              }}
+              onAnalyzeVideo={(topic) => {
+                const url = topic.reel_url || topic.source_urls?.[0] || '';
+                if (!url) return;
+                const label = topic.title || url;
+                const slug = `reel-${topic.video_id || Date.now()}`;
+                run(
+                  [
+                    {
+                      name: label,
+                      slug,
+                      targets: [
+                        {
+                          name: label,
+                          url,
+                          ...(topic.author_handle ? { author_handle: topic.author_handle } : {}),
+                          ...(topic.author_name ? { author_name: topic.author_name } : {}),
+                        },
+                      ],
+                    },
+                  ],
+                  url,
+                  'reel',
+                  {
+                    background: true,
+                    label,
+                  },
+                );
               }}
               onGoToLibrary={() => switchTab('library')}
               forceHistoryView={showTour && tourHistoryView}

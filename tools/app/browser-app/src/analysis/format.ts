@@ -1,3 +1,5 @@
+import { globeOutline, logoFacebook, logoInstagram, logoTiktok, logoYoutube } from 'ionicons/icons';
+
 import { getMessages, getStoredLocale } from '../locales';
 
 import type { Job, Topic } from './types';
@@ -90,6 +92,30 @@ export const PLATFORM_LABELS: Record<string, string> = {
   instagram: 'Instagram',
   facebook: 'Facebook',
 };
+
+export const PLATFORM_ICONS: Record<string, string> = {
+  youtube: logoYoutube,
+  tiktok: logoTiktok,
+  instagram: logoInstagram,
+  facebook: logoFacebook,
+};
+
+export function getPlatformIcon(platform: string): string {
+  return PLATFORM_ICONS[platform.toLowerCase()] || globeOutline;
+}
+
+export const PLATFORM_ORDER = ['facebook', 'youtube', 'tiktok', 'instagram'] as const;
+
+export function sortPlatformCounts(counts: Record<string, number>): [string, number][] {
+  return Object.entries(counts).sort(([a], [b]) => {
+    const ia = PLATFORM_ORDER.indexOf(a.toLowerCase() as (typeof PLATFORM_ORDER)[number]);
+    const ib = PLATFORM_ORDER.indexOf(b.toLowerCase() as (typeof PLATFORM_ORDER)[number]);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+}
 
 export function inferPlatform(topic: Topic, url: string): string {
   if (topic.platform && PLATFORM_LABELS[topic.platform]) return topic.platform;

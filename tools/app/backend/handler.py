@@ -18,8 +18,8 @@ from tools.app.backend.db import tx
 from tools.app.backend.research_engine.research import STORE, run_job
 from tools.app.backend.store import now_iso
 
-MAX_PROCESSES = int(os.environ.get("VIRAL_APP_MAX_PROCESSES", "2"))
-MAX_PER_CLIENT = int(os.environ.get("VIRAL_APP_MAX_PER_CLIENT", "1"))
+MAX_PROCESSES = int(os.environ.get("VIRAL_APP_MAX_PROCESSES", "20"))
+MAX_PER_CLIENT = int(os.environ.get("VIRAL_APP_MAX_PER_CLIENT", "5"))
 STALE_AFTER_SEC = 30
 
 
@@ -107,7 +107,7 @@ def run_worker(poll_sec: float = 1.0) -> None:
 
 
 def _job_process(job: Dict[str, Any], worker_pid: int) -> None:
-    os.environ.setdefault("DB_POOL_MAX", "5")
+    os.environ.setdefault("DB_POOL_MAX", "3")
     if hasattr(os, "setsid"):
         # Own process group, so a kill also reaches the agent CLI, ffmpeg and yt-dlp children.
         os.setsid()

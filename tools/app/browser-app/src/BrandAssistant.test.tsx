@@ -91,10 +91,11 @@ describe('BrandAssistant', () => {
     expect(savedBody.brand.identity).toBe('Minimalist skincare educator');
     expect(savedBody.brand.keywords).toEqual(['minimalist skincare', '5-min routine']);
 
-    fireEvent.click(screen.getByRole('button', { name: 'minimalist skincare ↗' }));
-    expect(onSearchKeyword).toHaveBeenCalledWith('minimalist skincare');
+    expect(screen.getByText('minimalist skincare')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /minimalist skincare/ })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Search with 2 keywords' }));
+    expect(onSearchKeyword).not.toHaveBeenCalled();
     expect(onSearchKeywords).toHaveBeenCalledWith(['minimalist skincare', '5-min routine']);
   });
 

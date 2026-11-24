@@ -500,6 +500,35 @@ def _transcribe_local_fallback(
     return None
 
 
+def _resolve_reel_author(
+    clean_url: str,
+    vid: Optional[str],
+    author_handle: Optional[str] = None,
+) -> str:
+    handle = (author_handle or "").strip().lstrip("@")
+    if handle and handle not in {"saved_reel", "unknown"}:
+        return handle
+    m = re.search(r"/@([^/?#]+)", clean_url)
+    if m:
+        return m.group(1)
+    m_fb = re.search(r"facebook\.com/([^/?#]+)/videos/", clean_url, re.I)
+    if m_fb and m_fb.group(1).lower() not in {"watch", "reel", "share", "groups"}:
+        return m_fb.group(1)
+    try:
+        from tools.app.backend.db import ro
+
+        with ro() as conn:
+            row = conn.execute(
+                "SELECT author_handle FROM videos WHERE url = %s OR (%s <> '' AND video_id = %s) LIMIT 1",
+                (clean_url, vid or "", vid or ""),
+            ).fetchone()
+            if row and row[0] and str(row[0]).strip() not in {"saved_reel", "unknown"}:
+                return str(row[0]).strip().lstrip("@")
+    except Exception:
+        pass
+    return ""
+
+
 def research_single_reel(
     reel_url: str,
     sheet_name: str = "Reel đã lưu",
@@ -511,6 +540,8 @@ def research_single_reel(
     timeout_sec: float = 120.0,
     ctx: Optional[runtime.EngineContext] = None,
     language: Optional[str] = None,
+    author_handle: Optional[str] = None,
+    author_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Execute direct deep research on an individual Reel URL."""
     _log = log or (lambda msg: logger.info(msg))
@@ -556,6 +587,8 @@ def research_single_reel(
         else:
             _log("Không có harness để phân tích hình ảnh video; bỏ qua.")
 
+    eff_author_handle = _resolve_reel_author(clean_url, vid, author_handle=author_handle)
+
     reel_obj: Dict[str, Any] = {
         "url": clean_url,
         "reel_url": clean_url,
@@ -568,7 +601,8 @@ def research_single_reel(
         "velocity_per_hour": 0,
         "current_pool": 0,
         "pool_name": "Direct Saved Reel",
-        "author_handle": "saved_reel",
+        "author_handle": eff_author_handle,
+        "author_name": (author_name or "").strip(),
     }
 
     topics: List[Dict[str, Any]] = []
