@@ -99,7 +99,7 @@ See **[plans/skill-selection-router-hook-guide.md](./plans/skill-selection-route
 | :--- | :--- | :--- | :--- | :--- |
 | **Repo Malware** | ClamAV | ✅ Clean | 2026-11-24 07:13 UTC | 1503 files scanned, 0 threats (v1.5.4) |
 | **Supply Chain** | GuardDog + uv & npm audit | ✅ Clean | 2026-11-24 04:11 UTC | Python, npm & workflows verified clean |
-| **Prompt Injection** | LLM Safety Guard | ✅ Clean | 2026-11-24 04:06 UTC | All prompts, skills & files verified clean (0 injection findings) |
+| **Prompt Injection** | LLM Safety Guard | ✅ Clean | 2026-11-24 08:10 UTC | All prompts, skills & files verified clean (0 injection findings) |
 <!-- SECURITY_STATUS_END -->
 
 ---
