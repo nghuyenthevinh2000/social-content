@@ -335,6 +335,8 @@ export const vi = {
       keywordsHeading: 'Từ khoá gợi ý (bấm để tìm ngay):',
       exploreKeywordTitle: (kw: string): string => `Khám phá "${kw}"`,
       searchKeywordsBtn: (count: number): string => `Tìm kiếm với ${count} từ khoá`,
+      copyMsgBtn: 'Sao chép tin nhắn',
+      copiedToast: 'Đã sao chép',
       errorFallback: 'Không thể kết nối trợ lý.',
     },
   },

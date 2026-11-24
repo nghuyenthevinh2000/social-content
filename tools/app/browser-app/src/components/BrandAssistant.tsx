@@ -1,5 +1,5 @@
 import { IonIcon } from '@ionic/react';
-import { sendOutline } from 'ionicons/icons';
+import { checkmarkOutline, copyOutline, sendOutline } from 'ionicons/icons';
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import {
@@ -19,6 +19,7 @@ import {
   loadCachedBrand,
   normalizeBrand,
 } from '../brandProfile';
+import { copyToClipboard } from '../analysis/format';
 import { useLocale } from '../locales';
 import './BrandAssistant.css';
 
@@ -65,7 +66,40 @@ export const BrandAssistant: React.FC<BrandAssistantProps> = ({
 
   const [input, setInput] = useState<string>(() => getAssistantInput(mode));
   const [brand, setBrand] = useState<BrandProfile>(() => loadCachedBrand());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const copiedTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
+
+  const handleCopyMessage = (msgId: string, text: string) => {
+    void copyToClipboard(text)
+      .then(() => {
+        setCopiedId(msgId);
+        if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = window.setTimeout(() => setCopiedId(null), 1500);
+      })
+      .catch(() => {});
+  };
+
+  const renderCopyBtn = (msgId: string, text: string) => {
+    const isCopied = copiedId === msgId;
+    return (
+      <button
+        type="button"
+        className={`brand-chat-copy-btn ${isCopied ? 'copied' : ''}`}
+        aria-label={isCopied ? m.copiedToast : m.copyMsgBtn}
+        title={isCopied ? m.copiedToast : m.copyMsgBtn}
+        onClick={() => handleCopyMessage(msgId, text)}
+      >
+        <IonIcon icon={isCopied ? checkmarkOutline : copyOutline} aria-hidden="true" />
+      </button>
+    );
+  };
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -145,8 +179,11 @@ export const BrandAssistant: React.FC<BrandAssistantProps> = ({
       {!showHistory && (
         <>
           <div className="brand-chat-messages" aria-live="polite">
-            <div className="brand-chat-msg assistant">
-              <p className="brand-chat-text">{welcomeText}</p>
+            <div className="brand-chat-row assistant">
+              <div className="brand-chat-msg assistant">
+                <p className="brand-chat-text">{welcomeText}</p>
+              </div>
+              {renderCopyBtn('welcome', welcomeText)}
             </div>
             {messages.map((msg) => {
               const draftEntries = msg.brandDraft
@@ -157,55 +194,59 @@ export const BrandAssistant: React.FC<BrandAssistantProps> = ({
                 mode === 'brand_setup' && msg.role === 'assistant' && (draftEntries.length > 0 || hasKeywords);
 
               return (
-                <div key={msg.id} className={`brand-chat-msg ${msg.role}`}>
-                  <p className="brand-chat-text">
-                    {msg.role === 'assistant' ? renderFormattedText(msg.content) : msg.content}
-                  </p>
+                <div key={msg.id} className={`brand-chat-row ${msg.role}`}>
+                  {msg.role === 'user' && renderCopyBtn(msg.id, msg.content)}
+                  <div className={`brand-chat-msg ${msg.role}`}>
+                    <p className="brand-chat-text">
+                      {msg.role === 'assistant' ? renderFormattedText(msg.content) : msg.content}
+                    </p>
 
-                  {showDraftCard && (
-                    <div className="brand-draft-card">
-                      <span className="brand-draft-title">{m.draftTitle}</span>
-                      {draftEntries.map(([field, value]) => {
-                        const qLabel = t.brand.questions.find((q) => q.key === field)?.label || field;
-                        return (
-                          <div key={field} className="brand-draft-row">
-                            <strong>{qLabel}:</strong> {value}
-                          </div>
-                        );
-                      })}
-                      <button
-                        type="button"
-                        className="primary small brand-draft-save"
-                        disabled={savingMsgId === msg.id || Boolean(msg.saved)}
-                        onClick={() => void saveAssistantDraft(msg, t.brand.saveError)}
-                      >
-                        {msg.saved ? m.savedToBrandBtn : m.saveToBrandBtn}
-                      </button>
-                    </div>
-                  )}
-
-                  {hasKeywords && msg.role === 'assistant' && (
-                    <div className="brand-kw-wrap">
-                      <span className="brand-kw-heading">{m.keywordsHeading}</span>
-                      <div className="brand-kw-list">
-                        {msg.keywords!.map((kw) => (
-                          <span key={kw} className="brand-kw-chip">
-                            {kw}
-                          </span>
-                        ))}
+                    {showDraftCard && (
+                      <div className="brand-draft-card">
+                        <span className="brand-draft-title">{m.draftTitle}</span>
+                        {draftEntries.map(([field, value]) => {
+                          const qLabel = t.brand.questions.find((q) => q.key === field)?.label || field;
+                          return (
+                            <div key={field} className="brand-draft-row">
+                              <strong>{qLabel}:</strong> {value}
+                            </div>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          className="primary small brand-draft-save"
+                          disabled={savingMsgId === msg.id || Boolean(msg.saved)}
+                          onClick={() => void saveAssistantDraft(msg, t.brand.saveError)}
+                        >
+                          {msg.saved ? m.savedToBrandBtn : m.saveToBrandBtn}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className="primary small brand-search-cta"
-                        disabled={blocked}
-                        onClick={() =>
-                          onSearchKeywords ? onSearchKeywords(msg.keywords!) : onSearchKeyword(msg.keywords![0])
-                        }
-                      >
-                        {m.searchKeywordsBtn(msg.keywords!.length)}
-                      </button>
-                    </div>
-                  )}
+                    )}
+
+                    {hasKeywords && msg.role === 'assistant' && (
+                      <div className="brand-kw-wrap">
+                        <span className="brand-kw-heading">{m.keywordsHeading}</span>
+                        <div className="brand-kw-list">
+                          {msg.keywords!.map((kw) => (
+                            <span key={kw} className="brand-kw-chip">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="primary small brand-search-cta"
+                          disabled={blocked}
+                          onClick={() =>
+                            onSearchKeywords ? onSearchKeywords(msg.keywords!) : onSearchKeyword(msg.keywords![0])
+                          }
+                        >
+                          {m.searchKeywordsBtn(msg.keywords!.length)}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {msg.role === 'assistant' && renderCopyBtn(msg.id, msg.content)}
                 </div>
               );
             })}

@@ -38,7 +38,11 @@ sys.path.insert(0, str(WORKSPACE))
 
 from tools.app.backend import blobs, profiling  # noqa: E402
 from tools.app.backend.acp import ACPError  # noqa: E402
-from tools.app.backend.brand_assistant import run_brand_assistant_chat  # noqa: E402
+from tools.app.backend.brand_assistant import (  # noqa: E402
+    get_brand_assistant_chat_job,
+    run_brand_assistant_chat,
+    start_brand_assistant_chat_job,
+)
 from tools.app.backend.db import ro, tx  # noqa: E402
 from tools.app.backend.errors import handle_acp_error  # noqa: E402
 from tools.app.backend.handler import run_worker  # noqa: E402
@@ -393,6 +397,23 @@ class Handler(BaseHTTPRequestHandler):
                 return
             prof = USER_PROFILE_STORE.get_profile(user_id)
             _json(self, 200, {"ok": True, "profile": prof})
+            return
+        if parsed.path == "/api/brand-assistant/chat":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            job_id = (parse_qs(parsed.query).get("job_id") or [""])[0].strip()
+            job = get_brand_assistant_chat_job(job_id, user_id) if job_id else None
+            if not job:
+                _json(self, 404, {"error": "Không tìm thấy phiên chat."})
+                return
+            if job["status"] == "running":
+                _json(self, 200, {"ok": True, "status": "running", "job_id": job_id})
+            elif job["status"] == "done":
+                _json(self, 200, {"ok": True, "status": "done", **job["result"]})
+            else:
+                _json(self, int(job.get("http_status") or 500), {"error": job.get("error") or "Chat failed."})
             return
         if parsed.path == "/api/facebook/status":
             user_id = self._user_id()
@@ -854,8 +875,19 @@ class Handler(BaseHTTPRequestHandler):
                 body_brand = body.get("brand")
                 merged_brand = {**stored_brand, **body_brand} if isinstance(body_brand, dict) else stored_brand
                 language = body.get("language") or stored.get("language") or "vi"
+                mode = str(body.get("mode") or "").strip()
+                if body.get("async"):
+                    job_id = start_brand_assistant_chat_job(
+                        mode=mode,
+                        messages=body.get("messages"),
+                        brand_profile=merged_brand,
+                        language=language,
+                        user_id=user_id,
+                    )
+                    _json(self, 202, {"ok": True, "job_id": job_id, "status": "running"})
+                    return
                 result = run_brand_assistant_chat(
-                    mode=str(body.get("mode") or "").strip(),
+                    mode=mode,
                     messages=body.get("messages"),
                     brand_profile=merged_brand,
                     language=language,

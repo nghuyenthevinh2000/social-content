@@ -16,7 +16,7 @@ import {
   TERMINAL,
 } from './format';
 import { createRenderers, type JobRenderer } from './renderers';
-import type { Job, Sheet, Topic } from './types';
+import type { Job, JobKind, Sheet, Topic } from './types';
 
 type JobResultProps = {
   job: Job;
@@ -158,6 +158,13 @@ const SheetSection: React.FC<{
 };
 
 type RunningStage = 'collect' | 'transcript' | 'acp';
+type StageRange = [number, number];
+
+const STAGE_RANGES: Record<JobKind, Partial<Record<RunningStage, StageRange>>> = {
+  profile: { collect: [0.05, 0.7], acp: [0.7, 0.95] },
+  keyword: { collect: [0.05, 0.7], acp: [0.7, 0.95] },
+  reel: { collect: [0.05, 0.2], transcript: [0.2, 0.55], acp: [0.55, 0.95] },
+};
 
 const ACP_STAGE_RE =
   /\bACP\b|harness|Phân tích hình ảnh|Đã phân tích hình ảnh|Đã trích xuất transcript|Không tìm thấy transcript|Hoàn tất:\s*\d+\s*reel/i;
@@ -169,7 +176,7 @@ function getSheetLogs(sheet: Sheet, job: Job) {
   );
 }
 
-function detectSheetStage(sheet: Sheet, sheetLogs: { message: string }[]): RunningStage {
+function detectSheetStage(sheet: Sheet, sheetLogs: { message: string }[], kind: JobKind): RunningStage {
   if (
     sheet.reels > 0 ||
     (sheet.topics && sheet.topics.length > 0) ||
@@ -178,10 +185,23 @@ function detectSheetStage(sheet: Sheet, sheetLogs: { message: string }[]): Runni
   ) {
     return 'acp';
   }
-  if (sheetLogs.some((l) => TRANSCRIPT_STAGE_RE.test(l.message))) {
+  if (STAGE_RANGES[kind].transcript && sheetLogs.some((l) => TRANSCRIPT_STAGE_RE.test(l.message))) {
     return 'transcript';
   }
   return 'collect';
+}
+
+function lastRatioSignal(logs: { message: string }[], ignoreRe?: RegExp): number {
+  for (let i = logs.length - 1; i >= 0; i -= 1) {
+    if (ignoreRe && ignoreRe.test(logs[i].message)) continue;
+    const m = logs[i].message.match(/(\d+)\s*\/\s*(\d+)/);
+    if (m) {
+      const idx = Number(m[1]);
+      const total = Number(m[2]);
+      if (total > 0) return Math.min(1, idx / total);
+    }
+  }
+  return 0;
 }
 
 function estimateRunningSheetFraction(
@@ -191,42 +211,36 @@ function estimateRunningSheetFraction(
   sheetLogs: { message: string }[],
   ticksInStage: number,
 ): number {
+  const kind: JobKind = job.job_kind ?? 'profile';
+  const [start, end] = STAGE_RANGES[kind][stage] ?? [0.05, 0.95];
   const logCount = sheetLogs.length || job.logs.length;
 
+  let signal = 0;
+  let tau = 30;
   if (stage === 'collect') {
-    let signal = 0.05 + 0.1 * (1 - Math.exp(-logCount / 6));
+    const ratio = lastRatioSignal(sheetLogs, /Bắt đầu sheet/i);
+    signal = Math.max(0.65 * (1 - Math.exp(-logCount / 6)), 0.85 * ratio);
     if (sheet.queries && sheet.queries.length > 0) {
-      signal = Math.max(signal, 0.14);
+      signal = Math.max(signal, 0.6);
     }
-    return Math.min(0.2, signal + (0.2 - signal) * (1 - Math.exp(-ticksInStage / 18)));
-  }
-
-  if (stage === 'transcript') {
+    tau = end - start > 0.3 ? 35 : 18;
+  } else if (stage === 'transcript') {
     const trLogs = sheetLogs.filter((l) => TRANSCRIPT_STAGE_RE.test(l.message));
-    let ratioSignal = 0;
-    for (let i = trLogs.length - 1; i >= 0; i -= 1) {
-      const m = trLogs[i].message.match(/(\d+)\s*\/\s*(\d+)/);
-      if (m) {
-        const idx = Number(m[1]);
-        const total = Number(m[2]);
-        if (total > 0) {
-          ratioSignal = 0.2 + 0.26 * Math.min(1, idx / total);
-          break;
-        }
-      }
+    const ratio = lastRatioSignal(trLogs);
+    signal = Math.max(0.65 * (1 - Math.exp(-trLogs.length / 4)), 0.75 * ratio);
+  } else {
+    const acpLogs = sheetLogs.filter((l) =>
+      /\bACP\b|harness|Phân tích hình ảnh|Đã phân tích hình ảnh|Agent đã trả về/i.test(l.message),
+    );
+    signal = 0.55 * (1 - Math.exp(-acpLogs.length / 3));
+    if ((sheet.topics && sheet.topics.length > 0) || (sheet.creators && sheet.creators.length > 0)) {
+      signal = Math.max(signal, 0.82);
     }
-    const logSignal = Math.max(0.22 + 0.22 * (1 - Math.exp(-trLogs.length / 4)), ratioSignal);
-    return Math.min(0.55, logSignal + (0.55 - logSignal) * (1 - Math.exp(-ticksInStage / 30)));
+    tau = 35;
   }
 
-  const acpLogs = sheetLogs.filter((l) =>
-    /\bACP\b|harness|Phân tích hình ảnh|Đã phân tích hình ảnh|Agent đã trả về/i.test(l.message),
-  );
-  let signal = 0.55 + 0.22 * (1 - Math.exp(-acpLogs.length / 3));
-  if ((sheet.topics && sheet.topics.length > 0) || (sheet.creators && sheet.creators.length > 0)) {
-    signal = Math.max(signal, 0.88);
-  }
-  return Math.min(0.95, signal + (0.95 - signal) * (1 - Math.exp(-ticksInStage / 35)));
+  const withinStage = Math.min(1, signal + (1 - signal) * (1 - Math.exp(-ticksInStage / tau)));
+  return Math.min(end, start + (end - start) * withinStage);
 }
 
 export const JobResult: React.FC<JobResultProps> = ({
@@ -275,7 +289,7 @@ export const JobResult: React.FC<JobResultProps> = ({
       if (sheet.status === 'running' || job.current_sheet === sheet.name) {
         hasActiveSheet = true;
         const sheetLogs = getSheetLogs(sheet, job);
-        const stage = detectSheetStage(sheet, sheetLogs);
+        const stage = detectSheetStage(sheet, sheetLogs, job.job_kind ?? 'profile');
         const stageKey = `${job.id}:${sheet.slug}:${stage}`;
         if (stageStartRef.current.key !== stageKey) {
           stageStartRef.current = { key: stageKey, tick };

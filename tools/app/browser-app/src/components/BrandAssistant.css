@@ -75,12 +75,53 @@
   background: var(--color-surface-alt);
 }
 
+.brand-chat-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.brand-chat-row.user {
+  justify-content: flex-end;
+}
+
+.brand-chat-row.assistant {
+  justify-content: flex-start;
+}
+
 .brand-chat-msg {
-  max-width: 92%;
+  max-width: calc(92% - 28px);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
   line-height: 1.45;
+}
+
+.brand-chat-copy-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.brand-chat-copy-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.brand-chat-copy-btn.copied {
+  color: var(--color-accent);
 }
 
 .brand-chat-msg.user {

@@ -119,7 +119,7 @@ describe('BrandAssistant', () => {
       </LocaleProvider>,
     );
 
-    const welcomeEl = () => document.querySelector('#brand-assistant > div.brand-chat-messages > div > p')?.textContent;
+    const welcomeEl = () => document.querySelector('#brand-assistant .brand-chat-msg p')?.textContent;
     expect(welcomeEl()).toContain('Chào bạn!');
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch' }));
@@ -342,7 +342,7 @@ describe('BrandAssistant', () => {
       </LocaleProvider>,
     );
 
-    const welcomeEl = () => document.querySelector('#brand-assistant > div.brand-chat-messages > div > p')?.textContent;
+    const welcomeEl = () => document.querySelector('#brand-assistant .brand-chat-msg p')?.textContent;
     expect(welcomeEl()).toContain('Hi! I will ask a few quick questions');
 
     cacheBrandProfile({
@@ -393,6 +393,101 @@ describe('BrandAssistant', () => {
       expect(screen.getByText('“Trợ lý AI”').tagName).toBe('STRONG');
       expect(screen.getByText('gọn').tagName).toBe('EM');
       expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
+    });
+  });
+
+  test('polls async job_id and recovers from transient Load failed network error', async () => {
+    let pollCount = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.endsWith('/api/brand-assistant/chat') && init?.method === 'POST') {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, job_id: 'job-123', status: 'running' }), {
+            status: 202,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (url.includes('/api/brand-assistant/chat?job_id=job-123')) {
+        pollCount += 1;
+        if (pollCount === 1) {
+          return Promise.reject(new TypeError('Load failed'));
+        }
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              status: 'done',
+              mode: 'brand_setup',
+              reply: 'Recovered after transient drop!',
+              keywords: ['ai'],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+
+    render(
+      <LocaleProvider>
+        <BrandAssistant onSearchKeyword={vi.fn()} blocked={false} />
+      </LocaleProvider>,
+    );
+
+    const input = screen.getByPlaceholderText('Describe your niche, offer, or answer the question…');
+    fireEvent.change(input, { target: { value: 'hello' } });
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Recovered after transient drop!')).toBeInTheDocument();
+      },
+      { timeout: 6000 },
+    );
+    expect(pollCount).toBe(2);
+  });
+
+  test('copies chat message when clicking copy icon next to bubble', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      configurable: true,
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          mode: 'brand_setup',
+          reply: 'Copyable assistant reply',
+          keywords: [],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    render(
+      <LocaleProvider>
+        <BrandAssistant onSearchKeyword={vi.fn()} blocked={false} />
+      </LocaleProvider>,
+    );
+
+    const input = screen.getByPlaceholderText('Describe your niche, offer, or answer the question…');
+    fireEvent.change(input, { target: { value: 'hello' } });
+    fireEvent.submit(input.closest('form')!);
+
+    await screen.findByText('Copyable assistant reply');
+    const copyButtons = screen.getAllByRole('button', { name: 'Copy message' });
+    fireEvent.click(copyButtons[copyButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('Copyable assistant reply');
+      expect(screen.getByRole('button', { name: 'Copied' })).toBeInTheDocument();
     });
   });
 });

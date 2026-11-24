@@ -332,6 +332,8 @@ export const en: LocaleMessages = {
       keywordsHeading: 'Suggested keywords (click to explore):',
       exploreKeywordTitle: (kw: string) => `Explore "${kw}"`,
       searchKeywordsBtn: (count: number) => `Search with ${count} keywords`,
+      copyMsgBtn: 'Copy message',
+      copiedToast: 'Copied',
       errorFallback: 'Unable to reach assistant.',
     },
   },

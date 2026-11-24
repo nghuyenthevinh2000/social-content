@@ -11,8 +11,10 @@ import re
 import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
+import uuid
 
 from tools.app.backend.acp import ACPClient, ACPError
+from tools.app.backend.errors import handle_acp_error
 from tools.app.backend.research_engine.research import WORKSPACE, configured_agent
 from tools.app.backend.user_profile import BRAND_FIELDS, normalize_brand_keywords, normalize_language
 from tools.loop.viral_analyzer.keyword_research.prompt import resolve_language
@@ -318,3 +320,73 @@ def run_brand_assistant_chat(
         _SESSIONS[cache_key] = entry
 
     return {"mode": mode, **parse_assistant_response(raw_text, mode)}
+
+
+# ponytail: in-memory chat job map with TTL; move to DB/Redis if multi-worker API scales
+_CHAT_JOBS: Dict[str, Dict[str, Any]] = {}
+_CHAT_JOBS_LOCK = threading.Lock()
+
+
+def _prune_chat_jobs_locked(now: float) -> None:
+    expired = [jid for jid, job in _CHAT_JOBS.items() if (now - job["created_at"]) > DEFAULT_SESSION_TTL_SEC]
+    for jid in expired:
+        _CHAT_JOBS.pop(jid, None)
+
+
+def start_brand_assistant_chat_job(
+    mode: str,
+    messages: List[Dict[str, str]],
+    brand_profile: Optional[Dict[str, Any]] = None,
+    language: str = "vi",
+    user_id: str = "",
+) -> str:
+    if mode not in ALLOWED_MODES:
+        raise ValueError(f"Unsupported mode: {mode}. Allowed modes: {', '.join(ALLOWED_MODES)}")
+    sanitized = _sanitize_messages(messages)
+    job_id = uuid.uuid4().hex[:16]
+    with _CHAT_JOBS_LOCK:
+        _prune_chat_jobs_locked(time.monotonic())
+        _CHAT_JOBS[job_id] = {
+            "user_id": user_id,
+            "status": "running",
+            "created_at": time.monotonic(),
+        }
+
+    def _run() -> None:
+        try:
+            result = run_brand_assistant_chat(
+                mode=mode,
+                messages=sanitized,
+                brand_profile=brand_profile,
+                language=language,
+                user_id=user_id,
+            )
+            with _CHAT_JOBS_LOCK:
+                if job_id in _CHAT_JOBS:
+                    _CHAT_JOBS[job_id].update({"status": "done", "result": result})
+        except ValueError as exc:
+            with _CHAT_JOBS_LOCK:
+                if job_id in _CHAT_JOBS:
+                    _CHAT_JOBS[job_id].update({"status": "error", "http_status": 400, "error": str(exc)})
+        except ACPError as exc:
+            with _CHAT_JOBS_LOCK:
+                if job_id in _CHAT_JOBS:
+                    _CHAT_JOBS[job_id].update(
+                        {"status": "error", "http_status": 502, "error": handle_acp_error(exc).message}
+                    )
+        except Exception as exc:
+            with _CHAT_JOBS_LOCK:
+                if job_id in _CHAT_JOBS:
+                    _CHAT_JOBS[job_id].update({"status": "error", "http_status": 500, "error": str(exc)})
+
+    threading.Thread(target=_run, daemon=True).start()
+    return job_id
+
+
+def get_brand_assistant_chat_job(job_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    with _CHAT_JOBS_LOCK:
+        _prune_chat_jobs_locked(time.monotonic())
+        job = _CHAT_JOBS.get(job_id)
+        if not job or job.get("user_id") != user_id:
+            return None
+        return dict(job)

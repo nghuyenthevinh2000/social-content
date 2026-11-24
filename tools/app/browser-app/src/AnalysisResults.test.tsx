@@ -709,7 +709,7 @@ describe('Analysis results rendering', () => {
   test('advances #results-analysis > div.bar with ongoing progress and reaches 100% on completion', () => {
     const runningJob = {
       id: 'job_progress_1',
-      job_kind: 'profile' as const,
+      job_kind: 'reel' as const,
       status: 'running' as const,
       filename: 'progress_test.json',
       created_at: '2026-11-12T10:00:00Z',
@@ -824,6 +824,89 @@ describe('Analysis results rendering', () => {
     expect(bar).not.toHaveClass('running');
     expect(Number(bar.getAttribute('aria-valuenow'))).toBe(100);
     expect(screen.getByText('100%')).toBeInTheDocument();
+  });
+
+  test('advances profile crawl progress bar past 20% during collect stage', () => {
+    const profileJob = {
+      id: 'job_profile_progress_1',
+      job_kind: 'profile' as const,
+      status: 'running' as const,
+      filename: 'profile_progress.json',
+      created_at: '2026-11-12T10:00:00Z',
+      current_sheet: 'Creators',
+      sheets: [
+        {
+          name: 'Creators',
+          slug: 'creators',
+          status: 'running' as const,
+          targets: 4,
+          reels: 0,
+          pool_distribution: {},
+          topics: [],
+          error: null,
+          notice: null,
+        },
+      ],
+      logs: [{ at: '2026-11-12T10:00:01Z', sheet: 'Creators', message: '[1/1] Bắt đầu sheet Creators' }],
+    };
+
+    const { rerender } = render(
+      <AnalyzerTab
+        keyword=""
+        onKeywordChange={vi.fn()}
+        onSearchKeyword={vi.fn()}
+        blocked={false}
+        error={null}
+        starting={false}
+        jobId="job_profile_progress_1"
+        job={profileJob}
+        visibleHistory={[]}
+        onSelectJob={vi.fn()}
+        onDeleteJob={vi.fn()}
+        tourDemoId=""
+        copiedKey={null}
+        onCopyTopic={vi.fn()}
+        onAddCreator={vi.fn()}
+        onGoToLibrary={vi.fn()}
+      />,
+    );
+    const bar = document.querySelector('#results-analysis > div.bar')!;
+    const initialPct = Number(bar.getAttribute('aria-valuenow'));
+    expect(initialPct).toBeGreaterThan(0);
+    expect(initialPct).toBeLessThan(30);
+
+    rerender(
+      <AnalyzerTab
+        keyword=""
+        onKeywordChange={vi.fn()}
+        onSearchKeyword={vi.fn()}
+        blocked={false}
+        error={null}
+        starting={false}
+        jobId="job_profile_progress_1"
+        job={{
+          ...profileJob,
+          logs: [
+            ...profileJob.logs,
+            { at: '2026-11-12T10:00:03Z', sheet: 'Creators', message: '[1/4] Querying creator1...' },
+            { at: '2026-11-12T10:00:05Z', sheet: 'Creators', message: '[2/4] Querying creator2...' },
+            { at: '2026-11-12T10:00:07Z', sheet: 'Creators', message: '[3/4] Querying creator3...' },
+          ],
+        }}
+        visibleHistory={[]}
+        onSelectJob={vi.fn()}
+        onDeleteJob={vi.fn()}
+        tourDemoId=""
+        copiedKey={null}
+        onCopyTopic={vi.fn()}
+        onAddCreator={vi.fn()}
+        onGoToLibrary={vi.fn()}
+      />,
+    );
+
+    const crawlPct = Number(bar.getAttribute('aria-valuenow'));
+    expect(crawlPct).toBeGreaterThan(40);
+    expect(crawlPct).toBeLessThanOrEqual(70);
   });
 
   test('renders BrandPanel with Nhân hiệu question and saves to /api/user/profile', async () => {

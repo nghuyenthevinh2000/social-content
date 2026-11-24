@@ -215,3 +215,34 @@ def test_brand_assistant_session_caching_reuses_and_recovers(monkeypatch):
         assert ("new_session", 3) in events
     finally:
         brand_assistant.close_all_brand_assistant_sessions()
+
+
+def test_brand_assistant_async_job_completes_and_isolates_user(monkeypatch):
+    import time
+
+    monkeypatch.setattr(
+        brand_assistant,
+        "run_brand_assistant_chat",
+        lambda **kwargs: {
+            "mode": kwargs["mode"],
+            "reply": "Async reply",
+            "brand_draft": {"identity": "Coffee brand"},
+            "keywords": ["coffee"],
+            "ready": True,
+        },
+    )
+    job_id = brand_assistant.start_brand_assistant_chat_job(
+        mode="brand_setup",
+        messages=[{"role": "user", "content": "I roast coffee"}],
+        user_id="user-a",
+    )
+    assert brand_assistant.get_brand_assistant_chat_job(job_id, "user-b") is None
+    job = None
+    for _ in range(50):
+        job = brand_assistant.get_brand_assistant_chat_job(job_id, "user-a")
+        if job and job["status"] != "running":
+            break
+        time.sleep(0.01)
+    assert job is not None
+    assert job["status"] == "done"
+    assert job["result"]["reply"] == "Async reply"

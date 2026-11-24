@@ -20,11 +20,13 @@ export type ChatMessage = {
 
 type BrandAssistantResponse = {
   ok: boolean;
-  mode: AssistantMode;
-  reply: string;
+  mode?: AssistantMode;
+  reply?: string;
   brand_draft?: Partial<Omit<BrandProfile, 'keywords'>>;
   keywords?: string[];
   ready?: boolean;
+  job_id?: string;
+  status?: 'running' | 'done' | 'error';
 };
 
 export type BrandAssistantState = {
@@ -266,7 +268,7 @@ export async function sendAssistantMessage(
 
   try {
     const payloadMessages = nextHistory.map((item) => ({ role: item.role, content: item.content }));
-    const res = await apiJson<BrandAssistantResponse>('/api/brand-assistant/chat', {
+    let res = await apiJson<BrandAssistantResponse>('/api/brand-assistant/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -274,8 +276,36 @@ export async function sendAssistantMessage(
         messages: payloadMessages,
         brand: loadCachedBrand(),
         language: locale,
+        async: true,
       }),
     });
+
+    if (res.job_id && res.reply === undefined) {
+      const jobId = res.job_id;
+      const deadline = Date.now() + 120_000;
+      let netErrors = 0;
+      while (res.status === 'running' || res.reply === undefined) {
+        if (epochs[activeMode] !== reqEpoch || activeUserId !== reqUser) return;
+        if (Date.now() > deadline) {
+          throw new Error(fallbackError);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (epochs[activeMode] !== reqEpoch || activeUserId !== reqUser) return;
+        try {
+          res = await apiJson<BrandAssistantResponse>(
+            `/api/brand-assistant/chat?job_id=${encodeURIComponent(jobId)}`,
+          );
+          netErrors = 0;
+        } catch (pollErr: unknown) {
+          if (pollErr instanceof TypeError && netErrors < 5) {
+            netErrors += 1;
+            continue;
+          }
+          throw pollErr;
+        }
+        if (res.status === 'done' || res.reply !== undefined) break;
+      }
+    }
 
     if (epochs[activeMode] !== reqEpoch || activeUserId !== reqUser) return;
 
