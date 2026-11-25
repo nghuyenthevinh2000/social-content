@@ -45,6 +45,9 @@ _LAZY_EXPORTS: Dict[str, Tuple[str, Optional[str]]] = {
     "expand_keyword": ("tools.loop.viral_analyzer.keyword_research.collect", "expand_keyword"),
     "search_platform": ("tools.loop.viral_analyzer.keyword_research.pipeline", "search_platform"),
     "run_viral_video_search": ("tools.loop.viral_analyzer.keyword_research.pipeline", "run_viral_video_search"),
+    "hashtag_research": ("tools.loop.viral_analyzer.hashtag_research", None),
+    "search_platform_hashtags": ("tools.loop.viral_analyzer.hashtag_research", "search_platform_hashtags"),
+    "run_hashtag_research": ("tools.loop.viral_analyzer.hashtag_research", "run_hashtag_research"),
 }
 
 __all__ = list(_LAZY_EXPORTS.keys())

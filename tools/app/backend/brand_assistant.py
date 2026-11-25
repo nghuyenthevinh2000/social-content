@@ -390,3 +390,78 @@ def get_brand_assistant_chat_job(job_id: str, user_id: str) -> Optional[Dict[str
         if not job or job.get("user_id") != user_id:
             return None
         return dict(job)
+
+
+def _format_compact_views(n: int) -> str:
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.1f}B"
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K"
+    return str(n)
+
+
+def format_hashtag_research_reply(result: Dict[str, Any], language: str = "vi") -> str:
+    """Format viral hashtag research results as a Markdown table plus copyable hashtag list."""
+    lang = resolve_language(language)
+    hashtags = (result.get("hashtags") or [])[:12]
+    hashtag_list = (result.get("hashtag_list") or [])[:12]
+    if not hashtags:
+        return (
+            "Không tìm thấy hashtag phù hợp cho các từ khoá này."
+            if lang == "vi"
+            else "No relevant hashtags found for these keywords."
+        )
+
+    header = "| Hashtag | Tổng lượt xem |" if lang == "vi" else "| Hashtag | Combined Views |"
+    intro = (
+        f"Kết quả nghiên cứu hashtag viral cho **{', '.join(result.get('keywords') or [])}**:"
+        if lang == "vi"
+        else f"Viral hashtag research for **{', '.join(result.get('keywords') or [])}**:"
+    )
+    rows = [intro, "", header, "|---|---|"]
+    for item in hashtags:
+        tv = int(item.get("tiktok_views") or 0)
+        ip = int(item.get("instagram_posts") or 0)
+        if tv > 0 and ip > 0:
+            views_str = f"{_format_compact_views(tv)} (+{_format_compact_views(ip)} IG posts)"
+        elif tv > 0:
+            views_str = _format_compact_views(tv)
+        elif ip > 0:
+            views_str = f"{_format_compact_views(ip)} IG posts"
+        else:
+            views_str = "0"
+        rows.append(f"| {item['hashtag']} | {views_str} |")
+
+    copy_label = "Hashtag sẵn sàng sao chép:" if lang == "vi" else "Ready to copy hashtags:"
+    rows.extend(["", copy_label, " ".join(hashtag_list)])
+    return "\n".join(rows)
+
+
+def run_brand_assistant_hashtags(
+    keywords: Any,
+    language: str = "vi",
+    user_id: Optional[str] = None,
+    glasser_fn: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Run TikTok + Instagram hashtag research for brand assistant suggested keywords."""
+    import tempfile
+    from tools.loop.viral_analyzer.hashtag_research import run_hashtag_research
+
+    clean_keywords = normalize_brand_keywords(keywords, limit=MAX_RESPONSE_KEYWORDS)
+    if not clean_keywords:
+        raise ValueError("keywords must be a non-empty list.")
+
+    res = run_hashtag_research(
+        clean_keywords,
+        run_dir=Path(tempfile.gettempdir()) / "aibrand-hashtag-cache",
+        limit=12,
+        glasser_fn=glasser_fn,
+    )
+    return {
+        "reply": format_hashtag_research_reply(res, language=language),
+        "hashtags": res.get("hashtags") or [],
+        "hashtag_list": res.get("hashtag_list") or [],
+        "keywords": clean_keywords,
+    }

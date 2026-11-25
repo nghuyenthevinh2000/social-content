@@ -246,3 +246,36 @@ def test_brand_assistant_async_job_completes_and_isolates_user(monkeypatch):
     assert job is not None
     assert job["status"] == "done"
     assert job["result"]["reply"] == "Async reply"
+
+
+def test_run_brand_assistant_hashtags_formats_table_and_copy_list():
+    def fake_glasser(provider, endpoint, version, payload, cache_dir, task_id=None):
+        if "tiktok" in endpoint:
+            return (
+                {
+                    "data": {
+                        "challenge_list": [
+                            {"challenge_info": {"cha_name": "thuonghieucanhan", "view_count": 597240736, "user_count": 79090}},
+                            {"challenge_info": {"cha_name": "xaykenhtiktok", "view_count": 15779721840, "user_count": 5572448}},
+                        ]
+                    }
+                },
+                "glasser_api",
+                None,
+            )
+        return (
+            {"data": {"items": [{"name": "thuonghieucanhan", "media_count": 33064}]}},
+            "glasser_api",
+            None,
+        )
+
+    res = brand_assistant.run_brand_assistant_hashtags(
+        keywords=["thương hiệu cá nhân", "xây kênh"],
+        language="en",
+        glasser_fn=fake_glasser,
+    )
+    assert "| Hashtag | Combined Views |" in res["reply"]
+    assert "| #thuonghieucanhan | 597.2M (+33.1K IG posts) |" in res["reply"]
+    assert "| #xaykenhtiktok | 15.8B |" in res["reply"]
+    assert "Ready to copy hashtags:\n#thuonghieucanhan #xaykenhtiktok" in res["reply"]
+    assert res["hashtag_list"] == ["#thuonghieucanhan", "#xaykenhtiktok"]

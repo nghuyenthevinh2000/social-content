@@ -6,6 +6,7 @@ import {
   type AssistantMode,
   getAssistantInput,
   getBrandAssistantSnapshot,
+  researchAssistantHashtags,
   saveAssistantDraft,
   sendAssistantMessage,
   setAssistantInput,
@@ -48,6 +49,25 @@ function renderFormattedText(text: string): React.ReactNode {
     }
     return part;
   });
+}
+
+function splitTableRow(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+}
+
+function isTableSeparator(line: string): boolean {
+  const trimmed = line.trim();
+  return /^\|(?:\s*:?-{3,}:?\s*\|)+$/.test(trimmed);
+}
+
+function isHashtagCopyLine(line: string): boolean {
+  const tokens = line.trim().split(/\s+/).filter(Boolean);
+  return tokens.length >= 1 && tokens.every((tok) => /^#[^\s#]+$/.test(tok));
 }
 
 export const BrandAssistant: React.FC<BrandAssistantProps> = ({
@@ -99,6 +119,96 @@ export const BrandAssistant: React.FC<BrandAssistantProps> = ({
         <IonIcon icon={isCopied ? checkmarkOutline : copyOutline} aria-hidden="true" />
       </button>
     );
+  };
+
+  const renderAssistantContent = (text: string, msgId: string): React.ReactNode => {
+    const lines = text.split('\n');
+    const blocks: React.ReactNode[] = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      if (
+        i + 1 < lines.length &&
+        lines[i].trim().startsWith('|') &&
+        lines[i].trim().endsWith('|') &&
+        isTableSeparator(lines[i + 1])
+      ) {
+        const headers = splitTableRow(lines[i]);
+        i += 2;
+        const bodyRows: string[][] = [];
+        while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+          bodyRows.push(splitTableRow(lines[i]));
+          i += 1;
+        }
+        blocks.push(
+          <div key={`tbl-${i}`} className="brand-table-wrap">
+            <table className="brand-chat-table">
+              <thead>
+                <tr>
+                  {headers.map((h, idx) => (
+                    <th key={idx}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bodyRows.map((row, rIdx) => (
+                  <tr key={rIdx}>
+                    {headers.map((_, cIdx) => (
+                      <td key={cIdx}>{renderFormattedText(row[cIdx] ?? '')}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>,
+        );
+        continue;
+      }
+
+      if (isHashtagCopyLine(lines[i])) {
+        const tagLine = lines[i].trim();
+        const isTagsCopied = copiedId === `${msgId}-tags`;
+        blocks.push(
+          <div key={`tags-${i}`} className="brand-hashtag-copy">
+            <code>{tagLine}</code>
+            <button
+              type="button"
+              className={`brand-hashtag-copy-btn ${isTagsCopied ? 'copied' : ''}`}
+              onClick={() => handleCopyMessage(`${msgId}-tags`, tagLine)}
+            >
+              {isTagsCopied ? m.copiedToast : m.copyHashtagsBtn}
+            </button>
+          </div>,
+        );
+        i += 1;
+        continue;
+      }
+
+      const textLines: string[] = [];
+      while (
+        i < lines.length &&
+        !(
+          i + 1 < lines.length &&
+          lines[i].trim().startsWith('|') &&
+          lines[i].trim().endsWith('|') &&
+          isTableSeparator(lines[i + 1])
+        ) &&
+        !isHashtagCopyLine(lines[i])
+      ) {
+        textLines.push(lines[i]);
+        i += 1;
+      }
+      const chunk = textLines.join('\n').trim();
+      if (chunk) {
+        blocks.push(
+          <p key={`txt-${i}`} className="brand-chat-text">
+            {renderFormattedText(chunk)}
+          </p>,
+        );
+      }
+    }
+
+    return blocks.length > 0 ? blocks : <p className="brand-chat-text">{renderFormattedText(text)}</p>;
   };
 
   useEffect(() => {
@@ -197,9 +307,11 @@ export const BrandAssistant: React.FC<BrandAssistantProps> = ({
                 <div key={msg.id} className={`brand-chat-row ${msg.role}`}>
                   {msg.role === 'user' && renderCopyBtn(msg.id, msg.content)}
                   <div className={`brand-chat-msg ${msg.role}`}>
-                    <p className="brand-chat-text">
-                      {msg.role === 'assistant' ? renderFormattedText(msg.content) : msg.content}
-                    </p>
+                    {msg.role === 'assistant' ? (
+                      renderAssistantContent(msg.content, msg.id)
+                    ) : (
+                      <p className="brand-chat-text">{msg.content}</p>
+                    )}
 
                     {showDraftCard && (
                       <div className="brand-draft-card">
@@ -233,16 +345,34 @@ export const BrandAssistant: React.FC<BrandAssistantProps> = ({
                             </span>
                           ))}
                         </div>
-                        <button
-                          type="button"
-                          className="primary small brand-search-cta"
-                          disabled={blocked}
-                          onClick={() =>
-                            onSearchKeywords ? onSearchKeywords(msg.keywords!) : onSearchKeyword(msg.keywords![0])
-                          }
-                        >
-                          {m.searchKeywordsBtn(msg.keywords!.length)}
-                        </button>
+                        <div className="brand-kw-actions">
+                          <button
+                            type="button"
+                            className="primary small brand-search-cta"
+                            disabled={blocked}
+                            onClick={() =>
+                              onSearchKeywords ? onSearchKeywords(msg.keywords!) : onSearchKeyword(msg.keywords![0])
+                            }
+                          >
+                            {m.searchKeywordsBtn(msg.keywords!.length)}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary small brand-hashtag-cta"
+                            disabled={sending}
+                            onClick={() =>
+                              void researchAssistantHashtags(
+                                mode,
+                                msg.keywords!,
+                                locale,
+                                m.hashtagPrompt(msg.keywords!),
+                                m.errorFallback,
+                              )
+                            }
+                          >
+                            {m.hashtagResearchBtn}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

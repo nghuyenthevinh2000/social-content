@@ -94,7 +94,7 @@ describe('BrandAssistant', () => {
     expect(screen.getByText('minimalist skincare')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /minimalist skincare/ })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Search with 2 keywords' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Research competitor brands' }));
     expect(onSearchKeyword).not.toHaveBeenCalled();
     expect(onSearchKeywords).toHaveBeenCalledWith(['minimalist skincare', '5-min routine']);
   });
@@ -266,10 +266,10 @@ describe('BrandAssistant', () => {
     fireEvent.submit(input.closest('form')!);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Search with 2 keywords' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Research competitor brands' })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Search with 2 keywords' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Research competitor brands' }));
 
     expect(onSearchKeywords).toHaveBeenCalledWith(['mc song ngu', 'mc su kien']);
     const resultsSection = container.querySelector('#results-analysis')!;
@@ -488,6 +488,83 @@ describe('BrandAssistant', () => {
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith('Copyable assistant reply');
       expect(screen.getByRole('button', { name: 'Copied' })).toBeInTheDocument();
+    });
+  });
+
+  test('runs viral hashtag research from brand-kw-wrap and renders table + copyable list', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      configurable: true,
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/brand-assistant/chat')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              mode: 'brand_setup',
+              reply: 'Here are your keywords.',
+              keywords: ['thương hiệu cá nhân BĐS', 'xây kênh'],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.includes('/api/brand-assistant/hashtags')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              reply: [
+                'Viral hashtag research:',
+                '',
+                '| Hashtag | Combined Views |',
+                '|---|---|',
+                '| #xaykenhtiktok | 15.8B |',
+                '| #thuonghieucanhan | 597.2M (+33.1K IG posts) |',
+                '',
+                'Ready to copy hashtags:',
+                '#xaykenhtiktok #thuonghieucanhan',
+              ].join('\n'),
+              hashtag_list: ['#xaykenhtiktok', '#thuonghieucanhan'],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+
+    render(
+      <LocaleProvider>
+        <BrandAssistant onSearchKeyword={vi.fn()} blocked={false} />
+      </LocaleProvider>,
+    );
+
+    const input = screen.getByPlaceholderText('Describe your niche, offer, or answer the question…');
+    fireEvent.change(input, { target: { value: 'bds' } });
+    fireEvent.submit(input.closest('form')!);
+
+    const hashtagBtn = await screen.findByRole('button', { name: 'Viral hashtag research' });
+    fireEvent.click(hashtagBtn);
+
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(screen.getByText('Combined Views')).toBeInTheDocument();
+    expect(screen.getByText('#xaykenhtiktok')).toBeInTheDocument();
+    expect(screen.getByText('15.8B')).toBeInTheDocument();
+
+    const copyTagsBtn = screen.getByRole('button', { name: 'Copy hashtags' });
+    fireEvent.click(copyTagsBtn);
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('#xaykenhtiktok #thuonghieucanhan');
     });
   });
 });

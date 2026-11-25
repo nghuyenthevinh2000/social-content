@@ -41,6 +41,7 @@ from tools.app.backend.acp import ACPError  # noqa: E402
 from tools.app.backend.brand_assistant import (  # noqa: E402
     get_brand_assistant_chat_job,
     run_brand_assistant_chat,
+    run_brand_assistant_hashtags,
     start_brand_assistant_chat_job,
 )
 from tools.app.backend.db import ro, tx  # noqa: E402
@@ -898,6 +899,31 @@ class Handler(BaseHTTPRequestHandler):
                 _json(self, 400, {"error": str(exc)})
             except ACPError as exc:
                 _json(self, 502, {"error": handle_acp_error(exc).message})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
+            return
+        if parsed.path == "/api/brand-assistant/hashtags":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            try:
+                from tools.app.backend import cost_control
+
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                stored = USER_PROFILE_STORE.get_profile(user_id)
+                language = body.get("language") or stored.get("language") or "vi"
+                # ponytail: sync call; add async job polling if timeout becomes an issue
+                with cost_control.cost_scope(user_id=user_id, action="hashtag_search"):
+                    result = run_brand_assistant_hashtags(
+                        keywords=body.get("keywords"),
+                        language=language,
+                        user_id=user_id,
+                    )
+                _json(self, 200, {"ok": True, **result})
+            except ValueError as exc:
+                _json(self, 400, {"error": str(exc)})
             except Exception as exc:
                 _json(self, 500, {"error": str(exc)})
             return

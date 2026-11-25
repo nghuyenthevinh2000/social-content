@@ -375,3 +375,70 @@ export async function saveAssistantDraft(msg: ChatMessage, saveErrorFallback: st
     });
   }
 }
+
+export async function researchAssistantHashtags(
+  activeMode: AssistantMode,
+  keywords: string[],
+  locale: string,
+  promptText: string,
+  fallbackError: string,
+): Promise<void> {
+  if (!keywords.length || state.pending[activeMode]) return;
+
+  const reqEpoch = epochs[activeMode];
+  const reqUser = activeUserId;
+  const userMsg: ChatMessage = {
+    id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    role: 'user',
+    content: promptText,
+  };
+  const nextHistory = [...state.histories[activeMode], userMsg];
+
+  updateState(
+    {
+      histories: { ...state.histories, [activeMode]: nextHistory },
+      pending: { ...state.pending, [activeMode]: true },
+      errors: { ...state.errors, [activeMode]: null },
+    },
+    true,
+  );
+
+  try {
+    const res = await apiJson<{ ok: boolean; reply?: string; hashtag_list?: string[] }>(
+      '/api/brand-assistant/hashtags',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords, language: locale }),
+      },
+    );
+    if (epochs[activeMode] !== reqEpoch || activeUserId !== reqUser) return;
+
+    const assistantMsg: ChatMessage = {
+      id: `a-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      role: 'assistant',
+      content: res.reply || '',
+    };
+    const nextHistories = {
+      ...state.histories,
+      [activeMode]: [...state.histories[activeMode], assistantMsg],
+    };
+    updateState(
+      {
+        histories: nextHistories,
+        pending: { ...state.pending, [activeMode]: false },
+      },
+      true,
+    );
+    syncHistoryToBackend(nextHistories, reqUser);
+  } catch (err: unknown) {
+    if (epochs[activeMode] !== reqEpoch || activeUserId !== reqUser) return;
+    updateState({
+      pending: { ...state.pending, [activeMode]: false },
+      errors: {
+        ...state.errors,
+        [activeMode]: err instanceof Error ? err.message : fallbackError,
+      },
+    });
+  }
+}
