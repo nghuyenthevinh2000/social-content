@@ -63,13 +63,25 @@ class TestHashtagResearch(unittest.TestCase):
         self.assertIsNone(res["error"])
         self.assertEqual(len(res["keywords"]), 3)
         self.assertNotIn("#aycaaysinturan", res["hashtag_list"])
+        self.assertNotIn("#xaykenhai", res["hashtag_list"])
         self.assertIn("#thuonghieucanhan", res["hashtag_list"])
         merged = next(h for h in res["hashtags"] if h["normalized"] == "thuonghieucanhan")
         self.assertEqual(sorted(merged["platforms"]), ["instagram", "tiktok"])
         self.assertEqual(merged["tiktok_views"], 597240736)
         self.assertEqual(merged["instagram_posts"], 33064)
+        self.assertEqual(merged["combined_views"], 597240736 + 33064)
         self.assertTrue(res["source_breakdown"]["glasser_api"])
         self.assertTrue(res["source_breakdown"]["cache"])
+
+        with tempfile.TemporaryDirectory() as tmp2:
+            unfiltered = viral_analyzer.run_hashtag_research(
+                "thương hiệu cá nhân BĐS, nhân viên BĐS xây kênh, AI xây thương hiệu cá nhân",
+                run_dir=Path(tmp2),
+                extra_stems=["xaykenh"],
+                min_views=0,
+                glasser_fn=fake_glasser,
+            )
+        self.assertIn("#xaykenhai", unfiltered["hashtag_list"])
 
     def test_empty_keywords_and_glasser_error(self):
         empty = hr.run_hashtag_research("   ,  ")

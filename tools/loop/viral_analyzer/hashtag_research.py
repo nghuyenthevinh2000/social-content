@@ -16,6 +16,7 @@ from tools.app.backend.errors import ErrorAggregator, handle_glasser_error
 from tools.loop.viral_analyzer import glasser, normalize, runtime
 
 HASHTAG_PLATFORMS = ("tiktok", "instagram")
+DEFAULT_MIN_VIEWS = 10_000
 
 _ENDPOINT_SPECS: Dict[str, Tuple[str, str, int, Callable[[str, int], Dict[str, Any]]]] = {
     "tiktok": (
@@ -266,6 +267,7 @@ def run_hashtag_research(
     extra_stems: Optional[Sequence[str]] = None,
     count: int = 20,
     min_relevance: int = 1,
+    min_views: int = DEFAULT_MIN_VIEWS,
     limit: int = 30,
     options: Optional[Dict[str, Any]] = None,
     log: Optional[Callable[[str], None]] = None,
@@ -384,17 +386,20 @@ def run_hashtag_research(
             entry["tag"] = entry["hashtag"].lstrip("#")
             entry["_best_vol"] = max(entry["_best_vol"], vol)
 
+    min_vol = max(0, int(min_views))
+    for entry in merged.values():
+        entry["combined_views"] = entry["tiktok_views"] + entry["instagram_posts"]
+        entry.pop("_best_vol", None)
+
     ranked = sorted(
-        merged.values(),
-        key=lambda x: (len(x["platforms"]) > 1, x["relevance_score"], x["tiktok_views"], x["instagram_posts"]),
+        (e for e in merged.values() if e["combined_views"] >= min_vol),
+        key=lambda x: (len(x["platforms"]) > 1, x["relevance_score"], x["combined_views"]),
         reverse=True,
     )[: max(1, limit)]
-    for entry in ranked:
-        entry.pop("_best_vol", None)
 
     by_platform_sorted = {
         plat: sorted(
-            items.values(),
+            (it for it in items.values() if (it["views"] + it["posts"]) >= min_vol),
             key=lambda x: (x["relevance_score"], x["views"], x["posts"]),
             reverse=True,
         )[: max(1, limit)]
@@ -424,6 +429,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--extra-stems", help="Optional comma-separated extra stems (e.g. batdongsan)")
     parser.add_argument("--run-dir", default="local/hashtag-research", help="Cache directory")
     parser.add_argument("--count", type=int, default=20, help="TikTok hashtags per query")
+    parser.add_argument("--min-views", type=int, default=DEFAULT_MIN_VIEWS, help="Min combined views/posts filter")
     parser.add_argument("--limit", type=int, default=30, help="Max ranked hashtags to return")
     parser.add_argument("--output", help="Optional JSON output file")
     args = parser.parse_args(argv)
@@ -434,6 +440,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         platforms=[p.strip() for p in args.platforms.split(",") if p.strip()],
         extra_stems=[s.strip() for s in (args.extra_stems or "").split(",") if s.strip()] or None,
         count=args.count,
+        min_views=args.min_views,
         limit=args.limit,
     )
     payload = {"ok": not result.get("error"), **result}

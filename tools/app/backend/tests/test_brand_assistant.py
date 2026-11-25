@@ -257,6 +257,7 @@ def test_run_brand_assistant_hashtags_formats_table_and_copy_list():
                         "challenge_list": [
                             {"challenge_info": {"cha_name": "thuonghieucanhan", "view_count": 597240736, "user_count": 79090}},
                             {"challenge_info": {"cha_name": "xaykenhtiktok", "view_count": 15779721840, "user_count": 5572448}},
+                            {"challenge_info": {"cha_name": "thuonghieucanhan2025", "view_count": 1624, "user_count": 11}},
                         ]
                     }
                 },
@@ -277,5 +278,6 @@ def test_run_brand_assistant_hashtags_formats_table_and_copy_list():
     assert "| Hashtag | Combined Views |" in res["reply"]
     assert "| #thuonghieucanhan | 597.2M (+33.1K IG posts) |" in res["reply"]
     assert "| #xaykenhtiktok | 15.8B |" in res["reply"]
+    assert "thuonghieucanhan2025" not in res["reply"]
     assert "Ready to copy hashtags:\n#thuonghieucanhan #xaykenhtiktok" in res["reply"]
     assert res["hashtag_list"] == ["#thuonghieucanhan", "#xaykenhtiktok"]
