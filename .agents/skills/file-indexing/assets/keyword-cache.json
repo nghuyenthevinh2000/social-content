@@ -76,7 +76,7 @@
   "app": [
     "application",
     "client",
-    "program",
+    "webapp",
     "ứng",
     "dụng"
   ],
@@ -305,9 +305,9 @@
     "tích"
   ],
   "brand": [
+    "brand",
     "identity",
-    "company",
-    "business",
+    "workspace",
     "thương",
     "hiệu"
   ],
@@ -329,5 +329,36 @@
     "area",
     "region",
     "phần"
+  ],
+  "google": [
+    "serp",
+    "google",
+    "trend",
+    "tìm",
+    "kiếm"
+  ],
+  "trend": [
+    "trend",
+    "popular",
+    "hướng"
+  ],
+  "edit": [
+    "modify",
+    "update",
+    "change",
+    "chỉnh",
+    "sửa"
+  ],
+  "mode": [
+    "state",
+    "view",
+    "toggle",
+    "chế"
+  ],
+  "tabs": [
+    "tab",
+    "navigation",
+    "panel",
+    "thẻ"
   ]
 }
