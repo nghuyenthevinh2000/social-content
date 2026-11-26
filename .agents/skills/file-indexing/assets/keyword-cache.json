@@ -51,9 +51,9 @@
   ],
   "video": [
     "clip",
+    "footage",
     "media",
-    "phim",
-    "record"
+    "phim"
   ],
   "search": [
     "lookup",
@@ -430,5 +430,34 @@
     "trac",
     "giám",
     "sát"
+  ],
+  "rea": [
+    "real",
+    "estate",
+    "property",
+    "bất",
+    "động",
+    "sản"
+  ],
+  "runs": [
+    "execution",
+    "job",
+    "batch",
+    "lần",
+    "chạy"
+  ],
+  "config": [
+    "configuration",
+    "setting",
+    "parameter",
+    "cấu",
+    "hình"
+  ],
+  "verify": [
+    "validate",
+    "check",
+    "confirm",
+    "kiểm",
+    "tra"
   ]
 }
