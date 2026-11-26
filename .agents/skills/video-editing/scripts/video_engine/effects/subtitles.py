@@ -190,12 +190,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     return out_ass_path
 
 
-def _hex_to_ass_bgr(hex_color: str) -> str:
+def _hex_to_ass_bgr(hex_color: str, default_alpha: str = "00") -> str:
     s = hex_color.strip().lstrip("#")
     if len(s) == 6:
         r, g, b = s[0:2], s[2:4], s[4:6]
-        return f"&H00{b.upper()}{g.upper()}{r.upper()}"
-    return "&H00FFFFFF"
+        return f"&H{default_alpha.upper()}{b.upper()}{g.upper()}{r.upper()}"
+    if len(s) == 8:
+        r, g, b, a = s[0:2], s[2:4], s[4:6], s[6:8]
+        ass_a = f"{255 - int(a, 16):02X}"
+        return f"&H{ass_a}{b.upper()}{g.upper()}{r.upper()}"
+    return f"&H{default_alpha.upper()}FFFFFF"
 
 
 def build_ass_from_items(
@@ -207,23 +211,49 @@ def build_ass_from_items(
 ) -> Path:
     """Write an ASS subtitle file from explicit timed caption items."""
     st = style or {}
+    font = str(st.get("font", "DejaVu Sans"))
     color = _hex_to_ass_bgr(str(st.get("color", "#97E12E")))
     outline_color = _hex_to_ass_bgr(str(st.get("outline_color", "#000000")))
+    outline_width = float(st.get("outline_width", 4))
+    outer_color_raw = st.get("outer_outline_color")
+    outer_color = _hex_to_ass_bgr(str(outer_color_raw)) if outer_color_raw else None
+    outer_width = float(st.get("outer_outline_width", outline_width + 4))
+    shadow = float(st.get("shadow", 1))
     font_size = int(st.get("font_size", 46))
     margin_v = int(st.get("margin_v", int(height * 0.16)))
+    margin_l = int(st.get("margin_l", 36))
+    margin_r = int(st.get("margin_r", 36))
+    alignment = int(st.get("alignment", 2))
+    bold = -1 if st.get("bold", True) else 0
+    italic = -1 if st.get("italic", False) else 0
+    spacing = float(st.get("spacing", 0))
+    border_style = int(st.get("border_style", 1))
+    back_color = _hex_to_ass_bgr(str(st.get("back_color", "#000000")), default_alpha="80")
+    outer_back = _hex_to_ass_bgr(str(st.get("back_color", "#000000")), default_alpha="70")
+    wrap_style = int(st.get("wrap_style", 2))
     uppercase = bool(st.get("uppercase", True))
     pop_in = bool(st.get("pop_in", True))
+
+    inner_shadow = 0 if outer_color else shadow
+    styles = []
+    if outer_color:
+        styles.append(
+            f"Style: DefaultOuter,{font},{font_size},{outer_color},&H00FFFFFF,{outer_color},{outer_back},{bold},{italic},0,0,100,100,{spacing:g},0,{border_style},{outer_width:g},{shadow:g},{alignment},{margin_l},{margin_r},{margin_v},1"
+        )
+    styles.append(
+        f"Style: Default,{font},{font_size},{color},&H00FFFFFF,{outline_color},{back_color},{bold},{italic},0,0,100,100,{spacing:g},0,{border_style},{outline_width:g},{inner_shadow:g},{alignment},{margin_l},{margin_r},{margin_v},1"
+    )
 
     lines = [
         "[Script Info]",
         "ScriptType: v4.00+",
         f"PlayResX: {width}",
         f"PlayResY: {height}",
-        "WrapStyle: 2",
+        f"WrapStyle: {wrap_style}",
         "",
         "[V4+ Styles]",
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-        f"Style: Default,DejaVu Sans,{font_size},{color},&H00FFFFFF,{outline_color},&H80000000,-1,0,0,0,100,100,0,0,1,4,1,2,24,24,{margin_v},1",
+        *styles,
         "",
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
@@ -232,13 +262,33 @@ def build_ass_from_items(
         text = str(item.get("text", "")).strip()
         if not text:
             continue
-        if uppercase:
+        if bool(item.get("uppercase", uppercase)):
             text = text.upper()
         text = text.replace("\n", "\\N")
-        anim = r"{\fscx85\fscy85\t(0,80,\fscx100\fscy100)}" if pop_in else ""
+        tags = []
+        if "alignment" in item:
+            tags.append(f"\\an{int(item['alignment'])}")
+        if "font_size" in item:
+            tags.append(f"\\fs{int(item['font_size'])}")
+        if "bold" in item:
+            tags.append(f"\\b{1 if item['bold'] else 0}")
+        if "italic" in item:
+            tags.append(f"\\i{1 if item['italic'] else 0}")
+        if "color" in item:
+            tags.append(f"\\c{_hex_to_ass_bgr(str(item['color']))}")
+        if "outline_color" in item:
+            tags.append(f"\\3c{_hex_to_ass_bgr(str(item['outline_color']))}")
+        if bool(item.get("pop_in", pop_in)):
+            tags.append(r"\fscx85\fscy85\t(0,80,\fscx100\fscy100)")
+        prefix = f"{{{''.join(tags)}}}" if tags else ""
+        item_mv = int(item.get("margin_v", 0))
         start = format_ass_time(float(item.get("start", 0.0)))
         end = format_ass_time(float(item.get("end", 0.0)))
-        lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{anim}{text}")
+        if outer_color:
+            lines.append(f"Dialogue: 0,{start},{end},DefaultOuter,,0,0,{item_mv},,{prefix}{text}")
+            lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,{item_mv},,{prefix}{text}")
+        else:
+            lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,{item_mv},,{prefix}{text}")
 
     out_ass_path.parent.mkdir(parents=True, exist_ok=True)
     out_ass_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -256,7 +306,8 @@ def apply_subtitles(cfg: dict, ctx) -> None:
     ass_path = ctx.work_dir / f"{ctx.next_id('sub')}.ass"
     items = cfg.get("items")
     if items:
-        build_ass_from_items(items, cfg.get("style"), ass_path, ctx.width, ctx.height)
+        merged_style = {**cfg, **(cfg.get("style") or {})}
+        build_ass_from_items(items, merged_style, ass_path, ctx.width, ctx.height)
     elif cfg.get("alignment_json"):
         align_path = ctx.resolve_path(cfg["alignment_json"])
         cb_val = cfg.get("clause_bounds")

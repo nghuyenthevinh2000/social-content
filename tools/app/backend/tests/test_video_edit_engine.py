@@ -11,6 +11,7 @@ from tools.app.backend.video_engine.edit import (
     REA_RUNS_ROOT,
     REFERENCE_EDIT_WORKFLOW,
     _prepare_reference_decompose,
+    _prepare_user_source,
     build_video_edit_acp_prompt,
     edit_video,
     extract_reference_url,
@@ -50,6 +51,7 @@ def test_build_video_edit_acp_prompt_with_and_without_reference(tmp_path: Path):
     assert "rea-video" in with_ref
     assert "decompose" in with_ref
     assert "--no-stems --no-speakers --no-vlm" in with_ref
+    assert "--no-asr" in with_ref
     assert "-t 25" in with_ref
     assert str(src) in with_ref
     assert str(out) in with_ref
@@ -141,6 +143,42 @@ def test_prepare_reference_decompose_uses_cache(monkeypatch, tmp_path: Path):
     res = _prepare_reference_decompose(url, Path("/opt/rea-video"), cache_root=tmp_path)
     assert res == cache_out
     assert str(REA_RUNS_ROOT).endswith("local/aibrand/rea-video-runs")
+
+
+def test_prepare_user_source_and_fast_prompt(tmp_path: Path):
+    import subprocess
+
+    in_mp4 = tmp_path / "src.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=blue:s=360x640:d=1",
+            "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
+            "-shortest", "-c:v", "libx264", "-c:a", "aac", str(in_mp4),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    work = tmp_path / "work"
+    prep = _prepare_user_source(in_mp4, work, py_bin=None)
+    assert prep is not None
+    assert prep["probe_path"].exists()
+    assert prep["probe"]["width"] == 360 and prep["probe"]["height"] == 640
+    for idx in range(3):
+        assert (prep["frames_dir"] / f"f_{idx}.jpg").exists()
+
+    prep_with_tx = {**prep, "transcript_path": work / "user_transcript.json"}
+    prompt = build_video_edit_acp_prompt(
+        source_video_path=in_mp4,
+        output_path=tmp_path / "out.mp4",
+        prompt="Add highlight captions",
+        work_dir=work,
+        user_prep=prep_with_tx,
+    )
+    assert "Do NOT re-run" in prompt
+    assert "user_transcript.json" in prompt
+    assert "highlight_lines" in prompt
+    assert "outer_stroke_width" in prompt
+    assert "3–4" in prompt
 
 
 def test_edit_video_invokes_acp_and_verifies_output(monkeypatch, tmp_path: Path):

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 from typing import Optional
 import uuid
 
@@ -17,6 +19,7 @@ from tools.app.backend.acp import ACPClient
 WORKSPACE = Path(__file__).resolve().parents[4]
 DEFAULT_REA_VIDEO_BIN = WORKSPACE / "local/aibrand/rea-video/.venv/bin/rea-video"
 DOCKER_REA_VIDEO_BIN = WORKSPACE / "local/aibrand/rea-video/.venv-docker/bin/rea-video"
+DEFAULT_VENV_PYTHON = WORKSPACE / ".venv/bin/python"
 EFFECT_EDITOR = WORKSPACE / ".agents/skills/video-editing/scripts/video_engine/effect_editor.py"
 REFERENCE_EDIT_WORKFLOW = WORKSPACE / ".agents/skills/video-editing/workflows/reference-edit-replication.md"
 REA_RUNS_ROOT = WORKSPACE / "local/aibrand/rea-video-runs"
@@ -48,8 +51,120 @@ def ref_cache_dir(url: str, cache_root: Path = REF_CACHE_ROOT) -> Path:
     return cache_root / digest
 
 
+def _resolve_editor_python(rea_video_bin: Optional[Path] = None) -> str:
+    """Resolve the Python interpreter for effect_editor.py and faster_whisper."""
+    if rea_video_bin is not None:
+        cand = rea_video_bin.parent / "python"
+        if cand.exists():
+            return str(cand)
+    if DEFAULT_VENV_PYTHON.exists():
+        return str(DEFAULT_VENV_PYTHON)
+    return sys.executable
+
+
+def _prepare_user_source(
+    source_video_path: Path,
+    work_dir: Path,
+    py_bin: Optional[str] = None,
+) -> Optional[dict]:
+    """Fast-probe user video, extract 3 JPG keyframes, and transcribe speech with faster_whisper."""
+    ffprobe_bin = shutil.which("ffprobe") or "ffprobe"
+    try:
+        probe_res = subprocess.run(
+            [
+                ffprobe_bin,
+                "-v", "quiet",
+                "-print_format", "json",
+                "-show_format",
+                "-show_streams",
+                str(source_video_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+        raw_probe = json.loads(probe_res.stdout)
+    except Exception:
+        return None
+
+    streams = raw_probe.get("streams", [])
+    v_stream = next((s for s in streams if s.get("codec_type") == "video"), {})
+    has_audio = any(s.get("codec_type") == "audio" for s in streams)
+    duration = float(raw_probe.get("format", {}).get("duration") or v_stream.get("duration") or 0.0)
+    fps_raw = str(v_stream.get("r_frame_rate") or "24/1")
+    if "/" in fps_raw:
+        num, den = fps_raw.split("/", 1)
+        fps = round(float(num) / max(1.0, float(den)), 2)
+    else:
+        fps = float(fps_raw)
+
+    probe_summary = {
+        "width": int(v_stream.get("width", 720)),
+        "height": int(v_stream.get("height", 1280)),
+        "duration": round(duration, 2),
+        "fps": fps,
+        "has_audio": has_audio,
+    }
+    work_dir.mkdir(parents=True, exist_ok=True)
+    probe_path = work_dir / "user_probe.json"
+    probe_path.write_text(json.dumps(probe_summary, indent=2), encoding="utf-8")
+
+    frames_dir = work_dir / "user_frames"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+    for idx, frac in enumerate((0.15, 0.50, 0.85)):
+        ts = max(0.0, round(duration * frac, 2))
+        subprocess.run(
+            [
+                ffmpeg_bin, "-y", "-v", "error",
+                "-ss", f"{ts:.2f}",
+                "-i", str(source_video_path),
+                "-vframes", "1",
+                str(frames_dir / f"f_{idx}.jpg"),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+    transcript_path: Optional[Path] = None
+    if has_audio and py_bin:
+        cand_transcript = work_dir / "user_transcript.json"
+        whisper_script = (
+            "import json, sys\n"
+            "from faster_whisper import WhisperModel\n"
+            "m = WhisperModel('small', device='cpu', compute_type='int8')\n"
+            "segs, info = m.transcribe(sys.argv[1], word_timestamps=True)\n"
+            "out = {'language': info.language, 'segments': [\n"
+            "  {'start': round(s.start, 2), 'end': round(s.end, 2), 'text': s.text.strip(),\n"
+            "   'words': [{'start': round(w.start, 2), 'end': round(w.end, 2), 'word': w.word} for w in (s.words or [])]}\n"
+            "  for s in segs\n"
+            "]}\n"
+            "open(sys.argv[2], 'w', encoding='utf-8').write(json.dumps(out, ensure_ascii=False, indent=2))\n"
+        )
+        try:
+            res = subprocess.run(
+                [py_bin, "-c", whisper_script, str(source_video_path), str(cand_transcript)],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if res.returncode == 0 and cand_transcript.exists():
+                transcript_path = cand_transcript
+        except Exception:
+            transcript_path = None
+
+    return {
+        "probe_path": probe_path,
+        "probe": probe_summary,
+        "frames_dir": frames_dir,
+        "transcript_path": transcript_path,
+    }
+
+
 def _run_rea_decompose(video_path: Path, out_dir: Path, rea_bin: Path, timeout_sec: int = 240) -> bool:
-    """Run fast rea-video decompose (--no-stems --no-speakers --no-vlm) and return True if VIDEO.md exists."""
+    """Run fast rea-video decompose (--no-stems --no-speakers --no-vlm --no-asr) and return True if VIDEO.md exists."""
     out_dir.mkdir(parents=True, exist_ok=True)
     cmd = [
         str(rea_bin),
@@ -62,6 +177,7 @@ def _run_rea_decompose(video_path: Path, out_dir: Path, rea_bin: Path, timeout_s
         "--no-stems",
         "--no-speakers",
         "--no-vlm",
+        "--no-asr",
     ]
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_sec)
     return res.returncode == 0 and (out_dir / "VIDEO.md").exists()
@@ -129,8 +245,9 @@ def build_video_edit_acp_prompt(
     rea_video_bin: Optional[Path] = None,
     user_out_ready: bool = False,
     ref_out_dir: Optional[Path] = None,
+    user_prep: Optional[dict] = None,
 ) -> str:
-    """Build the ACP prompt instructing the agent to use rea-video decompositions and apply edits."""
+    """Build the ACP prompt instructing the agent to use pre-computed metadata and apply edits."""
     rea_cmd = str(rea_video_bin or resolve_rea_video_bin() or "rea-video")
     lines = [
         "You are a fast, focused video editing agent.",
@@ -159,13 +276,25 @@ def build_video_edit_acp_prompt(
                 "Step 1 — Download, trim to 25s, and reverse-engineer the reference video into the shared cache (fast mode):",
                 f'  yt-dlp -o "{ref_mp4}" -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 "{reference_video_url}"',
                 f'  ffmpeg -y -i "{ref_mp4}" -t 25 -c copy "{ref_clip}"',
-                f'  "{rea_cmd}" decompose "{ref_clip}" -o "{ref_out}" --lang en --no-stems --no-speakers --no-vlm',
+                f'  "{rea_cmd}" decompose "{ref_clip}" -o "{ref_out}" --lang en --no-stems --no-speakers --no-vlm --no-asr',
                 f"Read `{ref_out}/VIDEO.md` and `{ref_out}/breakdown.json` to extract the edit style.",
                 "",
             ])
 
     user_out = work_dir / "user" / "out"
-    if user_out_ready:
+    if user_prep is not None:
+        probe = user_prep.get("probe") or {}
+        frames_dir = user_prep.get("frames_dir")
+        transcript_path = user_prep.get("transcript_path")
+        lines.extend([
+            "User source video is ALREADY pre-analyzed:",
+            f"  - Dimensions: {probe.get('width')}x{probe.get('height')}, {probe.get('fps')} fps, {probe.get('duration')}s, has_audio={probe.get('has_audio')}",
+            f"  - Sample keyframes: `{frames_dir}` (`f_0.jpg`, `f_1.jpg`, `f_2.jpg`)",
+            f"  - Speech transcript: `{transcript_path}`" if transcript_path else "  - Speech transcript: none (no audio or skipped)",
+            "Step 2 — Inspect the sample keyframes and read the transcript JSON to align edits with speech and safe zones. Do NOT re-run `rea-video`, `ffprobe`, WAV extraction, or `faster_whisper` on the user source video.",
+            "",
+        ])
+    elif user_out_ready:
         lines.extend([
             f"User source video is ALREADY decomposed at `{user_out}`.",
             f"Step 2 — Read `{user_out}/VIDEO.md` and `{user_out}/breakdown.json` to align edits with speech/shot boundaries. Do NOT re-run `rea-video` or extract extra inspection frames.",
@@ -179,19 +308,27 @@ def build_video_edit_acp_prompt(
             "",
         ])
 
-    rea_bin = rea_video_bin or resolve_rea_video_bin()
-    editor_py = str(rea_bin.parent / "python") if rea_bin else "python3"
+    editor_py = _resolve_editor_python(rea_video_bin or resolve_rea_video_bin())
     edit_config_path = work_dir / "edit_config.json"
     effects_dir = EFFECT_EDITOR.parent / "effects"
     lines.extend([
         "Step 3 — Follow the JSON-first workflow in `reference-edit-replication.md` (do NOT write one-off render scripts):",
         f"User edit request: {prompt.strip()}",
         "",
-        f"1. Check `EFFECT_REGISTRY` in `{effects_dir / '__init__.py'}` and `{effects_dir}/*.py` to confirm whether `edit_config.json` can express the edit directly.",
-        f'2. Only if an effect or option is missing, extend the matching `{effects_dir}/*.py` primitive with minimal, reusable parameters and verify with `"{editor_py}" "{EFFECT_EDITOR}" --check`.',
-        f"3. Write `{edit_config_path}` with `input_video` (`{source_video_path}`), `output_video` (`{output_path}`), and a stackable `effects` array (`punch_zoom`, `transition`, `color_grade`, `text_box`, `subtitles`, `sfx`, `bgm`), then render via:",
-        f'   `"{editor_py}" "{EFFECT_EDITOR}" "{edit_config_path}"`',
-        f"4. Do not overwrite `{source_video_path}`. Verify `{output_path}` with `ffprobe` and inspect extracted keyframes across portrait safe zones (zero text clipping, zero face/hand overlap, clean diacritics) before finishing.",
+        "Compact `EFFECT_REGISTRY` schema (only read `effects/*.py` if a requested effect is not covered below):",
+        '- `punch_zoom`: `{"type": "punch_zoom", "windows": [{"start", "end", "scale", "y_focus"}]}`',
+        '- `transition`: `{"type": "transition", "kind": "fade_in"|"fade_out"|"flash", "start"|"time", "duration", "color"}`',
+        '- `color_grade`: `{"type": "color_grade", "contrast", "saturation", "brightness", "gamma"}`',
+        '- `text_box`: `{"type": "text_box", "variant": "hook"|"box"|"highlight_lines"|"info"|"table", "x", "y", "width", "height", "start", "end", "fade_in", "fade_out", "bg_color", "bg_alpha", "text_color", "font", "font_size", "stroke_width", "stroke_color", "outer_stroke_width", "outer_stroke_color", "glow_radius", "brackets", "accent_bar_color", "align", "radius", "lines"}`',
+        '- `subtitles`: `{"type": "subtitles", "items": [{"start", "end", "text"}], "font_size", "margin_v", "pop_in"}`',
+        '- `sfx` / `bgm`: `{"type": "sfx", "time", "sound": "pop"|"ding"|"whoosh"}`, `{"type": "bgm", "path", "volume"}`',
+        "",
+        "1-pass safe-zone & verification guardrails:",
+        "- Portrait `720x1280` safe zones: top overlays `y=110..220`, lower-third captions/cards `y=780..1040` (strictly above `y=1100` platform UI), lateral margins `x>=52`, `max_width<=620`.",
+        f'- Only if an effect or option is missing above, extend `{effects_dir}/*.py` and run `"{editor_py}" "{EFFECT_EDITOR}" --check`.',
+        f"- Write `{edit_config_path}` with `input_video` (`{source_video_path}`), `output_video` (`{output_path}`), `width: 720`, `height: 1280`, `fps: 24`, `loudnorm: true`, and `effects`.",
+        f'- Render, probe, and extract 3–4 representative JPG keyframes in ONE chained command: `"{editor_py}" "{EFFECT_EDITOR}" "{edit_config_path}" && ffprobe ... "{output_path}" && ffmpeg ...`',
+        f"- Inspect those 3–4 keyframes; aim for 1-pass completion and only re-render if a keyframe shows clipping, face/hand overlap, or broken diacritics. Never overwrite `{source_video_path}`.",
     ])
     return "\n".join(lines)
 
@@ -205,7 +342,7 @@ def edit_video(
     timeout_sec: Optional[float] = None,
     pre_decompose: bool = True,
 ) -> Path:
-    """Pre-decompose in parallel, then run ACP to apply requested edits to source_video_path."""
+    """Fast-prepare user source and reference in parallel, then run ACP to apply edits."""
     from tools.app.backend.research_engine.research import configured_agent
 
     resolved_ref = extract_reference_url(prompt, reference_video_url)
@@ -214,18 +351,22 @@ def edit_video(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     rea_bin = resolve_rea_video_bin()
-    user_out_ready = False
+    editor_py = _resolve_editor_python(rea_bin)
+    user_prep: Optional[dict] = None
     ref_out_dir: Optional[Path] = None
 
-    if pre_decompose and rea_bin is not None:
-        user_out = run_dir / "user" / "out"
+    if pre_decompose:
         with ThreadPoolExecutor(max_workers=2) as pool:
-            user_fut = pool.submit(_run_rea_decompose, source_video_path, user_out, rea_bin)
-            ref_fut = pool.submit(_prepare_reference_decompose, resolved_ref, rea_bin) if resolved_ref else None
+            user_fut = pool.submit(_prepare_user_source, source_video_path, run_dir, editor_py)
+            ref_fut = (
+                pool.submit(_prepare_reference_decompose, resolved_ref, rea_bin)
+                if (resolved_ref and rea_bin is not None)
+                else None
+            )
             try:
-                user_out_ready = bool(user_fut.result())
+                user_prep = user_fut.result()
             except Exception:
-                user_out_ready = False
+                user_prep = None
             if ref_fut is not None:
                 try:
                     ref_out_dir = ref_fut.result()
@@ -239,8 +380,9 @@ def edit_video(
         work_dir=run_dir,
         reference_video_url=resolved_ref,
         rea_video_bin=rea_bin,
-        user_out_ready=user_out_ready,
+        user_out_ready=False,
         ref_out_dir=ref_out_dir,
+        user_prep=user_prep,
     )
 
     agent = configured_agent()

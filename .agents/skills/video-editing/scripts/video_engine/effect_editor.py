@@ -40,7 +40,7 @@ from effects import (
     group_words_into_chunks,
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = Path(__file__).resolve().parents[5]
 DEFAULT_SFX_DIR = REPO_ROOT / "projects/OpenMontage/.agents/skills/website-to-video/assets/sfx"
 
 
@@ -54,6 +54,8 @@ def resolve_path(p: str | Path, base_dir: Path | None = None) -> Path:
         cand = (base / p).resolve()
         if cand.exists():
             return cand
+    if p.parts and (REPO_ROOT / p.parts[0]).exists():
+        return (REPO_ROOT / p).resolve()
     return ((base_dir or (REPO_ROOT / "projects/ugc-video")) / p).resolve()
 
 
@@ -277,7 +279,7 @@ def self_test() -> None:
                 {"type": "text_box", "variant": "box", "bg_alpha": 0, "shadow": False, "lines": ["NEON HOOK"], "text_color": "#FFFFFF", "stroke_width": 4, "stroke_color": "#127A2A", "outer_stroke_width": 10, "outer_stroke_color": "#35FF68", "glow_radius": 5, "start": 0.0, "end": 1.0, "y": 100},
                 {"type": "text_box", "variant": "highlight_lines", "align": "left", "x": 52, "y": 400, "start": 0.0, "end": 1.0, "lines": [{"text": "LINE ONE", "bg_color": "#0D626E"}, {"text": "LINE TWO", "bg_color": "#BA0F18"}]},
                 {"type": "text_box", "variant": "info", "title": "Note", "body": ["Detail"], "start": 0.5, "end": 1.5, "y": 240},
-                {"type": "subtitles", "items": [{"start": 0.1, "end": 0.9, "text": "HELLO"}]},
+                {"type": "subtitles", "alignment": 8, "bold": False, "border_style": 3, "items": [{"start": 0.1, "end": 0.9, "text": "HELLO", "color": "#FF0000", "font_size": 52, "margin_v": 120}], "color": "#FFE119", "outline_color": "#000000", "outer_outline_color": "#FFFFFF", "outer_outline_width": 8},
                 {"type": "sfx", "time": 0.2, "sound": "pop"},
                 {"type": "sfx", "time": 0.8, "sound": "ding"},
             ],
@@ -289,6 +291,8 @@ def self_test() -> None:
             tmp,
         )
         assert "overlay=" in fg and "subtitles=" in fg and "anullsrc=" in fg and "amix=" in fg
+        ass_files = list(tmp.glob("sub_*.ass"))
+        assert ass_files and "DefaultOuter" in ass_files[0].read_text(encoding="utf-8")
         assert len(inputs) >= 6
     print("self_test passed.")
 
