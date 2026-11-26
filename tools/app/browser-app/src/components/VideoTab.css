@@ -506,12 +506,6 @@
   margin-bottom: var(--space-4);
 }
 
-.video-notice-box {
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-2);
-}
-
 .video-header-row {
   display: flex;
   justify-content: space-between;

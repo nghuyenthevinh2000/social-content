@@ -1,3 +1,4 @@
+import { IonToast } from '@ionic/react';
 import { useEffect, useRef, useState } from 'react';
 
 import { apiJson } from '../api';
@@ -458,7 +459,14 @@ export function VideoTab({
 
   return (
     <div className="video-tab">
-      {notice && <div className={`notice ${notice.type} video-notice-box`}>{notice.text}</div>}
+      <IonToast
+        isOpen={!!notice}
+        message={notice?.text}
+        color={notice?.type === 'error' ? 'danger' : 'success'}
+        duration={2500}
+        position="top"
+        onDidDismiss={() => setNotice(null)}
+      />
 
       {/* Main Creation / Edit Form */}
       <section className="panel">
