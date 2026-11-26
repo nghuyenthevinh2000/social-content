@@ -51,9 +51,9 @@
   ],
   "video": [
     "clip",
-    "reel",
     "media",
-    "phim"
+    "phim",
+    "record"
   ],
   "search": [
     "lookup",
@@ -377,5 +377,36 @@
     "view",
     "nest",
     "navigation"
+  ],
+  "history": [
+    "lịch",
+    "log",
+    "past",
+    "recent"
+  ],
+  "list": [
+    "danh",
+    "sách",
+    "item",
+    "feed",
+    "queue"
+  ],
+  "card": [
+    "thẻ",
+    "tile",
+    "item",
+    "box"
+  ],
+  "head": [
+    "header",
+    "đầu",
+    "top",
+    "title"
+  ],
+  "right": [
+    "phải",
+    "end",
+    "trail",
+    "action"
   ]
 }

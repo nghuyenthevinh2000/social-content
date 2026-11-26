@@ -1,4 +1,5 @@
-import { IonToast } from '@ionic/react';
+import { IonIcon, IonToast } from '@ionic/react';
+import { downloadOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useRef, useState } from 'react';
 
 import { apiJson } from '../api';
@@ -755,9 +756,7 @@ export function VideoTab({
                     <div className="video-card-head-left">
                       <span className={`status-chip ${j.status}`}>{m.status[j.status]}</span>
                       <span className="duration-tag">
-                        {j.job_type === 'edit'
-                          ? m.edit.jobBadge
-                          : `${ratePerSecMicro > 0 ? Math.round(j.cost / ratePerSecMicro) : duration}${t.common.secondsShort}`}
+                        {j.job_type === 'edit' ? m.edit.jobBadge : m.aiJobBadge}
                       </span>
                       {!expanded && <span className="video-card-preview-prompt">{j.prompt}</span>}
                     </div>
@@ -789,24 +788,27 @@ export function VideoTab({
                         <a
                           href={videoDownloadUrl(j)}
                           download={`video-${j.id}.mp4`}
-                          className="media-action-btn download-btn"
+                          className="media-action-btn icon-action-btn download-btn"
+                          aria-label={m.downloadBtn}
                           title={m.downloadTitle}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {m.downloadBtn}
+                          <IonIcon icon={downloadOutline} aria-hidden="true" />
                         </a>
                       )}
 
                       {(j.status === 'completed' || j.status === 'failed' || j.status === 'cancelled') && (
                         <button
                           type="button"
-                          className="media-action-btn"
+                          className="media-action-btn icon-action-btn"
+                          aria-label={t.common.delete}
+                          title={t.common.delete}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteJob(j.id);
                           }}
                         >
-                          {t.common.delete}
+                          <IonIcon icon={trashOutline} aria-hidden="true" />
                         </button>
                       )}
 

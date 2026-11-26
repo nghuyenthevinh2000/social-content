@@ -295,12 +295,20 @@ describe('VideoTab and MediaPanel', () => {
     const videoEl = container.querySelector('video.video-player') as HTMLVideoElement;
     expect(videoEl?.getAttribute('src')).toBe('/api/videos/vj_done/file?uid=test_uid_123');
 
-    // Verify download link is present in card header and redundant player toolbar link is removed
+    // Verify AI jobs show AI tag instead of duration
+    const completedCard = screen.getAllByText('Prompt test video')[0].closest('.video-card');
+    expect(completedCard?.querySelector('.duration-tag')?.textContent).toBe('AI');
+
+    // Verify download & delete icon buttons are present in card header and redundant player toolbar link is removed
     const headerDownloadLink = container.querySelector('.video-card-head-right a.download-btn') as HTMLAnchorElement;
     expect(headerDownloadLink).toBeDefined();
     expect(headerDownloadLink?.getAttribute('href')).toBe('/api/videos/vj_done/file?uid=test_uid_123&download=1');
     expect(headerDownloadLink?.getAttribute('download')).toBe('video-vj_done.mp4');
-    expect(headerDownloadLink?.textContent).toBe('Tải về');
+    expect(headerDownloadLink?.getAttribute('aria-label')).toBe('Tải về');
+    expect(headerDownloadLink?.querySelector('ion-icon')).not.toBeNull();
+    const headerDeleteBtn = container.querySelector('.video-card-head-right button[aria-label="Xoá"]') as HTMLButtonElement;
+    expect(headerDeleteBtn).not.toBeNull();
+    expect(headerDeleteBtn?.querySelector('ion-icon')).not.toBeNull();
     expect(container.querySelector('a.download-video-action')).toBeNull();
 
     // Pending and failed cards do not have download links
