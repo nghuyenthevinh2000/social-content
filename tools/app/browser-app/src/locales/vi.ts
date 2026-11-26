@@ -431,7 +431,7 @@ export const vi = {
       promptPlaceholder: 'Mô tả chỉnh sửa muốn áp dụng lên video (VD: thêm phụ đề, cắt 3 giây đầu, chỉnh ánh sáng...)',
       applyBtn: 'Áp dụng chỉnh sửa',
       submittingBtn: 'Đang gửi yêu cầu edit...',
-      createdNotice: 'Đã gửi yêu cầu chỉnh sửa video! ACP và rea-video đang xử lý.',
+      createdNotice: 'Đã gửi yêu cầu chỉnh sửa video!',
       createError: 'Không thể gửi yêu cầu chỉnh sửa video.',
       referenceLabel: 'Video mẫu tham chiếu:',
       clearReference: 'Bỏ video mẫu',

@@ -429,7 +429,7 @@ export const en: LocaleMessages = {
         'Describe edits to apply on top of this video (e.g., add captions, trim first 3 seconds, adjust lighting...)',
       applyBtn: 'Apply edits',
       submittingBtn: 'Submitting edit...',
-      createdNotice: 'Video edit request submitted! ACP and rea-video are processing.',
+      createdNotice: 'Video edit request submitted!',
       createError: 'Unable to submit video edit request.',
       referenceLabel: 'Reference video:',
       clearReference: 'Remove reference',

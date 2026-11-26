@@ -468,7 +468,7 @@ describe('VideoTab and MediaPanel', () => {
       expect(editCalls.length).toBe(1);
       const toast = document.querySelector('ion-toast');
       expect(toast).not.toBeNull();
-      expect(toast?.getAttribute('message')).toBe('Đã gửi yêu cầu chỉnh sửa video! ACP và rea-video đang xử lý.');
+      expect(toast?.getAttribute('message')).toBe('Đã gửi yêu cầu chỉnh sửa video!');
     });
     expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:local-video-preview');
     expect(decodeURIComponent(editCalls[0].headers['x-edit-prompt'])).toBe('Thêm phụ đề tiếng Việt');
