@@ -23,6 +23,7 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 | App feature showcase reel | For turning app screenshots (e.g. `features-update/<feature>/images/`) into a vertical hook → steps → CTA promo reel, follow `workflows/app-feature-showcase-reel.md`. |
 | Code-generated animation reels | For 2D/3D code-generated vertical animation reels (from `claude-animation-skills`, using shared `kit/`), follow `workflows/<name>/SKILL.md` (`breakdown`, `dan-koe`, `graph`, `kurzgesagt`, `low-poly`, `map-route`, `minecraft`, `minimalistic-graphics`, `stick-figure`, `zach-3d-films`, `zach-d-films`). One-time setup: `bash .agents/skills/video-editing/kit/setup.sh` (add `--voice` for Kokoro TTS + Parakeet timing). |
 | Reference video reverse-engineering | For shot-by-shot reverse-engineering of reference videos (visual medium, pacing, captions, audio stems, remake blueprint) using the `.agents/skills/video-editing/scripts/rea-video` submodule, follow `workflows/rea-video-reverse-engineering.md`. |
+| Thumbnail creation | For creating high-contrast `9:16` or `16:9` video thumbnails from keyframes, Playwright HTML/Canvas compositions, or generated artwork, follow `workflows/thumbnail-creation.md`. |
 | Fallback | For unsupported operations, read `references/ffmpeg-compositing.md` relative to this skill. Keep its face helper at the skill-root path `scripts/detect_face_crop.py`. Use a repository-local or approved temporary workspace instead of the reference's legacy `/tmp` examples. |
 
 ## Commands

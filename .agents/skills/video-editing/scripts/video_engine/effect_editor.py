@@ -193,11 +193,51 @@ def build_filtergraph(
     return ctx.ffmpeg_inputs, ";".join(ctx.v_filters + [full_a_filter])
 
 
-def run_effect_pipeline(config_path: Path) -> Path:
+def compose_from_template(template_path: Path, beats_path: Path) -> dict:
+    """Merge a reusable style template with a story beats.json into an effects config."""
+    tpl = json.loads(Path(template_path).read_text(encoding="utf-8"))
+    beats = json.loads(Path(beats_path).read_text(encoding="utf-8"))
+    effects: list[dict] = []
+
+    if "color_grade" in tpl:
+        effects.append({"type": "color_grade", **tpl["color_grade"]})
+    if isinstance(beats.get("hook"), dict):
+        effects.append({**tpl.get("hook_card_style", {"type": "hook_card"}), **beats["hook"]})
+
+    step_style = tpl.get("step_anchor_style", {"type": "text_box"})
+    z_scale = float(tpl.get("punch_zoom_scale", 1.05))
+    z_dur = float(tpl.get("punch_zoom_duration", 0.45))
+    for st in beats.get("steps", []):
+        effects.append({**step_style, "lines": [st["label"]], "start": st["start"], "end": st["end"]})
+        if st.get("zoom", True) and z_scale > 1.001 and z_dur > 0:
+            effects.append({"type": "punch_zoom", "start": st["start"], "end": min(st["end"], st["start"] + z_dur), "scale": z_scale})
+        effects.append({"type": "sfx", "time": st["start"], "sound": st.get("sfx", tpl.get("step_sfx", "pop"))})
+
+    if isinstance(beats.get("cta"), dict):
+        cta = beats["cta"]
+        effects.append({**tpl.get("cta_style", {"type": "text_box", "variant": "info"}), **cta})
+        effects.append({"type": "sfx", "time": cta["start"], "sound": cta.get("sfx", tpl.get("cta_sfx", "ding"))})
+    if isinstance(beats.get("subtitles"), dict):
+        effects.append({"type": "subtitles", **beats["subtitles"]})
+    if isinstance(beats.get("bgm"), dict):
+        effects.append({"type": "bgm", **beats["bgm"]})
+
+    return {
+        "input_video": beats["input_video"],
+        "output_video": beats["output_video"],
+        "width": beats.get("width", tpl.get("width", 1080)),
+        "height": beats.get("height", tpl.get("height", 1920)),
+        "fps": beats.get("fps", tpl.get("fps", 30)),
+        "loudnorm": beats.get("loudnorm", tpl.get("loudnorm", True)),
+        "effects": effects,
+    }
+
+
+def run_effect_pipeline(config_path: Path, cfg_override: dict | None = None) -> Path:
     """Execute the composite stackable effect rendering pipeline."""
     config_path = Path(config_path).resolve()
     base_dir = config_path.parent
-    cfg = json.loads(config_path.read_text(encoding="utf-8"))
+    cfg = cfg_override if cfg_override is not None else json.loads(config_path.read_text(encoding="utf-8"))
 
     in_video = resolve_path(cfg["input_video"], base_dir)
     out_video = resolve_path(cfg["output_video"], base_dir)
@@ -294,16 +334,27 @@ def self_test() -> None:
         ass_files = list(tmp.glob("sub_*.ass"))
         assert ass_files and "DefaultOuter" in ass_files[0].read_text(encoding="utf-8")
         assert len(inputs) >= 6
+
+        tpl_p = tmp / "tpl.json"
+        beats_p = tmp / "beats.json"
+        tpl_p.write_text(json.dumps({"step_anchor_style": {"type": "text_box", "y": 120}, "step_sfx": "pop"}), encoding="utf-8")
+        beats_p.write_text(json.dumps({"input_video": "in.mp4", "output_video": "out.mp4", "steps": [{"label": "S1", "start": 0.1, "end": 0.8}]}), encoding="utf-8")
+        composed = compose_from_template(tpl_p, beats_p)
+        assert len(composed["effects"]) == 3 and composed["effects"][0]["lines"] == ["S1"]
     print("self_test passed.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Unified stackable JSON video effect editor")
     parser.add_argument("config", nargs="?", default="projects/ugc-video/scripts/new_system/configs/post_4_effects.json", help="Path to effects config JSON")
+    parser.add_argument("--template", type=Path, help="Reusable style template JSON")
+    parser.add_argument("--beats", type=Path, help="Story beats JSON paired with --template")
     parser.add_argument("--check", action="store_true", help="Run self-test assertion")
     args = parser.parse_args()
 
     if args.check:
         self_test()
+    elif args.template and args.beats:
+        run_effect_pipeline(args.beats, cfg_override=compose_from_template(args.template, args.beats))
     else:
         run_effect_pipeline(Path(args.config))

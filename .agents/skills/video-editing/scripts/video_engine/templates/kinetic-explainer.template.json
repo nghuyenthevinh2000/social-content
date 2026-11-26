@@ -1,0 +1,49 @@
+{
+  "name": "kinetic-explainer",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "loudnorm": true,
+  "theme": {
+    "background": "paper",
+    "bgTop": "#f8f4ec",
+    "bgBot": "#ede4d3",
+    "gridColor": "rgba(15, 23, 42, 0.05)",
+    "card": "#ffffff",
+    "cardBorder": "#cbd5e1",
+    "text": "#0f172a",
+    "muted": "#475569",
+    "cyan": "#0284c7",
+    "amber": "#d97706",
+    "orange": "#ea580c",
+    "red": "#e11d48",
+    "green": "#059669"
+  },
+  "step_anchor_style": {
+    "type": "text_box",
+    "variant": "box",
+    "bg_alpha": 0,
+    "shadow": false,
+    "text_color": "#FFFFFF",
+    "stroke_width": 8,
+    "stroke_color": "#0284C7",
+    "y": 235
+  },
+  "hook_card_style": {
+    "type": "text_box",
+    "variant": "box",
+    "bg_alpha": 0.92,
+    "bg_color": "#B91C1C",
+    "text_color": "#FFFFFF",
+    "y": 240
+  },
+  "cta_style": {
+    "type": "text_box",
+    "variant": "info",
+    "y": 1190
+  },
+  "punch_zoom_scale": 1.0,
+  "punch_zoom_duration": 0,
+  "step_sfx": "pop",
+  "cta_sfx": "ding"
+}
