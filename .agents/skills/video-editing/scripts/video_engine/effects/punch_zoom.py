@@ -59,3 +59,46 @@ def build_punch_zooms_filter(
 
     full_filter = ";".join(parts)
     return full_filter, "[v_pz_concat]"
+
+
+def apply_punch_zoom(cfg: dict, ctx) -> None:
+    """Stack dynamic punch zooms onto the video stream."""
+    if cfg.get("transitions"):
+        pz_filter, pz_out = build_punch_zooms_filter(
+            cfg.get("windows", []),
+            ctx.duration,
+            ctx.width,
+            ctx.height,
+            cfg.get("transitions"),
+        )
+        ctx.v_filters.append(pz_filter)
+        ctx.cur_v = pz_out
+        return
+
+    windows = cfg.get("windows")
+    if windows is None:
+        windows = [cfg]
+
+    cond = "1.0"
+    y_focus = 0.35
+    has_zoom = False
+    for pz in reversed(windows):
+        st = max(0.0, float(pz.get("start", 0.0)))
+        et = min(ctx.duration, float(pz.get("end", 0.0)))
+        sc = max(1.0, float(pz.get("scale", pz.get("zoom", 1.0))))
+        if "y_focus" in pz:
+            y_focus = float(pz["y_focus"])
+        if et > st and sc > 1.001:
+            cond = f"if(between(t,{st:.3f},{et:.3f}),{sc:.4f},{cond})"
+            has_zoom = True
+
+    if not has_zoom:
+        return
+
+    out_lbl = ctx.next_v_label("pz")
+    w, h = ctx.width, ctx.height
+    ctx.v_filters.append(
+        f"{ctx.cur_v}scale=w='trunc({w}*({cond})/2)*2':h='trunc({h}*({cond})/2)*2':eval=frame,"
+        f"crop={w}:{h}:'(iw-{w})/2':'(ih-{h})*{y_focus:.3f}'{out_lbl}"
+    )
+    ctx.cur_v = out_lbl

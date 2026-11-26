@@ -35,6 +35,7 @@ def generate_hook_card_image(
     repo_root = Path(__file__).resolve().parents[5]
     font_candidates = [
         card_cfg.get("font"),
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
         repo_root / ".venv/lib/python3.12/site-packages/matplotlib/mpl-data/fonts/ttf/DejaVuSans-Bold.ttf",
         Path("/System/Library/Fonts/Supplemental/Arial Bold.ttf"),
         Path("/Library/Fonts/Arial Unicode.ttf"),
@@ -79,7 +80,8 @@ def build_hook_card_filter(
     card_input_idx: int,
     base_label: str,
     out_label: str,
-    video_height: int = 1280
+    video_height: int = 1280,
+    fade_label: str = "[c_faded]",
 ) -> list[str]:
     """Build FFmpeg filtergraph segments for card fade-in, fade-out, and overlay."""
     c_st = float(hook_card_cfg.get("start", 0.0))
@@ -90,9 +92,33 @@ def build_hook_card_filter(
 
     card_fade = (
         f"[{card_input_idx}:v]format=rgba,fade=t=in:st={c_st:.3f}:d={c_fade_in:.2f}:alpha=1,"
-        f"fade=t=out:st={c_et - c_fade_out:.3f}:d={c_fade_out:.2f}:alpha=1[c_faded]"
+        f"fade=t=out:st={c_et - c_fade_out:.3f}:d={c_fade_out:.2f}:alpha=1{fade_label}"
     )
     card_overlay = (
-        f"{base_label}[c_faded]overlay=(W-w)/2:{pos_y}:shortest=1:enable='between(t,{c_st:.3f},{c_et:.3f})'{out_label}"
+        f"{base_label}{fade_label}overlay=(W-w)/2:{pos_y}:shortest=1:enable='between(t,{c_st:.3f},{c_et:.3f})'{out_label}"
     )
     return [card_fade, card_overlay]
+
+
+def apply_hook_card(cfg: dict, ctx) -> None:
+    """Stack a hero hook card overlay via text_box with legacy hook_card defaults."""
+    from .text_box import apply_text_box
+
+    merged = {
+        "variant": "hook",
+        "width": int(cfg.get("width", int(ctx.width * 0.93))),
+        "height": int(cfg.get("height", int(ctx.height * 0.24))),
+        "radius": int(cfg.get("radius", 32)),
+        "bg_color": cfg.get("bg_color", "#D3403A"),
+        "text_color": cfg.get("text_color", "#FFFFFF"),
+        "font_size": int(cfg.get("font_size", 48)),
+        "stroke_width": int(cfg.get("stroke_width", 2)),
+        "line_gap": int(cfg.get("line_gap", 14)),
+        "pos_y": int(cfg.get("pos_y", cfg.get("y", int(ctx.height * 0.445)))),
+        "start": float(cfg.get("start", 0.0)),
+        "end": float(cfg.get("end", 3.35)),
+        "fade_in": float(cfg.get("fade_in", 0.12)),
+        "fade_out": float(cfg.get("fade_out", 0.15)),
+        **{k: v for k, v in cfg.items() if k != "type"},
+    }
+    apply_text_box(merged, ctx)

@@ -74,15 +74,16 @@ def test_build_video_edit_acp_prompt_with_and_without_reference(tmp_path: Path):
     )
     assert "ALREADY decomposed" in pre_done
     assert "Do NOT re-download or re-run `rea-video`" in pre_done
-    assert "json_video_editor.py" in pre_done
+    assert "effect_editor.py" in pre_done
+    assert "json_video_editor.py" not in pre_done
 
 
-def test_json_video_editor_renders_synthetic_clip(tmp_path: Path):
+def test_effect_editor_renders_synthetic_clip(tmp_path: Path):
     import subprocess
     from tools.app.backend.video_edit_engine import resolve_rea_video_bin
 
     repo_root = Path(__file__).resolve().parents[4]
-    editor_path = repo_root / ".agents/skills/video-editing/scripts/video_engine/json_video_editor.py"
+    editor_path = repo_root / ".agents/skills/video-editing/scripts/video_engine/effect_editor.py"
     rea_bin = resolve_rea_video_bin()
     py_bin = str(rea_bin.parent / "python") if rea_bin else sys.executable
 
@@ -104,9 +105,15 @@ def test_json_video_editor_renders_synthetic_clip(tmp_path: Path):
             "output_video": str(out_mp4),
             "width": 360,
             "height": 640,
-            "cards": [{"type": "hook", "lines": ["TEST"], "start": 0.0, "end": 0.8, "y": 40}],
-            "captions": {"items": [{"start": 0.1, "end": 0.8, "text": "HELLO"}]},
-            "sfx": [{"time": 0.1, "type": "pop"}],
+            "effects": [
+                {"type": "punch_zoom", "start": 0.1, "end": 0.5, "scale": 1.08},
+                {"type": "transition", "kind": "flash", "time": 0.5, "duration": 0.12},
+                {"type": "color_grade", "contrast": 1.05, "saturation": 1.08},
+                {"type": "text_box", "variant": "hook", "lines": ["TEST"], "start": 0.0, "end": 0.8, "y": 40},
+                {"type": "text_box", "variant": "info", "title": "Info", "body": ["Line 1"], "start": 0.3, "end": 0.9, "y": 240},
+                {"type": "subtitles", "items": [{"start": 0.1, "end": 0.8, "text": "HELLO"}]},
+                {"type": "sfx", "time": 0.1, "sound": "pop"},
+            ],
         }),
         encoding="utf-8",
     )

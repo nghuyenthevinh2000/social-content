@@ -75,8 +75,8 @@
   ],
   "app": [
     "application",
-    "client",
     "webapp",
+    "client",
     "ứng",
     "dụng"
   ],
@@ -292,7 +292,8 @@
   ],
   "browser": [
     "web",
-    "chrome",
+    "browser",
+    "webview",
     "chromium",
     "trình",
     "duyệt"
@@ -360,5 +361,21 @@
     "navigation",
     "panel",
     "thẻ"
+  ],
+  "pop-up": [
+    "popup",
+    "modal",
+    "dialog",
+    "cửa",
+    "bật",
+    "lên"
+  ],
+  "routeroutlet": [
+    "router",
+    "outlet",
+    "route",
+    "view",
+    "nest",
+    "navigation"
   ]
 }

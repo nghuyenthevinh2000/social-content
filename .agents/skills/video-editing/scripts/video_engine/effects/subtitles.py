@@ -190,6 +190,98 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     return out_ass_path
 
 
+def _hex_to_ass_bgr(hex_color: str) -> str:
+    s = hex_color.strip().lstrip("#")
+    if len(s) == 6:
+        r, g, b = s[0:2], s[2:4], s[4:6]
+        return f"&H00{b.upper()}{g.upper()}{r.upper()}"
+    return "&H00FFFFFF"
+
+
+def build_ass_from_items(
+    items: list[dict],
+    style: dict | None,
+    out_ass_path: Path,
+    width: int = 720,
+    height: int = 1280,
+) -> Path:
+    """Write an ASS subtitle file from explicit timed caption items."""
+    st = style or {}
+    color = _hex_to_ass_bgr(str(st.get("color", "#97E12E")))
+    outline_color = _hex_to_ass_bgr(str(st.get("outline_color", "#000000")))
+    font_size = int(st.get("font_size", 46))
+    margin_v = int(st.get("margin_v", int(height * 0.16)))
+    uppercase = bool(st.get("uppercase", True))
+    pop_in = bool(st.get("pop_in", True))
+
+    lines = [
+        "[Script Info]",
+        "ScriptType: v4.00+",
+        f"PlayResX: {width}",
+        f"PlayResY: {height}",
+        "WrapStyle: 2",
+        "",
+        "[V4+ Styles]",
+        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+        f"Style: Default,DejaVu Sans,{font_size},{color},&H00FFFFFF,{outline_color},&H80000000,-1,0,0,0,100,100,0,0,1,4,1,2,24,24,{margin_v},1",
+        "",
+        "[Events]",
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+    ]
+    for item in items:
+        text = str(item.get("text", "")).strip()
+        if not text:
+            continue
+        if uppercase:
+            text = text.upper()
+        text = text.replace("\n", "\\N")
+        anim = r"{\fscx85\fscy85\t(0,80,\fscx100\fscy100)}" if pop_in else ""
+        start = format_ass_time(float(item.get("start", 0.0)))
+        end = format_ass_time(float(item.get("end", 0.0)))
+        lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{anim}{text}")
+
+    out_ass_path.parent.mkdir(parents=True, exist_ok=True)
+    out_ass_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return out_ass_path
+
+
 def apply_subtitles_filter(ass_path: Path, base_label: str = "", out_label: str = "") -> str:
-    """Build FFmpeg subtitles filter string."""
-    return f"{base_label}subtitles='{ass_path}'{out_label}"
+    """Build FFmpeg subtitles filter string with escaped ASS path."""
+    escaped = str(ass_path).replace("\\", "/").replace(":", "\\:")
+    return f"{base_label}subtitles='{escaped}'{out_label}"
+
+
+def apply_subtitles(cfg: dict, ctx) -> None:
+    """Stack ASS subtitles (from explicit items or ElevenLabs alignment) onto the video stream."""
+    ass_path = ctx.work_dir / f"{ctx.next_id('sub')}.ass"
+    items = cfg.get("items")
+    if items:
+        build_ass_from_items(items, cfg.get("style"), ass_path, ctx.width, ctx.height)
+    elif cfg.get("alignment_json"):
+        align_path = ctx.resolve_path(cfg["alignment_json"])
+        cb_val = cfg.get("clause_bounds")
+        if isinstance(cb_val, (str, Path)):
+            clause_bounds = json.loads(ctx.resolve_path(cb_val).read_text(encoding="utf-8"))
+        elif isinstance(cb_val, list):
+            clause_bounds = cb_val
+        else:
+            cand_cb = align_path.parent / "clause_bounds.json"
+            clause_bounds = json.loads(cand_cb.read_text(encoding="utf-8")) if cand_cb.exists() else None
+        words = extract_words_from_alignment(align_path, clause_bounds)
+        chunks = group_words_into_chunks(words)
+        print(f"  [Captions] Extracted {len(words)} aligned words into {len(chunks)} kinetic chunks")
+        build_ass_subtitles(
+            chunks=chunks,
+            badges=cfg.get("badges", []),
+            hook_banner=cfg.get("hook_banner"),
+            out_ass_path=ass_path,
+            width=ctx.width,
+            height=ctx.height,
+            hook_card=cfg.get("hook_card"),
+        )
+    else:
+        return
+
+    out_lbl = ctx.next_v_label("sub")
+    ctx.v_filters.append(apply_subtitles_filter(ass_path, base_label=ctx.cur_v, out_label=out_lbl))
+    ctx.cur_v = out_lbl

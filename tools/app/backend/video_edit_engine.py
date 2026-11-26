@@ -17,7 +17,7 @@ from tools.app.backend.acp import ACPClient
 WORKSPACE = Path(__file__).resolve().parents[3]
 DEFAULT_REA_VIDEO_BIN = WORKSPACE / "local/aibrand/rea-video/.venv/bin/rea-video"
 DOCKER_REA_VIDEO_BIN = WORKSPACE / "local/aibrand/rea-video/.venv-docker/bin/rea-video"
-JSON_VIDEO_EDITOR = WORKSPACE / ".agents/skills/video-editing/scripts/video_engine/json_video_editor.py"
+EFFECT_EDITOR = WORKSPACE / ".agents/skills/video-editing/scripts/video_engine/effect_editor.py"
 REA_RUNS_ROOT = WORKSPACE / "local/aibrand/rea-video-runs"
 REF_CACHE_ROOT = REA_RUNS_ROOT / "ref-cache"
 _URL_RE = re.compile(r"https?://[^\s<>\"']+")
@@ -181,11 +181,11 @@ def build_video_edit_acp_prompt(
     editor_py = str(rea_bin.parent / "python") if rea_bin else "python3"
     edit_plan_path = work_dir / "edit_plan.json"
     lines.extend([
-        "Step 3 — Apply the requested edits via `json_video_editor.py` (do NOT write custom Python rendering/PIL/SFX scripts from scratch):",
+        "Step 3 — Apply the requested edits via `effect_editor.py` (do NOT write custom Python rendering/PIL/SFX scripts from scratch):",
         f"User edit request: {prompt.strip()}",
         "",
-        f"Write `{edit_plan_path}` with keys: `input_video` (`{source_video_path}`), `output_video` (`{output_path}`), `color_grade` (`contrast`, `saturation`, `brightness`, `gamma`), `punch_zooms` (`[{{start, end, scale}}]`), `cards` (`[{{type: 'hook'|'info'|'table', start, end, y, bg_color, text_color, lines/title+body+tag/headers+rows}}]`), `captions` (`{{style: {{color, outline_color, font_size, margin_v, uppercase, pop_in}}, items: [{{start, end, text}}]}}`), `sfx` (`[{{time, type: 'pop'|'ding'|'whoosh', volume}}]`).",
-        f'Then run: `"{editor_py}" "{JSON_VIDEO_EDITOR}" "{edit_plan_path}"`',
+        f"Write `{edit_plan_path}` with `input_video` (`{source_video_path}`), `output_video` (`{output_path}`), and a stackable `effects` array where each item has `type`: `punch_zoom` (`{{start, end, scale}}`), `transition` (`{{kind: 'flash'|'fade_in'|'fade_out', time/start, duration, color}}`), `color_grade` (`{{contrast, saturation, brightness, gamma}}`), `text_box` (`{{variant: 'hook'|'info'|'table', start, end, y, bg_color, text_color, lines/title+body+tag/headers+rows}}`), `subtitles` (`{{style: {{color, outline_color, font_size, margin_v, uppercase, pop_in}}, items: [{{start, end, text}}]}}`), `sfx` (`{{time, sound: 'pop'|'ding'|'whoosh', volume}}`), `bgm` (`{{file, volume, fade_in, fade_out}}`).",
+        f'Then run: `"{editor_py}" "{EFFECT_EDITOR}" "{edit_plan_path}"`',
         f"Do not overwrite `{source_video_path}`. Verify `{output_path}` exists with `ffprobe` and finish.",
     ])
     return "\n".join(lines)
