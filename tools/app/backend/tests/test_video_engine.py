@@ -248,7 +248,7 @@ def test_get_agent_platform_credentials_antigravity_fallback(tmp_path, monkeypat
 
     # Monkeypatch candidates
     monkeypatch.setattr(
-        "tools.app.backend.video_engine.Path.home",
+        "tools.app.backend.video_engine.generate.Path.home",
         lambda: tmp_path,
     )
     fake_gemini_dir = tmp_path / ".gemini/antigravity-cli"

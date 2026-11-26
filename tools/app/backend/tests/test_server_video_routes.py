@@ -10,7 +10,7 @@ from tools.app.backend import blobs
 from tools.app.backend.credits import CREDIT_STORE
 from tools.app.backend.media import MEDIA_STORE
 from tools.app.backend.server import Handler
-from tools.app.backend.video_jobs import VIDEO_STORE
+from tools.app.backend.video_engine.jobs import VIDEO_STORE
 
 
 class FakeServer:
@@ -48,7 +48,7 @@ def test_server_video_and_media_routes():
 
     import unittest.mock as mock
     import tools.app.backend.server as s
-    import tools.app.backend.video_jobs as vj
+    import tools.app.backend.video_engine.jobs as vj
     s.MEDIA_STORE = m_store
     s.CREDIT_STORE = c_store
     s.VIDEO_STORE = v_store

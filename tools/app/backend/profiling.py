@@ -406,7 +406,7 @@ def run_worker_context(iterations: int, collector: MetricsCollector, live: bool 
 
 def run_video_context(iterations: int, collector: MetricsCollector, live: bool = False) -> None:
     from tools.app.backend import video_engine
-    from tools.app.backend.video_jobs import VideoJobStore
+    from tools.app.backend.video_engine.jobs import VideoJobStore
 
     fx = _seed_db_fixtures()
     uid = fx["user_id"]

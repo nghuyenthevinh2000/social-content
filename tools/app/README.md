@@ -24,7 +24,7 @@ Library (Topics, Imports, DM Reels) -> Analyzer (P1-P5, Transcripts, Prompts) ->
 | Analyzer (`Phân tích`) | Profile traffic-pool scoring | Crawls competitor channels, tracks views/velocity/engagement, and classifies reels into P1–P5 pools (`tools.loop.viral_analyzer.profile_research.pipeline`). |
 | Analyzer (`Phân tích`) | Reel & transcript analysis | Fetches transcripts (Glasser/ASR), analyzes 9:16 UGC pacing, explains "Why Viral" triggers, and generates Director Prompts via ACP (`tools.loop.viral_analyzer.video_research.pipeline`, `acp.py`). |
 | Analyzer (`Phân tích`) | Results & AI prompt export | Structured topic cards, job history, and one-click "Copy cho AI" script/prompt export (`JobResult.tsx`). |
-| Video (`Tạo Video`) | Reference-to-video generation | Generates short AI videos (default 15s) from a prompt, required profile face image, and optional context images (`video_engine.py`). |
+| Video (`Tạo Video`) | Reference-to-video generation | Generates short AI videos (default 15s) from a prompt, required profile face image, and optional context images (`video_engine/`). |
 | Video (`Tạo Video`) | Credits & cost estimation | Pre-flight micro-USD cost estimation (`/api/videos/estimate`), balance checks, and credit ledger (`/api/credits`). |
 | Video (`Tạo Video`) | Concurrency & recovery | Global and per-user job limits, crash recovery, status polling, cancellation, in-app playback, and download (`/api/videos`). |
 | Profile (`Hồ sơ`) | Authentication & linking | Firebase Email/Password and Facebook OAuth (`AuthModal.tsx`), plus Facebook Page DM linking/unlinking (`/api/facebook/*`). |

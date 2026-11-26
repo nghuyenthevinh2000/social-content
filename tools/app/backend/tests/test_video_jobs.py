@@ -8,12 +8,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 import pytest
 from tools.app.backend.credits import CreditStore, CREDIT_STORE
 from tools.app.backend.media import MediaStore
-from tools.app.backend.video_jobs import VideoJobStore, VideoRunner, VIDEO_COST_MICRO
+from tools.app.backend.video_engine.jobs import VideoJobStore, VideoRunner, VIDEO_COST_MICRO
 
 
 def test_video_job_lifecycle_and_cancel():
     c_store = CreditStore()
-    import tools.app.backend.video_jobs as vj
+    import tools.app.backend.video_engine.jobs as vj
     orig_credit_store = vj.CREDIT_STORE
     vj.CREDIT_STORE = c_store
 
@@ -58,7 +58,7 @@ def test_video_job_lifecycle_and_cancel():
 
 def test_crash_recovery():
     c_store = CreditStore()
-    import tools.app.backend.video_jobs as vj
+    import tools.app.backend.video_engine.jobs as vj
     orig_credit_store = vj.CREDIT_STORE
     vj.CREDIT_STORE = c_store
 
@@ -88,7 +88,7 @@ def test_crash_recovery():
 def test_concurrency_and_per_user_limit():
     c_store = CreditStore()
     m_store = MediaStore()
-    import tools.app.backend.video_jobs as vj
+    import tools.app.backend.video_engine.jobs as vj
     orig_credit_store = vj.CREDIT_STORE
     vj.CREDIT_STORE = c_store
 

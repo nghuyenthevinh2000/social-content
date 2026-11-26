@@ -1216,7 +1216,8 @@ class BackendTests(unittest.TestCase):
         import concurrent.futures
         import threading
         import urllib.request
-        from tools.app.backend import blobs, db, handler, server, video_jobs
+        from tools.app.backend import blobs, db, handler, server
+        from tools.app.backend.video_engine import jobs as video_jobs
         from tools.app.backend.research_engine import research
 
         # Phase 5: schema applies twice cleanly

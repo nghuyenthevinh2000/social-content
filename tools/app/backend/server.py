@@ -50,7 +50,7 @@ from tools.app.backend.errors import handle_acp_error  # noqa: E402
 from tools.app.backend.handler import run_worker  # noqa: E402
 from tools.app.backend.media import MEDIA_STORE  # noqa: E402
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate_per_sec_micro  # noqa: E402
-from tools.app.backend.video_jobs import VIDEO_STORE, VIDEO_RUNNER  # noqa: E402
+from tools.app.backend.video_engine.jobs import VIDEO_STORE, VIDEO_RUNNER  # noqa: E402
 from tools.app.backend.video_engine import get_video_duration  # noqa: E402
 import uuid
 from tools.app.backend.profiles import PROFILE_STORE, detect_platform, now_iso  # noqa: E402

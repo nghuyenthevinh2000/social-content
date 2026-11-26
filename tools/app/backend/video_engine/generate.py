@@ -29,7 +29,7 @@ def get_video_duration(*_args: Any) -> int:
 
 @functools.lru_cache(maxsize=1)
 def _load_env() -> None:
-    env_file = Path(__file__).resolve().parent / ".env"
+    env_file = Path(__file__).resolve().parents[1] / ".env"
     if not env_file.is_file():
         return
     for line in env_file.read_text(encoding="utf-8", errors="ignore").splitlines():

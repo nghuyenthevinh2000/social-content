@@ -14,10 +14,11 @@ import uuid
 
 from tools.app.backend.acp import ACPClient
 
-WORKSPACE = Path(__file__).resolve().parents[3]
+WORKSPACE = Path(__file__).resolve().parents[4]
 DEFAULT_REA_VIDEO_BIN = WORKSPACE / "local/aibrand/rea-video/.venv/bin/rea-video"
 DOCKER_REA_VIDEO_BIN = WORKSPACE / "local/aibrand/rea-video/.venv-docker/bin/rea-video"
 EFFECT_EDITOR = WORKSPACE / ".agents/skills/video-editing/scripts/video_engine/effect_editor.py"
+REFERENCE_EDIT_WORKFLOW = WORKSPACE / ".agents/skills/video-editing/workflows/reference-edit-replication.md"
 REA_RUNS_ROOT = WORKSPACE / "local/aibrand/rea-video-runs"
 REF_CACHE_ROOT = REA_RUNS_ROOT / "ref-cache"
 _URL_RE = re.compile(r"https?://[^\s<>\"']+")
@@ -133,6 +134,7 @@ def build_video_edit_acp_prompt(
     rea_cmd = str(rea_video_bin or resolve_rea_video_bin() or "rea-video")
     lines = [
         "You are a fast, focused video editing agent.",
+        f"Read and follow the workflow at `{REFERENCE_EDIT_WORKFLOW}` end-to-end.",
         "",
         f"User source video: `{source_video_path}`",
         f"Target output MP4: `{output_path}`",
@@ -179,14 +181,17 @@ def build_video_edit_acp_prompt(
 
     rea_bin = rea_video_bin or resolve_rea_video_bin()
     editor_py = str(rea_bin.parent / "python") if rea_bin else "python3"
-    edit_plan_path = work_dir / "edit_plan.json"
+    edit_config_path = work_dir / "edit_config.json"
+    effects_dir = EFFECT_EDITOR.parent / "effects"
     lines.extend([
-        "Step 3 — Apply the requested edits via `effect_editor.py` (do NOT write custom Python rendering/PIL/SFX scripts from scratch):",
+        "Step 3 — Follow the JSON-first workflow in `reference-edit-replication.md` (do NOT write one-off render scripts):",
         f"User edit request: {prompt.strip()}",
         "",
-        f"Write `{edit_plan_path}` with `input_video` (`{source_video_path}`), `output_video` (`{output_path}`), and a stackable `effects` array where each item has `type`: `punch_zoom` (`{{start, end, scale}}`), `transition` (`{{kind: 'flash'|'fade_in'|'fade_out', time/start, duration, color}}`), `color_grade` (`{{contrast, saturation, brightness, gamma}}`), `text_box` (`{{variant: 'hook'|'info'|'table', start, end, y, bg_color, text_color, lines/title+body+tag/headers+rows}}`), `subtitles` (`{{style: {{color, outline_color, font_size, margin_v, uppercase, pop_in}}, items: [{{start, end, text}}]}}`), `sfx` (`{{time, sound: 'pop'|'ding'|'whoosh', volume}}`), `bgm` (`{{file, volume, fade_in, fade_out}}`).",
-        f'Then run: `"{editor_py}" "{EFFECT_EDITOR}" "{edit_plan_path}"`',
-        f"Do not overwrite `{source_video_path}`. Verify `{output_path}` exists with `ffprobe` and finish.",
+        f"1. Check `EFFECT_REGISTRY` in `{effects_dir / '__init__.py'}` and `{effects_dir}/*.py` to confirm whether `edit_config.json` can express the edit directly.",
+        f'2. Only if an effect or option is missing, extend the matching `{effects_dir}/*.py` primitive with minimal, reusable parameters and verify with `"{editor_py}" "{EFFECT_EDITOR}" --check`.',
+        f"3. Write `{edit_config_path}` with `input_video` (`{source_video_path}`), `output_video` (`{output_path}`), and a stackable `effects` array (`punch_zoom`, `transition`, `color_grade`, `text_box`, `subtitles`, `sfx`, `bgm`), then render via:",
+        f'   `"{editor_py}" "{EFFECT_EDITOR}" "{edit_config_path}"`',
+        f"4. Do not overwrite `{source_video_path}`. Verify `{output_path}` with `ffprobe` and inspect extracted keyframes across portrait safe zones (zero text clipping, zero face/hand overlap, clean diacritics) before finishing.",
     ])
     return "\n".join(lines)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import concurrent.futures
 from tools.app.backend.credits import CREDIT_STORE
 from tools.app.backend.store import JobStore
-from tools.app.backend.video_jobs import VIDEO_STORE
+from tools.app.backend.video_engine.jobs import VIDEO_STORE
 
 
 def test_concurrent_job_claims_no_double_claim():

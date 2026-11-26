@@ -17,8 +17,8 @@ from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate
 from tools.app.backend.db import ro, tx
 from tools.app.backend.media import MEDIA_STORE
 from tools.app.backend.profiles import now_iso
-from tools.app.backend.video_edit_engine import edit_video
-from tools.app.backend.video_engine import generate_video, get_video_duration
+from tools.app.backend.video_engine.edit import edit_video
+from tools.app.backend.video_engine.generate import generate_video, get_video_duration
 
 DEFAULT_MAX_GLOBAL_JOBS = 2
 DEFAULT_MAX_PER_USER_JOBS = 1

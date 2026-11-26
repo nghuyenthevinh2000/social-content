@@ -7,15 +7,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
 from tools.app.backend import blobs
 from tools.app.backend.tests.test_server_video_routes import DummyHandler
-from tools.app.backend.video_edit_engine import (
+from tools.app.backend.video_engine.edit import (
     REA_RUNS_ROOT,
+    REFERENCE_EDIT_WORKFLOW,
     _prepare_reference_decompose,
     build_video_edit_acp_prompt,
     edit_video,
     extract_reference_url,
     ref_cache_dir,
 )
-from tools.app.backend.video_jobs import VideoJobStore, VideoRunner
+from tools.app.backend.video_engine.jobs import VideoJobStore, VideoRunner
 
 
 def test_extract_reference_url():
@@ -41,6 +42,10 @@ def test_build_video_edit_acp_prompt_with_and_without_reference(tmp_path: Path):
         reference_video_url="https://www.facebook.com/reel/555",
         rea_video_bin=rea,
     )
+    assert REFERENCE_EDIT_WORKFLOW.is_file()
+    assert str(REFERENCE_EDIT_WORKFLOW) in with_ref
+    assert "edit_config.json" in with_ref
+    assert "--check" in with_ref
     assert "https://www.facebook.com/reel/555" in with_ref
     assert "rea-video" in with_ref
     assert "decompose" in with_ref
@@ -57,6 +62,7 @@ def test_build_video_edit_acp_prompt_with_and_without_reference(tmp_path: Path):
         reference_video_url=None,
         rea_video_bin=rea,
     )
+    assert str(REFERENCE_EDIT_WORKFLOW) in no_ref
     assert "uv run yt-dlp" not in no_ref
     assert "decompose" in no_ref
     assert "--no-stems --no-speakers --no-vlm" in no_ref
@@ -80,7 +86,7 @@ def test_build_video_edit_acp_prompt_with_and_without_reference(tmp_path: Path):
 
 def test_effect_editor_renders_synthetic_clip(tmp_path: Path):
     import subprocess
-    from tools.app.backend.video_edit_engine import resolve_rea_video_bin
+    from tools.app.backend.video_engine.edit import resolve_rea_video_bin
 
     repo_root = Path(__file__).resolve().parents[4]
     editor_path = repo_root / ".agents/skills/video-editing/scripts/video_engine/effect_editor.py"
@@ -131,7 +137,7 @@ def test_prepare_reference_decompose_uses_cache(monkeypatch, tmp_path: Path):
     def fail_run(*_args, **_kwargs):
         raise AssertionError("subprocess should not run on cache hit")
 
-    monkeypatch.setattr("tools.app.backend.video_edit_engine.subprocess.run", fail_run)
+    monkeypatch.setattr("tools.app.backend.video_engine.edit.subprocess.run", fail_run)
     res = _prepare_reference_decompose(url, Path("/opt/rea-video"), cache_root=tmp_path)
     assert res == cache_out
     assert str(REA_RUNS_ROOT).endswith("local/aibrand/rea-video-runs")
@@ -163,7 +169,7 @@ def test_edit_video_invokes_acp_and_verifies_output(monkeypatch, tmp_path: Path)
         def close(self):
             captured["closed"] = True
 
-    monkeypatch.setattr("tools.app.backend.video_edit_engine.ACPClient", FakeACPClient)
+    monkeypatch.setattr("tools.app.backend.video_engine.edit.ACPClient", FakeACPClient)
     monkeypatch.setattr(
         "tools.app.backend.research_engine.research.configured_agent",
         lambda: {"id": "opencode", "command": ["opencode", "acp"]},
