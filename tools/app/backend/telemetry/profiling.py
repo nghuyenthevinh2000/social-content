@@ -1,9 +1,9 @@
 """Centralized stdlib-only backend profiling, instrumentation, and isolated context benchmarks.
 
 Usage:
-    python3 tools/app/backend/profiling.py --context db
-    python3 tools/app/backend/profiling.py --context http,supervisor --iterations 20
-    python3 tools/app/backend/profiling.py --context all --cprofile
+    python3 tools/app/backend/telemetry/profiling.py --context db
+    python3 tools/app/backend/telemetry/profiling.py --context http,supervisor --iterations 20
+    python3 tools/app/backend/telemetry/profiling.py --context all --cprofile
 """
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ import cProfile
 from dataclasses import dataclass, field
 import http.client
 import io
-import json
 import os
 from pathlib import Path
 import pstats
@@ -29,16 +28,36 @@ import time
 import tracemalloc
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
-WORKSPACE = Path(__file__).resolve().parents[3]
+WORKSPACE = Path(__file__).resolve().parents[4]
 if str(WORKSPACE) not in sys.path:
     sys.path.insert(0, str(WORKSPACE))
 
-ALL_CONTEXTS = ("db", "http", "supervisor", "worker", "video")
-SLOW_SQL_MS = 20.0
+from tools.app.backend.telemetry.constants import (
+    ALL_CONTEXTS,
+    BYTES_PER_KB,
+    DEFAULT_BENCH_ITERATIONS,
+    DEFAULT_PROF_CLIENT_ID,
+    DEFAULT_PROF_JOB_ID,
+    DEFAULT_PROF_USER_ID,
+    DEFAULT_PROFILE_TOP_N,
+    DEFAULT_TEST_BLOB_ACCESS_KEY,
+    DEFAULT_TEST_BLOB_BUCKET,
+    DEFAULT_TEST_BLOB_ENDPOINT,
+    DEFAULT_TEST_BLOB_REGION,
+    DEFAULT_TEST_BLOB_SECRET_KEY,
+    DEFAULT_TEST_DATABASE_URL,
+    HTTP_BENCH_MAX_WORKERS,
+    HTTP_BENCH_ROUTES,
+    HTTP_BENCH_TIMEOUT_SEC,
+    SLOW_SQL_MS,
+    SQL_SNIPPET_MAX_LEN,
+    SUPERVISOR_STALE_SEC,
+    TRUTHY_VALUES,
+)
 
 
 def _parse_bool(val: Optional[str]) -> bool:
-    return (val or "").strip().lower() in {"1", "true", "yes", "on"}
+    return (val or "").strip().lower() in TRUTHY_VALUES
 
 
 def _parse_contexts(val: Optional[str]) -> set[str]:
@@ -72,7 +91,7 @@ def is_enabled(context: Optional[str] = None) -> bool:
 def rss_kb() -> int:
     """Return process max RSS in kilobytes (normalizing macOS bytes vs Linux KB)."""
     usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    return int(usage // 1024) if sys.platform == "darwin" else int(usage)
+    return int(usage // BYTES_PER_KB) if sys.platform == "darwin" else int(usage)
 
 
 @dataclass
@@ -126,7 +145,7 @@ class MetricsCollector:
             mx = times[-1]
             avg_sql = sum(r["sql_count"] for r in rows) / n
             avg_sql_ms = sum(r["sql_ms"] for r in rows) / n
-            avg_blob_kb = sum(r["blob_bytes"] for r in rows) / n / 1024.0
+            avg_blob_kb = sum(r["blob_bytes"] for r in rows) / n / float(BYTES_PER_KB)
             max_rss = max(r["rss_delta_kb"] for r in rows)
             lines.append(
                 f"| `{ctx}` | `{name}` | {n} | {p50:.2f} | {p95:.2f} | {mx:.2f} | "
@@ -189,7 +208,7 @@ def record_sql(sql: str, elapsed_ms: float, pool_wait_ms: float = 0.0) -> None:
         scope.sql_ms += elapsed_ms
         scope.pool_wait_ms += pool_wait_ms
     if is_enabled("db") and elapsed_ms >= SLOW_SQL_MS and _ACTIVE_COLLECTOR is None:
-        snippet = " ".join(sql.split())[:100]
+        snippet = " ".join(sql.split())[:SQL_SNIPPET_MAX_LEN]
         sys.stderr.write(f"[profile:db:slow] {elapsed_ms:.2f}ms (wait={pool_wait_ms:.2f}ms) {snippet}\n")
 
 
@@ -203,7 +222,12 @@ def record_blob(op: str, key: str, size_bytes: int, elapsed_ms: float) -> None:
         sys.stderr.write(f"[profile:blob] {op} {key} {size_bytes}B {elapsed_ms:.2f}ms\n")
 
 
-def profile_callable(fn: Callable[..., Any], *args: Any, top_n: int = 15, **kwargs: Any) -> Tuple[Any, str, float]:
+def profile_callable(
+    fn: Callable[..., Any],
+    *args: Any,
+    top_n: int = DEFAULT_PROFILE_TOP_N,
+    **kwargs: Any,
+) -> Tuple[Any, str, float]:
     """Run `fn` under cProfile and tracemalloc, returning (result, pstats_text, peak_kb)."""
     prof = cProfile.Profile()
     tracemalloc.start()
@@ -216,18 +240,18 @@ def profile_callable(fn: Callable[..., Any], *args: Any, top_n: int = 15, **kwar
         tracemalloc.stop()
     buf = io.StringIO()
     pstats.Stats(prof, stream=buf).sort_stats("cumtime").print_stats(top_n)
-    return result, buf.getvalue(), peak / 1024.0
+    return result, buf.getvalue(), peak / float(BYTES_PER_KB)
 
 
 # -- Isolated Context Benchmarks ---------------------------------------------
 def _setup_test_env(dsn: Optional[str] = None) -> str:
-    target_dsn = dsn or os.environ.get("TEST_DATABASE_URL") or "postgresql://postgres:postgres@localhost:5432/aibrand_test"
+    target_dsn = dsn or os.environ.get("TEST_DATABASE_URL") or DEFAULT_TEST_DATABASE_URL
     os.environ["DATABASE_URL"] = target_dsn
-    os.environ.setdefault("BLOB_ENDPOINT", "http://localhost:9000")
-    os.environ["BLOB_BUCKET"] = os.environ.get("TEST_BLOB_BUCKET", "test-aibrand")
-    os.environ.setdefault("BLOB_ACCESS_KEY", "rustfsadmin")
-    os.environ.setdefault("BLOB_SECRET_KEY", "rustfsadmin")
-    os.environ.setdefault("BLOB_REGION", "us-east-1")
+    os.environ.setdefault("BLOB_ENDPOINT", DEFAULT_TEST_BLOB_ENDPOINT)
+    os.environ["BLOB_BUCKET"] = os.environ.get("TEST_BLOB_BUCKET", DEFAULT_TEST_BLOB_BUCKET)
+    os.environ.setdefault("BLOB_ACCESS_KEY", DEFAULT_TEST_BLOB_ACCESS_KEY)
+    os.environ.setdefault("BLOB_SECRET_KEY", DEFAULT_TEST_BLOB_SECRET_KEY)
+    os.environ.setdefault("BLOB_REGION", DEFAULT_TEST_BLOB_REGION)
     from tools.app.backend import blobs
     from tools.app.backend.db import close_pools, init_schema
 
@@ -237,13 +261,13 @@ def _setup_test_env(dsn: Optional[str] = None) -> str:
     return target_dsn
 
 
-def _seed_db_fixtures(user_id: str = "prof_user") -> Dict[str, Any]:
+def _seed_db_fixtures(user_id: str = DEFAULT_PROF_USER_ID) -> Dict[str, Any]:
     from tools.app.backend.credits import CREDIT_STORE
     from tools.app.backend.profiles import PROFILE_STORE
     from tools.app.backend.store import JobStore, now_iso
 
     store = JobStore()
-    job_id = "deadbeef0001"
+    job_id = DEFAULT_PROF_JOB_ID
     sheets = [
         {
             "name": f"Topic {i}",
@@ -271,7 +295,7 @@ def _seed_db_fixtures(user_id: str = "prof_user") -> Dict[str, Any]:
     store.put({
         "id": job_id,
         "job_kind": "profile",
-        "client_id": "prof-client",
+        "client_id": DEFAULT_PROF_CLIENT_ID,
         "user_id": user_id,
         "status": "running",
         "filename": "bench.xlsx",
@@ -327,21 +351,14 @@ def run_http_context(iterations: int, collector: MetricsCollector) -> None:
 
     fx = _seed_db_fixtures()
     uid, jid = fx["user_id"], fx["job_id"]
-    server = BoundedHTTPServer(("127.0.0.1", 0), Handler, max_workers=8)
+    server = BoundedHTTPServer(("127.0.0.1", 0), Handler, max_workers=HTTP_BENCH_MAX_WORKERS)
     port = server.server_address[1]
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     headers = {"X-User-Id": uid, "X-User-Email": "prof@example.com", "X-Client-Id": "profclient1"}
-    routes = [
-        ("GET", "/api/health"),
-        ("GET", "/api/jobs"),
-        ("GET", f"/api/jobs/{jid}"),
-        ("GET", "/api/sources/topics"),
-        ("GET", "/api/credits"),
-        ("GET", "/api/logs"),
-    ]
+    routes = [(method, path.format(job_id=jid)) for method, path in HTTP_BENCH_ROUTES]
     try:
-        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=HTTP_BENCH_TIMEOUT_SEC)
         for method, path in routes:
             for _ in range(iterations):
                 conn.request(method, path, headers=headers)
@@ -362,7 +379,7 @@ def run_supervisor_context(iterations: int, collector: MetricsCollector) -> None
     for _ in range(iterations):
         with request_scope("SUPERVISOR", "tick", context="supervisor"):
             store.heartbeat([jid])
-            store.stale_running(30)
+            store.stale_running(SUPERVISOR_STALE_SEC)
             store.control_state(jid)
             store.claim(1)
 
@@ -409,7 +426,7 @@ def run_video_context(iterations: int, collector: MetricsCollector, live: bool =
     from tools.app.backend.video_engine.jobs import VideoJobStore
 
     fx = _seed_db_fixtures()
-    uid = fx["user_id"]
+    _ = fx["user_id"]
     vstore = VideoJobStore()
     for _ in range(iterations):
         with request_scope("VIDEO", "get_duration_and_prompt", context="video"):
@@ -433,7 +450,7 @@ def run_video_context(iterations: int, collector: MetricsCollector, live: bool =
 
 def run_contexts(
     contexts: List[str],
-    iterations: int = 10,
+    iterations: int = DEFAULT_BENCH_ITERATIONS,
     live: bool = False,
     dsn: Optional[str] = None,
     use_cprofile: bool = False,
@@ -479,7 +496,12 @@ def run_contexts(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Profile tools/app/backend in isolated contexts")
     parser.add_argument("--context", default="db", help="Comma-separated: db,http,supervisor,worker,video,all")
-    parser.add_argument("--iterations", type=int, default=10, help="Iterations per operation (default: 10)")
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=DEFAULT_BENCH_ITERATIONS,
+        help=f"Iterations per operation (default: {DEFAULT_BENCH_ITERATIONS})",
+    )
     parser.add_argument("--live", action="store_true", help="Allow live Glasser/external calls in worker/video contexts")
     parser.add_argument("--cprofile", action="store_true", help="Attach cProfile + tracemalloc summary")
     parser.add_argument("--dsn", default=None, help="Override Postgres DSN (defaults to TEST_DATABASE_URL)")
@@ -503,5 +525,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    from tools.app.backend.profiling import main as _pkg_main
+    from tools.app.backend.telemetry.profiling import main as _pkg_main
     _pkg_main()

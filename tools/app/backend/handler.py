@@ -13,7 +13,8 @@ import threading
 import time
 from typing import Any, Dict, Optional
 
-from tools.app.backend import blobs, profiling
+from tools.app.backend import blobs
+from tools.app.backend.telemetry import profiling
 from tools.app.backend.db import tx
 from tools.app.backend.research_engine.research import STORE, run_job
 from tools.app.backend.store import now_iso

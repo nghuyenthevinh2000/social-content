@@ -269,7 +269,7 @@ def run_analyzer_pipeline(
                 cached = prefetched_cache.get(handle)
             if cached is not None:
                 try:
-                    from tools.app.backend import cost_control
+                    from tools.app.backend.telemetry import cost_control
 
                     cost_control.record_cost_event(
                         provider=provider,

@@ -86,7 +86,7 @@ SINGLE_FLIGHT = SingleFlight()
 def submit_with_context(executor: Any, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     """Submit a callable to an executor preserving ContextVars and backend cost scopes."""
     try:
-        from tools.app.backend.cost_control import submit_with_context as cc_submit
+        from tools.app.backend.telemetry.cost_control import submit_with_context as cc_submit
 
         return cc_submit(executor, fn, *args, **kwargs)
     except Exception:

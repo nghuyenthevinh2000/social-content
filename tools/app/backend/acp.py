@@ -222,7 +222,7 @@ class ACPClient:
         finally:
             self._notification_hook = None
             try:
-                from tools.app.backend import cost_control
+                from tools.app.backend.telemetry import cost_control
 
                 agent_name = Path(self.command[0]).name if self.command else "agent"
                 cost_control.record_cost_event(

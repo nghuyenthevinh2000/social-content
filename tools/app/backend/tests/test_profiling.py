@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tools.app.backend import profiling
+from tools.app.backend.telemetry import profiling
 from tools.app.backend.db import ro
 
 

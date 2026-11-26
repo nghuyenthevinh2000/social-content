@@ -219,7 +219,7 @@ def execute_glasser_query(
     ctx: Optional[runtime.EngineContext] = None,
 ) -> Tuple[bool, Optional[str], Optional[GlasserError]]:
     """Execute glasser run command under shared concurrency limit and classify failures."""
-    from tools.app.backend import cost_control
+    from tools.app.backend.telemetry import cost_control
 
     eng_ctx = ctx or runtime.default_context()
     has_key, _ = check_glasser_key()
@@ -297,7 +297,7 @@ def run_glasser_json(
     ctx: Optional[runtime.EngineContext] = None,
 ) -> Tuple[Optional[Any], Optional[str], Optional[Exception]]:
     """Run a single Glasser endpoint with single-flight dedup, semaphore, and atomic disk cache."""
-    from tools.app.backend import cost_control
+    from tools.app.backend.telemetry import cost_control
 
     eng_ctx = ctx or runtime.default_context()
     cache_key = hashlib.sha256(

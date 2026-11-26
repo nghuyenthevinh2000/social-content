@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from tools.app.backend import cost_control
+from tools.app.backend.telemetry import cost_control
 from tools.app.backend.db import init_schema, ro, tx
 from tools.loop.viral_analyzer.video_research import pipeline as reel_research
 from tools.loop.viral_analyzer.cache import NO_TRANSCRIPT_SENTINEL, get_cached_transcript
@@ -111,8 +111,16 @@ def test_policy_guards_and_budget_circuit_breakers():
                 payload={"url": "https://www.facebook.com/reel/123456"},
             )
 
-    # 3. profile_research caps transcript calls at 3
-    with cost_control.cost_scope("u1", "profile_research", job_id="j3"):
+    # 3. profile_research blocks transcripts; reel_research caps transcript calls at 3
+    with cost_control.cost_scope("u1", "profile_research", job_id="j3_prof"):
+        with pytest.raises(cost_control.CostPolicyError):
+            cost_control.check_call_allowed(
+                "scrapecreators",
+                "/v1/facebook/post/transcript",
+                payload={"url": "https://www.facebook.com/reel/100"},
+            )
+
+    with cost_control.cost_scope("u1", "reel_research", job_id="j3"):
         for i in range(3):
             cost_control.check_call_allowed(
                 "scrapecreators",
@@ -145,7 +153,7 @@ def test_transcriber_blocks_non_fb_and_negative_caches_404():
             with pytest.raises(cost_control.CostPolicyError):
                 cost_control.check_call_allowed("scrapecreators", endpoint, payload={"url": bad_url})
 
-    with patch("tools.app.backend.cost_control.subprocess.run") as mock_run:
+    with patch("tools.app.backend.telemetry.cost_control.subprocess.run") as mock_run:
         with cost_control.cost_scope("u_tr", "reel_research", job_id="j_web"):
             assert tr_glasser.fetch_reel_transcript("https://example.com/video/123") is None
         mock_run.assert_not_called()
@@ -186,9 +194,9 @@ def test_transcriber_blocks_non_fb_and_negative_caches_404():
 
         return OkProc()
 
-    with patch("tools.app.backend.cost_control.shutil.which", return_value="/usr/local/bin/glasser"):
-        with patch("tools.app.backend.cost_control.subprocess.run", side_effect=fake_multi_run):
-            with cost_control.cost_scope("u_tr", "profile_research", job_id="j_multi"):
+    with patch("tools.app.backend.telemetry.cost_control.shutil.which", return_value="/usr/local/bin/glasser"):
+        with patch("tools.app.backend.telemetry.cost_control.subprocess.run", side_effect=fake_multi_run):
+            with cost_control.cost_scope("u_tr", "reel_research", job_id="j_multi"):
                 assert tr_glasser.fetch_reel_transcript(f"https://www.youtube.com/watch?v={yt_vid}") == "YouTube hello world"
                 assert tr_glasser.fetch_reel_transcript(f"https://www.tiktok.com/@creator/video/{tt_vid}") == "TikTok line one line two"
                 assert tr_glasser.fetch_reel_transcript(f"https://www.instagram.com/reel/{ig_vid}/") == "Instagram speech"
@@ -215,9 +223,9 @@ def test_transcriber_blocks_non_fb_and_negative_caches_404():
         )
         stderr = ""
 
-    with patch("tools.app.backend.cost_control.shutil.which", return_value="/usr/local/bin/glasser"):
-        with patch("tools.app.backend.cost_control.subprocess.run", return_value=FakeProc()) as mock_run:
-            with cost_control.cost_scope("u_tr", "profile_research", job_id="j_404") as scope:
+    with patch("tools.app.backend.telemetry.cost_control.shutil.which", return_value="/usr/local/bin/glasser"):
+        with patch("tools.app.backend.telemetry.cost_control.subprocess.run", return_value=FakeProc()) as mock_run:
+            with cost_control.cost_scope("u_tr", "reel_research", job_id="j_404") as scope:
                 first = tr_glasser.fetch_reel_transcript(fb_url, video_id=fb_vid)
                 second = tr_glasser.fetch_reel_transcript(fb_url, video_id=fb_vid)
 
@@ -335,3 +343,41 @@ def test_cost_store_summaries_and_cli_report():
     assert "Spend per User Profile" in report
     assert "Alice" in report
     assert "Wasted / Blocked Call Audit" in report
+
+
+def test_action_registry_blocks_unregistered_and_allows_registered_future_actions():
+    from tools.app.backend.telemetry.constants import ACTION_POLICIES
+
+    # 1. hashtag_search enforces tikhub hashtag endpoints and max_calls
+    with cost_control.cost_scope("u1", "hashtag_search", job_id="j_hash"):
+        assert cost_control.check_call_allowed("tikhub", "/api/v1/tiktok/app/v3/fetch_hashtag_search_result")[0] is True
+        assert cost_control.check_call_allowed("tikhub", "/api/v1/instagram/v2/search_hashtags")[0] is True
+        with pytest.raises(cost_control.CostPolicyError):
+            cost_control.check_call_allowed("scrapecreators", "/v1/youtube/search")
+        for _ in range(12):
+            cost_control.record_cost_event("tikhub", "/api/v1/instagram/v2/search_hashtags", cost_micro=100)
+        with pytest.raises(cost_control.CostPolicyError):
+            cost_control.check_call_allowed("tikhub", "/api/v1/instagram/v2/search_hashtags")
+
+    # 2. Unregistered future action fails closed
+    with cost_control.cost_scope("u1", "future_unregistered", job_id="j_unreg"):
+        with pytest.raises(cost_control.CostPolicyError, match="Unregistered action"):
+            cost_control.check_call_allowed("custom_provider", "/v1/custom")
+
+    # 3. register_action() enables future actions and enforces their endpoints & budgets
+    try:
+        cost_control.register_action(
+            "future_custom_action",
+            [("custom_provider", "/v1/custom")],
+            max_calls=1,
+            max_cost_micro=5_000,
+        )
+        with cost_control.cost_scope("u1", "future_custom_action", job_id="j_fut"):
+            assert cost_control.check_call_allowed("custom_provider", "/v1/custom")[0] is True
+            with pytest.raises(cost_control.CostPolicyError):
+                cost_control.check_call_allowed("other_provider", "/v1/custom")
+            cost_control.record_cost_event("custom_provider", "/v1/custom", cost_micro=1_000)
+            with pytest.raises(cost_control.CostPolicyError):
+                cost_control.check_call_allowed("custom_provider", "/v1/custom")
+    finally:
+        ACTION_POLICIES.pop("future_custom_action", None)

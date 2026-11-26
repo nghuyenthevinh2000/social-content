@@ -37,7 +37,8 @@ APP_DIR = BACKEND_DIR.parent
 WORKSPACE = BACKEND_DIR.parents[2]
 sys.path.insert(0, str(WORKSPACE))
 
-from tools.app.backend import blobs, profiling  # noqa: E402
+from tools.app.backend import blobs  # noqa: E402
+from tools.app.backend.telemetry import profiling  # noqa: E402
 from tools.app.backend.acp import ACPError  # noqa: E402
 from tools.app.backend.brand_assistant import (  # noqa: E402
     get_brand_assistant_chat_job,
@@ -382,7 +383,7 @@ class Handler(BaseHTTPRequestHandler):
             if not user_id:
                 _json(self, 401, {"error": "Yêu cầu đăng nhập để xem thống kê chi phí."})
                 return
-            from tools.app.backend.cost_control import COST_STORE
+            from tools.app.backend.telemetry.cost_control import COST_STORE
 
             qs = parse_qs(parsed.query)
             try:
@@ -909,7 +910,7 @@ class Handler(BaseHTTPRequestHandler):
                 _json(self, 401, {"error": "Yêu cầu đăng nhập."})
                 return
             try:
-                from tools.app.backend import cost_control
+                from tools.app.backend.telemetry import cost_control
 
                 length = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}

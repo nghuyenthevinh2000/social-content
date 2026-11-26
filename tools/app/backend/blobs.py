@@ -11,7 +11,7 @@ import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
-from tools.app.backend import profiling
+from tools.app.backend.telemetry import profiling
 
 _CLIENT: Optional[boto3.client] = None
 _URL_CLIENT: Optional[boto3.client] = None

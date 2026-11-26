@@ -1828,9 +1828,9 @@ class BackendTests(unittest.TestCase):
                  mock.patch("tools.loop.viral_analyzer.profile_research.collect.write_cached_reels") as mock_write_cache, \
                  mock.patch("tools.loop.viral_analyzer.glasser.check_glasser_key", return_value=(True, None)), \
                  mock.patch("tools.loop.viral_analyzer.profile_research.pipeline.persist_to_database"), \
-                 mock.patch("tools.app.backend.cost_control.record_cost_event"), \
-                 mock.patch("tools.app.backend.cost_control.shutil.which", return_value="/usr/local/bin/glasser"), \
-                 mock.patch("tools.app.backend.cost_control.subprocess.run", side_effect=fake_run):
+                 mock.patch("tools.app.backend.telemetry.cost_control.record_cost_event"), \
+                 mock.patch("tools.app.backend.telemetry.cost_control.shutil.which", return_value="/usr/local/bin/glasser"), \
+                 mock.patch("tools.app.backend.telemetry.cost_control.subprocess.run", side_effect=fake_run):
                 res = run_analyzer_pipeline(config, cache_dir=root / "cache", transcribe=False, legacy_cache=False)
 
             seen_by_ep = dict(seen_calls)

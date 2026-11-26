@@ -2,7 +2,7 @@
 
 Always active in production (independent of opt-in `profiling.py`).
 Usage:
-    python3 tools/app/backend/cost_control.py [--user <uid>] [--action <act>] [--days 7]
+    python3 tools/app/backend/telemetry/cost_control.py [--user <uid>] [--action <act>] [--days 7]
 """
 
 from __future__ import annotations
@@ -16,51 +16,43 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 import json
 import logging
-import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
 import threading
 import time
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
 
-WORKSPACE = Path(__file__).resolve().parents[3]
+WORKSPACE = Path(__file__).resolve().parents[4]
 if str(WORKSPACE) not in sys.path:
     sys.path.insert(0, str(WORKSPACE))
 
 from tools.app.backend.db import ro, tx
+from tools.app.backend.telemetry.constants import (
+    ACTION_POLICIES,
+    ActionPolicy,
+    CHARGE_RE,
+    DEFAULT_ACTION,
+    DEFAULT_GLASSER_TIMEOUT_SEC,
+    DEFAULT_REPORT_DAYS,
+    DEFAULT_SUMMARY_DAYS,
+    DEFAULT_USER_AGE,
+    DEFAULT_USER_GENDER,
+    DEFAULT_USER_ID,
+    HTTP_STATUS_RE,
+    MAX_CHARGE_CLAUSE_LEN,
+    MICRO_PER_USD,
+    RECENT_RUNS_LIMIT,
+    RUN_ID_RE,
+    RUN_URL_RE,
+    TRANSCRIPT_ENDPOINT_PLATFORMS,
+    TRANSCRIPT_ENDPOINTS,
+    WASTED_CALLS_LIMIT,
+)
 from tools.loop.viral_analyzer.platforms import get_platform
 
 logger = logging.getLogger(__name__)
-
-KEYWORD_SEARCH_ALLOWED_ENDPOINTS = frozenset({
-    "/v1/youtube/search",
-    "/videos",
-    "/v1/facebook/adLibrary/search/ads",
-    "/v1/tiktok/search/keyword",
-    "/v2/instagram/reels/search",
-})
-
-TRANSCRIPT_ENDPOINTS = frozenset({
-    "/v1/facebook/post/transcript",
-    "/v1/youtube/video/transcript",
-    "/v1/tiktok/video/transcript",
-    "/v2/instagram/media/transcript",
-})
-
-ACTION_BUDGETS: Dict[str, Dict[str, int]] = {
-    "keyword_search": {"max_calls": 28, "max_cost_micro": 45_000},
-    "profile_research": {"max_transcript_calls": 3, "max_cost_micro": 100_000},
-    "reel_research": {"max_transcript_calls": 1, "max_cost_micro": 10_000},
-    "video_generation": {"max_calls": 2},
-}
-
-_RUN_ID_RE = re.compile(r"Run\s+ID:\s*(\S+)", re.IGNORECASE)
-_RUN_URL_RE = re.compile(r"Run\s+URL:\s*(\S+)", re.IGNORECASE)
-_HTTP_STATUS_RE = re.compile(r"Response:\s*HTTP\s*(\d+)", re.IGNORECASE)
-_CHARGE_RE = re.compile(r"Charge:\s*\$([0-9]+(?:\.[0-9]+)?)\s*(?:\(([^)]+)\))?", re.IGNORECASE)
 
 
 class CostPolicyError(RuntimeError):
@@ -93,7 +85,7 @@ class CostScope:
                 "cache_hits": self.cache_hits,
                 "wasted_calls": self.wasted_calls,
                 "cost_micro": self.cost_micro,
-                "cost_usd": round(self.cost_micro / 1_000_000, 6),
+                "cost_usd": round(self.cost_micro / MICRO_PER_USD, 6),
                 "run_urls": list(self.run_urls),
             }
 
@@ -113,8 +105,8 @@ def cost_scope(
     sheet_slug: Optional[str] = None,
 ) -> Iterator[CostScope]:
     scope = CostScope(
-        user_id=user_id or "default",
-        action=action or "unknown",
+        user_id=user_id or DEFAULT_USER_ID,
+        action=action or DEFAULT_ACTION,
         job_id=job_id,
         sheet_slug=sheet_slug,
     )
@@ -157,10 +149,10 @@ def is_valid_instagram_transcript_url(url: str) -> bool:
 def parse_glasser_stdout(text: str) -> Dict[str, Any]:
     """Parse Glasser CLI stdout/stderr for Run ID, Run URL, HTTP status, and exact Decimal Charge."""
     raw = text or ""
-    run_id_m = _RUN_ID_RE.search(raw)
-    run_url_m = _RUN_URL_RE.search(raw)
-    status_m = _HTTP_STATUS_RE.search(raw)
-    charge_m = _CHARGE_RE.search(raw)
+    run_id_m = RUN_ID_RE.search(raw)
+    run_url_m = RUN_URL_RE.search(raw)
+    status_m = HTTP_STATUS_RE.search(raw)
+    charge_m = CHARGE_RE.search(raw)
 
     run_id = run_id_m.group(1).strip() if run_id_m else None
     run_url = run_url_m.group(1).strip() if run_url_m else None
@@ -171,13 +163,13 @@ def parse_glasser_stdout(text: str) -> Dict[str, Any]:
     if charge_m:
         try:
             dec = Decimal(charge_m.group(1))
-            cost_micro = int((dec * Decimal(1_000_000)).quantize(Decimal("1")))
+            cost_micro = int((dec * Decimal(MICRO_PER_USD)).quantize(Decimal("1")))
         except (InvalidOperation, ValueError):
             cost_micro = 0
         if charge_m.group(2):
             charge_clause = charge_m.group(2).strip()
 
-    charge_usd = f"{Decimal(cost_micro) / Decimal(1_000_000):.6f}"
+    charge_usd = f"{Decimal(cost_micro) / Decimal(MICRO_PER_USD):.6f}"
     wasted = (http_status is not None and http_status >= 400) or (
         charge_clause == "NO_RESULT" and cost_micro > 0
     )
@@ -212,12 +204,12 @@ def record_cost_event(
 ) -> None:
     """Update active CostScope counters and persist a cost_events row to PostgreSQL."""
     scope = current_cost_scope()
-    eff_user_id = user_id or (scope.user_id if scope else "default")
-    eff_action = action or (scope.action if scope else "unknown")
+    eff_user_id = user_id or (scope.user_id if scope else DEFAULT_USER_ID)
+    eff_action = action or (scope.action if scope else DEFAULT_ACTION)
     eff_job_id = job_id if job_id is not None else (scope.job_id if scope else None)
     eff_sheet_slug = sheet_slug if sheet_slug is not None else (scope.sheet_slug if scope else None)
     eff_cost = int(cost_micro or 0)
-    charge_usd = f"{Decimal(eff_cost) / Decimal(1_000_000):.6f}"
+    charge_usd = f"{Decimal(eff_cost) / Decimal(MICRO_PER_USD):.6f}"
 
     if scope is not None:
         with scope._lock:
@@ -269,12 +261,36 @@ def record_cost_event(
         logger.debug("Failed to persist cost_event (%s %s): %s", provider, endpoint, exc)
 
 
-_TRANSCRIPT_URL_VALIDATORS: Dict[str, Tuple[str, Callable[[str], bool]]] = {
-    "/v1/facebook/post/transcript": ("Facebook", is_valid_facebook_transcript_url),
-    "/v1/youtube/video/transcript": ("YouTube", is_valid_youtube_transcript_url),
-    "/v1/tiktok/video/transcript": ("TikTok", is_valid_tiktok_transcript_url),
-    "/v2/instagram/media/transcript": ("Instagram", is_valid_instagram_transcript_url),
-}
+_POLICY_LOCK = threading.Lock()
+
+
+def register_action(
+    action: str,
+    allowed_endpoints: Iterable[Tuple[str, str]],
+    *,
+    max_calls: Optional[int] = None,
+    max_transcript_calls: Optional[int] = None,
+    max_cost_micro: Optional[int] = None,
+) -> ActionPolicy:
+    """Register or update an action's allowed (provider, endpoint) pairs and budget limits."""
+    name = (action or "").strip()
+    if not name:
+        raise ValueError("action name must be non-empty")
+    policy = ActionPolicy(
+        allowed_endpoints=frozenset((str(p), str(e)) for p, e in allowed_endpoints),
+        max_calls=max_calls,
+        max_transcript_calls=max_transcript_calls,
+        max_cost_micro=max_cost_micro,
+    )
+    with _POLICY_LOCK:
+        ACTION_POLICIES[name] = policy
+    return policy
+
+
+def get_action_policy(action: str) -> Optional[ActionPolicy]:
+    """Return the registered ActionPolicy for `action`, if any."""
+    with _POLICY_LOCK:
+        return ACTION_POLICIES.get(action)
 
 
 def check_call_allowed(
@@ -284,38 +300,39 @@ def check_call_allowed(
     sub_action: Optional[str] = None,
     raise_on_block: bool = True,
 ) -> Tuple[bool, str]:
-    """Enforce URL guards, keyword_search allowlist, and per-action budget circuit breakers."""
+    """Enforce URL guards, registered action/endpoint allowlists, and per-action budget circuit breakers."""
     reason: Optional[str] = None
 
-    validator_entry = _TRANSCRIPT_URL_VALIDATORS.get(endpoint)
-    if validator_entry is not None:
-        plat_label, validator = validator_entry
+    platform_entry = TRANSCRIPT_ENDPOINT_PLATFORMS.get(endpoint)
+    if platform_entry is not None:
+        platform_key, plat_label = platform_entry
         url = str((payload or {}).get("url") or "").strip()
-        if not validator(url):
+        if not _matches_platform_transcript_url(platform_key, url):
             reason = f"Blocked non-{plat_label} URL for transcript endpoint: {url or '<empty>'}"
 
     scope = current_cost_scope()
     if reason is None and scope is not None:
-        if scope.action == "keyword_search" and provider == "scrapecreators":
-            if endpoint in TRANSCRIPT_ENDPOINTS or endpoint not in KEYWORD_SEARCH_ALLOWED_ENDPOINTS:
-                reason = f"Endpoint {endpoint} is not allowed during keyword_search"
+        policy = get_action_policy(scope.action)
+        if policy is None:
+            reason = f"Unregistered action {scope.action!r}; register it in ACTION_POLICIES or via register_action()"
+        elif (provider, endpoint) not in policy.allowed_endpoints:
+            reason = f"Endpoint ({provider}, {endpoint}) is not allowed for action {scope.action!r}"
 
-        if reason is None:
-            budget = ACTION_BUDGETS.get(scope.action, {})
+        if reason is None and policy is not None:
             with scope._lock:
-                if "max_calls" in budget and scope.api_calls >= budget["max_calls"]:
-                    reason = f"Budget exceeded for {scope.action}: api_calls={scope.api_calls} >= {budget['max_calls']}"
+                if policy.max_calls is not None and scope.api_calls >= policy.max_calls:
+                    reason = f"Budget exceeded for {scope.action}: api_calls={scope.api_calls} >= {policy.max_calls}"
                 elif (
                     endpoint in TRANSCRIPT_ENDPOINTS
-                    and "max_transcript_calls" in budget
-                    and scope.transcript_calls >= budget["max_transcript_calls"]
+                    and policy.max_transcript_calls is not None
+                    and scope.transcript_calls >= policy.max_transcript_calls
                 ):
                     reason = (
                         f"Transcript budget exceeded for {scope.action}: "
-                        f"transcript_calls={scope.transcript_calls} >= {budget['max_transcript_calls']}"
+                        f"transcript_calls={scope.transcript_calls} >= {policy.max_transcript_calls}"
                     )
-                elif "max_cost_micro" in budget and scope.cost_micro >= budget["max_cost_micro"]:
-                    reason = f"Cost budget exceeded for {scope.action}: cost_micro={scope.cost_micro} >= {budget['max_cost_micro']}"
+                elif policy.max_cost_micro is not None and scope.cost_micro >= policy.max_cost_micro:
+                    reason = f"Cost budget exceeded for {scope.action}: cost_micro={scope.cost_micro} >= {policy.max_cost_micro}"
 
     if reason is not None:
         record_cost_event(
@@ -326,7 +343,7 @@ def check_call_allowed(
             wasted=True,
             sub_action=sub_action or "policy_blocked",
             http_status=403,
-            charge_clause=reason[:200],
+            charge_clause=reason[:MAX_CHARGE_CLAUSE_LEN],
         )
         if raise_on_block:
             raise CostPolicyError(reason)
@@ -343,7 +360,7 @@ def run_glasser_tracked(
     idempotency_key: str,
     out_file: Path,
     task_id: Optional[str] = None,
-    timeout: float = 45.0,
+    timeout: float = DEFAULT_GLASSER_TIMEOUT_SEC,
     sub_action: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run Glasser CLI under policy/budget guards, parse stdout Charge/Run URL, and record cost_events."""
@@ -432,7 +449,7 @@ class CostControlStore:
         dt = datetime.now(timezone.utc) - timedelta(days=max(1, int(days)))
         return dt.isoformat(timespec="seconds")
 
-    def get_user_summary(self, user_id: str, days: int = 30) -> Dict[str, Any]:
+    def get_user_summary(self, user_id: str, days: int = DEFAULT_SUMMARY_DAYS) -> Dict[str, Any]:
         cutoff = self._cutoff_iso(days)
         with ro() as conn:
             prof_row = conn.execute(
@@ -483,25 +500,25 @@ class CostControlStore:
                 FROM cost_events
                 WHERE user_id = %s AND created_at >= %s
                 ORDER BY id DESC
-                LIMIT 50
+                LIMIT %s
                 """,
-                (user_id, cutoff),
+                (user_id, cutoff, RECENT_RUNS_LIMIT),
             ).fetchall()
 
         credit_balance_micro = int(cred_row[0]) if cred_row and cred_row[0] is not None else 0
         user_profile = {
             "user_id": user_id,
             "name": prof_row[0] if prof_row else None,
-            "gender": prof_row[1] if prof_row else "male",
-            "age": int(prof_row[2]) if prof_row and prof_row[2] is not None else 28,
-            "credit_balance_usd": round(credit_balance_micro / 1_000_000, 6),
+            "gender": prof_row[1] if prof_row else DEFAULT_USER_GENDER,
+            "age": int(prof_row[2]) if prof_row and prof_row[2] is not None else DEFAULT_USER_AGE,
+            "credit_balance_usd": round(credit_balance_micro / MICRO_PER_USD, 6),
         }
 
         by_action = []
         for r in action_rows:
             jobs_count = int(r[1] or 0)
             cost_micro = int(r[5] or 0)
-            cost_usd = round(cost_micro / 1_000_000, 6)
+            cost_usd = round(cost_micro / MICRO_PER_USD, 6)
             avg_cost = round(cost_usd / jobs_count, 6) if jobs_count > 0 else cost_usd
             by_action.append({
                 "action": r[0],
@@ -522,7 +539,7 @@ class CostControlStore:
                 "cache_hits": int(r[3] or 0),
                 "wasted_calls": int(r[4] or 0),
                 "cost_micro": int(r[5] or 0),
-                "cost_usd": round(int(r[5] or 0) / 1_000_000, 6),
+                "cost_usd": round(int(r[5] or 0) / MICRO_PER_USD, 6),
             }
             for r in endpoint_rows
         ]
@@ -558,7 +575,7 @@ class CostControlStore:
             "recent_runs": recent_runs,
         }
 
-    def get_all_users_summary(self, days: int = 30) -> List[Dict[str, Any]]:
+    def get_all_users_summary(self, days: int = DEFAULT_SUMMARY_DAYS) -> List[Dict[str, Any]]:
         cutoff = self._cutoff_iso(days)
         with ro() as conn:
             rows = conn.execute(
@@ -583,12 +600,12 @@ class CostControlStore:
             {
                 "user_id": r[0],
                 "name": r[1],
-                "credit_balance_usd": round(int(r[2] or 0) / 1_000_000, 6),
+                "credit_balance_usd": round(int(r[2] or 0) / MICRO_PER_USD, 6),
                 "api_calls": int(r[3] or 0),
                 "cache_hits": int(r[4] or 0),
                 "wasted_calls": int(r[5] or 0),
                 "cost_micro": int(r[6] or 0),
-                "cost_usd": round(int(r[6] or 0) / 1_000_000, 6),
+                "cost_usd": round(int(r[6] or 0) / MICRO_PER_USD, 6),
             }
             for r in rows
         ]
@@ -626,7 +643,7 @@ class CostControlStore:
             "cache_hits": cache_hits,
             "wasted_calls": wasted_calls,
             "cost_micro": cost_micro,
-            "cost_usd": round(cost_micro / 1_000_000, 6),
+            "cost_usd": round(cost_micro / MICRO_PER_USD, 6),
             "run_urls": run_urls,
         }
 
@@ -634,7 +651,11 @@ class CostControlStore:
 COST_STORE = CostControlStore()
 
 
-def format_cost_report(days: int = 7, user_id: Optional[str] = None, action: Optional[str] = None) -> str:
+def format_cost_report(
+    days: int = DEFAULT_REPORT_DAYS,
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+) -> str:
     """Query cost_events and render Markdown tables for users, actions, endpoints, and wasted/blocked calls."""
     cutoff = CostControlStore._cutoff_iso(days)
     where_clauses = ["ce.created_at >= %s"]
@@ -702,9 +723,9 @@ def format_cost_report(days: int = 7, user_id: Optional[str] = None, action: Opt
             FROM cost_events ce
             WHERE {where_sql} AND ce.wasted = TRUE
             ORDER BY ce.id DESC
-            LIMIT 25
+            LIMIT %s
             """,
-            tuple(params),
+            tuple(params) + (WASTED_CALLS_LIMIT,),
         ).fetchall()
 
     sections = [
@@ -713,7 +734,7 @@ def format_cost_report(days: int = 7, user_id: Optional[str] = None, action: Opt
         "|---|---|---:|---:|---:|---:|",
     ]
     for r in user_rows:
-        sections.append(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} | ${int(r[5] or 0) / 1_000_000:.6f} |")
+        sections.append(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} | ${int(r[5] or 0) / MICRO_PER_USD:.6f} |")
     if not user_rows:
         sections.append("| - | - | 0 | 0 | 0 | $0.000000 |")
 
@@ -724,7 +745,7 @@ def format_cost_report(days: int = 7, user_id: Optional[str] = None, action: Opt
         "|---|---:|---:|---:|---:|---:|",
     ])
     for r in action_rows:
-        sections.append(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} | ${int(r[5] or 0) / 1_000_000:.6f} |")
+        sections.append(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} | ${int(r[5] or 0) / MICRO_PER_USD:.6f} |")
     if not action_rows:
         sections.append("| - | 0 | 0 | 0 | 0 | $0.000000 |")
 
@@ -737,7 +758,7 @@ def format_cost_report(days: int = 7, user_id: Optional[str] = None, action: Opt
     for r in endpoint_rows:
         total = int(r[2] or 0) + int(r[3] or 0)
         hit_rate = f"{(int(r[3] or 0) / total * 100):.1f}%" if total else "0.0%"
-        sections.append(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {hit_rate} | {r[4]} | ${int(r[5] or 0) / 1_000_000:.6f} |")
+        sections.append(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {hit_rate} | {r[4]} | ${int(r[5] or 0) / MICRO_PER_USD:.6f} |")
     if not endpoint_rows:
         sections.append("| - | - | 0 | 0 | 0.0% | 0 | $0.000000 |")
 
@@ -761,7 +782,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="AIBrand cost_events reporter")
     parser.add_argument("--user", dest="user_id", default=None, help="Filter by user_id")
     parser.add_argument("--action", dest="action", default=None, help="Filter by action")
-    parser.add_argument("--days", type=int, default=7, help="Lookback window in days")
+    parser.add_argument("--days", type=int, default=DEFAULT_REPORT_DAYS, help="Lookback window in days")
     args = parser.parse_args()
     print(format_cost_report(days=args.days, user_id=args.user_id, action=args.action))
     return 0

@@ -394,7 +394,7 @@ def run_profile_context(iterations: int, collector: BenchCollector, workers: int
             patch.object(prof_collect, "read_cached_reels", side_effect=_fake_read),
             patch.object(prof_collect, "write_cached_reels", side_effect=_fake_write),
             patch.object(prof_collect, "execute_glasser_query", side_effect=_fake_exec),
-            patch.dict(sys.modules, {"tools.app.backend.cost_control": fake_cc}),
+            patch.dict(sys.modules, {"tools.app.backend.telemetry.cost_control": fake_cc}),
             redirect_stdout(io.StringIO()),
         ):
             with ThreadPoolExecutor(max_workers=12) as pool:

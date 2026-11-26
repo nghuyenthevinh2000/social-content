@@ -12,7 +12,8 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 import uuid
 
-from tools.app.backend import blobs, profiling
+from tools.app.backend import blobs
+from tools.app.backend.telemetry import profiling
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate_per_sec_micro
 from tools.app.backend.db import ro, tx
 from tools.app.backend.media import MEDIA_STORE
@@ -376,7 +377,7 @@ class VideoRunner:
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
                 temp_mp4 = Path(f.name)
 
-            from tools.app.backend import cost_control
+            from tools.app.backend.telemetry import cost_control
 
             with cost_control.cost_scope(user_id=user_id, action="video_generation", job_id=job_id):
                 cost_control.check_call_allowed(

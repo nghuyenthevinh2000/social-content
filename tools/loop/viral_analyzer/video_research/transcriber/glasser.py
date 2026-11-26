@@ -39,7 +39,7 @@ def fetch_reel_transcript(
         return None
     platform, endpoint, version = resolved
 
-    from tools.app.backend import cost_control
+    from tools.app.backend.telemetry import cost_control
 
     eng_ctx = ctx or runtime.default_context()
     vid = video_id or platforms.extract_video_id(reel_url)

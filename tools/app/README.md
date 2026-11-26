@@ -29,7 +29,7 @@ Library (Topics, Imports, DM Reels) -> Analyzer (P1-P5, Transcripts, Prompts) ->
 | Video (`Tạo Video`) | Concurrency & recovery | Global and per-user job limits, crash recovery, status polling, cancellation, in-app playback, and download (`/api/videos`). |
 | Profile (`Hồ sơ`) | Authentication & linking | Firebase Email/Password and Facebook OAuth (`AuthModal.tsx`), plus Facebook Page DM linking/unlinking (`/api/facebook/*`). |
 | Profile (`Hồ sơ`) | Actor & media management | Configure actor gender, age, name, and Vietnamese voice tone (`Bắc`/`Trung`/`Nam`); upload/delete JPEG/PNG/WEBP images up to 10MB (`/api/media`, `/api/user/profile`). |
-| Onboarding & Ops | Guided tour & diagnostics | 4-tab interactive tour (`Tour.tsx`), health checks (`/api/health`), server/client logs (`/api/logs`), cost summary (`/api/costs/summary`, `cost_control.py`), opt-in profiling (`profiling.py`), and graceful shutdown (`/api/shutdown`). |
+| Onboarding & Ops | Guided tour & diagnostics | 4-tab interactive tour (`Tour.tsx`), health checks (`/api/health`), server/client logs (`/api/logs`), cost summary (`/api/costs/summary`, `telemetry/cost_control.py`), opt-in profiling (`telemetry/profiling.py`), and graceful shutdown (`/api/shutdown`). |
 
 ## Architecture Decision Records
 

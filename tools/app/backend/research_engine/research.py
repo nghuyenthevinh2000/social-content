@@ -15,7 +15,8 @@ import tempfile
 import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from tools.app.backend import blobs, profiling
+from tools.app.backend import blobs
+from tools.app.backend.telemetry import profiling
 from tools.app.backend.acp import ACPClient, ACPError
 from tools.app.backend.errors import (
     AppError,
@@ -349,7 +350,7 @@ def _process_sheet(
     job_kind: str = "profile",
     user_id: str = "default",
 ) -> None:
-    from tools.app.backend import cost_control
+    from tools.app.backend.telemetry import cost_control
 
     action = _ACTION_BY_JOB_KIND.get(job_kind, "profile_research")
     with cost_control.cost_scope(user_id=user_id, action=action, job_id=job_id, sheet_slug=sheet["slug"]) as cscope:

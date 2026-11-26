@@ -105,7 +105,7 @@ def fetch_target_reels(
                     allow_expired=False,
                 )
         if cached is not None:
-            from tools.app.backend import cost_control
+            from tools.app.backend.telemetry import cost_control
 
             reels, _status, src_label = cached
             cost_control.record_cost_event(

@@ -12,7 +12,7 @@ from typing import Any, Dict, Iterator, Optional
 import psycopg
 from psycopg_pool import ConnectionPool
 
-from tools.app.backend import profiling
+from tools.app.backend.telemetry import profiling
 
 DEFAULT_DSN = "postgresql://postgres:postgres@localhost:5432/aibrand"
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
