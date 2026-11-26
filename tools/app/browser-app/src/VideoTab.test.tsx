@@ -445,10 +445,7 @@ describe('VideoTab and MediaPanel', () => {
     expect(editTab).toHaveAttribute('aria-selected', 'true');
     expect(genTab).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByText('https://www.facebook.com/reel/999')).toBeDefined();
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Video mẫu hoàn tất' })).toBeDefined();
-    });
+    expect(container.querySelector('.video-edit-history')).toBeNull();
 
     const applyBtn = screen.getByRole('button', { name: 'Áp dụng chỉnh sửa' });
     expect(applyBtn).toBeDisabled();
@@ -481,25 +478,6 @@ describe('VideoTab and MediaPanel', () => {
     expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:local-video-preview');
     expect(decodeURIComponent(editCalls[0].headers['x-edit-prompt'])).toBe('Thêm phụ đề tiếng Việt');
     expect(decodeURIComponent(editCalls[0].headers['x-reference-url'])).toBe('https://www.facebook.com/reel/999');
-
-    // Pick from completed history and submit JSON edit request
-    fireEvent.click(await screen.findByRole('button', { name: 'Video mẫu hoàn tất' }));
-    const historyPreview = container.querySelector('.video-edit-preview video.video-player') as HTMLVideoElement;
-    expect(historyPreview?.getAttribute('src')).toBe('/api/videos/vj_done/file?uid=test_uid_123');
-
-    fireEvent.change(screen.getByPlaceholderText(/Mô tả chỉnh sửa/), {
-      target: { value: 'Áp dụng zoom nhẹ' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Áp dụng chỉnh sửa' }));
-
-    await waitFor(() => {
-      expect(editCalls.length).toBe(2);
-    });
-    expect(JSON.parse(editCalls[1].body)).toEqual({
-      source_job_id: 'vj_done',
-      prompt: 'Áp dụng zoom nhẹ',
-      reference_video_url: 'https://www.facebook.com/reel/999',
-    });
 
     // Switch to Generate AI Video
     fireEvent.click(genTab);

@@ -531,28 +531,6 @@ export function VideoTab({
                       <small className="muted">{m.edit.fileHint}</small>
                     </span>
                   </button>
-
-                  {completedJobs.length > 0 && (
-                    <div className="video-edit-history">
-                      <small className="muted">{m.edit.orFromHistory}</small>
-                      <div className="video-edit-history-list">
-                        {completedJobs.map((j) => (
-                          <button
-                            key={j.id}
-                            type="button"
-                            className="video-edit-history-chip"
-                            onClick={() => {
-                              setLocalVideoFile(null);
-                              setSelectedHistoryJobId(j.id);
-                              setNotice(null);
-                            }}
-                          >
-                            {j.prompt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </div>

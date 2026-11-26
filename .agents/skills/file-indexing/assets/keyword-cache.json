@@ -408,5 +408,27 @@
     "end",
     "trail",
     "action"
+  ],
+  "cost control": [
+    "budget",
+    "spend",
+    "limit",
+    "usage",
+    "cap",
+    "kiểm"
+  ],
+  "profiling": [
+    "performance",
+    "benchmark",
+    "bottleneck",
+    "hiệu",
+    "năng"
+  ],
+  "telemetry": [
+    "metric",
+    "observability",
+    "trac",
+    "giám",
+    "sát"
   ]
 }

@@ -60,41 +60,6 @@
   flex: 1;
 }
 
-.video-edit-history {
-  margin-top: var(--space-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.video-edit-history-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.video-edit-history-chip {
-  height: var(--control-sm);
-  min-height: var(--control-sm);
-  max-width: 240px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.video-edit-history-chip:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
 .video-edit-textarea {
   min-height: 140px;
 }
