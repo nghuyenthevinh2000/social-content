@@ -22,7 +22,9 @@ type AnalyzerTabProps = {
   onDeleteJob: (id: string, e: React.MouseEvent) => void;
   tourDemoId: string;
   copiedKey: string | null;
+  copiedEditKey?: string | null;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
+  onCopyEdit?: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator: (creator: { name: string; url: string; platform?: string }) => void;
   onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
   onAnalyzeVideo?: (topic: Topic) => void;
@@ -43,7 +45,9 @@ type ResultsSectionProps = {
   onDeleteJob: (id: string, e: React.MouseEvent) => void;
   tourDemoId: string;
   copiedKey: string | null;
+  copiedEditKey?: string | null;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
+  onCopyEdit?: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator: (creator: { name: string; url: string; platform?: string }) => void;
   onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
   onAnalyzeVideo?: (topic: Topic) => void;
@@ -65,7 +69,9 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
   onDeleteJob,
   tourDemoId,
   copiedKey,
+  copiedEditKey,
   onCopyTopic,
+  onCopyEdit,
   onAddCreator,
   onAnalyzeCreators,
   onAnalyzeVideo,
@@ -189,9 +195,11 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
           job={activeJob}
           historyCount={items.length}
           copiedKey={copiedKey}
+          copiedEditKey={copiedEditKey}
           blocked={blocked}
           onBack={() => onSelectJob(null)}
           onCopyTopic={onCopyTopic}
+          onCopyEdit={onCopyEdit}
           onAddCreator={onAddCreator}
           onAnalyzeCreators={onAnalyzeCreators}
           onAnalyzeVideo={onAnalyzeVideo}
@@ -214,7 +222,9 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
   onDeleteJob,
   tourDemoId,
   copiedKey,
+  copiedEditKey,
   onCopyTopic,
+  onCopyEdit,
   onAddCreator,
   onAnalyzeCreators,
   onAnalyzeVideo,
@@ -308,7 +318,9 @@ export const AnalyzerTab: React.FC<AnalyzerTabProps> = ({
                 onDeleteJob={onDeleteJob}
                 tourDemoId={tourDemoId}
                 copiedKey={copiedKey}
+                copiedEditKey={copiedEditKey}
                 onCopyTopic={onCopyTopic}
+                onCopyEdit={onCopyEdit}
                 onAddCreator={onAddCreator}
                 onAnalyzeCreators={onAnalyzeCreators}
                 onAnalyzeVideo={onAnalyzeVideo}

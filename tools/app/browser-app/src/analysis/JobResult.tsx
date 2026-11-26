@@ -22,9 +22,11 @@ type JobResultProps = {
   job: Job;
   historyCount: number;
   copiedKey: string | null;
+  copiedEditKey?: string | null;
   blocked?: boolean;
   onBack: () => void;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
+  onCopyEdit?: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
   onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
   onAnalyzeVideo?: (topic: Topic) => void;
@@ -35,10 +37,12 @@ const SheetSection: React.FC<{
   index: number;
   renderer: JobRenderer;
   copiedKey: string | null;
+  copiedEditKey?: string | null;
   blocked: boolean;
   isKeyword: boolean;
   showPlatformFilter: boolean;
   onCopyTopic: (topic: Topic, sheetName: string, key: string) => void;
+  onCopyEdit?: (topic: Topic, sheetName: string, key: string) => void;
   onAddCreator?: (creator: { name: string; url: string; platform?: string }) => void;
   onAnalyzeCreators?: (creators: { name: string; url: string; platform?: string }[], sheetName: string) => void;
   onAnalyzeVideo?: (topic: Topic) => void;
@@ -47,10 +51,12 @@ const SheetSection: React.FC<{
   index,
   renderer,
   copiedKey,
+  copiedEditKey,
   blocked,
   isKeyword,
   showPlatformFilter,
   onCopyTopic,
+  onCopyEdit,
   onAddCreator,
   onAnalyzeCreators,
   onAnalyzeVideo,
@@ -142,9 +148,11 @@ const SheetSection: React.FC<{
                     topic={topic}
                     index={topicIndex}
                     copied={copiedKey === key}
+                    copiedEdit={copiedEditKey === key}
                     blocked={blocked}
                     sections={renderer.sections(topic)}
                     onCopy={() => onCopyTopic(topic, sheet.name, key)}
+                    onCopyEdit={onCopyEdit ? () => onCopyEdit(topic, sheet.name, key) : undefined}
                     onAnalyzeVideo={onAnalyzeVideo ? () => onAnalyzeVideo(topic) : undefined}
                   />
                 );
@@ -247,9 +255,11 @@ export const JobResult: React.FC<JobResultProps> = ({
   job,
   historyCount,
   copiedKey,
+  copiedEditKey,
   blocked = false,
   onBack,
   onCopyTopic,
+  onCopyEdit,
   onAddCreator,
   onAnalyzeCreators,
   onAnalyzeVideo,
@@ -345,10 +355,12 @@ export const JobResult: React.FC<JobResultProps> = ({
           index={index}
           renderer={renderer}
           copiedKey={copiedKey}
+          copiedEditKey={copiedEditKey}
           blocked={blocked}
           isKeyword={isKeyword}
           showPlatformFilter={!isKeyword && job.job_kind !== 'reel'}
           onCopyTopic={onCopyTopic}
+          onCopyEdit={onCopyEdit}
           onAddCreator={onAddCreator}
           onAnalyzeCreators={onAnalyzeCreators}
           onAnalyzeVideo={job.job_kind !== 'reel' ? onAnalyzeVideo : undefined}

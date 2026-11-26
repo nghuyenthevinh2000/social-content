@@ -17,6 +17,7 @@ from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate
 from tools.app.backend.db import ro, tx
 from tools.app.backend.media import MEDIA_STORE
 from tools.app.backend.profiles import now_iso
+from tools.app.backend.video_edit_engine import edit_video
 from tools.app.backend.video_engine import generate_video, get_video_duration
 
 DEFAULT_MAX_GLOBAL_JOBS = 2
@@ -70,11 +71,54 @@ class VideoJobStore:
 
         return self.get_job(user_id, job_id)  # type: ignore
 
+    def create_edit_job(
+        self,
+        user_id: str,
+        prompt: str,
+        source_video_blob_key: str,
+        reference_video_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        prompt = prompt.strip()
+        if not prompt:
+            raise ValueError("Prompt is required.")
+        if not source_video_blob_key:
+            raise ValueError("Source video is required.")
+
+        job_id = uuid.uuid4().hex[:12]
+        created = now_iso()
+        ref_url = reference_video_url.strip() if reference_video_url and reference_video_url.strip() else None
+        with tx() as conn:
+            conn.execute(
+                """
+                INSERT INTO video_jobs (
+                    id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at,
+                    job_type, source_video_blob_key, reference_video_url
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job_id,
+                    user_id,
+                    prompt,
+                    "",
+                    "[]",
+                    0,
+                    "pending",
+                    None,
+                    None,
+                    created,
+                    "edit",
+                    source_video_blob_key,
+                    ref_url,
+                ),
+            )
+        return self.get_job(user_id, job_id)  # type: ignore
+
     def get_job(self, user_id: str, job_id: str) -> Optional[Dict[str, Any]]:
         with ro() as conn:
             cur = conn.execute(
                 """
-                SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at
+                SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
+                       job_type, source_video_blob_key, reference_video_url
                 FROM video_jobs WHERE id = %s AND user_id = %s
                 """,
                 (job_id, user_id),
@@ -88,7 +132,8 @@ class VideoJobStore:
         with ro() as conn:
             cur = conn.execute(
                 """
-                SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at
+                SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
+                       job_type, source_video_blob_key, reference_video_url
                 FROM video_jobs WHERE id = %s
                 """,
                 (job_id,),
@@ -102,7 +147,8 @@ class VideoJobStore:
         with ro() as conn:
             cur = conn.execute(
                 """
-                SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at
+                SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
+                       job_type, source_video_blob_key, reference_video_url
                 FROM video_jobs WHERE user_id = %s ORDER BY created_at DESC
                 """,
                 (user_id,),
@@ -127,7 +173,8 @@ class VideoJobStore:
             conn.execute("UPDATE video_jobs SET status = 'cancelled', finished_at = %s WHERE id = %s", (now, job_id))
 
         # Refund credits
-        CREDIT_STORE.refund(user_id, cost, job_id, reason="job_cancel_refund")
+        if cost > 0:
+            CREDIT_STORE.refund(user_id, cost, job_id, reason="job_cancel_refund")
         return True
 
     def delete_job(self, user_id: str, job_id: str) -> bool:
@@ -153,7 +200,8 @@ class VideoJobStore:
                     (now, job_id),
                 )
         for job_id, user_id, cost in rows:
-            CREDIT_STORE.refund(user_id, int(cost), job_id, reason="crash_recovery_refund")
+            if int(cost) > 0:
+                CREDIT_STORE.refund(user_id, int(cost), job_id, reason="crash_recovery_refund")
         return len(rows)
 
     def count_running(self, user_id: Optional[str] = None) -> int:
@@ -177,7 +225,8 @@ class VideoJobStore:
 
             cur = conn.execute(
                 """
-                SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at
+                SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
+                       job_type, source_video_blob_key, reference_video_url
                 FROM video_jobs WHERE status = 'pending' ORDER BY created_at ASC
                 FOR UPDATE SKIP LOCKED
                 """
@@ -217,7 +266,8 @@ class VideoJobStore:
             )
         if row:
             user_id, cost = row[0], int(row[1])
-            CREDIT_STORE.refund(user_id, cost, job_id, reason="job_failed_refund")
+            if cost > 0:
+                CREDIT_STORE.refund(user_id, cost, job_id, reason="job_failed_refund")
 
     @staticmethod
     def _row_to_dict(row: tuple) -> Dict[str, Any]:
@@ -236,6 +286,9 @@ class VideoJobStore:
             "created_at": row[9],
             "started_at": row[10],
             "finished_at": row[11],
+            "job_type": row[12] if len(row) > 12 and row[12] else "generate",
+            "source_video_blob_key": row[13] if len(row) > 13 else None,
+            "reference_video_url": row[14] if len(row) > 14 else None,
         }
 
 
@@ -247,12 +300,14 @@ class VideoRunner:
         max_workers: int = DEFAULT_MAX_GLOBAL_JOBS,
         max_per_user: int = DEFAULT_MAX_PER_USER_JOBS,
         generator: Optional[Callable] = None,
+        editor: Optional[Callable] = None,
     ) -> None:
         self.store = store
         self.media_store = media_store
         self.max_workers = max_workers
         self.max_per_user = max_per_user
         self.generator = generator or generate_video
+        self.editor = editor or edit_video
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
         self._lock = threading.Lock()
         self._stop = False
@@ -270,11 +325,34 @@ class VideoRunner:
         job_id = job["id"]
         user_id = job["user_id"]
         prompt = job["prompt"]
-        profile_media_id = job["profile_media_id"]
-        context_media_ids = job["context_media_ids"]
+        job_type = job.get("job_type") or "generate"
 
+        temp_in = None
         temp_mp4 = None
         try:
+            if job_type == "edit":
+                source_blob_key = job.get("source_video_blob_key")
+                if not source_blob_key:
+                    raise FileNotFoundError("Source video not found.")
+                source_bytes = blobs.get(source_blob_key)
+                with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f_in:
+                    f_in.write(source_bytes)
+                    temp_in = Path(f_in.name)
+                with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f_out:
+                    temp_mp4 = Path(f_out.name)
+                self.editor(
+                    source_video_path=temp_in,
+                    prompt=prompt,
+                    output_path=temp_mp4,
+                    reference_video_url=job.get("reference_video_url"),
+                )
+                blob_key = f"videos/{user_id}/{job_id}/output.mp4"
+                blobs.upload_file(blob_key, temp_mp4, content_type="video/mp4")
+                self.store.mark_completed(job_id, blob_key)
+                return
+
+            profile_media_id = job["profile_media_id"]
+            context_media_ids = job["context_media_ids"]
             profile_media = self.media_store.get_media(user_id, profile_media_id)
             if not profile_media:
                 raise FileNotFoundError("Profile image not found.")
@@ -347,11 +425,12 @@ class VideoRunner:
         except Exception as exc:
             self.store.mark_failed(job_id, str(exc))
         finally:
-            if temp_mp4 and temp_mp4.exists():
-                try:
-                    temp_mp4.unlink()
-                except OSError:
-                    pass
+            for p in (temp_in, temp_mp4):
+                if p and p.exists():
+                    try:
+                        p.unlink()
+                    except OSError:
+                        pass
             self.trigger()
 
     def shutdown(self) -> None:

@@ -113,6 +113,10 @@ services:
       - ../../facebook_agent:/app/tools/facebook_agent
       - ../../common:/app/tools/common
       - ../../../local/aibrand/temp:/app/local/aibrand/temp
+      - ../../../local/aibrand/rea-video:/app/local/aibrand/rea-video
+      - ../../../local/aibrand/rea-video-runs:/app/local/aibrand/rea-video-runs
+      - ../../../.agents/skills/video-editing:/app/.agents/skills/video-editing
+      - ../../video_edit:/app/tools/video_edit
       - ../browser-app/dist:/app/tools/app/browser-app/dist
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/health')"]

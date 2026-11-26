@@ -14,9 +14,11 @@ type TopicCardProps = {
   topic: Topic;
   index: number;
   copied: boolean;
+  copiedEdit?: boolean;
   blocked?: boolean;
   sections: AnalysisSection[];
   onCopy: () => void;
+  onCopyEdit?: () => void;
   onAnalyzeVideo?: () => void;
 };
 
@@ -62,9 +64,11 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   topic,
   index,
   copied,
+  copiedEdit = false,
   blocked = false,
   sections,
   onCopy,
+  onCopyEdit,
   onAnalyzeVideo,
 }) => {
   const { t } = useLocale();
@@ -144,6 +148,16 @@ export const TopicCard: React.FC<TopicCardProps> = ({
             title={m.analyzeVideoTitle}
           >
             ▶
+          </button>
+        )}
+        {onCopyEdit && (reelUrl || topic.video_url) && (
+          <button
+            type="button"
+            className={`copy-edit-btn ${copiedEdit ? 'copied' : ''}`}
+            onClick={onCopyEdit}
+            title={m.copyEditTitle}
+          >
+            {copiedEdit ? m.copiedEditBtn : m.copyEdit}
           </button>
         )}
         {sections.length > 0 && (

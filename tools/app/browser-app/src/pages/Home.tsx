@@ -3,7 +3,15 @@ import { analyticsOutline, libraryOutline, personCircleOutline, refreshOutline, 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { copyToClipboard, formatNumber, formatTime, formatTopicForAI, TERMINAL } from '../analysis/format';
+import {
+  copyToClipboard,
+  formatNumber,
+  formatTime,
+  formatTopicForAI,
+  formatTopicForEdit,
+  getTopicReelUrl,
+  TERMINAL,
+} from '../analysis/format';
 import type { Job, JobKind, JobSummary, Topic } from '../analysis/types';
 import { apiFetch, apiJson } from '../api';
 import { setAssistantMode, setBrandAssistantUser } from '../brandAssistantStore';
@@ -13,10 +21,11 @@ import { AuthModal } from '../components/AuthModal';
 import { BrandPanel } from '../components/BrandPanel';
 import { MediaPanel } from '../components/MediaPanel';
 import { Tour, type TourStep } from '../components/Tour';
-import { VideoTab } from '../components/VideoTab';
+import { VideoTab, type VideoMode } from '../components/VideoTab';
 import { CREATOR_PACKS, type CreatorPack } from '../data/creatorPacks';
 import { auth, onAuthStateChanged, signOut, type User } from '../firebase';
 import { getMessages, useLocale, type LocaleMessages } from '../locales';
+import { clearEditDraft, loadEditDraft, loadEditVideoFile, saveEditDraft, saveEditVideoFile } from '../videoEditDraft';
 import './Home.css';
 
 export type TargetItem = { name: string; url: string; author_handle?: string; author_name?: string };
@@ -316,7 +325,36 @@ const Home: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [copiedEditKey, setCopiedEditKey] = useState<string | null>(null);
   const [videoPrompt, setVideoPrompt] = useState('');
+  const [videoEditPrompt, setVideoEditPrompt] = useState(() => loadEditDraft().prompt);
+  const [videoEditReferenceUrl, setVideoEditReferenceUrl] = useState(() => loadEditDraft().referenceUrl);
+  const [videoEditFile, setVideoEditFile] = useState<File | null>(null);
+  const [videoEditHistoryJobId, setVideoEditHistoryJobId] = useState<string | null>(() => loadEditDraft().historyJobId);
+  const [videoMode, setVideoMode] = useState<VideoMode>('edit');
+
+  const handleEditSourceFileChange = (file: File | null) => {
+    setVideoEditFile(file);
+    void saveEditVideoFile(file);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadEditVideoFile().then((file) => {
+      if (!cancelled && file) setVideoEditFile(file);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    saveEditDraft({
+      prompt: videoEditPrompt,
+      referenceUrl: videoEditReferenceUrl,
+      historyJobId: videoEditHistoryJobId,
+    });
+  }, [videoEditPrompt, videoEditReferenceUrl, videoEditHistoryJobId]);
   const [videoDuration, setVideoDuration] = useState<number>(
     Number(import.meta.env.VITE_VIDEO_GENERATION_DURATION) || 15,
   );
@@ -324,6 +362,7 @@ const Home: React.FC = () => {
   const handleCopyTopic = async (topic: Topic, sheetName: string, key: string) => {
     const text = formatTopicForAI(topic, sheetName);
     setVideoPrompt(text);
+    setVideoMode('generate');
     switchTab('video');
     setCopiedKey(key);
     setTimeout(() => {
@@ -333,6 +372,24 @@ const Home: React.FC = () => {
       await copyToClipboard(text);
     } catch (err) {
       console.error('Failed to copy topic:', err);
+    }
+  };
+
+  const handleCopyEdit = async (topic: Topic, _sheetName: string, key: string) => {
+    const text = formatTopicForEdit(topic);
+    const refUrl = getTopicReelUrl(topic) || topic.video_url || '';
+    setVideoEditPrompt(text);
+    setVideoEditReferenceUrl(refUrl);
+    setVideoMode('edit');
+    switchTab('video');
+    setCopiedEditKey(key);
+    setTimeout(() => {
+      setCopiedEditKey((prev) => (prev === key ? null : prev));
+    }, 2000);
+    try {
+      if (text) await copyToClipboard(text);
+    } catch (err) {
+      console.error('Failed to copy edit:', err);
     }
   };
 
@@ -510,6 +567,7 @@ const Home: React.FC = () => {
         tipTarget: '.video-tab .prompt-textarea',
         title: s.videoFormTitle,
         text: s.videoFormText,
+        onEnter: () => setVideoMode('generate'),
       },
       {
         tab: 'profile',
@@ -616,6 +674,12 @@ const Home: React.FC = () => {
     setHistory([]);
     setActivePaymentPack(null);
     setVideoPrompt('');
+    setVideoEditPrompt('');
+    setVideoEditReferenceUrl('');
+    setVideoEditFile(null);
+    setVideoEditHistoryJobId(null);
+    clearEditDraft();
+    setVideoMode('edit');
     localStorage.removeItem('aibrand-active-job-id');
     localStorage.removeItem(BRAND_PROFILE_KEY);
     cacheBrandProfile(null);
@@ -1335,8 +1399,18 @@ const Home: React.FC = () => {
               user={user}
               onOpenAuth={() => setShowAuthModal(true)}
               onGoToProfile={() => switchTab('profile')}
+              mode={videoMode}
+              onModeChange={setVideoMode}
               prompt={videoPrompt}
               onPromptChange={setVideoPrompt}
+              editPrompt={videoEditPrompt}
+              onEditPromptChange={setVideoEditPrompt}
+              editReferenceUrl={videoEditReferenceUrl}
+              onEditReferenceUrlChange={setVideoEditReferenceUrl}
+              editSourceFile={videoEditFile}
+              onEditSourceFileChange={handleEditSourceFileChange}
+              editHistoryJobId={videoEditHistoryJobId}
+              onEditHistoryJobIdChange={setVideoEditHistoryJobId}
               duration={videoDuration}
               onDurationChange={setVideoDuration}
             />
@@ -1755,7 +1829,9 @@ const Home: React.FC = () => {
               onDeleteJob={deleteJob}
               tourDemoId={TOUR_DEMO_ID}
               copiedKey={copiedKey}
+              copiedEditKey={copiedEditKey}
               onCopyTopic={handleCopyTopic}
+              onCopyEdit={handleCopyEdit}
               onAddCreator={handleAddCreator}
               onAnalyzeCreators={(creators, sheetName) => {
                 const targets = creators.map((c) => ({ name: c.name, url: c.url }));

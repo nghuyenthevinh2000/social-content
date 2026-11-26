@@ -554,7 +554,8 @@
   font-weight: 600;
 }
 
-.copy-topic-btn {
+.copy-topic-btn,
+.copy-edit-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -570,13 +571,15 @@
   white-space: nowrap;
 }
 
-.copy-topic-btn:hover {
+.copy-topic-btn:hover,
+.copy-edit-btn:hover {
   background: var(--color-accent-soft);
   color: var(--color-accent);
   border-color: var(--color-accent);
 }
 
 .copy-topic-btn.copied,
+.copy-edit-btn.copied,
 .ghost.small.copied {
   background: var(--color-success-soft);
   color: var(--color-success);

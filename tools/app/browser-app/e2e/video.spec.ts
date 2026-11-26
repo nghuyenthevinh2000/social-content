@@ -36,8 +36,10 @@ test('authenticated user uploads images in Profile, selects them in Video tab, a
   await page.route('**/api/sources/topics*', (route) => route.fulfill({ json: { ok: true, topics: [] } }));
   await page.route('**/api/jobs', (route) => route.fulfill({ json: { ok: true, jobs: [] } }));
 
-  // 1. Start on Video tab with no profile image uploaded yet -> must have 0 file inputs and navigate to Profile
+  // 1. Start on Video tab -> defaults to Edit Video mode; switch to Generate AI Video -> must have 0 file inputs and navigate to Profile
   await page.goto('/?tab=video');
+  await expect(page.getByRole('tab', { name: 'Edit Video' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: 'Tạo AI Video' }).click();
   await expect(page.getByText(/Chưa có ảnh chân dung mẫu/)).toBeVisible();
   await expect(page.locator('input[type="file"]')).toHaveCount(0);
 

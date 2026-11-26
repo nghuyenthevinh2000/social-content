@@ -922,4 +922,68 @@ describe('Analysis results rendering', () => {
       expect(document.querySelector('ion-toast')).toHaveAttribute('message', 'Đã cập nhật Brand');
     });
   });
+
+  test('renders Copy Edit button on video card and triggers onCopyEdit', () => {
+    const onCopyEdit = vi.fn();
+    const job = {
+      id: 'job_copy_edit',
+      job_kind: 'profile' as const,
+      status: 'completed' as const,
+      filename: 'test.json',
+      created_at: '2026-11-12T10:00:00Z',
+      current_sheet: null,
+      sheets: [
+        {
+          name: 'Skincare',
+          slug: 'skincare',
+          status: 'completed' as const,
+          targets: 1,
+          reels: 1,
+          pool_distribution: {},
+          topics: [
+            {
+              title: 'Sample Viral Edit',
+              hook: 'Hook',
+              angle: 'Angle',
+              why_viral: 'Viral',
+              outline: [],
+              format: 'Reels',
+              source_urls: ['https://www.facebook.com/reel/123456'],
+              generated_by: 'agent' as const,
+            },
+          ],
+          error: null,
+        },
+      ],
+      logs: [],
+    };
+
+    render(
+      <AnalyzerTab
+        keyword=""
+        onKeywordChange={vi.fn()}
+        onSearchKeyword={vi.fn()}
+        blocked={false}
+        error={null}
+        starting={false}
+        jobId="job_copy_edit"
+        job={job}
+        visibleHistory={[]}
+        onSelectJob={vi.fn()}
+        onDeleteJob={vi.fn()}
+        tourDemoId=""
+        copiedKey={null}
+        onCopyTopic={vi.fn()}
+        onCopyEdit={onCopyEdit}
+        onAddCreator={vi.fn()}
+        onGoToLibrary={vi.fn()}
+      />,
+    );
+
+    const copyEditBtn = screen.getByRole('button', { name: 'Copy Edit' });
+    expect(copyEditBtn).toBeInTheDocument();
+    copyEditBtn.click();
+    expect(onCopyEdit).toHaveBeenCalledTimes(1);
+    expect(onCopyEdit.mock.calls[0][0].title).toBe('Sample Viral Edit');
+  });
 });

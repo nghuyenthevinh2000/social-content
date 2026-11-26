@@ -50,6 +50,7 @@ description: "Edit videos using the repository's tools/video_edit CLI first for 
 | Harmonize lighting across scenes | `.venv/bin/python .agents/skills/video-editing/scripts/video_engine/match_lighting.py --config <CONFIG.json>` (or `--scenes <S1.mp4> <S2.mp4> ...`, `--check`) |
 | Normalize video for social (BT.709) | `.venv/bin/python .agents/skills/video-editing/scripts/video_engine/normalize_video.py <INPUT.mp4> <OUTPUT.mp4>` |
 | Apply kinetic captions & SFX effects | `.venv/bin/python .agents/skills/video-editing/scripts/video_engine/effect_editor.py <EFFECTS_CONFIG.json>` (`--check` for self-test) |
+| Apply declarative JSON video edit plan | `python3 .agents/skills/video-editing/scripts/video_engine/json_video_editor.py <EDIT_PLAN.json>` (`--check` for self-test) |
 | Install `rea-video` (one-time) | `uv venv --python 3.12 local/rea-video/.venv && uv pip install --python local/rea-video/.venv/bin/python -e ".agents/skills/video-editing/scripts/rea-video[ocr,asr]"` |
 | Reverse-engineer reference video | `local/rea-video/.venv/bin/rea-video decompose local/rea-video-runs/<id>/source.mp4 -o local/rea-video-runs/<id>/out --lang en` |
 | Visual review & merge | `local/rea-video/.venv/bin/rea-video review <OUT_DIR>` → fill `review_answers.json` → `local/rea-video/.venv/bin/rea-video apply-review <OUT_DIR> --by <agent> --lang en` |

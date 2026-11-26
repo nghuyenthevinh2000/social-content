@@ -33,8 +33,14 @@ CREATE TABLE IF NOT EXISTS video_jobs (
     error TEXT,
     created_at TEXT NOT NULL,
     started_at TEXT,
-    finished_at TEXT
+    finished_at TEXT,
+    job_type TEXT NOT NULL DEFAULT 'generate',
+    source_video_blob_key TEXT,
+    reference_video_url TEXT
 );
+ALTER TABLE video_jobs ADD COLUMN IF NOT EXISTS job_type TEXT NOT NULL DEFAULT 'generate';
+ALTER TABLE video_jobs ADD COLUMN IF NOT EXISTS source_video_blob_key TEXT;
+ALTER TABLE video_jobs ADD COLUMN IF NOT EXISTS reference_video_url TEXT;
 CREATE INDEX IF NOT EXISTS idx_video_jobs_status_created ON video_jobs (status, created_at);
 CREATE INDEX IF NOT EXISTS idx_video_jobs_user_status ON video_jobs (user_id, status);
 

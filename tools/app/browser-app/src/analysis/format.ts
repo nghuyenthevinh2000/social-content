@@ -57,6 +57,18 @@ export function formatTopicForAI(topic: Topic, sheetName?: string): string {
   return lines.join('\n');
 }
 
+export function formatTopicForEdit(topic: Topic): string {
+  const url = getTopicReelUrl(topic) || topic.video_url || '';
+  const title = (topic.title || '').trim();
+  if (url && title) {
+    return `Copy edit style from "${title}" (${url}) and apply it to my video.`;
+  }
+  if (url) {
+    return `Copy edit style from ${url} and apply it to my video.`;
+  }
+  return title ? `Apply edit style inspired by "${title}" to my video.` : '';
+}
+
 export function copyToClipboard(text: string): Promise<void> {
   if (navigator.clipboard && window.isSecureContext) {
     return navigator.clipboard.writeText(text);

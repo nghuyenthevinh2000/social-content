@@ -385,6 +385,9 @@ export const en: LocaleMessages = {
     copyBtnTitle: 'Copy script and open Create Video tab',
     copiedBtn: '✓ Copied',
     copyForAI: 'Copy for AI',
+    copyEditTitle: 'Copy edit style and open Video Edit tab',
+    copiedEditBtn: '✓ Edit Copied',
+    copyEdit: 'Copy Edit',
     aiPrompt: {
       topic: 'Topic',
       sheet: 'Topic group',
@@ -411,8 +414,8 @@ export const en: LocaleMessages = {
   },
   video: {
     modes: {
-      edit: 'Video Edit',
-      generate: 'Video Generator',
+      edit: 'Edit Video',
+      generate: 'Generate AI Video',
     },
     edit: {
       heading: 'Edit Video',
@@ -425,7 +428,13 @@ export const en: LocaleMessages = {
       promptPlaceholder:
         'Describe edits to apply on top of this video (e.g., add captions, trim first 3 seconds, adjust lighting...)',
       applyBtn: 'Apply edits',
-      backendNotReady: 'Video edit backend processing is not connected yet.',
+      submittingBtn: 'Submitting edit...',
+      createdNotice: 'Video edit request submitted! ACP and rea-video are processing.',
+      createError: 'Unable to submit video edit request.',
+      referenceLabel: 'Reference video:',
+      clearReference: 'Remove reference',
+      jobBadge: 'Edit',
+      backendNotReady: 'Edit Video backend processing is not connected yet.',
     },
     authSubtitle: 'Please sign in to create short videos with AI.',
     needProfileNotice: 'Please select a reference portrait (upload in the Profile tab).',
@@ -472,6 +481,13 @@ export const en: LocaleMessages = {
       completed: 'Completed',
       failed: 'Failed',
       cancelled: 'Cancelled',
+    },
+    progress: {
+      queued: 'Waiting in queue…',
+      generating: 'Generating AI video…',
+      editDecompose: 'Decomposing video with rea-video…',
+      editApply: 'ACP applying edit style…',
+      editRender: 'Rendering & finalizing video…',
     },
     cancelAndRefund: 'Cancel & Refund',
     downloadTitle: 'Download video',

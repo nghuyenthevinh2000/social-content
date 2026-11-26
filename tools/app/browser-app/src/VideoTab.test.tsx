@@ -6,6 +6,7 @@ import { formatTopicForAI } from './analysis/format';
 import { MediaPanel } from './components/MediaPanel';
 import { VideoTab, videoDownloadUrl, videoFileUrl } from './components/VideoTab';
 import type { User } from './firebase';
+import { clearEditDraft, loadEditDraft, saveEditDraft } from './videoEditDraft';
 
 const mockUser = {
   uid: 'test_uid_123',
@@ -54,6 +55,8 @@ describe('VideoTab and MediaPanel', () => {
 
     const onGoToProfile = vi.fn();
     const { container } = render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} onGoToProfile={onGoToProfile} />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tạo AI Video' }));
 
     await waitFor(() => {
       expect(screen.getByText(/Chưa có ảnh chân dung mẫu/)).toBeDefined();
@@ -110,6 +113,8 @@ describe('VideoTab and MediaPanel', () => {
     });
 
     render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tạo AI Video' }));
 
     await waitFor(() => {
       expect(screen.getByText(/Số dư không đủ/)).toBeDefined();
@@ -273,6 +278,8 @@ describe('VideoTab and MediaPanel', () => {
 
     const { container } = render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} />);
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Tạo AI Video' }));
+
     await waitFor(() => {
       expect(screen.getByText('Đã chọn ảnh đại diện mẫu')).toBeDefined();
       expect(screen.getAllByText(/Prompt test video/)[0]).toBeDefined();
@@ -334,6 +341,294 @@ describe('VideoTab and MediaPanel', () => {
     await waitFor(() => {
       expect(postCalls.some((c) => c.url.includes('/api/videos/vj_pending/cancel'))).toBe(true);
     });
+  });
+
+  test('VideoTab defaults to Edit Video mode, submits local/history edit jobs, and switches to Generate AI Video', async () => {
+    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:local-video-preview');
+    const revokeObjectUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const editCalls: { url: string; headers: any; body: any }[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input: any, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method || 'GET';
+      if (url.includes('/api/videos/estimate')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ ok: true, balance: 500000, cost_micro: 230000, cost_usd: 0.23, can_afford: true }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.includes('/api/media')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, media: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (url.endsWith('/api/videos/edit') && method === 'POST') {
+        const hdrs = Object.fromEntries(new Headers(init?.headers).entries());
+        editCalls.push({ url, headers: hdrs, body: init?.body });
+        const promptText = hdrs['x-edit-prompt']
+          ? decodeURIComponent(hdrs['x-edit-prompt'])
+          : JSON.parse(String(init?.body)).prompt;
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              job: {
+                id: `ve_${editCalls.length}`,
+                user_id: 'test_uid_123',
+                prompt: promptText,
+                profile_media_id: '',
+                context_media_ids: [],
+                cost: 0,
+                cost_usd: 0,
+                status: 'pending',
+                video_path: null,
+                error: null,
+                created_at: '2026-11-10T10:15:00Z',
+                started_at: null,
+                finished_at: null,
+                job_type: 'edit',
+              },
+            }),
+            { status: 201, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.includes('/api/videos')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              jobs: [
+                {
+                  id: 'vj_done',
+                  user_id: 'test_uid_123',
+                  prompt: 'Video mẫu hoàn tất',
+                  profile_media_id: 'prof1',
+                  context_media_ids: [],
+                  cost: 230000,
+                  cost_usd: 0.23,
+                  status: 'completed',
+                  video_path: '/path/out.mp4',
+                  error: null,
+                  created_at: '2026-11-10T10:05:00Z',
+                  started_at: null,
+                  finished_at: null,
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+
+    const { container } = render(
+      <VideoTab user={mockUser} onOpenAuth={vi.fn()} editReferenceUrl="https://www.facebook.com/reel/999" />,
+    );
+
+    const editTab = screen.getByRole('tab', { name: 'Edit Video' });
+    const genTab = screen.getByRole('tab', { name: 'Tạo AI Video' });
+    expect(editTab).toHaveAttribute('aria-selected', 'true');
+    expect(genTab).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByText('https://www.facebook.com/reel/999')).toBeDefined();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Video mẫu hoàn tất' })).toBeDefined();
+    });
+
+    const applyBtn = screen.getByRole('button', { name: 'Áp dụng chỉnh sửa' });
+    expect(applyBtn).toBeDisabled();
+
+    // Pick a local video file and submit edit
+    const fileInput = container.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
+    expect(fileInput).not.toBeNull();
+    const file = new File(['video-bytes'], 'sample-clip.mp4', { type: 'video/mp4' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(createObjectUrlSpy).toHaveBeenCalledWith(file);
+      const preview = container.querySelector('.video-edit-preview video.video-player') as HTMLVideoElement;
+      expect(preview?.getAttribute('src')).toBe('blob:local-video-preview');
+    });
+    expect(screen.getByText('sample-clip.mp4')).toBeDefined();
+
+    fireEvent.change(screen.getByPlaceholderText(/Mô tả chỉnh sửa/), {
+      target: { value: 'Thêm phụ đề tiếng Việt' },
+    });
+    expect(applyBtn).toBeEnabled();
+    fireEvent.click(applyBtn);
+
+    await waitFor(() => {
+      expect(editCalls.length).toBe(1);
+      expect(screen.getByText('Đã gửi yêu cầu chỉnh sửa video! ACP và rea-video đang xử lý.')).toBeDefined();
+    });
+    expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:local-video-preview');
+    expect(decodeURIComponent(editCalls[0].headers['x-edit-prompt'])).toBe('Thêm phụ đề tiếng Việt');
+    expect(decodeURIComponent(editCalls[0].headers['x-reference-url'])).toBe('https://www.facebook.com/reel/999');
+
+    // Pick from completed history and submit JSON edit request
+    fireEvent.click(await screen.findByRole('button', { name: 'Video mẫu hoàn tất' }));
+    const historyPreview = container.querySelector('.video-edit-preview video.video-player') as HTMLVideoElement;
+    expect(historyPreview?.getAttribute('src')).toBe('/api/videos/vj_done/file?uid=test_uid_123');
+
+    fireEvent.change(screen.getByPlaceholderText(/Mô tả chỉnh sửa/), {
+      target: { value: 'Áp dụng zoom nhẹ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Áp dụng chỉnh sửa' }));
+
+    await waitFor(() => {
+      expect(editCalls.length).toBe(2);
+    });
+    expect(JSON.parse(editCalls[1].body)).toEqual({
+      source_job_id: 'vj_done',
+      prompt: 'Áp dụng zoom nhẹ',
+      reference_video_url: 'https://www.facebook.com/reel/999',
+    });
+
+    // Switch to Generate AI Video
+    fireEvent.click(genTab);
+    expect(genTab).toHaveAttribute('aria-selected', 'true');
+    expect(container.querySelectorAll('input[type="file"]').length).toBe(0);
+  });
+
+  test('VideoTab preserves controlled editSourceFile across unmount/remount (tab switch + Copy Edit)', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:persisted-video');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ ok: true, media: [], jobs: [], balance: 0 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const file = new File(['video-bytes'], 'my-uploaded-clip.mp4', { type: 'video/mp4' });
+    const { unmount } = render(
+      <VideoTab user={mockUser} onOpenAuth={vi.fn()} editSourceFile={file} editPrompt="" editReferenceUrl="" />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('my-uploaded-clip.mp4')).toBeDefined();
+    });
+
+    // Simulate switching away to Analyze tab and returning via Copy Edit
+    unmount();
+    const { container } = render(
+      <VideoTab
+        user={mockUser}
+        onOpenAuth={vi.fn()}
+        editSourceFile={file}
+        editPrompt="Copy edit style"
+        editReferenceUrl="https://www.facebook.com/reel/555"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('my-uploaded-clip.mp4')).toBeDefined();
+      const preview = container.querySelector('.video-edit-preview video.video-player') as HTMLVideoElement;
+      expect(preview?.getAttribute('src')).toBe('blob:persisted-video');
+    });
+    expect(screen.getByText('https://www.facebook.com/reel/555')).toBeDefined();
+  });
+
+  test('videoEditDraft persists and clears edit prompt, reference URL, and historyJobId', () => {
+    localStorage.clear();
+    expect(loadEditDraft()).toEqual({ prompt: '', referenceUrl: '', historyJobId: null });
+
+    saveEditDraft({
+      prompt: 'Add captions and zoom',
+      referenceUrl: 'https://www.tiktok.com/@a/video/1',
+      historyJobId: 'vj_123',
+    });
+    expect(loadEditDraft()).toEqual({
+      prompt: 'Add captions and zoom',
+      referenceUrl: 'https://www.tiktok.com/@a/video/1',
+      historyJobId: 'vj_123',
+    });
+
+    clearEditDraft();
+    expect(loadEditDraft()).toEqual({ prompt: '', referenceUrl: '', historyJobId: null });
+  });
+
+  test('VideoTab renders progressbar for active jobs and omits it for completed/failed jobs', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input: any) => {
+      const url = String(input);
+      if (url.includes('/api/videos/estimate')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, balance: 500000, cost_micro: 230000, cost_usd: 0.23 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (url.includes('/api/media')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, media: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (url.includes('/api/videos')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              jobs: [
+                {
+                  id: 've_running',
+                  user_id: 'test_uid_123',
+                  prompt: 'Editing video',
+                  profile_media_id: '',
+                  context_media_ids: [],
+                  cost: 0,
+                  cost_usd: 0,
+                  status: 'running',
+                  job_type: 'edit',
+                  video_path: null,
+                  error: null,
+                  created_at: new Date(Date.now() - 20_000).toISOString(),
+                  started_at: new Date(Date.now() - 20_000).toISOString(),
+                  finished_at: null,
+                },
+                {
+                  id: 'vj_done',
+                  user_id: 'test_uid_123',
+                  prompt: 'Done video',
+                  profile_media_id: 'prof1',
+                  context_media_ids: [],
+                  cost: 230000,
+                  cost_usd: 0.23,
+                  status: 'completed',
+                  video_path: '/path/out.mp4',
+                  error: null,
+                  created_at: '2026-11-10T10:05:00Z',
+                  started_at: null,
+                  finished_at: null,
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+
+    render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} />);
+
+    const bars = await screen.findAllByRole('progressbar');
+    expect(bars).toHaveLength(1);
+    const pct = Number(bars[0].getAttribute('aria-valuenow'));
+    expect(pct).toBeGreaterThanOrEqual(10);
+    expect(pct).toBeLessThanOrEqual(95);
+    expect(screen.getByText('Đang phân tích video bằng rea-video…')).toBeDefined();
   });
 
   test('MediaPanel renders authenticated image URLs with uid', async () => {

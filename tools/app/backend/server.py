@@ -30,6 +30,7 @@ import threading
 import time
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, unquote, urlparse
+import uuid
 
 BACKEND_DIR = Path(__file__).resolve().parent
 APP_DIR = BACKEND_DIR.parent
@@ -977,6 +978,57 @@ class Handler(BaseHTTPRequestHandler):
                     _json(self, 402, {"error": "Số dư không đủ. Cần 0.23 USD (230,000 micro-credits) để tạo 1 video 10 giây."})
                 else:
                     _json(self, 400, {"error": str(exc)})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
+            return
+        if parsed.path == "/api/videos/edit":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để chỉnh sửa video."})
+                return
+            try:
+                content_type = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+                length = int(self.headers.get("Content-Length") or 0)
+                if content_type == "application/json":
+                    body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                    prompt = (body.get("prompt") or "").strip()
+                    source_job_id = (body.get("source_job_id") or "").strip()
+                    reference_video_url = (body.get("reference_video_url") or "").strip() or None
+                    if not source_job_id:
+                        _json(self, 400, {"error": "Thiếu video đầu vào (source_job_id)."})
+                        return
+                    src_job = VIDEO_STORE.get_job(user_id=user_id, job_id=source_job_id)
+                    if not src_job or not src_job.get("blob_key"):
+                        _json(self, 404, {"error": "Không tìm thấy video đầu vào."})
+                        return
+                    source_blob_key = src_job["blob_key"]
+                else:
+                    max_video_bytes = 200 * 1024 * 1024
+                    if length <= 0:
+                        _json(self, 400, {"error": "Thiếu dữ liệu video đầu vào."})
+                        return
+                    if length > max_video_bytes:
+                        _json(self, 413, {"error": "Video quá lớn (giới hạn 200MB)."})
+                        return
+                    raw = self.rfile.read(length)
+                    prompt = unquote(self.headers.get("X-Edit-Prompt") or "").strip()
+                    reference_video_url = unquote(self.headers.get("X-Reference-Url") or "").strip() or None
+                    source_blob_key = f"videos/{user_id}/uploads/{uuid.uuid4().hex[:12]}.mp4"
+                    blobs.put(source_blob_key, raw, content_type=content_type or "video/mp4")
+
+                if not prompt:
+                    _json(self, 400, {"error": "Thiếu yêu cầu chỉnh sửa (prompt)."})
+                    return
+                job = VIDEO_STORE.create_edit_job(
+                    user_id=user_id,
+                    prompt=prompt,
+                    source_video_blob_key=source_blob_key,
+                    reference_video_url=reference_video_url,
+                )
+                VIDEO_RUNNER.trigger()
+                _json(self, 201, {"ok": True, "job": job})
+            except ValueError as exc:
+                _json(self, 400, {"error": str(exc)})
             except Exception as exc:
                 _json(self, 500, {"error": str(exc)})
             return
