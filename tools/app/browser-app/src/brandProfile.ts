@@ -77,16 +77,10 @@ export function cacheBrandProfile(raw?: Partial<BrandProfile> | null): BrandProf
   return next;
 }
 
-export async function saveBrandProfile(
-  patch: Partial<BrandProfile>,
-  options: { mergeKeywords?: boolean } = {},
-): Promise<BrandProfile> {
+export async function saveBrandProfile(patch: Partial<BrandProfile>): Promise<BrandProfile> {
   const current = loadCachedBrand();
-  const nextKeywords = options.mergeKeywords
-    ? normalizeKeywords([...current.keywords, ...(patch.keywords ?? [])])
-    : patch.keywords !== undefined
-      ? normalizeKeywords(patch.keywords)
-      : current.keywords;
+  const nextKeywords =
+    patch.keywords !== undefined ? normalizeKeywords(patch.keywords) : current.keywords;
 
   const next: BrandProfile = {
     identity: patch.identity !== undefined ? patch.identity : current.identity,

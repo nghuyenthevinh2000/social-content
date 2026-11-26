@@ -346,13 +346,10 @@ export async function saveAssistantDraft(msg: ChatMessage, saveErrorFallback: st
     errors: { ...state.errors, brand_setup: null },
   });
   try {
-    await saveBrandProfile(
-      {
-        ...(msg.brandDraft || {}),
-        keywords: msg.keywords || [],
-      },
-      { mergeKeywords: true },
-    );
+    await saveBrandProfile({
+      ...(msg.brandDraft || {}),
+      ...(msg.keywords?.length ? { keywords: msg.keywords } : {}),
+    });
     const nextHistories = {
       ...state.histories,
       brand_setup: state.histories.brand_setup.map((item) => (item.id === msg.id ? { ...item, saved: true } : item)),

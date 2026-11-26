@@ -99,6 +99,66 @@ describe('BrandAssistant', () => {
     expect(onSearchKeywords).toHaveBeenCalledWith(['minimalist skincare', '5-min routine']);
   });
 
+  test('replaces existing keywords when saving a new brand profile draft', async () => {
+    cacheBrandProfile({
+      identity: 'Old brand',
+      keywords: ['old kw 1', 'old kw 2'],
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/brand-assistant/chat')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              mode: 'brand_setup',
+              reply: 'Updated brand draft.',
+              brand_draft: { identity: 'New brand' },
+              keywords: ['new kw 1', 'new kw 2'],
+              ready: true,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.includes('/api/user/profile')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, profile: { brand: {} } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+
+    render(
+      <LocaleProvider>
+        <BrandAssistant onSearchKeyword={vi.fn()} onSearchKeywords={vi.fn()} blocked={false} />
+      </LocaleProvider>,
+    );
+
+    const input = screen.getByPlaceholderText('Describe your niche, offer, or answer the question…');
+    fireEvent.change(input, { target: { value: 'Pivot to new brand' } });
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Updated brand draft.')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save to brand profile' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '✓ Saved to brand profile' })).toBeInTheDocument();
+    });
+
+    const profileCall = fetchMock.mock.calls.find(
+      ([url, init]) => String(url).includes('/api/user/profile') && init?.method === 'POST',
+    );
+    expect(profileCall).toBeDefined();
+    const savedBody = JSON.parse(String(profileCall![1]?.body));
+    expect(savedBody.brand.keywords).toEqual(['new kw 1', 'new kw 2']);
+  });
+
   test('updates welcome message dynamically when locale switches between VI and EN', () => {
     localStorage.setItem('aibrand-locale', 'vi');
     const ToggleWrapper: React.FC = () => {
