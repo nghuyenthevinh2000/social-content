@@ -550,6 +550,29 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
+        match = re.fullmatch(r"/api/videos/([a-zA-Z0-9_-]+)/plan", parsed.path)
+        if match:
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            job_id = match.group(1)
+            job = VIDEO_STORE.get_job(user_id=user_id, job_id=job_id)
+            if not job or job.get("job_type") != "edit_plan" or not job.get("video_path"):
+                _json(self, 404, {"error": "Kế hoạch chỉnh sửa chưa sẵn sàng hoặc không tồn tại."})
+                return
+            plan_key = (
+                job["video_path"]
+                if str(job["video_path"]).endswith(".json")
+                else f"videos/{user_id}/{job_id}/edit_config.json"
+            )
+            try:
+                plan = json.loads(blobs.get(plan_key).decode("utf-8"))
+            except Exception:
+                _json(self, 404, {"error": "Không đọc được kế hoạch chỉnh sửa."})
+                return
+            _json(self, 200, {"ok": True, "plan": plan})
+            return
         self._serve_static(parsed.path)
 
     def do_POST(self) -> None:
@@ -1030,6 +1053,127 @@ class Handler(BaseHTTPRequestHandler):
                 _json(self, 201, {"ok": True, "job": job})
             except ValueError as exc:
                 _json(self, 400, {"error": str(exc)})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
+            return
+        match = re.fullmatch(r"/api/videos/([a-zA-Z0-9_-]+)/file", parsed.path)
+        if match:
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            job_id = match.group(1)
+            job = VIDEO_STORE.get_job(user_id=user_id, job_id=job_id)
+            if not job:
+                _json(self, 404, {"error": "Không tìm thấy video job."})
+                return
+            if job.get("job_type") != "edit_plan":
+                _json(self, 400, {"error": "Chỉ hỗ trợ lưu file từ client cho job edit_plan."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                max_video_bytes = 200 * 1024 * 1024
+                if length <= 0:
+                    _json(self, 400, {"error": "Thiếu dữ liệu video."})
+                    return
+                if length > max_video_bytes:
+                    _json(self, 413, {"error": "Video quá lớn (giới hạn 200MB)."})
+                    return
+                content_type = (self.headers.get("Content-Type") or "video/mp4").split(";")[0].strip().lower()
+                raw = self.rfile.read(length)
+                blob_key = f"videos/{user_id}/{job_id}/output.mp4"
+                blobs.put(blob_key, raw, content_type=content_type or "video/mp4")
+                VIDEO_STORE.mark_completed(job_id, blob_key)
+                _json(self, 200, {"ok": True, "job": VIDEO_STORE.get_job(user_id=user_id, job_id=job_id)})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
+            return
+        if parsed.path == "/api/videos/edit-plan":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để chỉnh sửa video."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                max_plan_bytes = 15 * 1024 * 1024
+                if length <= 0:
+                    _json(self, 400, {"error": "Thiếu dữ liệu metadata video."})
+                    return
+                if length > max_plan_bytes:
+                    _json(self, 413, {"error": "Metadata quá lớn (giới hạn 15MB)."})
+                    return
+                body = json.loads(self.rfile.read(length).decode("utf-8"))
+                prompt = (body.get("prompt") or "").strip()
+                probe = body.get("probe")
+                if not prompt:
+                    _json(self, 400, {"error": "Thiếu yêu cầu chỉnh sửa (prompt)."})
+                    return
+                if not isinstance(probe, dict):
+                    _json(self, 400, {"error": "Thiếu thông tin probe của video."})
+                    return
+                keyframes_raw = body.get("keyframes_b64") or []
+                keyframes_b64 = [k for k in keyframes_raw[:6] if isinstance(k, str)]
+                audio_b64 = body.get("audio_b64") if isinstance(body.get("audio_b64"), str) else None
+                audio_format = (body.get("audio_format") or "wav").strip() or "wav"
+                transcript = body.get("transcript") if isinstance(body.get("transcript"), dict) else None
+                reference_video_url = (body.get("reference_video_url") or "").strip() or None
+                input_blob_key = f"videos/{user_id}/plans/{uuid.uuid4().hex[:12]}/input.json"
+                blobs.put(
+                    input_blob_key,
+                    json.dumps(
+                        {
+                            "probe": probe,
+                            "keyframes_b64": keyframes_b64,
+                            "audio_b64": audio_b64,
+                            "audio_format": audio_format,
+                            "transcript": transcript,
+                        },
+                        ensure_ascii=False,
+                    ).encode("utf-8"),
+                    content_type="application/json",
+                )
+                job = VIDEO_STORE.create_edit_plan_job(
+                    user_id=user_id,
+                    prompt=prompt,
+                    input_blob_key=input_blob_key,
+                    reference_video_url=reference_video_url,
+                )
+                VIDEO_RUNNER.trigger()
+                _json(self, 201, {"ok": True, "job": job})
+            except ValueError as exc:
+                _json(self, 400, {"error": str(exc)})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
+            return
+        match = re.fullmatch(r"/api/videos/([a-zA-Z0-9_-]+)/file", parsed.path)
+        if match:
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            job_id = match.group(1)
+            job = VIDEO_STORE.get_job(user_id=user_id, job_id=job_id)
+            if not job:
+                _json(self, 404, {"error": "Không tìm thấy video job."})
+                return
+            if job.get("job_type") != "edit_plan":
+                _json(self, 400, {"error": "Chỉ hỗ trợ lưu file từ client cho job edit_plan."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                max_video_bytes = 200 * 1024 * 1024
+                if length <= 0:
+                    _json(self, 400, {"error": "Thiếu dữ liệu video."})
+                    return
+                if length > max_video_bytes:
+                    _json(self, 413, {"error": "Video quá lớn (giới hạn 200MB)."})
+                    return
+                content_type = (self.headers.get("Content-Type") or "video/mp4").split(";")[0].strip().lower()
+                raw = self.rfile.read(length)
+                blob_key = f"videos/{user_id}/{job_id}/output.mp4"
+                blobs.put(blob_key, raw, content_type=content_type or "video/mp4")
+                VIDEO_STORE.mark_completed(job_id, blob_key)
+                _json(self, 200, {"ok": True, "job": VIDEO_STORE.get_job(user_id=user_id, job_id=job_id)})
             except Exception as exc:
                 _json(self, 500, {"error": str(exc)})
             return

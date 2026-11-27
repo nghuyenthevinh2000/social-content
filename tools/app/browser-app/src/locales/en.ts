@@ -486,8 +486,8 @@ export const en: LocaleMessages = {
     progress: {
       queued: 'Waiting in queue…',
       generating: 'Generating AI video…',
-      editDecompose: 'Decomposing video with rea-video…',
-      editApply: 'ACP applying edit style…',
+      editDecompose: 'Decomposing video…',
+      editApply: 'Applying edit style…',
       editRender: 'Rendering & finalizing video…',
     },
     cancelAndRefund: 'Cancel & Refund',

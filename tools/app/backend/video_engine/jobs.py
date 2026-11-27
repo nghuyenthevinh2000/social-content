@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import concurrent.futures
 import json
 import os
@@ -18,11 +19,12 @@ from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate
 from tools.app.backend.db import ro, tx
 from tools.app.backend.media import MEDIA_STORE
 from tools.app.backend.profiles import now_iso
-from tools.app.backend.video_engine.edit import edit_video
+from tools.app.backend.video_engine.edit import edit_video, plan_edit_video
 from tools.app.backend.video_engine.generate import generate_video, get_video_duration
 
 DEFAULT_MAX_GLOBAL_JOBS = 2
 DEFAULT_MAX_PER_USER_JOBS = 1
+DEFAULT_MAX_PLAN_JOBS = int(os.environ.get("VIDEO_MAX_PLAN_JOBS", "8"))
 
 
 def get_video_cost_micro() -> int:
@@ -72,6 +74,49 @@ class VideoJobStore:
 
         return self.get_job(user_id, job_id)  # type: ignore
 
+    def create_edit_plan_job(
+        self,
+        user_id: str,
+        prompt: str,
+        input_blob_key: str,
+        reference_video_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Enqueue a lightweight client-rendered edit_plan job."""
+        prompt = prompt.strip()
+        if not prompt:
+            raise ValueError("Prompt is required.")
+        if not input_blob_key:
+            raise ValueError("Client metadata blob key is required.")
+
+        job_id = uuid.uuid4().hex[:12]
+        created = now_iso()
+        ref_url = reference_video_url.strip() if reference_video_url and reference_video_url.strip() else None
+        with tx() as conn:
+            conn.execute(
+                """
+                INSERT INTO video_jobs (
+                    id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at,
+                    job_type, source_video_blob_key, reference_video_url
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job_id,
+                    user_id,
+                    prompt,
+                    "",
+                    "[]",
+                    0,
+                    "pending",
+                    None,
+                    None,
+                    created,
+                    "edit_plan",
+                    input_blob_key,
+                    ref_url,
+                ),
+            )
+        return self.get_job(user_id, job_id)  # type: ignore
+
     def create_edit_job(
         self,
         user_id: str,
@@ -109,6 +154,49 @@ class VideoJobStore:
                     created,
                     "edit",
                     source_video_blob_key,
+                    ref_url,
+                ),
+            )
+        return self.get_job(user_id, job_id)  # type: ignore
+
+    def create_edit_plan_job(
+        self,
+        user_id: str,
+        prompt: str,
+        input_blob_key: str,
+        reference_video_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Enqueue a lightweight client-rendered edit_plan job."""
+        prompt = prompt.strip()
+        if not prompt:
+            raise ValueError("Prompt is required.")
+        if not input_blob_key:
+            raise ValueError("Client metadata blob key is required.")
+
+        job_id = uuid.uuid4().hex[:12]
+        created = now_iso()
+        ref_url = reference_video_url.strip() if reference_video_url and reference_video_url.strip() else None
+        with tx() as conn:
+            conn.execute(
+                """
+                INSERT INTO video_jobs (
+                    id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at,
+                    job_type, source_video_blob_key, reference_video_url
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job_id,
+                    user_id,
+                    prompt,
+                    "",
+                    "[]",
+                    0,
+                    "pending",
+                    None,
+                    None,
+                    created,
+                    "edit_plan",
+                    input_blob_key,
                     ref_url,
                 ),
             )
@@ -217,30 +305,58 @@ class VideoJobStore:
             row = cur.fetchone()
             return int(row[0]) if row else 0
 
-    def claim_next_pending(self, max_global: int = DEFAULT_MAX_GLOBAL_JOBS, max_per_user: int = DEFAULT_MAX_PER_USER_JOBS) -> Optional[Dict[str, Any]]:
+    def claim_next_pending(
+        self,
+        max_global: int = DEFAULT_MAX_GLOBAL_JOBS,
+        max_per_user: int = DEFAULT_MAX_PER_USER_JOBS,
+        job_types: Optional[tuple[str, ...]] = None,
+    ) -> Optional[Dict[str, Any]]:
         with tx() as conn:
             conn.execute("SELECT pg_advisory_xact_lock(hashtext('claim_video_job'))")
-            cur = conn.execute("SELECT COUNT(*) FROM video_jobs WHERE status = 'running'")
+            if job_types is None:
+                cur = conn.execute("SELECT COUNT(*) FROM video_jobs WHERE status = 'running'")
+            else:
+                cur = conn.execute(
+                    "SELECT COUNT(*) FROM video_jobs WHERE status = 'running' AND job_type = ANY(%s)",
+                    (list(job_types),),
+                )
             if cur.fetchone()[0] >= max_global:
                 return None
 
-            cur = conn.execute(
-                """
-                SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
-                       job_type, source_video_blob_key, reference_video_url
-                FROM video_jobs WHERE status = 'pending' ORDER BY created_at ASC
-                FOR UPDATE SKIP LOCKED
-                """
-            )
+            if job_types is None:
+                cur = conn.execute(
+                    """
+                    SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
+                           job_type, source_video_blob_key, reference_video_url
+                    FROM video_jobs WHERE status = 'pending' ORDER BY created_at ASC
+                    FOR UPDATE SKIP LOCKED
+                    """
+                )
+            else:
+                cur = conn.execute(
+                    """
+                    SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
+                           job_type, source_video_blob_key, reference_video_url
+                    FROM video_jobs WHERE status = 'pending' AND job_type = ANY(%s) ORDER BY created_at ASC
+                    FOR UPDATE SKIP LOCKED
+                    """,
+                    (list(job_types),),
+                )
             rows = cur.fetchall()
 
             for row in rows:
                 candidate = self._row_to_dict(row)
                 uid = candidate["user_id"]
-                cur_user = conn.execute(
-                    "SELECT COUNT(*) FROM video_jobs WHERE user_id = %s AND status = 'running'",
-                    (uid,),
-                )
+                if job_types is None:
+                    cur_user = conn.execute(
+                        "SELECT COUNT(*) FROM video_jobs WHERE user_id = %s AND status = 'running'",
+                        (uid,),
+                    )
+                else:
+                    cur_user = conn.execute(
+                        "SELECT COUNT(*) FROM video_jobs WHERE user_id = %s AND status = 'running' AND job_type = ANY(%s)",
+                        (uid, list(job_types)),
+                    )
                 if cur_user.fetchone()[0] < max_per_user:
                     now = now_iso()
                     conn.execute("UPDATE video_jobs SET status = 'running', started_at = %s WHERE id = %s", (now, candidate["id"]))
@@ -302,14 +418,19 @@ class VideoRunner:
         max_per_user: int = DEFAULT_MAX_PER_USER_JOBS,
         generator: Optional[Callable] = None,
         editor: Optional[Callable] = None,
+        max_plan_workers: int = DEFAULT_MAX_PLAN_JOBS,
+        planner: Optional[Callable] = None,
     ) -> None:
         self.store = store
         self.media_store = media_store
         self.max_workers = max_workers
         self.max_per_user = max_per_user
+        self.max_plan_workers = max_plan_workers
         self.generator = generator or generate_video
         self.editor = editor or edit_video
+        self.planner = planner or plan_edit_video
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+        self.plan_executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_plan_workers)
         self._lock = threading.Lock()
         self._stop = False
 
@@ -317,10 +438,23 @@ class VideoRunner:
         """Attempt to dispatch pending jobs up to concurrency limits."""
         with self._lock:
             while True:
-                job = self.store.claim_next_pending(self.max_workers, self.max_per_user)
+                job = self.store.claim_next_pending(
+                    self.max_workers,
+                    self.max_per_user,
+                    job_types=("generate", "edit"),
+                )
                 if not job:
                     break
                 self.executor.submit(self._run_job, job)
+            while True:
+                plan_job = self.store.claim_next_pending(
+                    self.max_plan_workers,
+                    self.max_per_user,
+                    job_types=("edit_plan",),
+                )
+                if not plan_job:
+                    break
+                self.plan_executor.submit(self._run_job, plan_job)
 
     def _run_job(self, job: Dict[str, Any]) -> None:
         job_id = job["id"]
@@ -331,6 +465,36 @@ class VideoRunner:
         temp_in = None
         temp_mp4 = None
         try:
+            if job_type == "edit_plan":
+                input_blob_key = job.get("source_video_blob_key")
+                if not input_blob_key:
+                    raise FileNotFoundError("Client edit metadata not found.")
+                payload = json.loads(blobs.get(input_blob_key).decode("utf-8"))
+                keyframes = [
+                    base64.b64decode(item)
+                    for item in (payload.get("keyframes_b64") or [])
+                    if isinstance(item, str)
+                ]
+                audio_b64 = payload.get("audio_b64")
+                audio_bytes = base64.b64decode(audio_b64) if isinstance(audio_b64, str) and audio_b64 else None
+                plan = self.planner(
+                    prompt=prompt,
+                    probe=payload.get("probe"),
+                    keyframes=keyframes or None,
+                    transcript=payload.get("transcript"),
+                    audio_bytes=audio_bytes,
+                    audio_format=str(payload.get("audio_format") or "wav"),
+                    reference_video_url=job.get("reference_video_url"),
+                )
+                blob_key = f"videos/{user_id}/{job_id}/edit_config.json"
+                blobs.put(
+                    blob_key,
+                    json.dumps(plan, ensure_ascii=False).encode("utf-8"),
+                    content_type="application/json",
+                )
+                self.store.mark_completed(job_id, blob_key)
+                return
+
             if job_type == "edit":
                 source_blob_key = job.get("source_video_blob_key")
                 if not source_blob_key:
@@ -436,6 +600,7 @@ class VideoRunner:
 
     def shutdown(self) -> None:
         self.executor.shutdown(wait=False)
+        self.plan_executor.shutdown(wait=False)
 
 
 VIDEO_STORE = VideoJobStore()

@@ -4,6 +4,7 @@ from tools.app.backend.video_engine.edit import (
     build_video_edit_acp_prompt,
     edit_video,
     extract_reference_url,
+    plan_edit_video,
     ref_cache_dir,
     resolve_rea_video_bin,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "generate_video",
     "get_video_duration",
     "normalize_video",
+    "plan_edit_video",
     "ref_cache_dir",
     "resolve_rea_video_bin",
 ]

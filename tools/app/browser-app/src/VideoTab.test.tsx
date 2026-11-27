@@ -474,8 +474,8 @@ describe('VideoTab and MediaPanel', () => {
       const toast = document.querySelector('ion-toast');
       expect(toast).not.toBeNull();
       expect(toast?.getAttribute('message')).toBe('Đã gửi yêu cầu chỉnh sửa video!');
+      expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:local-video-preview');
     });
-    expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:local-video-preview');
     expect(decodeURIComponent(editCalls[0].headers['x-edit-prompt'])).toBe('Thêm phụ đề tiếng Việt');
     expect(decodeURIComponent(editCalls[0].headers['x-reference-url'])).toBe('https://www.facebook.com/reel/999');
 
@@ -616,7 +616,7 @@ describe('VideoTab and MediaPanel', () => {
     const pct = Number(bars[0].getAttribute('aria-valuenow'));
     expect(pct).toBeGreaterThanOrEqual(10);
     expect(pct).toBeLessThanOrEqual(95);
-    expect(screen.getByText('Đang phân tích video bằng rea-video…')).toBeDefined();
+    expect(screen.getByText('Đang phân tích video…')).toBeDefined();
   });
 
   test('MediaPanel renders authenticated image URLs with uid', async () => {
@@ -699,5 +699,209 @@ describe('VideoTab and MediaPanel', () => {
 
     expect(videoFileUrl(job)).toBe('/api/videos/job_456/file?uid=user_789');
     expect(videoDownloadUrl(job)).toBe('/api/videos/job_456/file?uid=user_789&download=1');
+  });
+
+  test('VideoTab uses POST /api/videos/edit-plan and renders locally when WebCodecs is supported', async () => {
+    const clientRenderMod = await import('./videoClientRender');
+    const draftMod = await import('./videoEditDraft');
+    vi.spyOn(clientRenderMod, 'canRenderVideoOnClient').mockResolvedValue(true);
+    vi.spyOn(clientRenderMod, 'probeAndExtractKeyframes').mockResolvedValue({
+      probe: {
+        width: 720,
+        height: 1280,
+        duration: 10,
+        fps: 30,
+        has_audio: true,
+        speech_segments: [{ start: 0.5, end: 4.5, energy: 0.2 }],
+        cuts: [],
+      },
+      keyframes_b64: ['ZmFrZWpwZw=='],
+      audio_b64: 'UklGRg==',
+      decomposition: {
+        speech_segments: [{ start: 0.5, end: 4.5, energy: 0.2 }],
+        cuts: [],
+        speech_duration_sec: 4.0,
+        speaking_ratio: 0.4,
+      },
+    });
+    const renderSpy = vi
+      .spyOn(clientRenderMod, 'renderVideoEditPlan')
+      .mockResolvedValue(new Blob(['rendered-mp4'], { type: 'video/mp4' }));
+    const blobStore = new Map<string, Blob>();
+    vi.spyOn(draftMod, 'saveJobBlob').mockImplementation(async (k, b) => {
+      blobStore.set(k, b);
+    });
+    vi.spyOn(draftMod, 'loadJobBlob').mockImplementation(async (k) => blobStore.get(k) ?? null);
+    vi.spyOn(draftMod, 'deleteJobBlob').mockImplementation(async (k) => {
+      blobStore.delete(k);
+    });
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((obj: any) =>
+      obj instanceof Blob && obj.size === 12 ? 'blob:rendered-local-mp4' : 'blob:source-preview',
+    );
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const planJob: any = {
+      id: 'vp_1',
+      user_id: 'test_uid_123',
+      prompt: 'Client plan captions',
+      profile_media_id: '',
+      context_media_ids: [],
+      cost: 0,
+      cost_usd: 0,
+      status: 'completed',
+      video_path: 'videos/test_uid_123/vp_1/edit_config.json',
+      error: null,
+      created_at: '2026-11-27T09:00:00Z',
+      started_at: null,
+      finished_at: null,
+      job_type: 'edit_plan',
+    };
+    const postedUrls: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input: any, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method || 'GET';
+      if (url.endsWith('/api/videos/edit-plan') && method === 'POST') {
+        postedUrls.push(url);
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, job: planJob }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (url.endsWith('/api/videos/vp_1/plan')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ ok: true, plan: { width: 720, height: 1280, fps: 24, effects: [] } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.endsWith('/api/videos/vp_1/file') && method === 'POST') {
+        postedUrls.push(url);
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              job: { ...planJob, video_path: 'videos/test_uid_123/vp_1/output.mp4' },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.includes('/api/videos/estimate')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, balance: 500000, cost_micro: 0, cost_usd: 0 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (url.includes('/api/media')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, media: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (url.includes('/api/videos')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, jobs: postedUrls.length ? [planJob] : [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+
+    const srcFile = new File(['raw-mp4'], 'clip.mp4', { type: 'video/mp4' });
+    render(
+      <VideoTab
+        user={mockUser}
+        onOpenAuth={vi.fn()}
+        editSourceFile={srcFile}
+        editPrompt="Client plan captions"
+      />,
+    );
+
+    const applyBtn = await screen.findByRole('button', { name: 'Áp dụng chỉnh sửa' });
+    fireEvent.click(applyBtn);
+
+    await waitFor(() => {
+      expect(postedUrls.some((u) => u.endsWith('/api/videos/edit-plan'))).toBe(true);
+    });
+    await waitFor(() => {
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(postedUrls.some((u) => u.endsWith('/api/videos/vp_1/file'))).toBe(true);
+    });
+  });
+
+  test('drawEffectsOnCanvas renders table, info.tag, highlight_lines, and top-level subtitles', async () => {
+    const { drawEffectsOnCanvas } = await import('./videoClientRender');
+    const calls: string[] = [];
+    const mockCtx: any = {
+      save: () => {},
+      restore: () => {},
+      clearRect: () => {},
+      drawImage: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      arcTo: () => {},
+      closePath: () => {},
+      fill: () => {},
+      fillRect: () => {},
+      strokeText: (t: string) => calls.push(`stroke:${t}`),
+      fillText: (t: string) => calls.push(`fill:${t}`),
+      filter: 'none',
+      fillStyle: '#000',
+      strokeStyle: '#000',
+      font: '',
+      textAlign: 'center',
+      textBaseline: 'top',
+      globalAlpha: 1,
+      lineJoin: 'round',
+      lineWidth: 1,
+      shadowColor: '',
+      shadowBlur: 0,
+      shadowOffsetY: 0,
+    };
+
+    drawEffectsOnCanvas(mockCtx, {} as CanvasImageSource, 360, 640, 720, 1280, 2.0, [
+      {
+        type: 'text_box',
+        variant: 'info',
+        tag: 'Tóm tắt',
+        title: 'Điểm chính',
+        body: ['Chi tiết'],
+        start: 0,
+        end: 5,
+      },
+      {
+        type: 'text_box',
+        variant: 'table',
+        headers: ['Mục', 'Giá trị'],
+        rows: [['1. Thuê', 'Tốt']],
+        start: 0,
+        end: 5,
+      },
+      {
+        type: 'subtitles',
+        color: '#93E227',
+        uppercase: true,
+        items: [{ start: 1, end: 3, text: 'xin chào' }],
+      },
+    ]);
+
+    expect(calls).toContain('fill:Tóm tắt');
+    expect(calls).toContain('fill:Điểm chính');
+    expect(calls).toContain('fill:Mục');
+    expect(calls).toContain('fill:1. Thuê');
+    expect(calls).toContain('stroke:XIN CHÀO');
+    expect(calls).toContain('fill:XIN CHÀO');
   });
 });

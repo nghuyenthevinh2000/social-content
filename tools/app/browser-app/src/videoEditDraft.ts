@@ -105,3 +105,67 @@ export function clearEditDraft(): void {
   }
   void saveEditVideoFile(null);
 }
+
+export async function saveJobBlob(key: string, blob: Blob): Promise<void> {
+  const db = await openVideoDb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(blob, key);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        resolve();
+      };
+    } catch {
+      db.close();
+      resolve();
+    }
+  });
+}
+
+export async function loadJobBlob(key: string): Promise<Blob | null> {
+  const db = await openVideoDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => {
+        const val = req.result;
+        resolve(val instanceof Blob ? val : null);
+      };
+      req.onerror = () => resolve(null);
+      tx.oncomplete = () => db.close();
+    } catch {
+      db.close();
+      resolve(null);
+    }
+  });
+}
+
+export async function deleteJobBlob(key: string): Promise<void> {
+  const db = await openVideoDb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        resolve();
+      };
+    } catch {
+      db.close();
+      resolve();
+    }
+  });
+}

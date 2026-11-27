@@ -5,6 +5,13 @@ import { useEffect, useRef, useState } from 'react';
 import { apiJson } from '../api';
 import type { User } from '../firebase';
 import { type LocaleMessages, useLocale } from '../locales';
+import {
+  canRenderVideoOnClient,
+  type EditPlan,
+  probeAndExtractKeyframes,
+  renderVideoEditPlan,
+} from '../videoClientRender';
+import { deleteJobBlob, loadJobBlob, saveJobBlob } from '../videoEditDraft';
 
 import { mediaUrl, type MediaItem } from './MediaPanel';
 import './VideoTab.css';
@@ -23,7 +30,7 @@ export type VideoJob = {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
-  job_type?: 'generate' | 'edit';
+  job_type?: 'generate' | 'edit' | 'edit_plan';
   reference_video_url?: string | null;
 };
 
@@ -80,7 +87,7 @@ function estimateVideoProgress(
   if (job.status === 'pending') {
     return { pct: 8, elapsedSec, label: progressMsg.queued };
   }
-  const isEdit = job.job_type === 'edit';
+  const isEdit = job.job_type === 'edit' || job.job_type === 'edit_plan';
   const tau = isEdit ? 120 : 60;
   const pct = Math.min(95, Math.max(10, Math.round(10 + 85 * (1 - Math.exp(-elapsedSec / tau)))));
   let label = progressMsg.generating;
@@ -173,6 +180,10 @@ export function VideoTab({
   const [notice, setNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  const [localRenderedUrls, setLocalRenderedUrls] = useState<Record<string, string>>({});
+  const [clientRenderPct, setClientRenderPct] = useState<Record<string, number>>({});
+  const [clientRenderErrors, setClientRenderErrors] = useState<Record<string, string>>({});
+  const renderingJobIdsRef = useRef<Set<string>>(new Set());
 
   const profileMediaList = mediaList.filter((m) => m.kind === 'profile');
   const contextMediaList = mediaList.filter((m) => m.kind === 'context');
@@ -330,6 +341,85 @@ export function VideoTab({
     return () => clearInterval(tick);
   }, [jobs]);
 
+  useEffect(() => {
+    const planJobs = jobs.filter(
+      (j) =>
+        j.job_type === 'edit_plan' &&
+        j.status === 'completed' &&
+        !j.video_path?.endsWith('.mp4') &&
+        !localRenderedUrls[j.id] &&
+        !clientRenderErrors[j.id] &&
+        !renderingJobIdsRef.current.has(j.id),
+    );
+    if (planJobs.length === 0) return;
+
+    for (const j of planJobs) {
+      renderingJobIdsRef.current.add(j.id);
+      void (async () => {
+        try {
+          let outBlob = await loadJobBlob(`plan_out_${j.id}`);
+          if (!outBlob) {
+            const srcBlob = await loadJobBlob(`plan_src_${j.id}`);
+            if (!srcBlob) {
+              setClientRenderErrors((prev) => ({
+                ...prev,
+                [j.id]: 'Source video not found on this device.',
+              }));
+              return;
+            }
+            setClientRenderPct((prev) => ({ ...prev, [j.id]: 0 }));
+            const planRes = await apiJson<{ ok: boolean; plan?: EditPlan }>(
+              `/api/videos/${encodeURIComponent(j.id)}/plan`,
+            );
+            if (!planRes.ok || !planRes.plan) {
+              throw new Error('Missing edit plan');
+            }
+            const srcFile =
+              srcBlob instanceof File
+                ? srcBlob
+                : new File([srcBlob], `source-${j.id}.mp4`, { type: 'video/mp4' });
+            outBlob = await renderVideoEditPlan(srcFile, planRes.plan, (pct) => {
+              setClientRenderPct((prev) => ({ ...prev, [j.id]: pct }));
+            });
+          }
+
+          setLocalRenderedUrls((prev) => ({ ...prev, [j.id]: URL.createObjectURL(outBlob!) }));
+          try {
+            const upRes = await apiJson<{ ok: boolean; job?: VideoJob }>(
+              `/api/videos/${encodeURIComponent(j.id)}/file`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'video/mp4' },
+                body: outBlob,
+              },
+            );
+            if (upRes.ok && upRes.job) {
+              setJobs((prev) => prev.map((item) => (item.id === j.id ? upRes.job! : item)));
+              await deleteJobBlob(`plan_src_${j.id}`);
+              await deleteJobBlob(`plan_out_${j.id}`);
+            } else {
+              await saveJobBlob(`plan_out_${j.id}`, outBlob);
+            }
+          } catch {
+            await saveJobBlob(`plan_out_${j.id}`, outBlob);
+          }
+        } catch (err: any) {
+          setClientRenderErrors((prev) => ({
+            ...prev,
+            [j.id]: err?.message || 'Client render failed',
+          }));
+        } finally {
+          setClientRenderPct((prev) => {
+            const next = { ...prev };
+            delete next[j.id];
+            return next;
+          });
+          renderingJobIdsRef.current.delete(j.id);
+        }
+      })();
+    }
+  }, [jobs, localRenderedUrls, clientRenderErrors]);
+
   const handleStartGeneration = async () => {
     if (!selectedProfile) {
       setNotice({ type: 'error', text: m.needProfileNotice });
@@ -377,20 +467,46 @@ export function VideoTab({
       setStarting(true);
       setNotice(null);
       const refUrl = editReferenceUrl.trim();
-      let res: { ok: boolean; job?: VideoJob };
+      let res: { ok: boolean; job?: VideoJob } | null = null;
       if (localVideoFile) {
-        const headers: Record<string, string> = {
-          'Content-Type': localVideoFile.type || 'video/mp4',
-          'X-Edit-Prompt': encodeURIComponent(editPrompt.trim()),
-        };
-        if (refUrl) {
-          headers['X-Reference-Url'] = encodeURIComponent(refUrl);
+        let usedClientPlan = false;
+        if (await canRenderVideoOnClient()) {
+          try {
+            const { probe, keyframes_b64, audio_b64 } = await probeAndExtractKeyframes(localVideoFile);
+            res = await apiJson<{ ok: boolean; job?: VideoJob }>('/api/videos/edit-plan', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                prompt: editPrompt.trim(),
+                probe,
+                keyframes_b64,
+                audio_b64: audio_b64 || undefined,
+                audio_format: audio_b64 ? 'wav' : undefined,
+                reference_video_url: refUrl || undefined,
+              }),
+            });
+            if (res.ok && res.job) {
+              await saveJobBlob(`plan_src_${res.job.id}`, localVideoFile);
+            }
+            usedClientPlan = true;
+          } catch {
+            usedClientPlan = false;
+          }
         }
-        res = await apiJson<{ ok: boolean; job?: VideoJob }>('/api/videos/edit', {
-          method: 'POST',
-          headers,
-          body: localVideoFile,
-        });
+        if (!usedClientPlan) {
+          const headers: Record<string, string> = {
+            'Content-Type': localVideoFile.type || 'video/mp4',
+            'X-Edit-Prompt': encodeURIComponent(editPrompt.trim()),
+          };
+          if (refUrl) {
+            headers['X-Reference-Url'] = encodeURIComponent(refUrl);
+          }
+          res = await apiJson<{ ok: boolean; job?: VideoJob }>('/api/videos/edit', {
+            method: 'POST',
+            headers,
+            body: localVideoFile,
+          });
+        }
       } else if (selectedHistoryJob) {
         res = await apiJson<{ ok: boolean; job?: VideoJob }>('/api/videos/edit', {
           method: 'POST',
@@ -404,7 +520,7 @@ export function VideoTab({
       } else {
         return;
       }
-      if (res.ok) {
+      if (res?.ok) {
         clearEditSource();
         setEditPrompt('');
         setEditReferenceUrl('');
@@ -435,6 +551,17 @@ export function VideoTab({
   const handleDeleteJob = async (jobId: string) => {
     try {
       setJobs((prev) => prev.filter((j) => j.id !== jobId));
+      const existingUrl = localRenderedUrls[jobId];
+      if (existingUrl && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(existingUrl);
+      }
+      setLocalRenderedUrls((prev) => {
+        const next = { ...prev };
+        delete next[jobId];
+        return next;
+      });
+      void deleteJobBlob(`plan_src_${jobId}`);
+      void deleteJobBlob(`plan_out_${jobId}`);
       await apiJson(`/api/videos/${jobId}/delete`, { method: 'POST' });
       fetchJobs();
     } catch (err: any) {
@@ -724,6 +851,13 @@ export function VideoTab({
           <div className="video-history-list">
             {jobs.map((j) => {
               const expanded = isJobExpanded(j);
+              const isPlanJob = j.job_type === 'edit_plan';
+              const localUrl = localRenderedUrls[j.id];
+              const renderPct = clientRenderPct[j.id];
+              const renderErr = clientRenderErrors[j.id];
+              const isServerMp4 = Boolean(j.video_path && (!isPlanJob || j.video_path.endsWith('.mp4')));
+              const playableUrl = localUrl || (isServerMp4 ? videoFileUrl(j) : null);
+              const downloadHref = isServerMp4 ? videoDownloadUrl(j) : localUrl || null;
               return (
                 <div key={j.id} className={`video-card ${expanded ? 'expanded' : 'collapsed'}`}>
                   <div
@@ -734,7 +868,7 @@ export function VideoTab({
                     <div className="video-card-head-left">
                       <span className={`status-chip ${j.status}`}>{m.status[j.status]}</span>
                       <span className="duration-tag">
-                        {j.job_type === 'edit' ? m.edit.jobBadge : m.aiJobBadge}
+                        {j.job_type === 'edit' || isPlanJob ? m.edit.jobBadge : m.aiJobBadge}
                       </span>
                       {!expanded && <span className="video-card-preview-prompt">{j.prompt}</span>}
                     </div>
@@ -762,9 +896,9 @@ export function VideoTab({
                         </button>
                       )}
 
-                      {j.status === 'completed' && j.video_path && (
+                      {j.status === 'completed' && downloadHref && (
                         <a
-                          href={videoDownloadUrl(j)}
+                          href={downloadHref}
                           download={`video-${j.id}.mp4`}
                           className="media-action-btn icon-action-btn download-btn"
                           aria-label={m.downloadBtn}
@@ -839,9 +973,33 @@ export function VideoTab({
                       <div className="video-prompt-text">{j.prompt}</div>
                     </div>
 
-                    {j.status === 'completed' && j.video_path && (
+                    {j.status === 'completed' && isPlanJob && renderPct !== undefined && !playableUrl && (
+                      <div className="video-progress-wrap">
+                        <div
+                          className="bar running"
+                          role="progressbar"
+                          aria-valuenow={renderPct}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <span style={{ width: `${renderPct}%` }} />
+                        </div>
+                        <div className="video-progress-meta muted">
+                          <span>{m.progress.editRender}</span>
+                          <span>{renderPct}%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {j.status === 'completed' && isPlanJob && renderErr && (
+                      <div className="video-error-text">
+                        {m.errorPrefix} {renderErr}
+                      </div>
+                    )}
+
+                    {j.status === 'completed' && playableUrl && (
                       <div className="video-player-box">
-                        <video controls playsInline className="video-player" src={videoFileUrl(j)} />
+                        <video controls playsInline className="video-player" src={playableUrl} />
                       </div>
                     )}
 

@@ -488,8 +488,8 @@ export const vi = {
     progress: {
       queued: 'Đang chờ hàng đợi…',
       generating: 'Đang tạo video AI…',
-      editDecompose: 'Đang phân tích video bằng rea-video…',
-      editApply: 'ACP đang áp dụng phong cách chỉnh sửa…',
+      editDecompose: 'Đang phân tích video…',
+      editApply: 'Đang áp dụng phong cách chỉnh sửa…',
       editRender: 'Đang render & hoàn thiện video…',
     },
     cancelAndRefund: 'Huỷ & Hoàn tiền',

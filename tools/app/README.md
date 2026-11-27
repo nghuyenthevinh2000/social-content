@@ -37,6 +37,7 @@ Library (Topics, Imports, DM Reels) -> Analyzer (P1-P5, Transcripts, Prompts) ->
 |---|---|---|
 | [`0001`](./adr/0001-use-glasser-api-transcription-over-local-asr.md) | Adopt Glasser.ai API transcription in place of local offline ASR | Accepted |
 | [`0002`](./adr/0002-cost-and-performance-profiling.md) | Cost Control and Performance Profiling Architecture | Accepted |
+| [`0004`](./adr/0004-client-side-video-edit-rendering.md) | Client-Side Video Edit Rendering Architecture | Accepted |
 
 ## Running
 

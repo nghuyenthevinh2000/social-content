@@ -15,6 +15,7 @@ from tools.app.backend.video_engine.edit import (
     build_video_edit_acp_prompt,
     edit_video,
     extract_reference_url,
+    plan_edit_video,
     ref_cache_dir,
 )
 from tools.app.backend.video_engine.jobs import VideoJobStore, VideoRunner
@@ -307,3 +308,274 @@ def test_server_video_edit_routes():
     assert job2["job_type"] == "edit"
     assert job2["source_video_blob_key"] == out_key
     assert s.VIDEO_RUNNER.trigger.call_count == 2
+
+
+def test_build_video_edit_acp_prompt_render_on_client(tmp_path: Path):
+    prompt = build_video_edit_acp_prompt(
+        source_video_path=None,
+        output_path=None,
+        prompt="Add Vietnamese hook card and captions",
+        work_dir=tmp_path / "work",
+        render_on_client=True,
+    )
+    assert "PLAN-ONLY MODE" in prompt
+    assert "edit_config.json" in prompt
+    assert "Do NOT run `effect_editor.py`, `ffmpeg`, or `ffprobe`" in prompt
+    assert "punch_zoom" in prompt
+
+
+def test_plan_edit_video_from_client_metadata(monkeypatch, tmp_path: Path):
+    captured = {}
+    work_dir = tmp_path / "plan_work"
+
+    def fail_subprocess(*_args, **_kwargs):
+        raise AssertionError("subprocess should not run when client metadata is provided")
+
+    class FakeACPClient:
+        def __init__(self, command, cwd, timeout_sec=600.0):
+            captured["command"] = command
+
+        def initialize(self):
+            return {}
+
+        def new_session(self):
+            return "sess_plan_1"
+
+        def prompt(self, session_id, text):
+            captured["prompt"] = text
+            (work_dir / "edit_config.json").write_text(
+                json.dumps({
+                    "input_video": "/tmp/should_be_stripped.mp4",
+                    "output_video": "/tmp/should_be_stripped_out.mp4",
+                    "width": 720,
+                    "height": 1280,
+                    "fps": 24,
+                    "loudnorm": True,
+                    "effects": [{"type": "color_grade", "contrast": 1.05}],
+                }),
+                encoding="utf-8",
+            )
+            return "done"
+
+        def close(self):
+            captured["closed"] = True
+
+    monkeypatch.setattr("tools.app.backend.video_engine.edit.subprocess.run", fail_subprocess)
+    monkeypatch.setattr("tools.app.backend.video_engine.edit.ACPClient", FakeACPClient)
+    monkeypatch.setattr(
+        "tools.app.backend.research_engine.research.configured_agent",
+        lambda: {"id": "opencode", "command": ["opencode", "acp"]},
+    )
+
+    plan = plan_edit_video(
+        prompt="Add subtle color grade",
+        probe={"width": 1080, "height": 1920, "fps": 30.0, "duration": 12.5, "has_audio": True},
+        keyframes=[b"jpg0", b"jpg1"],
+        transcript={"language": "vi", "segments": []},
+        work_dir=work_dir,
+        pre_decompose=True,
+    )
+    assert captured["closed"] is True
+    assert "PLAN-ONLY MODE" in captured["prompt"]
+    assert (work_dir / "user_probe.json").exists()
+    assert (work_dir / "user_frames" / "f_0.jpg").read_bytes() == b"jpg0"
+    assert (work_dir / "user_frames" / "f_1.jpg").read_bytes() == b"jpg1"
+    assert (work_dir / "user_transcript.json").exists()
+    assert "input_video" not in plan
+    assert "output_video" not in plan
+    assert plan["effects"] == [{"type": "color_grade", "contrast": 1.05}]
+
+
+def test_plan_edit_video_transcribes_client_audio(monkeypatch, tmp_path: Path):
+    work_dir = tmp_path / "plan_asr_work"
+    asr_calls = []
+
+    def fake_asr(audio_bytes: bytes, audio_format: str = "wav", speech_segments=None):
+        asr_calls.append((audio_bytes, audio_format))
+        from tools.app.backend.video_engine.edit import _align_text_to_speech_segments
+        segs = _align_text_to_speech_segments("Xin chào các bạn", speech_segments or [])
+        return {"engine": "local", "language": "Vietnamese", "text": "Xin chào các bạn", "segments": segs}
+
+    class FakeACPClient:
+        def __init__(self, command, cwd, timeout_sec=600.0):
+            pass
+
+        def initialize(self):
+            return {}
+
+        def new_session(self):
+            return "sess_asr"
+
+        def prompt(self, session_id, text):
+            assert "user_transcript.json" in text
+            (work_dir / "edit_config.json").write_text(
+                json.dumps({"width": 720, "height": 1280, "fps": 24, "effects": [{"type": "color_grade"}]}),
+                encoding="utf-8",
+            )
+            return "done"
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr("tools.app.backend.video_engine.edit._transcribe_client_audio", fake_asr)
+    monkeypatch.setattr("tools.app.backend.video_engine.edit.ACPClient", FakeACPClient)
+    monkeypatch.setattr(
+        "tools.app.backend.research_engine.research.configured_agent",
+        lambda: {"id": "opencode", "command": ["opencode", "acp"]},
+    )
+
+    plan = plan_edit_video(
+        prompt="Add captions",
+        probe={
+            "width": 720,
+            "height": 1280,
+            "fps": 30,
+            "duration": 8.0,
+            "has_audio": True,
+            "speech_segments": [{"start": 0.4, "end": 1.2, "energy": 0.2}, {"start": 1.5, "end": 2.6, "energy": 0.2}],
+        },
+        audio_bytes=b"RIFFfakewav",
+        audio_format="wav",
+        work_dir=work_dir,
+        pre_decompose=False,
+    )
+    assert asr_calls == [(b"RIFFfakewav", "wav")]
+    tx_data = json.loads((work_dir / "user_transcript.json").read_text(encoding="utf-8"))
+    assert tx_data["text"] == "Xin chào các bạn"
+    assert len(tx_data["segments"]) == 2
+    assert tx_data["segments"][0]["start"] == 0.4
+    assert plan["effects"] == [{"type": "color_grade"}]
+
+
+def test_video_runner_executes_edit_plan_job_and_separate_pool():
+    import base64
+    import threading
+
+    store = VideoJobStore()
+    meta_key = "videos/u_plan/uploads/meta.json"
+    blobs.put(
+        meta_key,
+        json.dumps({
+            "probe": {"width": 720, "height": 1280, "fps": 30, "duration": 10.0, "has_audio": True},
+            "keyframes_b64": [base64.b64encode(b"frame0").decode("ascii")],
+            "transcript": {"language": "vi", "segments": []},
+        }).encode("utf-8"),
+        content_type="application/json",
+    )
+
+    # Occupy the single heavy-pool slot to verify edit_plan runs in its own pool.
+    heavy_key = "videos/u_heavy/uploads/src.mp4"
+    blobs.put(heavy_key, b"raw-video", content_type="video/mp4")
+    heavy_job = store.create_edit_job(user_id="u_heavy", prompt="heavy", source_video_blob_key=heavy_key)
+    plan_job = store.create_edit_plan_job(
+        user_id="u_plan",
+        prompt="Plan hook card",
+        input_blob_key=meta_key,
+        reference_video_url="https://www.tiktok.com/@a/video/1",
+    )
+    assert plan_job["job_type"] == "edit_plan"
+    assert plan_job["cost"] == 0
+
+    heavy_started = threading.Event()
+    release_heavy = threading.Event()
+    plan_done = threading.Event()
+    captured = {}
+
+    def slow_editor(source_video_path, prompt, output_path, reference_video_url=None):
+        heavy_started.set()
+        release_heavy.wait(timeout=5.0)
+        output_path.write_bytes(b"heavy-out")
+        return output_path
+
+    def fast_planner(prompt, probe=None, keyframes=None, transcript=None, audio_bytes=None, audio_format="wav", reference_video_url=None):
+        captured["prompt"] = prompt
+        captured["probe"] = probe
+        captured["keyframes"] = keyframes
+        captured["transcript"] = transcript
+        captured["ref"] = reference_video_url
+        plan_done.set()
+        return {"width": 720, "height": 1280, "fps": 24, "effects": [{"type": "color_grade"}]}
+
+    runner = VideoRunner(store, max_workers=1, max_plan_workers=4, editor=slow_editor, planner=fast_planner)
+    try:
+        runner.trigger()
+        assert heavy_started.wait(timeout=3.0)
+        assert plan_done.wait(timeout=3.0)
+    finally:
+        release_heavy.set()
+        runner.shutdown()
+
+    # Wait briefly for mark_completed DB write
+    for _ in range(30):
+        updated = store.get_job("u_plan", plan_job["id"])
+        if updated and updated["status"] == "completed":
+            break
+        import time
+        time.sleep(0.05)
+
+    assert updated["status"] == "completed"
+    assert captured["keyframes"] == [b"frame0"]
+    assert captured["ref"] == "https://www.tiktok.com/@a/video/1"
+    saved_plan = json.loads(blobs.get(updated["blob_key"]).decode("utf-8"))
+    assert saved_plan["effects"] == [{"type": "color_grade"}]
+
+
+def test_server_video_edit_plan_routes():
+    import base64
+    import tools.app.backend.server as s
+
+    v_store = VideoJobStore()
+    s.VIDEO_STORE = v_store
+    s.VIDEO_RUNNER = mock.MagicMock()
+
+    payload = json.dumps({
+        "prompt": "Add hook card and subtitles",
+        "probe": {"width": 720, "height": 1280, "fps": 30, "duration": 10.0, "has_audio": True},
+        "keyframes_b64": [base64.b64encode(b"jpg0").decode("ascii")],
+        "reference_video_url": "https://www.facebook.com/reel/333",
+    }).encode("utf-8")
+    hdr = {
+        "X-User-Id": "u_plan_srv",
+        "Content-Type": "application/json",
+        "Content-Length": str(len(payload)),
+    }
+    h = DummyHandler("POST", "/api/videos/edit-plan", hdr, body=payload)
+    h.do_POST()
+    assert h.response_status == 201
+    job = json.loads(h.wfile.getvalue().decode())["job"]
+    assert job["job_type"] == "edit_plan"
+    assert job["reference_video_url"] == "https://www.facebook.com/reel/333"
+    assert s.VIDEO_RUNNER.trigger.call_count == 1
+
+    # Complete the plan job and fetch GET /api/videos/<id>/plan
+    plan_key = f"videos/u_plan_srv/{job['id']}/edit_config.json"
+    blobs.put(plan_key, json.dumps({"width": 720, "height": 1280, "effects": [{"type": "color_grade"}]}).encode("utf-8"), content_type="application/json")
+    v_store.mark_completed(job["id"], plan_key)
+
+    h_get = DummyHandler("GET", f"/api/videos/{job['id']}/plan", {"X-User-Id": "u_plan_srv"})
+    h_get.do_GET()
+    assert h_get.response_status == 200
+    body = json.loads(h_get.wfile.getvalue().decode())
+    assert body["ok"] is True
+    assert body["plan"]["effects"] == [{"type": "color_grade"}]
+
+    # Upload rendered MP4 back to POST /api/videos/<id>/file
+    mp4_bytes = b"rendered-client-mp4"
+    h_up = DummyHandler(
+        "POST",
+        f"/api/videos/{job['id']}/file",
+        {"X-User-Id": "u_plan_srv", "Content-Type": "video/mp4", "Content-Length": str(len(mp4_bytes))},
+        body=mp4_bytes,
+    )
+    h_up.do_POST()
+    assert h_up.response_status == 200
+    up_body = json.loads(h_up.wfile.getvalue().decode())
+    assert up_body["ok"] is True
+    assert up_body["job"]["video_path"].endswith("/output.mp4")
+    assert blobs.get(up_body["job"]["video_path"]) == mp4_bytes
+
+    # GET /plan still works after video_path switched to output.mp4
+    h_get2 = DummyHandler("GET", f"/api/videos/{job['id']}/plan", {"X-User-Id": "u_plan_srv"})
+    h_get2.do_GET()
+    assert h_get2.response_status == 200
+    assert json.loads(h_get2.wfile.getvalue().decode())["plan"]["effects"] == [{"type": "color_grade"}]

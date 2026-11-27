@@ -1,4 +1,32 @@
-"""ACP + rea-video video edit engine."""
+"""ACP + rea-video video edit engine.
+
+Client-Rendered Edit-Plan Request Contract (`POST /api/videos/edit-plan` -> `plan_edit_video`)
+----------------------------------------------------------------------------------------------
+Frontend sends JSON (<= 15 MB, no raw MP4 upload):
+{
+  "prompt": str,                        # Required. User edit instructions (may include ref URL).
+  "probe": {                            # Required. Video metadata probed locally via <video>.
+    "width": int,                       #   Source width in px (e.g. 720 or 1080).
+    "height": int,                      #   Source height in px (e.g. 1280 or 1920).
+    "duration": float,                  #   Duration in seconds.
+    "fps": float,                       #   Nominal FPS (default 30).
+    "has_audio": bool                   #   True if an audio track was decoded.
+  },
+  "keyframes_b64": [str, ...],          # Optional (<= 6). Base64 JPEG frames (~15%, 50%, 85%).
+  "audio_b64": str | null,              # Optional. Base64 16 kHz mono PCM WAV (capped at 180s).
+  "audio_format": "wav",                # Optional. Default "wav".
+  "transcript": {                       # Optional. Pre-computed transcript; if omitted and
+    "language": str,                    #   audio_b64 is present, server runs _transcribe_client_audio().
+    "text": str,
+    "segments": [{"start": float, "end": float, "text": str}]
+  } | null,
+  "reference_video_url": str | null     # Optional. Explicit TikTok/FB/IG reference video URL.
+}
+
+Server (`VideoRunner` -> `plan_edit_video`) decodes `keyframes_b64` -> `keyframes: list[bytes]`
+and `audio_b64` -> `audio_bytes: bytes`, materializes `user_probe.json`, `user_frames/f_*.jpg`,
+and `user_transcript.json`, runs ACP in plan-only mode, and returns `edit_config.json` (`dict`).
+"""
 
 from __future__ import annotations
 
@@ -11,6 +39,8 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
+import threading
 from typing import Optional
 import uuid
 
@@ -236,9 +266,41 @@ def _prepare_reference_decompose(
     return None
 
 
+def _materialize_client_prep(
+    work_dir: Path,
+    probe: dict,
+    keyframes: Optional[list[bytes]] = None,
+    transcript: Optional[dict] = None,
+) -> dict:
+    """Write client-supplied probe, keyframes, and transcript into work_dir."""
+    work_dir.mkdir(parents=True, exist_ok=True)
+    probe_path = work_dir / "user_probe.json"
+    probe_path.write_text(json.dumps(probe, indent=2), encoding="utf-8")
+
+    frames_dir = work_dir / "user_frames"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    for idx, img_bytes in enumerate(keyframes or []):
+        (frames_dir / f"f_{idx}.jpg").write_bytes(img_bytes)
+
+    transcript_path: Optional[Path] = None
+    if transcript is not None:
+        transcript_path = work_dir / "user_transcript.json"
+        transcript_path.write_text(
+            json.dumps(transcript, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    return {
+        "probe_path": probe_path,
+        "probe": probe,
+        "frames_dir": frames_dir,
+        "transcript_path": transcript_path,
+    }
+
+
 def build_video_edit_acp_prompt(
-    source_video_path: Path,
-    output_path: Path,
+    source_video_path: Optional[Path],
+    output_path: Optional[Path],
     prompt: str,
     work_dir: Path,
     reference_video_url: Optional[str] = None,
@@ -246,18 +308,27 @@ def build_video_edit_acp_prompt(
     user_out_ready: bool = False,
     ref_out_dir: Optional[Path] = None,
     user_prep: Optional[dict] = None,
+    render_on_client: bool = False,
 ) -> str:
     """Build the ACP prompt instructing the agent to use pre-computed metadata and apply edits."""
     rea_cmd = str(rea_video_bin or resolve_rea_video_bin() or "rea-video")
+    src_line = (
+        "User source video: client-local (not uploaded; render happens on client device)"
+        if render_on_client or source_video_path is None
+        else f"User source video: `{source_video_path}`"
+    )
     lines = [
         "You are a fast, focused video editing agent.",
         f"Read and follow the workflow at `{REFERENCE_EDIT_WORKFLOW}` end-to-end.",
         "",
-        f"User source video: `{source_video_path}`",
-        f"Target output MP4: `{output_path}`",
+        src_line,
+    ]
+    if not render_on_client and output_path is not None:
+        lines.append(f"Target output MP4: `{output_path}`")
+    lines.extend([
         f"Working directory: `{work_dir}`",
         "",
-    ]
+    ])
 
     if reference_video_url:
         if ref_out_dir is not None:
@@ -325,11 +396,19 @@ def build_video_edit_acp_prompt(
         "",
         "1-pass safe-zone & verification guardrails:",
         "- Portrait `720x1280` safe zones: top overlays `y=110..220`, lower-third captions/cards `y=780..1040` (strictly above `y=1100` platform UI), lateral margins `x>=52`, `max_width<=620`.",
-        f'- Only if an effect or option is missing above, extend `{effects_dir}/*.py` and run `"{editor_py}" "{EFFECT_EDITOR}" --check`.',
-        f"- Write `{edit_config_path}` with `input_video` (`{source_video_path}`), `output_video` (`{output_path}`), `width: 720`, `height: 1280`, `fps: 24`, `loudnorm: true`, and `effects`.",
-        f'- Render, probe, and extract 3–4 representative JPG keyframes in ONE chained command: `"{editor_py}" "{EFFECT_EDITOR}" "{edit_config_path}" && ffprobe ... "{output_path}" && ffmpeg ...`',
-        f"- Inspect those 3–4 keyframes; aim for 1-pass completion and only re-render if a keyframe shows clipping, face/hand overlap, or broken diacritics. Never overwrite `{source_video_path}`.",
     ])
+    if render_on_client:
+        lines.extend([
+            f"- PLAN-ONLY MODE: Write `{edit_config_path}` with `width: 720`, `height: 1280`, `fps: 24`, `loudnorm: true`, and `effects`.",
+            "- Do NOT run `effect_editor.py`, `ffmpeg`, or `ffprobe` — the client device will render the video locally from `edit_config.json`.",
+        ])
+    else:
+        lines.extend([
+            f'- Only if an effect or option is missing above, extend `{effects_dir}/*.py` and run `"{editor_py}" "{EFFECT_EDITOR}" --check`.',
+            f"- Write `{edit_config_path}` with `input_video` (`{source_video_path}`), `output_video` (`{output_path}`), `width: 720`, `height: 1280`, `fps: 24`, `loudnorm: true`, and `effects`.",
+            f'- Render, probe, and extract 3–4 representative JPG keyframes in ONE chained command: `"{editor_py}" "{EFFECT_EDITOR}" "{edit_config_path}" && ffprobe ... "{output_path}" && ffmpeg ...`',
+            f"- Inspect those 3–4 keyframes; aim for 1-pass completion and only re-render if a keyframe shows clipping, face/hand overlap, or broken diacritics. Never overwrite `{source_video_path}`.",
+        ])
     return "\n".join(lines)
 
 
@@ -398,3 +477,190 @@ def edit_video(
     if not output_path.exists() or output_path.stat().st_size == 0:
         raise RuntimeError(f"Video edit did not produce output file at {output_path}")
     return output_path
+
+
+_ASR_LOCK = threading.Lock()
+_LOCAL_TRANSCRIBER = None
+
+
+def _align_text_to_speech_segments(text: str, speech_segments: list[dict]) -> list[dict]:
+    """Distribute plain transcript text proportionally across client-detected speech segments."""
+    words = [w for w in text.strip().split() if w]
+    if not words or not speech_segments:
+        return []
+    durations = [max(0.05, float(s.get("end", 0)) - float(s.get("start", 0))) for s in speech_segments]
+    total = sum(durations)
+    out: list[dict] = []
+    idx = 0
+    for i, seg in enumerate(speech_segments):
+        if idx >= len(words):
+            break
+        rem_segs = len(speech_segments) - i
+        rem_words = len(words) - idx
+        quota = (
+            rem_words
+            if i == len(speech_segments) - 1
+            else max(1, min(rem_words - (rem_segs - 1), round((durations[i] / total) * len(words))))
+        )
+        out.append({
+            "start": round(float(seg.get("start", 0.0)), 2),
+            "end": round(float(seg.get("end", 0.0)), 2),
+            "text": " ".join(words[idx : idx + quota]),
+        })
+        idx += quota
+    return out
+
+
+def _transcribe_client_audio(
+    audio_bytes: bytes,
+    audio_format: str = "wav",
+    speech_segments: Optional[list[dict]] = None,
+) -> Optional[dict]:
+    """Transcribe client-extracted audio using local ASR (swappable to cloud ASR later)."""
+    global _LOCAL_TRANSCRIBER
+    if not audio_bytes:
+        return None
+    engine = os.environ.get("VIDEO_ASR_ENGINE", "local").strip().lower()
+    if engine != "local":
+        return None
+
+    suffix = f".{audio_format.lstrip('.') or 'wav'}"
+    tmp_path: Optional[Path] = None
+    try:
+        from tools.loop.viral_analyzer.video_research.transcriber.local import UnifiedTranscriber
+
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
+            f.write(audio_bytes)
+            tmp_path = Path(f.name)
+
+        with _ASR_LOCK:
+            if _LOCAL_TRANSCRIBER is None:
+                _LOCAL_TRANSCRIBER = UnifiedTranscriber()
+            res = _LOCAL_TRANSCRIBER.transcribe_audio(tmp_path)
+
+        text = (res.get("transcript") or "").strip()
+        segments = res.get("segments") or []
+        if not segments and text and speech_segments:
+            segments = _align_text_to_speech_segments(text, speech_segments)
+        if not text and not segments:
+            return None
+        return {
+            "engine": res.get("engine", "local"),
+            "language": res.get("language", "vi"),
+            "text": text,
+            "segments": segments,
+        }
+    except Exception:
+        return None
+    finally:
+        if tmp_path is not None and tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+
+
+def plan_edit_video(
+    prompt: str,
+    probe: Optional[dict] = None,
+    keyframes: Optional[list[bytes]] = None,
+    transcript: Optional[dict] = None,
+    audio_bytes: Optional[bytes] = None,
+    audio_format: str = "wav",
+    source_video_path: Optional[Path] = None,
+    reference_video_url: Optional[str] = None,
+    work_dir: Optional[Path] = None,
+    timeout_sec: Optional[float] = None,
+    pre_decompose: bool = True,
+) -> dict:
+    """Plan a client-rendered video edit and return the declarative edit_config.json dict."""
+    from tools.app.backend.research_engine.research import configured_agent
+
+    if probe is None and source_video_path is None:
+        raise ValueError("Either probe or source_video_path is required.")
+
+    resolved_ref = extract_reference_url(prompt, reference_video_url)
+    run_dir = work_dir or (REA_RUNS_ROOT / f"plan_{uuid.uuid4().hex[:10]}")
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    rea_bin = resolve_rea_video_bin()
+    editor_py = _resolve_editor_python(rea_bin)
+    user_prep: Optional[dict] = None
+    ref_out_dir: Optional[Path] = None
+
+    if transcript is None and audio_bytes:
+        speech_segs = (probe or {}).get("speech_segments") if isinstance(probe, dict) else None
+        transcript = _transcribe_client_audio(
+            audio_bytes,
+            audio_format=audio_format,
+            speech_segments=speech_segs if isinstance(speech_segs, list) else None,
+        )
+    elif transcript is not None and not transcript.get("segments") and transcript.get("text"):
+        speech_segs = (probe or {}).get("speech_segments") if isinstance(probe, dict) else None
+        if isinstance(speech_segs, list) and speech_segs:
+            transcript = {
+                **transcript,
+                "segments": _align_text_to_speech_segments(str(transcript["text"]), speech_segs),
+            }
+
+    if probe is not None:
+        user_prep = _materialize_client_prep(run_dir, probe, keyframes=keyframes, transcript=transcript)
+
+    if pre_decompose:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            user_fut = (
+                pool.submit(_prepare_user_source, source_video_path, run_dir, editor_py)
+                if (user_prep is None and source_video_path is not None)
+                else None
+            )
+            ref_fut = (
+                pool.submit(_prepare_reference_decompose, resolved_ref, rea_bin)
+                if (resolved_ref and rea_bin is not None)
+                else None
+            )
+            if user_fut is not None:
+                try:
+                    user_prep = user_fut.result()
+                except Exception:
+                    user_prep = None
+            if ref_fut is not None:
+                try:
+                    ref_out_dir = ref_fut.result()
+                except Exception:
+                    ref_out_dir = None
+
+    acp_prompt = build_video_edit_acp_prompt(
+        source_video_path=source_video_path,
+        output_path=None,
+        prompt=prompt,
+        work_dir=run_dir,
+        reference_video_url=resolved_ref,
+        rea_video_bin=rea_bin,
+        user_out_ready=False,
+        ref_out_dir=ref_out_dir,
+        user_prep=user_prep,
+        render_on_client=True,
+    )
+
+    agent = configured_agent()
+    effective_timeout = timeout_sec if timeout_sec is not None else float(os.environ.get("VIDEO_EDIT_ACP_TIMEOUT", "600"))
+    client = ACPClient(agent["command"], cwd=WORKSPACE, timeout_sec=effective_timeout)
+    try:
+        client.initialize()
+        session_id = client.new_session()
+        client.prompt(session_id, acp_prompt)
+    finally:
+        client.close()
+
+    edit_config_path = run_dir / "edit_config.json"
+    if not edit_config_path.exists():
+        raise RuntimeError(f"Video edit plan did not produce {edit_config_path}")
+    try:
+        cfg = json.loads(edit_config_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"Invalid edit_config.json at {edit_config_path}: {exc}") from exc
+    if not isinstance(cfg, dict) or not isinstance(cfg.get("effects"), list):
+        raise RuntimeError(f"edit_config.json must be an object with an 'effects' list: {edit_config_path}")
+    cfg.pop("input_video", None)
+    cfg.pop("output_video", None)
+    return cfg
