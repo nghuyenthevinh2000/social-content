@@ -34,7 +34,7 @@ export type VideoJob = {
   reference_video_url?: string | null;
 };
 
-export type VideoMode = 'edit' | 'generate';
+export type VideoMode = 'edit' | 'generate' | 'history';
 
 type VideoTabProps = {
   user: User | null;
@@ -375,9 +375,7 @@ export function VideoTab({
               throw new Error('Missing edit plan');
             }
             const srcFile =
-              srcBlob instanceof File
-                ? srcBlob
-                : new File([srcBlob], `source-${j.id}.mp4`, { type: 'video/mp4' });
+              srcBlob instanceof File ? srcBlob : new File([srcBlob], `source-${j.id}.mp4`, { type: 'video/mp4' });
             outBlob = await renderVideoEditPlan(srcFile, planRes.plan, (pct) => {
               setClientRenderPct((prev) => ({ ...prev, [j.id]: pct }));
             });
@@ -451,6 +449,7 @@ export function VideoTab({
           setJobs((prev) => [res.job, ...prev.filter((j) => j.id !== res.job.id)]);
           setExpandedIds((prev) => ({ ...prev, [res.job.id]: true }));
         }
+        setMode('history');
         fetchJobs();
         fetchCreditsAndEstimate();
       }
@@ -529,6 +528,7 @@ export function VideoTab({
           setJobs((prev) => [res.job!, ...prev.filter((j) => j.id !== res.job!.id)]);
           setExpandedIds((prev) => ({ ...prev, [res.job!.id]: true }));
         }
+        setMode('history');
         fetchJobs();
       }
     } catch (err: any) {
@@ -599,7 +599,7 @@ export function VideoTab({
       {/* Main Creation / Edit Form */}
       <section className="panel">
         <div className="video-mode-tabs" role="tablist">
-          {(['edit', 'generate'] as VideoMode[]).map((id) => (
+          {(['edit', 'generate', 'history'] as VideoMode[]).map((id) => (
             <button
               key={id}
               type="button"
@@ -688,7 +688,7 @@ export function VideoTab({
               {starting ? m.edit.submittingBtn : m.edit.applyBtn}
             </button>
           </>
-        ) : (
+        ) : mode === 'generate' ? (
           <>
             <div className="video-header-row">
               <h2 className="video-section-heading">{m.heading}</h2>
@@ -789,6 +789,200 @@ export function VideoTab({
               {starting ? m.submittingBtn : m.generateBtn(costUsd.toFixed(2))}
             </button>
           </>
+        ) : (
+          <>
+            <div className="video-header-row">
+              <h2 className="video-section-heading">{m.historyHeading(jobs.length)}</h2>
+              {jobs.length > 0 && (
+                <button type="button" className="media-action-btn" onClick={toggleAllExpanded}>
+                  {hasAnyExpanded ? m.collapseAll : m.expandAll}
+                </button>
+              )}
+            </div>
+
+            {jobs.length === 0 ? (
+              <p className="muted history-empty-text">{m.historyEmpty}</p>
+            ) : (
+              <div className="video-history-list">
+                {jobs.map((j) => {
+                  const expanded = isJobExpanded(j);
+                  const isPlanJob = j.job_type === 'edit_plan';
+                  const localUrl = localRenderedUrls[j.id];
+                  const renderPct = clientRenderPct[j.id];
+                  const renderErr = clientRenderErrors[j.id];
+                  const isServerMp4 = Boolean(j.video_path && (!isPlanJob || j.video_path.endsWith('.mp4')));
+                  const playableUrl = localUrl || (isServerMp4 ? videoFileUrl(j) : null);
+                  const downloadHref = isServerMp4 ? videoDownloadUrl(j) : localUrl || null;
+                  return (
+                    <div key={j.id} className={`video-card ${expanded ? 'expanded' : 'collapsed'}`}>
+                      <div
+                        className="video-card-head"
+                        onClick={() => toggleJobExpanded(j.id, expanded)}
+                        title={expanded ? m.cardCollapseTitle : m.cardExpandTitle}
+                      >
+                        <div className="video-card-head-left">
+                          <span className={`status-chip ${j.status}`}>{m.status[j.status]}</span>
+                          <span className="duration-tag">
+                            {j.job_type === 'edit' || isPlanJob ? m.edit.jobBadge : m.aiJobBadge}
+                          </span>
+                          {!expanded && <span className="video-card-preview-prompt">{j.prompt}</span>}
+                        </div>
+
+                        <div className="video-card-head-right">
+                          <span className="video-card-time">
+                            {j.created_at
+                              ? new Date(j.created_at).toLocaleTimeString(dateLocale, {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : ''}
+                          </span>
+
+                          {j.status === 'pending' && (
+                            <button
+                              type="button"
+                              className="media-action-btn danger"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelJob(j.id);
+                              }}
+                            >
+                              {m.cancelAndRefund}
+                            </button>
+                          )}
+
+                          {j.status === 'completed' && downloadHref && (
+                            <a
+                              href={downloadHref}
+                              download={`video-${j.id}.mp4`}
+                              className="media-action-btn icon-action-btn download-btn"
+                              aria-label={m.downloadBtn}
+                              title={m.downloadTitle}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <IonIcon icon={downloadOutline} aria-hidden="true" />
+                            </a>
+                          )}
+
+                          {(j.status === 'completed' || j.status === 'failed' || j.status === 'cancelled') && (
+                            <button
+                              type="button"
+                              className="media-action-btn icon-action-btn"
+                              aria-label={t.common.delete}
+                              title={t.common.delete}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteJob(j.id);
+                              }}
+                            >
+                              <IonIcon icon={trashOutline} aria-hidden="true" />
+                            </button>
+                          )}
+
+                          <span
+                            className="video-collapse-chevron"
+                            aria-label={expanded ? m.collapseAria : m.expandAria}
+                          >
+                            {expanded ? '▲' : '▼'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="video-card-body" style={{ display: expanded ? 'flex' : 'none' }}>
+                        {(j.status === 'pending' || j.status === 'running') &&
+                          (() => {
+                            const prog = estimateVideoProgress(j, nowMs, m.progress);
+                            return (
+                              <div className="video-progress-wrap">
+                                <div
+                                  className="bar running"
+                                  role="progressbar"
+                                  aria-valuenow={prog.pct}
+                                  aria-valuemin={0}
+                                  aria-valuemax={100}
+                                >
+                                  <span style={{ width: `${prog.pct}%` }} />
+                                </div>
+                                <div className="video-progress-meta muted">
+                                  <span>{prog.label}</span>
+                                  <span>
+                                    {prog.pct}% · {formatElapsed(prog.elapsedSec)}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                        <div className="video-prompt-box">
+                          <div className="video-prompt-label">
+                            <strong>{m.promptBoxLabel}</strong>
+                            <button
+                              type="button"
+                              className="copy-prompt-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard?.writeText(j.prompt);
+                                setNotice({ type: 'success', text: m.copiedPromptNotice });
+                              }}
+                            >
+                              {t.common.copy}
+                            </button>
+                          </div>
+                          <div className="video-prompt-text">{j.prompt}</div>
+                        </div>
+
+                        {j.status === 'completed' && isPlanJob && renderPct !== undefined && !playableUrl && (
+                          <div className="video-progress-wrap">
+                            <div
+                              className="bar running"
+                              role="progressbar"
+                              aria-valuenow={renderPct}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                            >
+                              <span style={{ width: `${renderPct}%` }} />
+                            </div>
+                            <div className="video-progress-meta muted">
+                              <span>{m.progress.editRender}</span>
+                              <span>{renderPct}%</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {j.status === 'completed' && isPlanJob && renderErr && (
+                          <div className="video-error-text">
+                            {m.errorPrefix} {renderErr}
+                          </div>
+                        )}
+
+                        {j.status === 'completed' && playableUrl && (
+                          <div className="video-player-box">
+                            <video controls playsInline className="video-player" src={playableUrl} />
+                          </div>
+                        )}
+
+                        {j.status === 'failed' && (
+                          <div className="video-error-text">
+                            {m.errorPrefix} {j.error || m.defaultJobError}
+                            <div className="video-success-msg">
+                              {m.refundedNotice(j.cost_usd ? `${j.cost_usd}` : `${(j.cost / 1000000).toFixed(2)}`)}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="video-card-footer">
+                          <span>
+                            {m.jobIdPrefix} {j.id}
+                          </span>
+                          <span>{j.created_at ? new Date(j.created_at).toLocaleString(dateLocale) : ''}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -833,198 +1027,6 @@ export function VideoTab({
           </div>
         </div>
       )}
-
-      {/* Video Generation History */}
-      <section className="panel">
-        <div className="video-header-row">
-          <h2 className="video-section-heading">{m.historyHeading(jobs.length)}</h2>
-          {jobs.length > 0 && (
-            <button type="button" className="media-action-btn" onClick={toggleAllExpanded}>
-              {hasAnyExpanded ? m.collapseAll : m.expandAll}
-            </button>
-          )}
-        </div>
-
-        {jobs.length === 0 ? (
-          <p className="muted history-empty-text">{m.historyEmpty}</p>
-        ) : (
-          <div className="video-history-list">
-            {jobs.map((j) => {
-              const expanded = isJobExpanded(j);
-              const isPlanJob = j.job_type === 'edit_plan';
-              const localUrl = localRenderedUrls[j.id];
-              const renderPct = clientRenderPct[j.id];
-              const renderErr = clientRenderErrors[j.id];
-              const isServerMp4 = Boolean(j.video_path && (!isPlanJob || j.video_path.endsWith('.mp4')));
-              const playableUrl = localUrl || (isServerMp4 ? videoFileUrl(j) : null);
-              const downloadHref = isServerMp4 ? videoDownloadUrl(j) : localUrl || null;
-              return (
-                <div key={j.id} className={`video-card ${expanded ? 'expanded' : 'collapsed'}`}>
-                  <div
-                    className="video-card-head"
-                    onClick={() => toggleJobExpanded(j.id, expanded)}
-                    title={expanded ? m.cardCollapseTitle : m.cardExpandTitle}
-                  >
-                    <div className="video-card-head-left">
-                      <span className={`status-chip ${j.status}`}>{m.status[j.status]}</span>
-                      <span className="duration-tag">
-                        {j.job_type === 'edit' || isPlanJob ? m.edit.jobBadge : m.aiJobBadge}
-                      </span>
-                      {!expanded && <span className="video-card-preview-prompt">{j.prompt}</span>}
-                    </div>
-
-                    <div className="video-card-head-right">
-                      <span className="video-card-time">
-                        {j.created_at
-                          ? new Date(j.created_at).toLocaleTimeString(dateLocale, {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : ''}
-                      </span>
-
-                      {j.status === 'pending' && (
-                        <button
-                          type="button"
-                          className="media-action-btn danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCancelJob(j.id);
-                          }}
-                        >
-                          {m.cancelAndRefund}
-                        </button>
-                      )}
-
-                      {j.status === 'completed' && downloadHref && (
-                        <a
-                          href={downloadHref}
-                          download={`video-${j.id}.mp4`}
-                          className="media-action-btn icon-action-btn download-btn"
-                          aria-label={m.downloadBtn}
-                          title={m.downloadTitle}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <IonIcon icon={downloadOutline} aria-hidden="true" />
-                        </a>
-                      )}
-
-                      {(j.status === 'completed' || j.status === 'failed' || j.status === 'cancelled') && (
-                        <button
-                          type="button"
-                          className="media-action-btn icon-action-btn"
-                          aria-label={t.common.delete}
-                          title={t.common.delete}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteJob(j.id);
-                          }}
-                        >
-                          <IonIcon icon={trashOutline} aria-hidden="true" />
-                        </button>
-                      )}
-
-                      <span className="video-collapse-chevron" aria-label={expanded ? m.collapseAria : m.expandAria}>
-                        {expanded ? '▲' : '▼'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="video-card-body" style={{ display: expanded ? 'flex' : 'none' }}>
-                    {(j.status === 'pending' || j.status === 'running') &&
-                      (() => {
-                        const prog = estimateVideoProgress(j, nowMs, m.progress);
-                        return (
-                          <div className="video-progress-wrap">
-                            <div
-                              className="bar running"
-                              role="progressbar"
-                              aria-valuenow={prog.pct}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                            >
-                              <span style={{ width: `${prog.pct}%` }} />
-                            </div>
-                            <div className="video-progress-meta muted">
-                              <span>{prog.label}</span>
-                              <span>
-                                {prog.pct}% · {formatElapsed(prog.elapsedSec)}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                    <div className="video-prompt-box">
-                      <div className="video-prompt-label">
-                        <strong>{m.promptBoxLabel}</strong>
-                        <button
-                          type="button"
-                          className="copy-prompt-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigator.clipboard?.writeText(j.prompt);
-                            setNotice({ type: 'success', text: m.copiedPromptNotice });
-                          }}
-                        >
-                          {t.common.copy}
-                        </button>
-                      </div>
-                      <div className="video-prompt-text">{j.prompt}</div>
-                    </div>
-
-                    {j.status === 'completed' && isPlanJob && renderPct !== undefined && !playableUrl && (
-                      <div className="video-progress-wrap">
-                        <div
-                          className="bar running"
-                          role="progressbar"
-                          aria-valuenow={renderPct}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          <span style={{ width: `${renderPct}%` }} />
-                        </div>
-                        <div className="video-progress-meta muted">
-                          <span>{m.progress.editRender}</span>
-                          <span>{renderPct}%</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {j.status === 'completed' && isPlanJob && renderErr && (
-                      <div className="video-error-text">
-                        {m.errorPrefix} {renderErr}
-                      </div>
-                    )}
-
-                    {j.status === 'completed' && playableUrl && (
-                      <div className="video-player-box">
-                        <video controls playsInline className="video-player" src={playableUrl} />
-                      </div>
-                    )}
-
-                    {j.status === 'failed' && (
-                      <div className="video-error-text">
-                        {m.errorPrefix} {j.error || m.defaultJobError}
-                        <div className="video-success-msg">
-                          {m.refundedNotice(j.cost_usd ? `${j.cost_usd}` : `${(j.cost / 1000000).toFixed(2)}`)}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="video-card-footer">
-                      <span>
-                        {m.jobIdPrefix} {j.id}
-                      </span>
-                      <span>{j.created_at ? new Date(j.created_at).toLocaleString(dateLocale) : ''}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
     </div>
   );
 }

@@ -419,6 +419,7 @@ export const vi = {
     modes: {
       edit: 'Edit Video',
       generate: 'Tạo AI Video',
+      history: 'Lịch sử',
     },
     edit: {
       heading: 'Edit Video',

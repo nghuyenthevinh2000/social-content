@@ -416,6 +416,7 @@ export const en: LocaleMessages = {
     modes: {
       edit: 'Edit Video',
       generate: 'Generate AI Video',
+      history: 'History',
     },
     edit: {
       heading: 'Edit Video',

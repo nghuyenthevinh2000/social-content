@@ -278,18 +278,15 @@ describe('VideoTab and MediaPanel', () => {
 
     const { container } = render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Tạo AI Video' }));
+    const historyTab = screen.getByRole('tab', { name: 'Lịch sử' });
+    fireEvent.click(historyTab);
+    expect(historyTab).toHaveAttribute('aria-selected', 'true');
 
     await waitFor(() => {
-      expect(screen.getByText('Đã chọn ảnh đại diện mẫu')).toBeDefined();
       expect(screen.getAllByText(/Prompt test video/)[0]).toBeDefined();
       expect(screen.getByText('Hoàn tất')).toBeDefined();
       expect(screen.getByText(/Omni timeout/)).toBeDefined();
     });
-
-    // Verify <img> tags include ?uid=test_uid_123 so browser requests succeed
-    const profileImg = container.querySelector('[data-testid="profile-select-prof1"] img') as HTMLImageElement;
-    expect(profileImg?.getAttribute('src')).toBe('/api/media/prof1?uid=test_uid_123');
 
     // Verify <video> tag includes ?uid=test_uid_123
     const videoEl = container.querySelector('video.video-player') as HTMLVideoElement;
@@ -306,7 +303,9 @@ describe('VideoTab and MediaPanel', () => {
     expect(headerDownloadLink?.getAttribute('download')).toBe('video-vj_done.mp4');
     expect(headerDownloadLink?.getAttribute('aria-label')).toBe('Tải về');
     expect(headerDownloadLink?.querySelector('ion-icon')).not.toBeNull();
-    const headerDeleteBtn = container.querySelector('.video-card-head-right button[aria-label="Xoá"]') as HTMLButtonElement;
+    const headerDeleteBtn = container.querySelector(
+      '.video-card-head-right button[aria-label="Xoá"]',
+    ) as HTMLButtonElement;
     expect(headerDeleteBtn).not.toBeNull();
     expect(headerDeleteBtn?.querySelector('ion-icon')).not.toBeNull();
     expect(container.querySelector('a.download-video-action')).toBeNull();
@@ -316,6 +315,16 @@ describe('VideoTab and MediaPanel', () => {
     expect(pendingCard?.querySelector('a.download-btn')).toBeNull();
     const failedCard = screen.getAllByText('Video lỗi')[0].closest('.video-card');
     expect(failedCard?.querySelector('a.download-btn')).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tạo AI Video' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Đã chọn ảnh đại diện mẫu')).toBeDefined();
+    });
+
+    // Verify <img> tags include ?uid=test_uid_123 so browser requests succeed
+    const profileImg = container.querySelector('[data-testid="profile-select-prof1"] img') as HTMLImageElement;
+    expect(profileImg?.getAttribute('src')).toBe('/api/media/prof1?uid=test_uid_123');
 
     // Toggle context image ctx1 selection
     fireEvent.click(screen.getByTestId('context-select-ctx1'));
@@ -611,6 +620,8 @@ describe('VideoTab and MediaPanel', () => {
 
     render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} />);
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Lịch sử' }));
+
     const bars = await screen.findAllByRole('progressbar');
     expect(bars).toHaveLength(1);
     const pct = Number(bars[0].getAttribute('aria-valuenow'));
@@ -772,10 +783,10 @@ describe('VideoTab and MediaPanel', () => {
       }
       if (url.endsWith('/api/videos/vp_1/plan')) {
         return Promise.resolve(
-          new Response(
-            JSON.stringify({ ok: true, plan: { width: 720, height: 1280, fps: 24, effects: [] } }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } },
-          ),
+          new Response(JSON.stringify({ ok: true, plan: { width: 720, height: 1280, fps: 24, effects: [] } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
         );
       }
       if (url.endsWith('/api/videos/vp_1/file') && method === 'POST') {
@@ -819,12 +830,7 @@ describe('VideoTab and MediaPanel', () => {
 
     const srcFile = new File(['raw-mp4'], 'clip.mp4', { type: 'video/mp4' });
     render(
-      <VideoTab
-        user={mockUser}
-        onOpenAuth={vi.fn()}
-        editSourceFile={srcFile}
-        editPrompt="Client plan captions"
-      />,
+      <VideoTab user={mockUser} onOpenAuth={vi.fn()} editSourceFile={srcFile} editPrompt="Client plan captions" />,
     );
 
     const applyBtn = await screen.findByRole('button', { name: 'Áp dụng chỉnh sửa' });
