@@ -51,9 +51,9 @@
   ],
   "video": [
     "clip",
-    "footage",
     "media",
-    "phim"
+    "phim",
+    "movie"
   ],
   "search": [
     "lookup",
@@ -68,17 +68,17 @@
     "hashtag"
   ],
   "tools": [
+    "cli",
     "utility",
     "script",
-    "cli",
     "công"
   ],
   "app": [
     "application",
-    "webapp",
-    "client",
     "ứng",
-    "dụng"
+    "dụng",
+    "software",
+    "program"
   ],
   "backend": [
     "server",
@@ -189,9 +189,9 @@
     "utility"
   ],
   "profile": [
-    "account",
     "config",
-    "session"
+    "persona",
+    "metadata"
   ],
   "topic": [
     "subject",
@@ -291,12 +291,12 @@
     "đổi"
   ],
   "browser": [
+    "trình",
+    "duyệt",
     "web",
     "browser",
-    "webview",
     "chromium",
-    "trình",
-    "duyệt"
+    "chrome"
   ],
   "analysis": [
     "audit",
@@ -306,9 +306,9 @@
     "tích"
   ],
   "brand": [
-    "brand",
     "identity",
-    "workspace",
+    "company",
+    "business",
     "thương",
     "hiệu"
   ],
@@ -351,16 +351,16 @@
     "sửa"
   ],
   "mode": [
-    "state",
+    "chế",
     "view",
-    "toggle",
-    "chế"
+    "type",
+    "option"
   ],
   "tabs": [
     "tab",
-    "navigation",
-    "panel",
-    "thẻ"
+    "thẻ",
+    "switcher",
+    "menu"
   ],
   "pop-up": [
     "popup",
@@ -459,5 +459,17 @@
     "confirm",
     "kiểm",
     "tra"
+  ],
+  "keywords": [
+    "term",
+    "tag",
+    "hashtag",
+    "khóa"
+  ],
+  "lịch sử": [
+    "history",
+    "recent",
+    "log",
+    "nhật"
   ]
 }

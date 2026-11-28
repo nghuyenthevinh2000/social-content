@@ -579,3 +579,135 @@ def test_server_video_edit_plan_routes():
     h_get2.do_GET()
     assert h_get2.response_status == 200
     assert json.loads(h_get2.wfile.getvalue().decode())["plan"]["effects"] == [{"type": "color_grade"}]
+
+
+def test_template_sanitizer_and_extractor():
+    from tools.app.backend.video_engine.templates import (
+        extract_template_from_edit_config,
+        sanitize_template_config,
+    )
+
+    sanitized = sanitize_template_config({
+        "name": "My Style",
+        "width": 1080,
+        "height": 1920,
+        "fps": 30,
+        "input_video": "/etc/passwd",
+        "sfx_dir": "/tmp/sfx",
+        "step_sfx": "pop",
+        "cta_sfx": "rm -rf",
+        "hook_card_style": {
+            "type": "text_box",
+            "bg_color": "#B91C1C",
+            "lines": ["SECRET"],
+            "start": 0.0,
+            "font": "../evil.ttf",
+        },
+    })
+    assert "input_video" not in sanitized
+    assert "sfx_dir" not in sanitized
+    assert sanitized["step_sfx"] == "pop"
+    assert "cta_sfx" not in sanitized
+    assert sanitized["hook_card_style"] == {"bg_color": "#B91C1C"}
+
+    extracted = extract_template_from_edit_config({
+        "width": 720,
+        "height": 1280,
+        "fps": 24,
+        "effects": [
+            {"type": "color_grade", "contrast": 1.05, "saturation": 1.1},
+            {"type": "text_box", "variant": "hook", "bg_color": "#B91C1C", "lines": ["HOOK"], "start": 0.0, "end": 2.0},
+            {"type": "text_box", "variant": "box", "stroke_color": "#0284C7", "lines": ["STEP 1"], "start": 2.0, "end": 4.0},
+            {"type": "text_box", "variant": "info", "y": 1100, "title": "CTA", "start": 4.0, "end": 6.0},
+            {"type": "subtitles", "color": "#FFE119", "outline_color": "#000000", "uppercase": True, "items": [{"start": 0.0, "end": 1.0, "text": "hi"}]},
+            {"type": "punch_zoom", "windows": [{"start": 2.0, "end": 2.4, "scale": 1.08}]},
+            {"type": "sfx", "time": 2.0, "sound": "pop"},
+            {"type": "sfx", "time": 4.0, "sound": "ding"},
+        ],
+    })
+    assert extracted["color_grade"] == {"contrast": 1.05, "saturation": 1.1}
+    assert extracted["hook_card_style"] == {"variant": "hook", "bg_color": "#B91C1C"}
+    assert extracted["step_anchor_style"] == {"variant": "box", "stroke_color": "#0284C7"}
+    assert extracted["cta_style"] == {"variant": "info", "y": 1100}
+    assert extracted["subtitle_style"]["color"] == "#FFE119"
+    assert extracted["subtitle_style"]["outline_color"] == "#000000"
+    assert extracted["subtitle_style"]["uppercase"] is True
+    assert extracted["punch_zoom_scale"] == 1.08
+    assert extracted["punch_zoom_duration"] == 0.4
+    assert extracted["step_sfx"] == "pop"
+    assert extracted["cta_sfx"] == "ding"
+
+
+def test_video_template_store_and_routes():
+    import tools.app.backend.server as s
+    from tools.app.backend.video_engine.templates import VideoTemplateStore
+
+    tpl_store = VideoTemplateStore()
+    synced = tpl_store.sync_builtin_templates()
+    assert synced >= 1
+    assert tpl_store.delete_template("u_owner", "kinetic-explainer") == "forbidden"
+
+    v_store = VideoJobStore()
+    s.VIDEO_STORE = v_store
+    s.TEMPLATE_STORE = tpl_store
+    s.VIDEO_RUNNER = mock.MagicMock()
+
+    # 1. GET /api/videos/templates returns built-in kinetic-explainer
+    h_list = DummyHandler("GET", "/api/videos/templates", {"X-User-Id": "u_owner"})
+    h_list.do_GET()
+    assert h_list.response_status == 200
+    tpls = json.loads(h_list.wfile.getvalue().decode())["templates"]
+    assert any(t["id"] == "kinetic-explainer" and t["source"] == "builtin" and t["is_owner"] is False for t in tpls)
+
+    # 2. POST /api/videos/edit-plan with template_id and empty prompt
+    payload = json.dumps({
+        "prompt": "",
+        "template_id": "kinetic-explainer",
+        "probe": {"width": 720, "height": 1280, "fps": 30, "duration": 8.0, "has_audio": False},
+    }).encode("utf-8")
+    h_plan = DummyHandler(
+        "POST",
+        "/api/videos/edit-plan",
+        {"X-User-Id": "u_owner", "Content-Type": "application/json", "Content-Length": str(len(payload))},
+        body=payload,
+    )
+    h_plan.do_POST()
+    assert h_plan.response_status == 201
+    job = json.loads(h_plan.wfile.getvalue().decode())["job"]
+    assert job["template_id"] == "kinetic-explainer"
+    assert "kinetic-explainer" in job["prompt"]
+
+    # Complete the job with produced_template
+    v_store.mark_completed(
+        job["id"],
+        f"videos/u_owner/{job['id']}/edit_config.json",
+        produced_template={"width": 1080, "height": 1920, "color_grade": {"contrast": 1.06}},
+    )
+
+    # 3. POST /api/videos/templates saves template from completed job
+    save_payload = json.dumps({"job_id": job["id"], "name": "Owner Custom Style", "visibility": "public"}).encode("utf-8")
+    h_save = DummyHandler(
+        "POST",
+        "/api/videos/templates",
+        {"X-User-Id": "u_owner", "Content-Type": "application/json", "Content-Length": str(len(save_payload))},
+        body=save_payload,
+    )
+    h_save.do_POST()
+    assert h_save.response_status == 201
+    saved_tpl = json.loads(h_save.wfile.getvalue().decode())["template"]
+    assert saved_tpl["is_owner"] is True
+    assert saved_tpl["config"]["color_grade"] == {"contrast": 1.06}
+
+    # 4. Non-owner cannot delete (403); built-in cannot be deleted (403); owner can delete (200)
+    h_del_other = DummyHandler("POST", f"/api/videos/templates/{saved_tpl['id']}/delete", {"X-User-Id": "u_other"})
+    h_del_other.do_POST()
+    assert h_del_other.response_status == 403
+
+    h_del_builtin = DummyHandler("POST", "/api/videos/templates/kinetic-explainer/delete", {"X-User-Id": "u_owner"})
+    h_del_builtin.do_POST()
+    assert h_del_builtin.response_status == 403
+
+    h_del_owner = DummyHandler("POST", f"/api/videos/templates/{saved_tpl['id']}/delete", {"X-User-Id": "u_owner"})
+    h_del_owner.do_POST()
+    assert h_del_owner.response_status == 200
+    assert tpl_store.get_template(saved_tpl["id"], user_id="u_owner") is None

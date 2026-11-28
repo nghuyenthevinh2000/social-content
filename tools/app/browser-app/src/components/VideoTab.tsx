@@ -1,5 +1,5 @@
 import { IonIcon, IonToast } from '@ionic/react';
-import { downloadOutline, trashOutline } from 'ionicons/icons';
+import { bookmarkOutline, downloadOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useRef, useState } from 'react';
 
 import { apiJson } from '../api';
@@ -32,6 +32,21 @@ export type VideoJob = {
   finished_at: string | null;
   job_type?: 'generate' | 'edit' | 'edit_plan';
   reference_video_url?: string | null;
+  template_id?: string | null;
+  produced_template?: Record<string, any> | null;
+};
+
+export type VideoTemplate = {
+  id: string;
+  slug: string;
+  name: string;
+  source: 'builtin' | 'user';
+  author_id: string | null;
+  is_owner: boolean;
+  visibility: 'public' | 'private';
+  config: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type VideoMode = 'edit' | 'generate' | 'history';
@@ -52,6 +67,8 @@ type VideoTabProps = {
   onEditSourceFileChange?: (file: File | null) => void;
   editHistoryJobId?: string | null;
   onEditHistoryJobIdChange?: (id: string | null) => void;
+  editTemplateId?: string | null;
+  onEditTemplateIdChange?: (id: string | null) => void;
   duration?: number;
   onDurationChange?: (value: number) => void;
 };
@@ -115,6 +132,8 @@ export function VideoTab({
   onEditSourceFileChange,
   editHistoryJobId: controlledEditHistoryJobId,
   onEditHistoryJobIdChange,
+  editTemplateId: controlledEditTemplateId,
+  onEditTemplateIdChange,
   duration: controlledDuration,
   onDurationChange,
 }: VideoTabProps) {
@@ -155,6 +174,18 @@ export function VideoTab({
     setInternalEditReferenceUrl(val);
     onEditReferenceUrlChange?.(val);
   };
+  const [internalSelectedTemplateId, setInternalSelectedTemplateId] = useState<string | null>(null);
+  const selectedTemplateId =
+    controlledEditTemplateId !== undefined ? controlledEditTemplateId : internalSelectedTemplateId;
+  const setSelectedTemplateId = (id: string | null) => {
+    setInternalSelectedTemplateId(id);
+    onEditTemplateIdChange?.(id);
+  };
+  const [templates, setTemplates] = useState<VideoTemplate[]>([]);
+  const [saveTemplateJobId, setSaveTemplateJobId] = useState<string | null>(null);
+  const [saveTemplateName, setSaveTemplateName] = useState('');
+  const [saveTemplateVisibility, setSaveTemplateVisibility] = useState<'public' | 'private'>('public');
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [internalPrompt, setInternalPrompt] = useState('');
   const prompt = controlledPrompt !== undefined ? controlledPrompt : internalPrompt;
   const setPrompt = (val: string) => {
@@ -195,7 +226,7 @@ export function VideoTab({
   const selectedHistoryJob = completedJobs.find((j) => j.id === selectedHistoryJobId) || null;
   const editSourceUrl = localVideoUrl || (selectedHistoryJob ? videoFileUrl(selectedHistoryJob) : null);
   const editSourceName = localVideoFile?.name || selectedHistoryJob?.prompt || null;
-  const canApplyEdit = Boolean(editSourceUrl && editPrompt.trim());
+  const canApplyEdit = Boolean(editSourceUrl && (editPrompt.trim() || selectedTemplateId));
 
   useEffect(() => {
     if (!localVideoFile || typeof URL.createObjectURL !== 'function') {
@@ -314,11 +345,23 @@ export function VideoTab({
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      const res = await apiJson<{ ok: boolean; templates?: VideoTemplate[] }>('/api/videos/templates');
+      if (res.ok && Array.isArray(res.templates)) {
+        setTemplates(res.templates);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
     fetchMedia();
     fetchCreditsAndEstimate();
     fetchJobs();
+    fetchTemplates();
   }, [user]);
 
   // Polling for active jobs
@@ -461,11 +504,12 @@ export function VideoTab({
   };
 
   const handleStartEdit = async () => {
-    if (!editSourceUrl || !editPrompt.trim()) return;
+    if (!editSourceUrl || (!editPrompt.trim() && !selectedTemplateId)) return;
     try {
       setStarting(true);
       setNotice(null);
       const refUrl = editReferenceUrl.trim();
+      const tplId = selectedTemplateId || undefined;
       let res: { ok: boolean; job?: VideoJob } | null = null;
       if (localVideoFile) {
         let usedClientPlan = false;
@@ -482,6 +526,7 @@ export function VideoTab({
                 audio_b64: audio_b64 || undefined,
                 audio_format: audio_b64 ? 'wav' : undefined,
                 reference_video_url: refUrl || undefined,
+                template_id: tplId,
               }),
             });
             if (res.ok && res.job) {
@@ -500,6 +545,9 @@ export function VideoTab({
           if (refUrl) {
             headers['X-Reference-Url'] = encodeURIComponent(refUrl);
           }
+          if (tplId) {
+            headers['X-Template-Id'] = encodeURIComponent(tplId);
+          }
           res = await apiJson<{ ok: boolean; job?: VideoJob }>('/api/videos/edit', {
             method: 'POST',
             headers,
@@ -514,6 +562,7 @@ export function VideoTab({
             source_job_id: selectedHistoryJob.id,
             prompt: editPrompt.trim(),
             reference_video_url: refUrl || undefined,
+            template_id: tplId,
           }),
         });
       } else {
@@ -523,6 +572,7 @@ export function VideoTab({
         clearEditSource();
         setEditPrompt('');
         setEditReferenceUrl('');
+        setSelectedTemplateId(null);
         setNotice({ type: 'success', text: m.edit.createdNotice });
         if (res.job) {
           setJobs((prev) => [res.job!, ...prev.filter((j) => j.id !== res.job!.id)]);
@@ -535,6 +585,48 @@ export function VideoTab({
       setNotice({ type: 'error', text: err?.message || m.edit.createError });
     } finally {
       setStarting(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (tplId: string) => {
+    try {
+      await apiJson<{ ok: boolean }>(`/api/videos/templates/${encodeURIComponent(tplId)}/delete`, {
+        method: 'POST',
+      });
+      setTemplates((prev) => prev.filter((item) => item.id !== tplId));
+      if (selectedTemplateId === tplId) {
+        setSelectedTemplateId(null);
+      }
+      setNotice({ type: 'success', text: m.edit.deletedTemplateNotice });
+    } catch (err: any) {
+      setNotice({ type: 'error', text: err?.message || m.edit.deleteTemplateError });
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!saveTemplateJobId || !saveTemplateName.trim()) return;
+    try {
+      setSavingTemplate(true);
+      const res = await apiJson<{ ok: boolean; template?: VideoTemplate }>('/api/videos/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: saveTemplateJobId,
+          name: saveTemplateName.trim(),
+          visibility: saveTemplateVisibility,
+        }),
+      });
+      if (res.ok) {
+        setSaveTemplateJobId(null);
+        setSaveTemplateName('');
+        setSaveTemplateVisibility('public');
+        setNotice({ type: 'success', text: m.edit.savedTemplateNotice });
+        fetchTemplates();
+      }
+    } catch (err: any) {
+      setNotice({ type: 'error', text: err?.message || m.edit.saveTemplateError });
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -671,6 +763,170 @@ export function VideoTab({
                 <button type="button" className="media-action-btn" onClick={() => setEditReferenceUrl('')}>
                   {m.edit.clearReference}
                 </button>
+              </div>
+            )}
+
+            {templates.length > 0 && (
+              <div className="video-form-group">
+                <div className="video-group-label">{m.edit.templateLabel}</div>
+                <div className="template-picker-grid">
+                  {templates.map((tpl) => {
+                    const isSelected = selectedTemplateId === tpl.id;
+                    const cfg = tpl.config || {};
+                    const theme = cfg.theme || {};
+                    const bgTop = theme.bgTop || '#1e293b';
+                    const bgBot = theme.bgBot || '#0f172a';
+                    const hookStyle = cfg.hook_card_style;
+                    const stepStyle = cfg.step_anchor_style;
+                    const ctaStyle = cfg.cta_style;
+                    const subStyle = cfg.subtitle_style;
+                    const hookBg = hookStyle?.bg_color || theme.red || '#b91c1c';
+                    const hookText = hookStyle?.text_color || '#ffffff';
+                    const stepText = stepStyle?.text_color || '#ffffff';
+                    const stepStroke = stepStyle?.stroke_color || theme.cyan || '#0284c7';
+                    const subColor = subStyle?.color || '#ffffff';
+                    const subOutline = subStyle?.outline_color || '#000000';
+                    const subHasBox = Boolean(subStyle && (subStyle.border_style === 3 || subStyle.bg_color));
+                    const subSample = subStyle?.uppercase ? 'HELLO WORLD' : 'Hello World';
+                    const ctaBg = ctaStyle?.bg_color || theme.card || '#ffffff';
+                    const ctaText = ctaStyle?.text_color || theme.text || '#0f172a';
+                    const ctaBorder = theme.cardBorder || stepStroke;
+                    const grade = cfg.color_grade || {};
+                    const anchorFilter = [
+                      grade.contrast ? `contrast(${grade.contrast})` : '',
+                      grade.saturation ? `saturate(${grade.saturation})` : '',
+                      grade.brightness ? `brightness(${1 + Number(grade.brightness)})` : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ');
+                    const anchorProfile = selectedProfile || profileMediaList[0] || null;
+                    return (
+                      <div
+                        key={tpl.id}
+                        role="button"
+                        tabIndex={0}
+                        data-testid={`template-card-${tpl.id}`}
+                        aria-pressed={isSelected}
+                        className={`template-card ${isSelected ? 'selected' : ''}`}
+                        onClick={() => setSelectedTemplateId(isSelected ? null : tpl.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedTemplateId(isSelected ? null : tpl.id);
+                          }
+                        }}
+                      >
+                        <div
+                          className="template-swatch"
+                          style={{ background: `linear-gradient(180deg, ${bgTop} 0%, ${bgBot} 100%)` }}
+                        >
+                          <div className="template-anchor" style={anchorFilter ? { filter: anchorFilter } : undefined}>
+                            {anchorProfile ? (
+                              <img className="template-anchor-img" src={mediaUrl(anchorProfile)} alt="" />
+                            ) : (
+                              <svg
+                                className="template-anchor-svg"
+                                viewBox="0 0 120 168"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  d="M20 168 C22 132 38 118 60 118 C82 118 98 132 100 168 Z"
+                                  fill="#334155"
+                                />
+                                <rect x="51" y="99" width="18" height="24" rx="8" fill="#e2a886" />
+                                <path
+                                  d="M35 66 C35 42 46 30 60 30 C74 30 85 42 85 66 C85 88 74 105 60 105 C46 105 35 88 35 66 Z"
+                                  fill="#f1bfa0"
+                                />
+                                <path
+                                  d="M34 62 C33 38 46 24 61 24 C76 24 87 38 86 62 C82 47 73 41 60 41 C47 41 38 47 34 62 Z"
+                                  fill="#1e293b"
+                                />
+                                <circle cx="49" cy="67" r="2.6" fill="#1e293b" />
+                                <circle cx="71" cy="67" r="2.6" fill="#1e293b" />
+                                <path
+                                  d="M52 84 Q60 90 68 84"
+                                  fill="none"
+                                  stroke="#b45349"
+                                  strokeWidth="2.4"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="template-overlays" aria-hidden="true">
+                            {hookStyle && (
+                              <span
+                                className="template-overlay-hook"
+                                style={{ background: hookBg, color: hookText }}
+                              >
+                                HOOK
+                              </span>
+                            )}
+                            {stepStyle && (
+                              <span
+                                className="template-overlay-step"
+                                style={{
+                                  color: stepText,
+                                  WebkitTextStroke: `2px ${stepStroke}`,
+                                  textShadow: `0 1px 4px ${stepStroke}`,
+                                }}
+                              >
+                                01 · STEP
+                              </span>
+                            )}
+                            {subStyle ? (
+                              <span
+                                className={`template-overlay-sub ${subHasBox ? 'boxed' : ''}`}
+                                style={{
+                                  color: subColor,
+                                  fontWeight: subStyle.bold === false ? 600 : 800,
+                                  WebkitTextStroke: subHasBox ? undefined : `2px ${subOutline}`,
+                                  textShadow: subHasBox ? undefined : `0 1px 4px ${subOutline}`,
+                                  background: subHasBox ? subStyle.bg_color || 'rgba(0,0,0,0.72)' : undefined,
+                                }}
+                              >
+                                {subSample}
+                              </span>
+                            ) : ctaStyle ? (
+                              <span
+                                className="template-overlay-cta"
+                                style={{
+                                  background: ctaBg,
+                                  color: ctaText,
+                                  borderColor: ctaBorder,
+                                }}
+                              >
+                                CTA
+                              </span>
+                            ) : null}
+                          </div>
+                          {isSelected && <div className="context-check">✓</div>}
+                          {tpl.is_owner && (
+                            <button
+                              type="button"
+                              className="template-delete-btn"
+                              aria-label={m.edit.deleteTemplateAria}
+                              title={m.edit.deleteTemplateAria}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDeleteTemplate(tpl.id);
+                              }}
+                            >
+                              <IonIcon icon={trashOutline} aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="template-card-meta">
+                          <div className="template-card-name" title={tpl.name}>
+                            {tpl.name}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <small className="muted">{m.edit.templateHint}</small>
               </div>
             )}
 
@@ -829,15 +1085,6 @@ export function VideoTab({
                         </div>
 
                         <div className="video-card-head-right">
-                          <span className="video-card-time">
-                            {j.created_at
-                              ? new Date(j.created_at).toLocaleTimeString(dateLocale, {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : ''}
-                          </span>
-
                           {j.status === 'pending' && (
                             <button
                               type="button"
@@ -848,6 +1095,23 @@ export function VideoTab({
                               }}
                             >
                               {m.cancelAndRefund}
+                            </button>
+                          )}
+
+                          {j.status === 'completed' && j.produced_template && (
+                            <button
+                              type="button"
+                              className="media-action-btn icon-action-btn"
+                              aria-label={m.edit.saveTemplateBtn}
+                              title={m.edit.saveTemplateBtn}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSaveTemplateJobId(j.id);
+                                setSaveTemplateName('');
+                                setSaveTemplateVisibility('public');
+                              }}
+                            >
+                              <IonIcon icon={bookmarkOutline} aria-hidden="true" />
                             </button>
                           )}
 
@@ -1022,6 +1286,61 @@ export function VideoTab({
               </button>
               <button type="button" className="btn-confirm" onClick={handleStartGeneration} disabled={starting}>
                 {starting ? m.submittingBtn : m.confirmBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Template Modal */}
+      {saveTemplateJobId && (
+        <div className="modal-overlay">
+          <div className="confirm-dialog">
+            <h3>{m.edit.saveTemplateTitle}</h3>
+            <div className="video-form-group">
+              <label className="video-group-label" htmlFor="save-template-name">
+                {m.edit.saveTemplateNameLabel}
+              </label>
+              <input
+                id="save-template-name"
+                type="text"
+                className="template-modal-input"
+                maxLength={80}
+                placeholder={m.edit.saveTemplateNamePlaceholder}
+                value={saveTemplateName}
+                onChange={(e) => setSaveTemplateName(e.target.value)}
+              />
+            </div>
+            <div className="video-form-group">
+              <label className="video-group-label" htmlFor="save-template-visibility">
+                {m.edit.saveTemplateVisibilityLabel}
+              </label>
+              <select
+                id="save-template-visibility"
+                className="template-modal-input"
+                value={saveTemplateVisibility}
+                onChange={(e) => setSaveTemplateVisibility(e.target.value === 'private' ? 'private' : 'public')}
+              >
+                <option value="public">{m.edit.saveTemplatePublic}</option>
+                <option value="private">{m.edit.saveTemplatePrivate}</option>
+              </select>
+            </div>
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setSaveTemplateJobId(null)}
+                disabled={savingTemplate}
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="button"
+                className="btn-confirm"
+                onClick={handleSaveTemplate}
+                disabled={savingTemplate || !saveTemplateName.trim()}
+              >
+                {m.edit.saveTemplateConfirm}
               </button>
             </div>
           </div>

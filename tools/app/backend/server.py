@@ -52,6 +52,10 @@ from tools.app.backend.handler import run_worker  # noqa: E402
 from tools.app.backend.media import MEDIA_STORE  # noqa: E402
 from tools.app.backend.credits import CREDIT_STORE, RATE_PER_SEC_MICRO, get_rate_per_sec_micro  # noqa: E402
 from tools.app.backend.video_engine.jobs import VIDEO_STORE, VIDEO_RUNNER  # noqa: E402
+from tools.app.backend.video_engine.templates import (  # noqa: E402
+    TEMPLATE_STORE,
+    extract_template_from_edit_config,
+)
 from tools.app.backend.video_engine import get_video_duration  # noqa: E402
 import uuid
 from tools.app.backend.profiles import PROFILE_STORE, detect_platform, now_iso  # noqa: E402
@@ -471,6 +475,13 @@ class Handler(BaseHTTPRequestHandler):
                     for r in cur.fetchall()
                 ]
                 _json(self, 200, {"ok": True, "reels": reels})
+            return
+        if parsed.path == "/api/videos/templates":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để xem danh sách template."})
+                return
+            _json(self, 200, {"ok": True, "templates": TEMPLATE_STORE.list_templates(user_id=user_id)})
             return
         if parsed.path == "/api/videos":
             user_id = self._user_id()
@@ -1005,6 +1016,65 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 _json(self, 500, {"error": str(exc)})
             return
+        if parsed.path == "/api/videos/templates":
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập để lưu template."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                name = (body.get("name") or "").strip()
+                visibility = (body.get("visibility") or "public").strip().lower()
+                job_id = (body.get("job_id") or "").strip()
+                if job_id:
+                    job = VIDEO_STORE.get_job(user_id=user_id, job_id=job_id)
+                    if not job:
+                        _json(self, 404, {"error": "Không tìm thấy video job."})
+                        return
+                    config = job.get("produced_template")
+                    plan_key = f"videos/{user_id}/{job_id}/edit_config.json"
+                    try:
+                        raw_cfg = json.loads(blobs.get(plan_key).decode("utf-8"))
+                        if isinstance(raw_cfg, dict) and isinstance(raw_cfg.get("effects"), list):
+                            config = extract_template_from_edit_config(raw_cfg, base_template=config if isinstance(config, dict) else None)
+                    except Exception:
+                        pass
+                    if not isinstance(config, dict) or not config:
+                        _json(self, 400, {"error": "Video job này chưa có template JSON."})
+                        return
+                else:
+                    config = body.get("config")
+                    if not isinstance(config, dict):
+                        _json(self, 400, {"error": "Thiếu cấu hình template (config hoặc job_id)."})
+                        return
+                tpl = TEMPLATE_STORE.create_template(
+                    user_id=user_id,
+                    name=name,
+                    config=config,
+                    visibility=visibility,
+                )
+                _json(self, 201, {"ok": True, "template": tpl})
+            except ValueError as exc:
+                _json(self, 400, {"error": str(exc)})
+            except Exception as exc:
+                _json(self, 500, {"error": str(exc)})
+            return
+        match = re.fullmatch(r"/api/videos/templates/([a-zA-Z0-9_-]+)/delete", parsed.path)
+        if match:
+            user_id = self._user_id()
+            if not user_id:
+                _json(self, 401, {"error": "Yêu cầu đăng nhập."})
+                return
+            status = TEMPLATE_STORE.delete_template(user_id=user_id, template_id=match.group(1))
+            if status == "not_found":
+                _json(self, 404, {"error": "Không tìm thấy template."})
+                return
+            if status == "forbidden":
+                _json(self, 403, {"error": "Chỉ chủ sở hữu mới có quyền xoá template này."})
+                return
+            _json(self, 200, {"ok": True})
+            return
         if parsed.path == "/api/videos/edit":
             user_id = self._user_id()
             if not user_id:
@@ -1018,6 +1088,7 @@ class Handler(BaseHTTPRequestHandler):
                     prompt = (body.get("prompt") or "").strip()
                     source_job_id = (body.get("source_job_id") or "").strip()
                     reference_video_url = (body.get("reference_video_url") or "").strip() or None
+                    template_id = (body.get("template_id") or "").strip() or None
                     if not source_job_id:
                         _json(self, 400, {"error": "Thiếu video đầu vào (source_job_id)."})
                         return
@@ -1037,8 +1108,18 @@ class Handler(BaseHTTPRequestHandler):
                     raw = self.rfile.read(length)
                     prompt = unquote(self.headers.get("X-Edit-Prompt") or "").strip()
                     reference_video_url = unquote(self.headers.get("X-Reference-Url") or "").strip() or None
+                    template_id = unquote(self.headers.get("X-Template-Id") or "").strip() or None
                     source_blob_key = f"videos/{user_id}/uploads/{uuid.uuid4().hex[:12]}.mp4"
                     blobs.put(source_blob_key, raw, content_type=content_type or "video/mp4")
+
+                resolved_tpl = None
+                if template_id:
+                    resolved_tpl = TEMPLATE_STORE.get_template(template_id, user_id=user_id)
+                    if not resolved_tpl:
+                        _json(self, 400, {"error": "Template không tồn tại hoặc không có quyền sử dụng."})
+                        return
+                    if not prompt:
+                        prompt = f"Apply template: {resolved_tpl['name']}"
 
                 if not prompt:
                     _json(self, 400, {"error": "Thiếu yêu cầu chỉnh sửa (prompt)."})
@@ -1048,6 +1129,7 @@ class Handler(BaseHTTPRequestHandler):
                     prompt=prompt,
                     source_video_blob_key=source_blob_key,
                     reference_video_url=reference_video_url,
+                    template_id=resolved_tpl["id"] if resolved_tpl else None,
                 )
                 VIDEO_RUNNER.trigger()
                 _json(self, 201, {"ok": True, "job": job})
@@ -1105,6 +1187,15 @@ class Handler(BaseHTTPRequestHandler):
                 body = json.loads(self.rfile.read(length).decode("utf-8"))
                 prompt = (body.get("prompt") or "").strip()
                 probe = body.get("probe")
+                template_id = (body.get("template_id") or "").strip() or None
+                resolved_tpl = None
+                if template_id:
+                    resolved_tpl = TEMPLATE_STORE.get_template(template_id, user_id=user_id)
+                    if not resolved_tpl:
+                        _json(self, 400, {"error": "Template không tồn tại hoặc không có quyền sử dụng."})
+                        return
+                    if not prompt:
+                        prompt = f"Apply template: {resolved_tpl['name']}"
                 if not prompt:
                     _json(self, 400, {"error": "Thiếu yêu cầu chỉnh sửa (prompt)."})
                     return
@@ -1137,6 +1228,7 @@ class Handler(BaseHTTPRequestHandler):
                     prompt=prompt,
                     input_blob_key=input_blob_key,
                     reference_video_url=reference_video_url,
+                    template_id=resolved_tpl["id"] if resolved_tpl else None,
                 )
                 VIDEO_RUNNER.trigger()
                 _json(self, 201, {"ok": True, "job": job})
@@ -1486,6 +1578,10 @@ def main() -> None:
         threading.Thread(target=run_worker, daemon=True).start()
 
     VIDEO_STORE.recover_stale_jobs()
+    try:
+        TEMPLATE_STORE.sync_builtin_templates()
+    except Exception as exc:
+        print(f"Template sync warning: {exc}")
     VIDEO_RUNNER.trigger()
 
     if os.environ.get("ENABLE_DM_POLLER", "1") == "1":

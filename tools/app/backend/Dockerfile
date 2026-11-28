@@ -41,6 +41,7 @@ COPY --chown=app tools/facebook_agent tools/facebook_agent
 COPY --chown=app tools/loop tools/loop
 COPY --chown=app tools/app/backend tools/app/backend
 COPY --chown=app tools/app/browser-app/dist tools/app/browser-app/dist
+COPY --chown=app .agents/skills/video-editing/scripts/video_engine/templates .agents/skills/video-editing/scripts/video_engine/templates
 
 USER app
 ENV PYTHONUNBUFFERED=1 \

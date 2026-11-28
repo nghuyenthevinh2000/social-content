@@ -536,21 +536,23 @@ describe('VideoTab and MediaPanel', () => {
 
   test('videoEditDraft persists and clears edit prompt, reference URL, and historyJobId', () => {
     localStorage.clear();
-    expect(loadEditDraft()).toEqual({ prompt: '', referenceUrl: '', historyJobId: null });
+    expect(loadEditDraft()).toEqual({ prompt: '', referenceUrl: '', historyJobId: null, templateId: null });
 
     saveEditDraft({
       prompt: 'Add captions and zoom',
       referenceUrl: 'https://www.tiktok.com/@a/video/1',
       historyJobId: 'vj_123',
+      templateId: 'kinetic-explainer',
     });
     expect(loadEditDraft()).toEqual({
       prompt: 'Add captions and zoom',
       referenceUrl: 'https://www.tiktok.com/@a/video/1',
       historyJobId: 'vj_123',
+      templateId: 'kinetic-explainer',
     });
 
     clearEditDraft();
-    expect(loadEditDraft()).toEqual({ prompt: '', referenceUrl: '', historyJobId: null });
+    expect(loadEditDraft()).toEqual({ prompt: '', referenceUrl: '', historyJobId: null, templateId: null });
   });
 
   test('VideoTab renders progressbar for active jobs and omits it for completed/failed jobs', async () => {
@@ -909,5 +911,187 @@ describe('VideoTab and MediaPanel', () => {
     expect(calls).toContain('fill:1. Thuê');
     expect(calls).toContain('stroke:XIN CHÀO');
     expect(calls).toContain('fill:XIN CHÀO');
+  });
+
+  test('VideoTab displays templates, enforces owner-only delete, allows template-only edit, and saves produced template', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((input: any, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/api/videos/templates/tpl_mine/delete') && init?.method === 'POST') {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        );
+      }
+      if (url.includes('/api/videos/templates') && init?.method === 'POST') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              template: {
+                id: 'tpl_new',
+                slug: 'my-saved-tpl',
+                name: 'My Saved Tpl',
+                source: 'user',
+                author_id: 'test_uid_123',
+                is_owner: true,
+                visibility: 'public',
+                config: { width: 1080, height: 1920 },
+              },
+            }),
+            { status: 201, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.includes('/api/videos/templates')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              templates: [
+                {
+                  id: 'kinetic-explainer',
+                  slug: 'kinetic-explainer',
+                  name: 'kinetic-explainer',
+                  source: 'builtin',
+                  author_id: null,
+                  is_owner: false,
+                  visibility: 'public',
+                  config: { width: 1080, height: 1920, fps: 30, theme: { bgTop: '#f8f4ec', bgBot: '#ede4d3' } },
+                },
+                {
+                  id: 'tpl_mine',
+                  slug: 'tpl-mine',
+                  name: 'My Own Style',
+                  source: 'user',
+                  author_id: 'test_uid_123',
+                  is_owner: true,
+                  visibility: 'public',
+                  config: { width: 1080, height: 1920, fps: 30 },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.includes('/api/videos/edit') && init?.method === 'POST') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              job: {
+                id: 'job_edit_tpl',
+                user_id: 'test_uid_123',
+                prompt: 'Apply template: kinetic-explainer',
+                profile_media_id: '',
+                context_media_ids: [],
+                cost: 0,
+                cost_usd: 0,
+                status: 'pending',
+                video_path: null,
+                error: null,
+                created_at: '2026-11-27T12:00:00Z',
+                started_at: null,
+                finished_at: null,
+                job_type: 'edit',
+                template_id: 'kinetic-explainer',
+              },
+            }),
+            { status: 201, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.endsWith('/api/videos')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              jobs: [
+                {
+                  id: 'job_done_1',
+                  user_id: 'test_uid_123',
+                  prompt: 'Edited clip',
+                  profile_media_id: '',
+                  context_media_ids: [],
+                  cost: 0,
+                  cost_usd: 0,
+                  status: 'completed',
+                  video_path: 'videos/test_uid_123/job_done_1/output.mp4',
+                  error: null,
+                  created_at: '2026-11-27T12:00:00Z',
+                  started_at: null,
+                  finished_at: null,
+                  job_type: 'edit',
+                  produced_template: { width: 1080, height: 1920, color_grade: { contrast: 1.05 } },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.includes('/api/videos/estimate') || url.includes('/api/credits')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, balance: 500000, cost_micro: 230000, cost_usd: 0.23 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, media: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    });
+
+    const mockFile = new File([new Uint8Array([1, 2, 3])], 'clip.mp4', { type: 'video/mp4' });
+    render(<VideoTab user={mockUser} onOpenAuth={vi.fn()} editSourceFile={mockFile} />);
+
+    // Both templates render; only owner template shows delete button
+    await waitFor(() => {
+      expect(screen.getByTestId('template-card-kinetic-explainer')).toBeDefined();
+      expect(screen.getByTestId('template-card-tpl_mine')).toBeDefined();
+    });
+    expect(screen.getAllByRole('button', { name: 'Xoá mẫu' })).toHaveLength(1);
+
+    // Delete owner template
+    fireEvent.click(screen.getByRole('button', { name: 'Xoá mẫu' }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/videos/templates/tpl_mine/delete'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+      expect(screen.queryByTestId('template-card-tpl_mine')).toBeNull();
+    });
+
+    // Selecting built-in template enables Apply Edits even with empty prompt
+    const applyBtn = screen.getByRole('button', { name: 'Áp dụng chỉnh sửa' });
+    expect(applyBtn).toBeDisabled();
+    fireEvent.click(screen.getByTestId('template-card-kinetic-explainer'));
+    expect(applyBtn).not.toBeDisabled();
+
+    // Switch to History, expand completed job, and save produced template
+    fireEvent.click(screen.getByRole('tab', { name: 'Lịch sử' }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Edited clip').length).toBeGreaterThan(0);
+    });
+    fireEvent.click(screen.getAllByText('Edited clip')[0]);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Lưu thành mẫu' })).toBeDefined();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu thành mẫu' }));
+    fireEvent.change(screen.getByLabelText('Tên mẫu'), { target: { value: 'My Saved Tpl' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu mẫu' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/videos/templates'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ job_id: 'job_done_1', name: 'My Saved Tpl', visibility: 'public' }),
+        }),
+      );
+    });
   });
 });

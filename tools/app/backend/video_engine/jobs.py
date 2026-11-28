@@ -21,6 +21,11 @@ from tools.app.backend.media import MEDIA_STORE
 from tools.app.backend.profiles import now_iso
 from tools.app.backend.video_engine.edit import edit_video, plan_edit_video
 from tools.app.backend.video_engine.generate import generate_video, get_video_duration
+from tools.app.backend.video_engine.templates import (
+    TEMPLATE_STORE,
+    extract_template_from_edit_config,
+    sanitize_template_config,
+)
 
 DEFAULT_MAX_GLOBAL_JOBS = 2
 DEFAULT_MAX_PER_USER_JOBS = 1
@@ -80,6 +85,7 @@ class VideoJobStore:
         prompt: str,
         input_blob_key: str,
         reference_video_url: Optional[str] = None,
+        template_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Enqueue a lightweight client-rendered edit_plan job."""
         prompt = prompt.strip()
@@ -91,13 +97,14 @@ class VideoJobStore:
         job_id = uuid.uuid4().hex[:12]
         created = now_iso()
         ref_url = reference_video_url.strip() if reference_video_url and reference_video_url.strip() else None
+        tpl_id = template_id.strip() if template_id and template_id.strip() else None
         with tx() as conn:
             conn.execute(
                 """
                 INSERT INTO video_jobs (
                     id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at,
-                    job_type, source_video_blob_key, reference_video_url
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    job_type, source_video_blob_key, reference_video_url, template_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     job_id,
@@ -113,6 +120,7 @@ class VideoJobStore:
                     "edit_plan",
                     input_blob_key,
                     ref_url,
+                    tpl_id,
                 ),
             )
         return self.get_job(user_id, job_id)  # type: ignore
@@ -123,6 +131,7 @@ class VideoJobStore:
         prompt: str,
         source_video_blob_key: str,
         reference_video_url: Optional[str] = None,
+        template_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         prompt = prompt.strip()
         if not prompt:
@@ -133,13 +142,14 @@ class VideoJobStore:
         job_id = uuid.uuid4().hex[:12]
         created = now_iso()
         ref_url = reference_video_url.strip() if reference_video_url and reference_video_url.strip() else None
+        tpl_id = template_id.strip() if template_id and template_id.strip() else None
         with tx() as conn:
             conn.execute(
                 """
                 INSERT INTO video_jobs (
                     id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at,
-                    job_type, source_video_blob_key, reference_video_url
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    job_type, source_video_blob_key, reference_video_url, template_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     job_id,
@@ -155,49 +165,7 @@ class VideoJobStore:
                     "edit",
                     source_video_blob_key,
                     ref_url,
-                ),
-            )
-        return self.get_job(user_id, job_id)  # type: ignore
-
-    def create_edit_plan_job(
-        self,
-        user_id: str,
-        prompt: str,
-        input_blob_key: str,
-        reference_video_url: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Enqueue a lightweight client-rendered edit_plan job."""
-        prompt = prompt.strip()
-        if not prompt:
-            raise ValueError("Prompt is required.")
-        if not input_blob_key:
-            raise ValueError("Client metadata blob key is required.")
-
-        job_id = uuid.uuid4().hex[:12]
-        created = now_iso()
-        ref_url = reference_video_url.strip() if reference_video_url and reference_video_url.strip() else None
-        with tx() as conn:
-            conn.execute(
-                """
-                INSERT INTO video_jobs (
-                    id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at,
-                    job_type, source_video_blob_key, reference_video_url
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    job_id,
-                    user_id,
-                    prompt,
-                    "",
-                    "[]",
-                    0,
-                    "pending",
-                    None,
-                    None,
-                    created,
-                    "edit_plan",
-                    input_blob_key,
-                    ref_url,
+                    tpl_id,
                 ),
             )
         return self.get_job(user_id, job_id)  # type: ignore
@@ -207,7 +175,7 @@ class VideoJobStore:
             cur = conn.execute(
                 """
                 SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
-                       job_type, source_video_blob_key, reference_video_url
+                       job_type, source_video_blob_key, reference_video_url, template_id, produced_template_json
                 FROM video_jobs WHERE id = %s AND user_id = %s
                 """,
                 (job_id, user_id),
@@ -222,7 +190,7 @@ class VideoJobStore:
             cur = conn.execute(
                 """
                 SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
-                       job_type, source_video_blob_key, reference_video_url
+                       job_type, source_video_blob_key, reference_video_url, template_id, produced_template_json
                 FROM video_jobs WHERE id = %s
                 """,
                 (job_id,),
@@ -237,7 +205,7 @@ class VideoJobStore:
             cur = conn.execute(
                 """
                 SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
-                       job_type, source_video_blob_key, reference_video_url
+                       job_type, source_video_blob_key, reference_video_url, template_id, produced_template_json
                 FROM video_jobs WHERE user_id = %s ORDER BY created_at DESC
                 """,
                 (user_id,),
@@ -327,7 +295,7 @@ class VideoJobStore:
                 cur = conn.execute(
                     """
                     SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
-                           job_type, source_video_blob_key, reference_video_url
+                           job_type, source_video_blob_key, reference_video_url, template_id, produced_template_json
                     FROM video_jobs WHERE status = 'pending' ORDER BY created_at ASC
                     FOR UPDATE SKIP LOCKED
                     """
@@ -336,7 +304,7 @@ class VideoJobStore:
                 cur = conn.execute(
                     """
                     SELECT id, user_id, prompt, profile_media_id, context_media_ids, cost, status, blob_key, error, created_at, started_at, finished_at,
-                           job_type, source_video_blob_key, reference_video_url
+                           job_type, source_video_blob_key, reference_video_url, template_id, produced_template_json
                     FROM video_jobs WHERE status = 'pending' AND job_type = ANY(%s) ORDER BY created_at ASC
                     FOR UPDATE SKIP LOCKED
                     """,
@@ -366,11 +334,24 @@ class VideoJobStore:
 
         return None
 
-    def mark_completed(self, job_id: str, video_path: str) -> None:
+    def mark_completed(
+        self,
+        job_id: str,
+        video_path: str,
+        produced_template: Optional[dict] = None,
+    ) -> None:
+        produced_json = json.dumps(produced_template, ensure_ascii=False) if produced_template is not None else None
         with tx() as conn:
             conn.execute(
-                "UPDATE video_jobs SET status = 'completed', blob_key = %s, finished_at = %s WHERE id = %s",
-                (video_path, now_iso(), job_id),
+                """
+                UPDATE video_jobs
+                SET status = 'completed',
+                    blob_key = %s,
+                    produced_template_json = COALESCE(%s::jsonb, produced_template_json),
+                    finished_at = %s
+                WHERE id = %s
+                """,
+                (video_path, produced_json, now_iso(), job_id),
             )
 
     def mark_failed(self, job_id: str, error: str) -> None:
@@ -406,6 +387,11 @@ class VideoJobStore:
             "job_type": row[12] if len(row) > 12 and row[12] else "generate",
             "source_video_blob_key": row[13] if len(row) > 13 else None,
             "reference_video_url": row[14] if len(row) > 14 else None,
+            "template_id": row[15] if len(row) > 15 else None,
+            "produced_template": (
+                json.loads(row[16]) if len(row) > 16 and isinstance(row[16], str)
+                else (row[16] if len(row) > 16 and isinstance(row[16], dict) else None)
+            ),
         }
 
 
@@ -465,6 +451,12 @@ class VideoRunner:
         temp_in = None
         temp_mp4 = None
         try:
+            template_cfg: Optional[dict] = None
+            if job.get("template_id"):
+                tpl_rec = TEMPLATE_STORE.get_template(str(job["template_id"]), user_id=user_id)
+                if tpl_rec and isinstance(tpl_rec.get("config"), dict):
+                    template_cfg = tpl_rec["config"]
+
             if job_type == "edit_plan":
                 input_blob_key = job.get("source_video_blob_key")
                 if not input_blob_key:
@@ -477,7 +469,7 @@ class VideoRunner:
                 ]
                 audio_b64 = payload.get("audio_b64")
                 audio_bytes = base64.b64decode(audio_b64) if isinstance(audio_b64, str) and audio_b64 else None
-                plan = self.planner(
+                planner_kwargs = dict(
                     prompt=prompt,
                     probe=payload.get("probe"),
                     keyframes=keyframes or None,
@@ -486,13 +478,18 @@ class VideoRunner:
                     audio_format=str(payload.get("audio_format") or "wav"),
                     reference_video_url=job.get("reference_video_url"),
                 )
+                try:
+                    plan = self.planner(**planner_kwargs, template=template_cfg)
+                except TypeError:
+                    plan = self.planner(**planner_kwargs)
+                produced = extract_template_from_edit_config(plan, base_template=template_cfg)
                 blob_key = f"videos/{user_id}/{job_id}/edit_config.json"
                 blobs.put(
                     blob_key,
                     json.dumps(plan, ensure_ascii=False).encode("utf-8"),
                     content_type="application/json",
                 )
-                self.store.mark_completed(job_id, blob_key)
+                self.store.mark_completed(job_id, blob_key, produced_template=produced)
                 return
 
             if job_type == "edit":
@@ -505,15 +502,23 @@ class VideoRunner:
                     temp_in = Path(f_in.name)
                 with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f_out:
                     temp_mp4 = Path(f_out.name)
-                self.editor(
+                result_meta: Dict[str, Any] = {}
+                editor_kwargs = dict(
                     source_video_path=temp_in,
                     prompt=prompt,
                     output_path=temp_mp4,
                     reference_video_url=job.get("reference_video_url"),
                 )
+                try:
+                    self.editor(**editor_kwargs, template=template_cfg, result_meta=result_meta)
+                except TypeError:
+                    self.editor(**editor_kwargs)
+                produced = result_meta.get("produced_template") or (
+                    sanitize_template_config(template_cfg) if template_cfg else None
+                )
                 blob_key = f"videos/{user_id}/{job_id}/output.mp4"
                 blobs.upload_file(blob_key, temp_mp4, content_type="video/mp4")
-                self.store.mark_completed(job_id, blob_key)
+                self.store.mark_completed(job_id, blob_key, produced_template=produced)
                 return
 
             profile_media_id = job["profile_media_id"]

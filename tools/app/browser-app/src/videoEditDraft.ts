@@ -7,20 +7,22 @@ export type VideoEditDraft = {
   prompt: string;
   referenceUrl: string;
   historyJobId: string | null;
+  templateId: string | null;
 };
 
 export function loadEditDraft(): VideoEditDraft {
   try {
     const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-    if (!raw) return { prompt: '', referenceUrl: '', historyJobId: null };
+    if (!raw) return { prompt: '', referenceUrl: '', historyJobId: null, templateId: null };
     const parsed = JSON.parse(raw);
     return {
       prompt: typeof parsed?.prompt === 'string' ? parsed.prompt : '',
       referenceUrl: typeof parsed?.referenceUrl === 'string' ? parsed.referenceUrl : '',
       historyJobId: typeof parsed?.historyJobId === 'string' ? parsed.historyJobId : null,
+      templateId: typeof parsed?.templateId === 'string' ? parsed.templateId : null,
     };
   } catch {
-    return { prompt: '', referenceUrl: '', historyJobId: null };
+    return { prompt: '', referenceUrl: '', historyJobId: null, templateId: null };
   }
 }
 

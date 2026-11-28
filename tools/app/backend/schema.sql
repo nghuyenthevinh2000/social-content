@@ -36,13 +36,30 @@ CREATE TABLE IF NOT EXISTS video_jobs (
     finished_at TEXT,
     job_type TEXT NOT NULL DEFAULT 'generate',
     source_video_blob_key TEXT,
-    reference_video_url TEXT
+    reference_video_url TEXT,
+    template_id TEXT,
+    produced_template_json JSONB
 );
 ALTER TABLE video_jobs ADD COLUMN IF NOT EXISTS job_type TEXT NOT NULL DEFAULT 'generate';
 ALTER TABLE video_jobs ADD COLUMN IF NOT EXISTS source_video_blob_key TEXT;
 ALTER TABLE video_jobs ADD COLUMN IF NOT EXISTS reference_video_url TEXT;
+ALTER TABLE video_jobs ADD COLUMN IF NOT EXISTS template_id TEXT;
+ALTER TABLE video_jobs ADD COLUMN IF NOT EXISTS produced_template_json JSONB;
 CREATE INDEX IF NOT EXISTS idx_video_jobs_status_created ON video_jobs (status, created_at);
 CREATE INDEX IF NOT EXISTS idx_video_jobs_user_status ON video_jobs (user_id, status);
+
+CREATE TABLE IF NOT EXISTS video_templates (
+    id TEXT PRIMARY KEY,
+    slug TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    author_id TEXT,
+    visibility TEXT NOT NULL DEFAULT 'public',
+    config_json JSONB NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_video_templates_vis_created ON video_templates (visibility, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_video_templates_author ON video_templates (author_id);
 
 CREATE TABLE IF NOT EXISTS user_credits (
     user_id TEXT PRIMARY KEY,

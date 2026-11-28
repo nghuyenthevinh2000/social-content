@@ -331,6 +331,7 @@ const Home: React.FC = () => {
   const [videoEditReferenceUrl, setVideoEditReferenceUrl] = useState(() => loadEditDraft().referenceUrl);
   const [videoEditFile, setVideoEditFile] = useState<File | null>(null);
   const [videoEditHistoryJobId, setVideoEditHistoryJobId] = useState<string | null>(() => loadEditDraft().historyJobId);
+  const [videoEditTemplateId, setVideoEditTemplateId] = useState<string | null>(() => loadEditDraft().templateId);
   const [videoMode, setVideoMode] = useState<VideoMode>('edit');
 
   const handleEditSourceFileChange = (file: File | null) => {
@@ -353,8 +354,9 @@ const Home: React.FC = () => {
       prompt: videoEditPrompt,
       referenceUrl: videoEditReferenceUrl,
       historyJobId: videoEditHistoryJobId,
+      templateId: videoEditTemplateId,
     });
-  }, [videoEditPrompt, videoEditReferenceUrl, videoEditHistoryJobId]);
+  }, [videoEditPrompt, videoEditReferenceUrl, videoEditHistoryJobId, videoEditTemplateId]);
   const [videoDuration, setVideoDuration] = useState<number>(
     Number(import.meta.env.VITE_VIDEO_GENERATION_DURATION) || 15,
   );
@@ -1411,6 +1413,8 @@ const Home: React.FC = () => {
               onEditSourceFileChange={handleEditSourceFileChange}
               editHistoryJobId={videoEditHistoryJobId}
               onEditHistoryJobIdChange={setVideoEditHistoryJobId}
+              editTemplateId={videoEditTemplateId}
+              onEditTemplateIdChange={setVideoEditTemplateId}
               duration={videoDuration}
               onDurationChange={setVideoDuration}
             />
